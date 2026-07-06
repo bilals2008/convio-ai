@@ -12,7 +12,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
       where: { userId: request.userId },
       include: { organization: true },
     })
-    return { data: memberships.map((m) => m.organization) }
+    return { data: memberships.map((m: { organization: any }) => m.organization) }
   })
 
   fastify.post('/organizations', {
@@ -65,6 +65,6 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
       where: { organizationId: orgId },
       include: { user: true },
     })
-    return { data: members.map((m) => ({ id: m.id, role: m.role, user: m.user })) }
+    return { data: members.map((m: { id: string; role: string; user: any }) => ({ id: m.id, role: m.role, user: m.user })) }
   })
 }

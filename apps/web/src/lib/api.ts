@@ -24,6 +24,19 @@ api.interceptors.response.use(
 
 export default api
 
+// Auth functions
+export const auth = {
+  signUp: (email: string, password: string, name: string) =>
+    api.post('/auth/sign-up', { email, password, name }),
+  signIn: (email: string, password: string) =>
+    api.post('/auth/sign-in', { email, password }),
+  signOut: () => api.post('/auth/sign-out'),
+  getSession: () => api.get('/auth/session'),
+  getMe: () => api.get('/auth/me'),
+  googleAuth: () => window.location.assign(`${api.defaults.baseURL}/auth/google`),
+  githubAuth: () => window.location.assign(`${api.defaults.baseURL}/auth/github`),
+}
+
 // API functions
 export const bots = {
   list: (orgId: string) => api.get(`/bots?orgId=${orgId}`),

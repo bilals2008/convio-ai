@@ -3,12 +3,12 @@
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "moduleDetection": "force",
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
     "noEmit": true,
     "strict": true,
     "outDir": "dist",
-    "rootDir": "src",
     "skipLibCheck": true,
     "esModuleInterop": true
   },

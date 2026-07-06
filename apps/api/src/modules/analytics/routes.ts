@@ -36,6 +36,6 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       where: { bot: { organizationId: orgId } },
       _count: { id: true },
     })
-    return { data: stats.map((s) => ({ channel: s.channel, count: s._count.id })) }
+    return { data: stats.map((s: { channel: string; _count: { id: number } }) => ({ channel: s.channel, count: s._count.id })) }
   })
 }
