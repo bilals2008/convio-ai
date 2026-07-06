@@ -3,6 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/components/theme-provider'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import Landing from '@/pages/landing'
+import LoginPage from '@/pages/auth/login-page'
+import SignupPage from '@/pages/auth/signup-page'
+import ForgotPasswordPage from '@/pages/auth/forgot-password-page'
 import Dashboard from '@/pages/dashboard'
 import Bots from '@/pages/bots'
 import Agents from '@/pages/agents'
@@ -33,8 +36,9 @@ export function App() {
         <Router>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<div>Login</div>} />
-            <Route path="/signup" element={<div>Signup</div>} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/dashboard/analytics" element={<Analytics />} />
