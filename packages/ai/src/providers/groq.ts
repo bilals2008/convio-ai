@@ -1,4 +1,4 @@
-import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from './index'
+import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 
 export class GroqProvider implements AIProvider {
   id = 'groq'

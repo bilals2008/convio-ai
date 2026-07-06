@@ -1,18 +1,18 @@
-import { generateText, streamText } from 'ai'
-import { google } from '@ai-sdk/google'
-import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from './index'
+import { generateText, streamText, embed } from 'ai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 
 export class GoogleProvider implements AIProvider {
   id = 'google'
   name = 'Google'
 
   private getClient() {
-    return google(process.env.GOOGLE_API_KEY)
+    return createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
     const result = await generateText({
-      model: this.getClient().model(params.model),
+      model: this.getClient()(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,
@@ -30,7 +30,7 @@ export class GoogleProvider implements AIProvider {
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const result = streamText({
-      model: this.getClient().model(params.model),
+      model: this.getClient()(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,
@@ -44,7 +44,11 @@ export class GoogleProvider implements AIProvider {
   }
 
   async embed(text: string): Promise<number[]> {
-    throw new Error('Google embeddings not implemented yet')
+    const result = await embed({
+      model: this.getClient().textEmbeddingModel('text-embedding-004'),
+      value: text,
+    })
+    return result.embedding
   }
 
   async moderate(text: string): Promise<ModerationResult> {

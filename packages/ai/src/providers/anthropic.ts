@@ -1,18 +1,18 @@
 import { generateText, streamText } from 'ai'
-import { anthropic } from '@ai-sdk/anthropic'
-import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from './index'
+import { createAnthropic } from '@ai-sdk/anthropic'
+import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 
 export class AnthropicProvider implements AIProvider {
   id = 'anthropic'
   name = 'Anthropic'
 
   private getClient() {
-    return anthropic(process.env.ANTHROPIC_API_KEY)
+    return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
     const result = await generateText({
-      model: this.getClient().model(params.model),
+      model: this.getClient()(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,
@@ -30,7 +30,7 @@ export class AnthropicProvider implements AIProvider {
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const result = streamText({
-      model: this.getClient().model(params.model),
+      model: this.getClient()(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,
@@ -44,12 +44,10 @@ export class AnthropicProvider implements AIProvider {
   }
 
   async embed(text: string): Promise<number[]> {
-    // Anthropic doesn't have native embeddings, use OpenAI or another provider
     throw new Error('Anthropic does not support embeddings')
   }
 
   async moderate(text: string): Promise<ModerationResult> {
-    // Anthropic doesn't have native moderation, use custom rules
     return {
       flagged: false,
       categories: {},
