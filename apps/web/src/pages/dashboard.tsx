@@ -15,10 +15,10 @@ import {
 import { Link } from 'react-router-dom'
 
 const stats = [
-  { title: 'Total Conversations', value: '1,234', change: '+12%', icon: MessageSquare, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  { title: 'Active Bots', value: '5', change: '+1', icon: Bot, color: 'text-green-500', bg: 'bg-green-500/10' },
-  { title: 'AI Agents', value: '3', change: '+1', icon: Brain, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-  { title: 'Messages Today', value: '3,891', change: '+15%', icon: BarChart3, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  { title: 'Total Conversations', value: '1,234', change: '+12%', icon: MessageSquare, color: 'text-info', bg: 'bg-info/10' },
+  { title: 'Active Bots', value: '5', change: '+1', icon: Bot, color: 'text-success', bg: 'bg-success/10' },
+  { title: 'AI Agents', value: '3', change: '+1', icon: Brain, color: 'text-primary', bg: 'bg-primary/10' },
+  { title: 'Messages Today', value: '3,891', change: '+15%', icon: BarChart3, color: 'text-warning', bg: 'bg-warning/10' },
 ]
 
 const features = [
@@ -27,28 +27,28 @@ const features = [
     title: 'AI Agents',
     description: 'Configure AI brains with custom prompts, models, and tools',
     href: '/agents',
-    color: 'text-purple-500',
+    color: 'text-primary',
   },
   {
     icon: Bot,
     title: 'Chatbots',
     description: 'Create and deploy chatbots to multiple channels',
     href: '/bots',
-    color: 'text-green-500',
+    color: 'text-success',
   },
   {
     icon: Globe,
     title: 'Multi-channel',
     description: 'Deploy to Web, WhatsApp, Telegram, Discord, Slack',
     href: '/integrations',
-    color: 'text-blue-500',
+    color: 'text-info',
   },
   {
     icon: BarChart3,
     title: 'Analytics',
     description: 'Track conversations, messages, and performance',
     href: '/analytics',
-    color: 'text-orange-500',
+    color: 'text-warning',
   },
 ]
 
@@ -122,7 +122,7 @@ export default function Dashboard() {
             <Link key={feature.title} to={feature.href}>
               <Card className="h-full hover:shadow-md hover:border-primary/50 transition-all cursor-pointer group">
                 <CardContent className="p-6">
-                  <div className={`flex size-10 items-center justify-center rounded-lg bg-muted mb-4 group-hover:bg-primary/10 transition-colors`}>
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-muted mb-4 group-hover:bg-primary/10 transition-colors">
                     <feature.icon className={`size-5 ${feature.color}`} />
                   </div>
                   <h3 className="font-semibold mb-1">{feature.title}</h3>
