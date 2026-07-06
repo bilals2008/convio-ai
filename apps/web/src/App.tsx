@@ -7,6 +7,7 @@ import LoginPage from '@/pages/auth/login-page'
 import SignupPage from '@/pages/auth/signup-page'
 import ForgotPasswordPage from '@/pages/auth/forgot-password-page'
 import Dashboard from '@/pages/dashboard'
+import DashboardOverviewPage from '@/pages/dashboard/dashboard-overview-page'
 import Bots from '@/pages/bots'
 import ChatbotsListPage from '@/pages/chatbots/chatbots-list-page'
 import BotEditorPage from '@/pages/chatbots/bot-editor-page'
@@ -20,6 +21,7 @@ import KnowledgeListPage from '@/pages/knowledge/knowledge-list-page'
 import KnowledgeDetailPage from '@/pages/knowledge/knowledge-detail-page'
 import Documents from '@/pages/documents'
 import Analytics from '@/pages/analytics'
+import AnalyticsPage from '@/pages/analytics/analytics-page'
 import Integrations from '@/pages/integrations'
 import Settings from '@/pages/settings'
 import { SettingsLayout } from '@/components/settings/settings-layout'
@@ -48,8 +50,8 @@ export function App() {
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard/analytics" element={<Analytics />} />
+              <Route path="/dashboard" element={<DashboardOverviewPage />} />
+              <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="/agents" element={<AgentsListPage />} />
               <Route path="/agents/new" element={<AgentEditorPage />} />
               <Route path="/agents/:id/edit" element={<AgentEditorPage />} />
