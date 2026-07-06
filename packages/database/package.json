@@ -2,6 +2,7 @@
   "name": "@convio/database",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -20,10 +21,13 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.10.0"
+    "@prisma/client": "^7.0.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
-    "prisma": "^5.10.0",
+    "prisma": "^7.0.0",
+    "@types/pg": "^8.11.0",
     "tsx": "^4.7.0",
     "typescript": "^5.0.0"
   }
