@@ -1,38 +1,99 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// Better Auth core models (names must be lowercase to match the Prisma adapter)
+model user {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz()
+  updatedAt     DateTime  @updatedAt @db.Timestamptz()
 
   memberships Membership[]
-  bots        Bot[]        @relation("BotCreator")
+  bots        Bot[]       @relation("BotCreator")
+  sessions    session[]
+  accounts    account[]
+
+  @@index([email])
+  @@map("users")
 }
 
+model session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime @db.Timestamptz()
+  token     String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  updatedAt DateTime @updatedAt @db.Timestamptz()
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+model account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz()
+  refreshTokenExpiresAt DateTime? @db.Timestamptz()
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz()
+  updatedAt             DateTime  @updatedAt @db.Timestamptz()
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([providerId, accountId])
+  @@map("accounts")
+}
+
+model verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz()
+  createdAt  DateTime @default(now()) @db.Timestamptz()
+  updatedAt  DateTime @updatedAt @db.Timestamptz()
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// App models
 model Organization {
   id        String   @id @default(uuid())
   name      String
   slug      String   @unique
   logo      String?
   plan      String   @default("free")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  updatedAt DateTime @updatedAt @db.Timestamptz()
 
-  memberships  Membership[]
-  agents       Agent[]
-  bots         Bot[]
+  memberships    Membership[]
+  agents         Agent[]
+  bots           Bot[]
   knowledgeBases KnowledgeBase[]
-  tools        Tool[]
+  tools          Tool[]
+
+  @@index([slug])
 }
 
 model Membership {
@@ -40,12 +101,14 @@ model Membership {
   userId         String
   organizationId String
   role           String   @default("member")
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @default(now()) @db.Timestamptz()
 
-  user         User         @relation(fields: [userId], references: [id])
+  user         user         @relation(fields: [userId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
 }
 
 model Agent {
@@ -57,32 +120,41 @@ model Agent {
   systemPrompt   String
   temperature    Float    @default(0.7)
   maxTokens      Int?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now()) @db.Timestamptz()
+  updatedAt      DateTime @updatedAt @db.Timestamptz()
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  bots           Bot[]
-  tools          AgentTool[]
+  organization Organization @relation(fields: [organizationId], references: [id])
+  bots         Bot[]
+  tools        AgentTool[]
+
+  @@index([organizationId])
 }
 
 model Bot {
   id             String   @id @default(uuid())
   organizationId String
   agentId        String
+  createdById    String?
   name           String
   description    String?
   avatar         String?
   widgetColor    String   @default("#fb923c")
   welcomeMessage String?
   status         String   @default("draft")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now()) @db.Timestamptz()
+  updatedAt      DateTime @updatedAt @db.Timestamptz()
 
-  organization  Organization  @relation(fields: [organizationId], references: [id])
-  agent         Agent         @relation(fields: [agentId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  agent        Agent         @relation(fields: [agentId], references: [id])
+  creator      user?         @relation("BotCreator", fields: [createdById], references: [id])
   conversations Conversation[]
   integrations  Integration[]
   analytics     Analytics[]
+
+  @@index([organizationId])
+  @@index([agentId])
+  @@index([createdById])
+  @@index([status, createdAt])
 }
 
 model Conversation {
@@ -91,11 +163,15 @@ model Conversation {
   userId     String?
   channel    String   @default("web")
   status     String   @default("active")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now()) @db.Timestamptz()
+  updatedAt  DateTime @updatedAt @db.Timestamptz()
 
   bot      Bot       @relation(fields: [botId], references: [id])
   messages Message[]
+
+  @@index([botId, createdAt])
+  @@index([userId])
+  @@index([status])
 }
 
 model Message {
@@ -105,9 +181,11 @@ model Message {
   content        String
   status         String   @default("sent")
   metadata       Json?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @default(now()) @db.Timestamptz()
 
   conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId, createdAt])
 }
 
 model KnowledgeBase {
@@ -115,11 +193,13 @@ model KnowledgeBase {
   organizationId String
   name           String
   description    String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now()) @db.Timestamptz()
+  updatedAt      DateTime @updatedAt @db.Timestamptz()
 
   organization Organization @relation(fields: [organizationId], references: [id])
   documents    Document[]
+
+  @@index([organizationId])
 }
 
 model Document {
@@ -130,10 +210,12 @@ model Document {
   content         String?
   url             String?
   status          String   @default("pending")
-  embedding       Unsupported("vector(1536)")?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime @default(now()) @db.Timestamptz()
 
   knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
+
+  @@index([knowledgeBaseId])
+  @@index([status])
 }
 
 model Tool {
@@ -143,10 +225,12 @@ model Tool {
   description    String
   type           String
   config         Json     @default("{}")
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @default(now()) @db.Timestamptz()
 
   organization Organization @relation(fields: [organizationId], references: [id])
   agents       AgentTool[]
+
+  @@index([organizationId])
 }
 
 model AgentTool {
@@ -157,6 +241,7 @@ model AgentTool {
   tool  Tool  @relation(fields: [toolId], references: [id])
 
   @@id([agentId, toolId])
+  @@index([toolId])
 }
 
 model Integration {
@@ -165,21 +250,27 @@ model Integration {
   channel   String
   config    Json     @default("{}")
   status    String   @default("active")
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz()
 
   bot Bot @relation(fields: [botId], references: [id])
+
+  @@index([botId])
+  @@index([channel, status])
 }
 
 model Analytics {
   id                 String   @id @default(uuid())
   botId              String
-  date               DateTime
+  date               DateTime @db.Date()
   totalConversations Int      @default(0)
   totalMessages      Int      @default(0)
   uniqueUsers        Int      @default(0)
   avgResponseTime    Float    @default(0)
   satisfactionScore  Float?
-  createdAt          DateTime @default(now())
+  createdAt          DateTime @default(now()) @db.Timestamptz()
 
   bot Bot @relation(fields: [botId], references: [id])
+
+  @@unique([botId, date])
+  @@index([botId])
 }
