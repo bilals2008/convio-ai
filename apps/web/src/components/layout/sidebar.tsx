@@ -31,9 +31,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-[240px] flex-col border-r bg-card">
       <div className="flex items-center gap-2 px-4 py-4">
-        <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-          C
-        </div>
+        <img src="/logo.png" alt="Convio" className="h-8 w-auto" />
         <span className="text-lg font-semibold">Convio</span>
       </div>
 

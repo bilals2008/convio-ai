@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/components/theme-provider'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import Landing from '@/pages/landing'
 import Dashboard from '@/pages/dashboard'
 import Bots from '@/pages/bots'
 import Agents from '@/pages/agents'
@@ -28,6 +29,7 @@ export function App() {
           <Routes>
             <Route path="/login" element={<div>Login</div>} />
             <Route path="/signup" element={<div>Signup</div>} />
+            <Route path="/" element={<Landing />} />
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/bots" element={<Bots />} />
