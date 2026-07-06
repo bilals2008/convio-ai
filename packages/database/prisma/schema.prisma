@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  bots        Bot[]        @relation("BotCreator")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships  Membership[]
+  agents       Agent[]
+  bots         Bot[]
+  knowledgeBases KnowledgeBase[]
+  tools        Tool[]
+}
+
+model Membership {
+  id             String   @id @default(uuid())
+  userId         String
+  organizationId String
+  role           String   @default("member")
+  createdAt      DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+}
+
+model Agent {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  model          String   @default("gpt-4o-mini")
+  systemPrompt   String
+  temperature    Float    @default(0.7)
+  maxTokens      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  bots           Bot[]
+  tools          AgentTool[]
+}
+
+model Bot {
+  id             String   @id @default(uuid())
+  organizationId String
+  agentId        String
+  name           String
+  description    String?
+  avatar         String?
+  widgetColor    String   @default("#fb923c")
+  welcomeMessage String?
+  status         String   @default("draft")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  agent         Agent         @relation(fields: [agentId], references: [id])
+  conversations Conversation[]
+  integrations  Integration[]
+  analytics     Analytics[]
+}
+
+model Conversation {
+  id         String   @id @default(uuid())
+  botId      String
+  userId     String?
+  channel    String   @default("web")
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  bot      Bot       @relation(fields: [botId], references: [id])
+  messages Message[]
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  status         String   @default("sent")
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+}
+
+model KnowledgeBase {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  documents    Document[]
+}
+
+model Document {
+  id              String   @id @default(uuid())
+  knowledgeBaseId String
+  name            String
+  type            String
+  content         String?
+  url             String?
+  status          String   @default("pending")
+  embedding       Unsupported("vector(1536)")?
+  createdAt       DateTime @default(now())
+
+  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
+}
+
+model Tool {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  description    String
+  type           String
+  config         Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  agents       AgentTool[]
+}
+
+model AgentTool {
+  agentId String
+  toolId  String
+
+  agent Agent @relation(fields: [agentId], references: [id])
+  tool  Tool  @relation(fields: [toolId], references: [id])
+
+  @@id([agentId, toolId])
+}
+
+model Integration {
+  id        String   @id @default(uuid())
+  botId     String
+  channel   String
+  config    Json     @default("{}")
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+
+  bot Bot @relation(fields: [botId], references: [id])
+}
+
+model Analytics {
+  id                 String   @id @default(uuid())
+  botId              String
+  date               DateTime
+  totalConversations Int      @default(0)
+  totalMessages      Int      @default(0)
+  uniqueUsers        Int      @default(0)
+  avgResponseTime    Float    @default(0)
+  satisfactionScore  Float?
+  createdAt          DateTime @default(now())
+
+  bot Bot @relation(fields: [botId], references: [id])
+}
