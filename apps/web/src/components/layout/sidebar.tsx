@@ -7,7 +7,6 @@ import {
   Brain,
   MessageSquare,
   MessageCircle,
-  MessageSquare,
   BookOpen,
   FileText,
   Settings,
