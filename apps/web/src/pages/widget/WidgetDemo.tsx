@@ -25,16 +25,26 @@ interface DemoConfig {
   quickReplies: string
 }
 
-const embedCode = `<script>
+const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173'
+
+const embedScript = `<script>
   (function() {
     var script = document.createElement('script');
-    script.src = 'https://cdn.convio.com/widget.js';
+    script.src = '${appUrl}/widget.js';
     script.dataset.botId = 'YOUR_BOT_ID';
     script.dataset.position = 'bottom-right';
     script.dataset.primary = '#fb923c';
     document.body.appendChild(script);
   })();
 </script>`
+
+const embedIframe = `<iframe
+  src="${appUrl}/widget/demo?embed=true"
+  width="400"
+  height="600"
+  frameborder="0"
+  style="border:none;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.12);"
+></iframe>`
 
 const presets: { label: string; color: string }[] = [
   { label: 'Orange', color: '#fb923c' },
@@ -55,12 +65,15 @@ export default function WidgetDemoPage() {
     quickReplies: 'What can you help with?\nHow does pricing work?\nTell me about features\nGet started guide',
   })
   const [copied, setCopied] = useState(false)
+  const [embedTab, setEmbedTab] = useState<'script' | 'iframe'>('iframe')
+
+  const currentEmbed = embedTab === 'script' ? embedScript : embedIframe
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(embedCode)
+    navigator.clipboard.writeText(currentEmbed)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }, [])
+  }, [currentEmbed])
 
   const quickRepliesArray = config.quickReplies
     .split('\n')
@@ -249,9 +262,33 @@ export default function WidgetDemoPage() {
                   </div>
                   <h2 className="text-sm font-semibold">Embed Code</h2>
                 </div>
+                <div className="flex gap-1 rounded-lg bg-muted p-1">
+                  <button
+                    type="button"
+                    onClick={() => setEmbedTab('iframe')}
+                    className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-all ${
+                      embedTab === 'iframe'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Iframe (Local)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmbedTab('script')}
+                    className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-all ${
+                      embedTab === 'script'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Script (Production)
+                  </button>
+                </div>
                 <div className="relative group">
                   <pre className="rounded-lg bg-muted p-3 text-[11px] leading-relaxed overflow-x-auto">
-                    <code className="text-muted-foreground">{embedCode}</code>
+                    <code className="text-muted-foreground">{currentEmbed}</code>
                   </pre>
                   <Button
                     size="icon-sm"
@@ -262,6 +299,11 @@ export default function WidgetDemoPage() {
                     {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
                   </Button>
                 </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {embedTab === 'iframe'
+                    ? 'Paste this in your HTML to embed the widget locally.'
+                    : 'Use this after deploying widget.js to your CDN.'}
+                </p>
               </Card>
             </div>
           </ScrollArea>
