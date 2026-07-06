@@ -1,11 +1,11 @@
-import { Navbar, Hero, Features, HowItWorks, Pricing, CTA, Footer } from '@/components/landing'
+import { Navbar, HeroSection, Features, HowItWorks, Pricing, CTA, Footer } from '@/components/landing'
 
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main>
-        <Hero />
+        <HeroSection />
         <Features />
         <HowItWorks />
         <Pricing />

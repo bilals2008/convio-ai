@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ScrollReveal } from './scroll-reveal'
 import { Check } from 'lucide-react'
 
 const plans = [
@@ -66,55 +67,58 @@ export function Pricing() {
     <section id="pricing" className="py-20 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Simple, transparent{' '}
-            <span className="text-primary">pricing</span>
-          </h2>
-          <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Start free, upgrade when you need more. No hidden fees.
-          </p>
-        </div>
+        <ScrollReveal>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Simple, transparent{' '}
+              <span className="text-primary">pricing</span>
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              Start free, upgrade when you need more. No hidden fees.
+            </p>
+          </div>
+        </ScrollReveal>
 
         {/* Pricing Cards */}
         <div className="grid gap-8 lg:grid-cols-3 max-w-5xl mx-auto">
-          {plans.map((plan) => (
-            <Card 
-              key={plan.name} 
-              className={`relative ${plan.badge ? 'border-primary shadow-lg scale-[1.02]' : ''}`}
-            >
-              {plan.badge && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 px-3">
-                  {plan.badge}
-                </Badge>
-              )}
-              <CardContent className="p-8">
-                <div className="mb-6">
-                  <h3 className="text-xl font-semibold">{plan.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
-                </div>
-                
-                <div className="mb-6">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
+          {plans.map((plan, i) => (
+            <ScrollReveal key={plan.name} variant="scaleIn" delay={i * 0.1}>
+              <Card
+                className={`relative h-full ${plan.badge ? 'border-primary shadow-lg scale-[1.02] glow-primary-sm' : ''}`}
+              >
+                {plan.badge && (
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 px-3">
+                    {plan.badge}
+                  </Badge>
+                )}
+                <CardContent className="p-8">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-semibold">{plan.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
+                  </div>
 
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm">
-                      <Check className="size-4 text-primary mt-0.5 flex-shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                  <div className="mb-6">
+                    <span className="text-4xl font-bold">{plan.price}</span>
+                    <span className="text-muted-foreground">{plan.period}</span>
+                  </div>
 
-                <Link to="/signup">
-                  <Button variant={plan.variant} className="w-full py-3 text-base h-auto">
-                    {plan.cta}
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2 text-sm">
+                        <Check className="size-4 text-primary mt-0.5 flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link to="/signup">
+                    <Button variant={plan.variant} className="w-full py-3 text-base h-auto">
+                      {plan.cta}
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </ScrollReveal>
           ))}
         </div>
       </div>
