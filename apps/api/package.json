@@ -16,9 +16,16 @@
     "@fastify/cors": "^10.0.0",
     "@fastify/error": "^4.0.0",
     "@fastify/type-provider-typebox": "^5.0.0",
+    "@fastify/swagger": "^9.0.0",
+    "@fastify/swagger-ui": "^5.0.0",
+    "@fastify/rate-limit": "^10.0.0",
     "@sinclair/typebox": "^0.34.0",
     "env-schema": "^6.0.0",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "zod": "^3.22.0",
+    "@convio/auth": "workspace:*",
+    "@convio/database": "workspace:*",
+    "@convio/validation": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.0.0",
