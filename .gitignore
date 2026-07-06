@@ -25,6 +25,9 @@ build/
 .DS_Store
 Thumbs.db
 
+# Build artifacts
+*.txt
+
 # Prisma
 packages/database/prisma/migrations/
 
