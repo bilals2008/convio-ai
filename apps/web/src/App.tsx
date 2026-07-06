@@ -24,6 +24,8 @@ import Analytics from '@/pages/analytics'
 import AnalyticsPage from '@/pages/analytics/analytics-page'
 import Integrations from '@/pages/integrations'
 import Settings from '@/pages/settings'
+import WidgetsListPage from '@/pages/widgets/widgets-list-page'
+import WidgetDemoPage from '@/pages/widget/WidgetDemo'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import OrganizationSettingsPage from '@/pages/settings/organization-settings-page'
 import TeamMembersPage from '@/pages/settings/team-members-page'
@@ -49,6 +51,7 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/widget/demo" element={<WidgetDemoPage />} />
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<DashboardOverviewPage />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
@@ -62,6 +65,7 @@ export function App() {
               <Route path="/knowledge/new" element={<KnowledgeDetailPage />} />
               <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
               <Route path="/knowledge/documents" element={<Documents />} />
+              <Route path="/widgets" element={<WidgetsListPage />} />
               <Route path="/conversations" element={<ConversationsListPage />} />
               <Route path="/conversations/:id" element={<ConversationDetailPage />} />
               <Route path="/settings" element={<SettingsLayout />}>

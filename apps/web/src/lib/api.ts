@@ -93,6 +93,14 @@ export const organizations = {
   members: (id: string) => api.get(`/organizations/${id}/members`),
 }
 
+export const widgets = {
+  list: (orgId: string) => api.get(`/widgets?orgId=${orgId}`),
+  get: (id: string) => api.get(`/widgets/${id}`),
+  create: (data: any) => api.post('/widgets', data),
+  update: (id: string, data: any) => api.patch(`/widgets/${id}`, data),
+  delete: (id: string) => api.delete(`/widgets/${id}`),
+}
+
 export const integrations = {
   list: (orgId: string) => api.get(`/integrations?orgId=${orgId}`),
   get: (id: string) => api.get(`/integrations/${id}`),
