@@ -8,7 +8,8 @@ import SignupPage from '@/pages/auth/signup-page'
 import ForgotPasswordPage from '@/pages/auth/forgot-password-page'
 import Dashboard from '@/pages/dashboard'
 import Bots from '@/pages/bots'
-import Agents from '@/pages/agents'
+import AgentsListPage from '@/pages/agents/agents-list-page'
+import AgentEditorPage from '@/pages/agents/agent-editor-page'
 import Conversations from '@/pages/conversations'
 import ConversationDetail from '@/pages/conversation-detail'
 import Knowledge from '@/pages/knowledge'
@@ -42,7 +43,9 @@ export function App() {
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/dashboard/analytics" element={<Analytics />} />
-              <Route path="/agents" element={<Agents />} />
+              <Route path="/agents" element={<AgentsListPage />} />
+              <Route path="/agents/new" element={<AgentEditorPage />} />
+              <Route path="/agents/:id/edit" element={<AgentEditorPage />} />
               <Route path="/chatbots" element={<Bots />} />
               <Route path="/knowledge" element={<Knowledge />} />
               <Route path="/knowledge/documents" element={<Documents />} />
