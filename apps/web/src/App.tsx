@@ -22,9 +22,11 @@ import Documents from '@/pages/documents'
 import Analytics from '@/pages/analytics'
 import Integrations from '@/pages/integrations'
 import Settings from '@/pages/settings'
-import OrganizationSettings from '@/pages/organization-settings'
-import TeamMembers from '@/pages/team-members'
-import ApiKeys from '@/pages/api-keys'
+import { SettingsLayout } from '@/components/settings/settings-layout'
+import OrganizationSettingsPage from '@/pages/settings/organization-settings-page'
+import TeamMembersPage from '@/pages/settings/team-members-page'
+import IntegrationsPage from '@/pages/settings/integrations-page'
+import ApiKeysPage from '@/pages/settings/api-keys-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,11 +62,13 @@ export function App() {
               <Route path="/knowledge/documents" element={<Documents />} />
               <Route path="/conversations" element={<ConversationsListPage />} />
               <Route path="/conversations/:id" element={<ConversationDetailPage />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/settings/organization" element={<OrganizationSettings />} />
-              <Route path="/settings/team" element={<TeamMembers />} />
-              <Route path="/settings/integrations" element={<Integrations />} />
-              <Route path="/settings/api-keys" element={<ApiKeys />} />
+              <Route path="/settings" element={<SettingsLayout />}>
+                <Route index element={<OrganizationSettingsPage />} />
+                <Route path="organization" element={<OrganizationSettingsPage />} />
+                <Route path="team" element={<TeamMembersPage />} />
+                <Route path="integrations" element={<IntegrationsPage />} />
+                <Route path="api-keys" element={<ApiKeysPage />} />
+              </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

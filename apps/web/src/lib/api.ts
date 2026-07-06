@@ -92,3 +92,12 @@ export const organizations = {
   delete: (id: string) => api.delete(`/organizations/${id}`),
   members: (id: string) => api.get(`/organizations/${id}/members`),
 }
+
+export const integrations = {
+  list: (orgId: string) => api.get(`/integrations?orgId=${orgId}`),
+  get: (id: string) => api.get(`/integrations/${id}`),
+  create: (data: any) => api.post('/integrations', data),
+  update: (id: string, data: any) => api.patch(`/integrations/${id}`, data),
+  delete: (id: string) => api.delete(`/integrations/${id}`),
+  test: (id: string) => api.post(`/integrations/${id}/test`),
+}
