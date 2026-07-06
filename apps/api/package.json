@@ -6,7 +6,7 @@
   "main": "./src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "start": "node src/server.ts",
+    "start": "tsx src/server.ts",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/"
   },
@@ -23,6 +23,7 @@
     "env-schema": "^6.0.0",
     "dotenv": "^16.4.0",
     "zod": "^3.22.0",
+    "@convio/ai": "workspace:*",
     "@convio/auth": "workspace:*",
     "@convio/database": "workspace:*",
     "@convio/validation": "workspace:*"
