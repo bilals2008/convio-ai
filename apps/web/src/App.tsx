@@ -13,6 +13,8 @@ import BotEditorPage from '@/pages/chatbots/bot-editor-page'
 import AgentsListPage from '@/pages/agents/agents-list-page'
 import AgentEditorPage from '@/pages/agents/agent-editor-page'
 import Conversations from '@/pages/conversations'
+import ConversationsListPage from '@/pages/conversations/conversations-list-page'
+import ConversationDetailPage from '@/pages/conversations/conversation-detail-page'
 import ConversationDetail from '@/pages/conversation-detail'
 import KnowledgeListPage from '@/pages/knowledge/knowledge-list-page'
 import KnowledgeDetailPage from '@/pages/knowledge/knowledge-detail-page'
@@ -56,8 +58,8 @@ export function App() {
               <Route path="/knowledge/new" element={<KnowledgeDetailPage />} />
               <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
               <Route path="/knowledge/documents" element={<Documents />} />
-              <Route path="/conversations" element={<Conversations />} />
-              <Route path="/conversations/:id" element={<ConversationDetail />} />
+              <Route path="/conversations" element={<ConversationsListPage />} />
+              <Route path="/conversations/:id" element={<ConversationDetailPage />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/organization" element={<OrganizationSettings />} />
               <Route path="/settings/team" element={<TeamMembers />} />
