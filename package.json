@@ -8,11 +8,21 @@
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
     "clean": "turbo run clean && rm -rf node_modules",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0",
+    "@types/pg": "^8.11.0",
+    "dotenv": "^16.4.0",
+    "pg": "^8.13.0",
     "prettier": "^3.0.0",
+    "prisma": "^7.0.0",
+    "turbo": "^2.0.0",
     "typescript": "^5.0.0"
   },
   "packageManager": "pnpm@9.0.0"
