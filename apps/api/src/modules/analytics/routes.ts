@@ -35,18 +35,6 @@ const snapshotBodySchema = z.object({
   satisfactionScore: z.number().min(0).max(5).optional(),
 })
 
-type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
-
-async function getMembership(userId: string, orgId: string): Promise<{ role: MembershipRole }> {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_organizationId: { userId, organizationId: orgId } },
-  })
-  if (!membership) {
-    throw new AppError(403, 'You do not belong to this organization', 'FORBIDDEN')
-  }
-  return { role: membership.role as MembershipRole }
-}
-
 function getDefaultDateRange(from?: string, to?: string) {
   const now = new Date()
   const toDate = to ? new Date(to) : now
@@ -65,7 +53,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     const { orgId } = request.params as { orgId: string }
     const { from, to } = request.query as { from?: string; to?: string }
 
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const { fromDate, toDate } = getDefaultDateRange(from, to)
 
@@ -142,7 +130,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     const bot = await prisma.bot.findUnique({ where: { id: botId } })
     if (!bot) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, bot.organizationId)
 
     const { fromDate, toDate } = getDefaultDateRange(from, to)
 
@@ -207,7 +195,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     const bot = await prisma.bot.findUnique({ where: { id: botId } })
     if (!bot) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, bot.organizationId)
 
     const { fromDate, toDate } = getDefaultDateRange(from, to)
 
@@ -244,7 +232,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     const { orgId } = request.params as { orgId: string }
     const { from, to, limit } = request.query as { from?: string; to?: string; limit: number }
 
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const { fromDate, toDate } = getDefaultDateRange(from, to)
 
@@ -311,7 +299,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     const bot = await prisma.bot.findUnique({ where: { id: botId } })
     if (!bot) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, bot.organizationId)
 
     const targetDate = new Date(date)
 

@@ -49,25 +49,6 @@ const updateStatusBodySchema = z.object({
   status: z.enum(botStatuses),
 })
 
-type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
-
-async function getMembership(userId: string, orgId: string): Promise<{ role: MembershipRole }> {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_organizationId: { userId, organizationId: orgId } },
-  })
-  if (!membership) {
-    throw new AppError(403, 'You do not belong to this organization', 'FORBIDDEN')
-  }
-  return { role: membership.role as MembershipRole }
-}
-
-async function requireAdmin(userId: string, orgId: string) {
-  const { role } = await getMembership(userId, orgId)
-  if (role !== 'admin' && role !== 'owner') {
-    throw new AppError(403, 'Admin access required', 'FORBIDDEN')
-  }
-}
-
 export default async function chatbotsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/bots — Create bot (member only)
   fastify.post('/organizations/:orgId/bots', {
@@ -86,7 +67,7 @@ export default async function chatbotsRoutes(fastify: FastifyInstance) {
       welcomeMessage?: string
     }
 
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const agent = await prisma.agent.findUnique({ where: { id: agentId } })
     if (!agent || agent.organizationId !== orgId) {
@@ -125,7 +106,7 @@ export default async function chatbotsRoutes(fastify: FastifyInstance) {
       limit: number
     }
 
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const where: Record<string, unknown> = { organizationId: orgId }
     if (status) where.status = status
@@ -166,7 +147,7 @@ export default async function chatbotsRoutes(fastify: FastifyInstance) {
 
     if (!bot) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, bot.organizationId)
 
     return { data: bot }
   })
@@ -183,7 +164,7 @@ export default async function chatbotsRoutes(fastify: FastifyInstance) {
     const existing = await prisma.bot.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, existing.organizationId)
+    await fastify.getMembership(request.userId!, existing.organizationId)
 
     const bot = await prisma.bot.update({
       where: { id },
@@ -205,7 +186,7 @@ export default async function chatbotsRoutes(fastify: FastifyInstance) {
     const existing = await prisma.bot.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Bot not found')
 
-    await requireAdmin(request.userId!, existing.organizationId)
+    await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
     await prisma.bot.delete({ where: { id } })
     reply.code(204).send()
@@ -224,7 +205,7 @@ export default async function chatbotsRoutes(fastify: FastifyInstance) {
     const existing = await prisma.bot.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Bot not found')
 
-    await requireAdmin(request.userId!, existing.organizationId)
+    await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
     const currentStatus = existing.status as BotStatus
     const allowed = validTransitions[currentStatus]
@@ -257,7 +238,7 @@ export default async function chatbotsRoutes(fastify: FastifyInstance) {
     const existing = await prisma.bot.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, existing.organizationId)
+    await fastify.getMembership(request.userId!, existing.organizationId)
 
     const baseUrl = process.env.CORS_ORIGIN || 'http://localhost:5173'
     const snippet = `<script src="${baseUrl}/widget.js" data-bot-id="${id}"></script>\n<div id="convio-widget" data-bot-id="${id}"></div>`

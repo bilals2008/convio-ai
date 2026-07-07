@@ -31,25 +31,6 @@ const testAgentSchema = z.object({
   message: z.string().min(1),
 })
 
-type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
-
-async function getMembership(userId: string, orgId: string): Promise<{ role: MembershipRole }> {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_organizationId: { userId, organizationId: orgId } },
-  })
-  if (!membership) {
-    throw new AppError(403, 'You do not belong to this organization', 'FORBIDDEN')
-  }
-  return { role: membership.role as MembershipRole }
-}
-
-async function requireAdmin(userId: string, orgId: string) {
-  const { role } = await getMembership(userId, orgId)
-  if (role !== 'admin' && role !== 'owner') {
-    throw new AppError(403, 'Admin access required', 'FORBIDDEN')
-  }
-}
-
 export default async function agentsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/agents — Create agent (member only)
   fastify.post('/organizations/:orgId/agents', {
@@ -60,7 +41,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
 
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const body = request.body as { name: string; description?: string; model: string; systemPrompt: string; temperature?: number; maxTokens?: number }
 
@@ -81,7 +62,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const { orgId } = request.params as { orgId: string }
     const { cursor, limit } = request.query as { cursor?: string; limit: number }
 
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const agents = await prisma.agent.findMany({
       where: { organizationId: orgId },
@@ -116,7 +97,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     if (!agent) throw new AppError(404, 'Agent not found')
 
-    await getMembership(request.userId!, agent.organizationId)
+    await fastify.getMembership(request.userId!, agent.organizationId)
 
     return { data: agent }
   })
@@ -133,7 +114,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const existing = await prisma.agent.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Agent not found')
 
-    await getMembership(request.userId!, existing.organizationId)
+    await fastify.getMembership(request.userId!, existing.organizationId)
 
     const agent = await prisma.agent.update({
       where: { id },
@@ -155,7 +136,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const existing = await prisma.agent.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Agent not found')
 
-    await requireAdmin(request.userId!, existing.organizationId)
+    await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
     await prisma.agent.delete({ where: { id } })
     reply.code(204).send()
@@ -174,7 +155,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const agent = await prisma.agent.findUnique({ where: { id } })
     if (!agent) throw new AppError(404, 'Agent not found')
 
-    await requireAdmin(request.userId!, agent.organizationId)
+    await fastify.ensureAdmin(request.userId!, agent.organizationId)
 
     const tool = await prisma.tool.findUnique({ where: { id: toolId } })
     if (!tool || tool.organizationId !== agent.organizationId) {
@@ -208,7 +189,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const agent = await prisma.agent.findUnique({ where: { id } })
     if (!agent) throw new AppError(404, 'Agent not found')
 
-    await requireAdmin(request.userId!, agent.organizationId)
+    await fastify.ensureAdmin(request.userId!, agent.organizationId)
 
     const existingLink = await prisma.agentTool.findUnique({
       where: { agentId_toolId: { agentId: id, toolId } },
@@ -238,7 +219,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const agent = await prisma.agent.findUnique({ where: { id } })
     if (!agent) throw new AppError(404, 'Agent not found')
 
-    await getMembership(request.userId!, agent.organizationId)
+    await fastify.getMembership(request.userId!, agent.organizationId)
 
     return { data: { response: `Echo: ${message} (Agent: ${agent.name})` } }
   })

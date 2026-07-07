@@ -30,34 +30,6 @@ const membersQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(20),
 })
 
-type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
-
-async function getMembership(userId: string, orgId: string): Promise<{ role: MembershipRole }> {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_organizationId: { userId, organizationId: orgId } },
-  })
-
-  if (!membership) {
-    throw new AppError(403, 'You do not belong to this organization', 'FORBIDDEN')
-  }
-
-  return { role: membership.role as MembershipRole }
-}
-
-async function requireAdmin(userId: string, orgId: string) {
-  const { role } = await getMembership(userId, orgId)
-  if (role !== 'admin' && role !== 'owner') {
-    throw new AppError(403, 'Admin access required', 'FORBIDDEN')
-  }
-}
-
-async function requireOwner(userId: string, orgId: string) {
-  const { role } = await getMembership(userId, orgId)
-  if (role !== 'owner') {
-    throw new AppError(403, 'Owner access required', 'FORBIDDEN')
-  }
-}
-
 export default async function organizationsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations — Create new organization (creator becomes owner)
   fastify.post('/organizations', {
@@ -108,7 +80,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { id } = request.params as { id: string }
 
-    await getMembership(request.userId!, id)
+    await fastify.getMembership(request.userId!, id)
 
     const org = await prisma.organization.findUnique({ where: { id } })
     if (!org) throw new AppError(404, 'Organization not found')
@@ -125,7 +97,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { id } = request.params as { id: string }
 
-    await requireAdmin(request.userId!, id)
+    await fastify.ensureAdmin(request.userId!, id)
 
     const org = await prisma.organization.update({
       where: { id },
@@ -144,7 +116,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     const { id } = request.params as { id: string }
 
-    await requireOwner(request.userId!, id)
+    await fastify.ensureOwner(request.userId!, id)
 
     await prisma.organization.delete({ where: { id } })
     reply.code(204).send()
@@ -160,7 +132,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string }
     const { cursor, limit } = request.query as { cursor?: string; limit: number }
 
-    await getMembership(request.userId!, id)
+    await fastify.getMembership(request.userId!, id)
 
     const memberships = await prisma.membership.findMany({
       where: { organizationId: id },
@@ -199,7 +171,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string }
     const { userId, role } = request.body as { userId: string; role: 'admin' | 'member' | 'viewer' }
 
-    await requireAdmin(request.userId!, id)
+    await fastify.ensureAdmin(request.userId!, id)
 
     const existing = await prisma.membership.findUnique({
       where: { userId_organizationId: { userId, organizationId: id } },
@@ -252,7 +224,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     const isSelf = request.userId === userId
 
     if (!isSelf) {
-      await requireAdmin(request.userId!, id)
+      await fastify.ensureAdmin(request.userId!, id)
     }
 
     if (targetMembership.role === 'owner') {
@@ -280,9 +252,9 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     ],
   }, async (request) => {
     const { id, userId } = request.params as { id: string; userId: string }
-    const { role } = request.body as { role: MembershipRole }
+    const { role } = request.body as { role: string }
 
-    await requireOwner(request.userId!, id)
+    await fastify.ensureOwner(request.userId!, id)
 
     const targetMembership = await prisma.membership.findUnique({
       where: { userId_organizationId: { userId, organizationId: id } },

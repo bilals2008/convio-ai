@@ -61,25 +61,6 @@ const updateDocBodySchema = z.object({
   url: z.string().url().optional().nullable(),
 })
 
-type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
-
-async function getMembership(userId: string, orgId: string): Promise<{ role: MembershipRole }> {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_organizationId: { userId, organizationId: orgId } },
-  })
-  if (!membership) {
-    throw new AppError(403, 'You do not belong to this organization', 'FORBIDDEN')
-  }
-  return { role: membership.role as MembershipRole }
-}
-
-async function requireAdmin(userId: string, orgId: string) {
-  const { role } = await getMembership(userId, orgId)
-  if (role !== 'admin' && role !== 'owner') {
-    throw new AppError(403, 'Admin access required', 'FORBIDDEN')
-  }
-}
-
 export default async function knowledgeRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/knowledge-bases — Create knowledge base (member only)
   fastify.post('/organizations/:orgId/knowledge-bases', {
@@ -91,7 +72,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     const { orgId } = request.params as { orgId: string }
     const { name, description } = request.body as { name: string; description?: string }
 
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const kb = await prisma.knowledgeBase.create({
       data: { organizationId: orgId, name, description },
@@ -110,7 +91,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     const { orgId } = request.params as { orgId: string }
     const { cursor, limit } = request.query as { cursor?: string; limit: number }
 
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const kbs = await prisma.knowledgeBase.findMany({
       where: { organizationId: orgId },
@@ -153,7 +134,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     if (!kb) throw new AppError(404, 'Knowledge base not found')
 
-    await getMembership(request.userId!, kb.organizationId)
+    await fastify.getMembership(request.userId!, kb.organizationId)
 
     return {
       data: {
@@ -180,7 +161,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     const existing = await prisma.knowledgeBase.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Knowledge base not found')
 
-    await getMembership(request.userId!, existing.organizationId)
+    await fastify.getMembership(request.userId!, existing.organizationId)
 
     const kb = await prisma.knowledgeBase.update({
       where: { id },
@@ -202,7 +183,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     const existing = await prisma.knowledgeBase.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Knowledge base not found')
 
-    await requireAdmin(request.userId!, existing.organizationId)
+    await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
     await prisma.knowledgeBase.delete({ where: { id } })
     reply.code(204).send()
@@ -226,7 +207,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     const kb = await prisma.knowledgeBase.findUnique({ where: { id } })
     if (!kb) throw new AppError(404, 'Knowledge base not found')
 
-    await getMembership(request.userId!, kb.organizationId)
+    await fastify.getMembership(request.userId!, kb.organizationId)
 
     const doc = await prisma.document.create({
       data: { knowledgeBaseId: id, name, type, content, url },
@@ -252,7 +233,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     const kb = await prisma.knowledgeBase.findUnique({ where: { id } })
     if (!kb) throw new AppError(404, 'Knowledge base not found')
 
-    await getMembership(request.userId!, kb.organizationId)
+    await fastify.getMembership(request.userId!, kb.organizationId)
 
     const where: Record<string, unknown> = { knowledgeBaseId: id }
     if (status) where.status = status
@@ -289,7 +270,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     if (!doc) throw new AppError(404, 'Document not found')
 
-    await getMembership(request.userId!, doc.knowledgeBase.organizationId)
+    await fastify.getMembership(request.userId!, doc.knowledgeBase.organizationId)
 
     return { data: doc }
   })
@@ -310,7 +291,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     if (!doc) throw new AppError(404, 'Document not found')
 
-    await getMembership(request.userId!, doc.knowledgeBase.organizationId)
+    await fastify.getMembership(request.userId!, doc.knowledgeBase.organizationId)
 
     await prisma.document.delete({ where: { id } })
     reply.code(204).send()

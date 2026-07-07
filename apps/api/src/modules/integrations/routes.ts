@@ -112,25 +112,6 @@ function maskSensitive(config: unknown): unknown {
   return masked
 }
 
-type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
-
-async function getMembership(userId: string, orgId: string): Promise<{ role: MembershipRole }> {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_organizationId: { userId, organizationId: orgId } },
-  })
-  if (!membership) {
-    throw new AppError(403, 'You do not belong to this organization', 'FORBIDDEN')
-  }
-  return { role: membership.role as MembershipRole }
-}
-
-async function requireAdmin(userId: string, orgId: string) {
-  const { role } = await getMembership(userId, orgId)
-  if (role !== 'admin' && role !== 'owner') {
-    throw new AppError(403, 'Admin access required', 'FORBIDDEN')
-  }
-}
-
 export default async function integrationsRoutes(fastify: FastifyInstance) {
   // POST /api/bots/:botId/integrations — Create integration (member only)
   fastify.post('/bots/:botId/integrations', {
@@ -145,7 +126,7 @@ export default async function integrationsRoutes(fastify: FastifyInstance) {
     const bot = await prisma.bot.findUnique({ where: { id: botId } })
     if (!bot) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, bot.organizationId)
 
     const existing = await prisma.integration.findFirst({
       where: { botId, channel },
@@ -179,7 +160,7 @@ export default async function integrationsRoutes(fastify: FastifyInstance) {
     const bot = await prisma.bot.findUnique({ where: { id: botId } })
     if (!bot) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, bot.organizationId)
 
     const integrations = await prisma.integration.findMany({
       where: { botId },
@@ -205,7 +186,7 @@ export default async function integrationsRoutes(fastify: FastifyInstance) {
 
     if (!integration) throw new AppError(404, 'Integration not found')
 
-    await getMembership(request.userId!, integration.bot.organizationId)
+    await fastify.getMembership(request.userId!, integration.bot.organizationId)
 
     return { data: maskSensitive(integration) }
   })
@@ -226,7 +207,7 @@ export default async function integrationsRoutes(fastify: FastifyInstance) {
 
     if (!integration) throw new AppError(404, 'Integration not found')
 
-    await getMembership(request.userId!, integration.bot.organizationId)
+    await fastify.getMembership(request.userId!, integration.bot.organizationId)
 
     const updated = await prisma.integration.update({
       where: { id },
@@ -252,7 +233,7 @@ export default async function integrationsRoutes(fastify: FastifyInstance) {
 
     if (!integration) throw new AppError(404, 'Integration not found')
 
-    await requireAdmin(request.userId!, integration.bot.organizationId)
+    await fastify.ensureAdmin(request.userId!, integration.bot.organizationId)
 
     await prisma.integration.delete({ where: { id } })
     reply.code(204).send()
@@ -274,7 +255,7 @@ export default async function integrationsRoutes(fastify: FastifyInstance) {
 
     if (!integration) throw new AppError(404, 'Integration not found')
 
-    await getMembership(request.userId!, integration.bot.organizationId)
+    await fastify.getMembership(request.userId!, integration.bot.organizationId)
 
     const channel = integration.channel as Channel
     const config = integration.config as Record<string, unknown>

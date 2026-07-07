@@ -53,25 +53,6 @@ const widgetConversationBodySchema = z.object({
   channel: z.enum(channels).default('web'),
 })
 
-type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
-
-async function getMembership(userId: string, orgId: string): Promise<{ role: MembershipRole }> {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_organizationId: { userId, organizationId: orgId } },
-  })
-  if (!membership) {
-    throw new AppError(403, 'You do not belong to this organization', 'FORBIDDEN')
-  }
-  return { role: membership.role as MembershipRole }
-}
-
-async function requireAdmin(userId: string, orgId: string) {
-  const { role } = await getMembership(userId, orgId)
-  if (role !== 'admin' && role !== 'owner') {
-    throw new AppError(403, 'Admin access required', 'FORBIDDEN')
-  }
-}
-
 export default async function conversationsRoutes(fastify: FastifyInstance) {
   // POST /api/bots/:botId/conversations — Create conversation (protected, member only)
   fastify.post('/bots/:botId/conversations', {
@@ -86,7 +67,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     const bot = await prisma.bot.findUnique({ where: { id: botId } })
     if (!bot) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, bot.organizationId)
 
     const conversation = await prisma.conversation.create({
       data: { botId, userId: userId || request.userId, channel },
@@ -161,7 +142,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     const bot = await prisma.bot.findUnique({ where: { id: botId } })
     if (!bot) throw new AppError(404, 'Bot not found')
 
-    await getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, bot.organizationId)
 
     const where: Record<string, unknown> = { botId }
     if (status) where.status = status
@@ -204,7 +185,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     if (!conversation) throw new AppError(404, 'Conversation not found')
 
-    await getMembership(request.userId!, conversation.bot.organizationId)
+    await fastify.getMembership(request.userId!, conversation.bot.organizationId)
 
     return { data: conversation }
   })
@@ -226,7 +207,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     if (!conversation) throw new AppError(404, 'Conversation not found')
 
-    await getMembership(request.userId!, conversation.bot.organizationId)
+    await fastify.getMembership(request.userId!, conversation.bot.organizationId)
 
     if (status) {
       const currentStatus = conversation.status as ConversationStatus
@@ -268,7 +249,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     if (!conversation) throw new AppError(404, 'Conversation not found')
 
-    await requireAdmin(request.userId!, conversation.bot.organizationId)
+    await fastify.ensureAdmin(request.userId!, conversation.bot.organizationId)
 
     await prisma.conversation.delete({ where: { id } })
     reply.code(204).send()

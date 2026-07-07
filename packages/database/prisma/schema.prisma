@@ -140,6 +140,7 @@ model Bot {
   avatar         String?
   widgetColor    String   @default("#fb923c")
   welcomeMessage String?
+  widgetConfig   Json?
   status         String   @default("draft")
   createdAt      DateTime @default(now()) @db.Timestamptz()
   updatedAt      DateTime @updatedAt @db.Timestamptz()

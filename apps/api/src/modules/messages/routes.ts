@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
+import { getProviderForModel } from '@convio/ai/providers'
 import { z } from 'zod'
 
 const convParamsSchema = z.object({
@@ -20,6 +21,7 @@ const messagesQuerySchema = z.object({
 const createMessageBodySchema = z.object({
   role: z.enum(['user', 'assistant']),
   content: z.string().min(1).max(10000),
+  stream: z.boolean().optional(),
 })
 
 const updateMessageBodySchema = z.object({
@@ -30,25 +32,6 @@ const updateMessageBodySchema = z.object({
 const widgetMessageBodySchema = z.object({
   content: z.string().min(1).max(10000),
 })
-
-type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
-
-async function getMembership(userId: string, orgId: string): Promise<{ role: MembershipRole }> {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_organizationId: { userId, organizationId: orgId } },
-  })
-  if (!membership) {
-    throw new AppError(403, 'You do not belong to this organization', 'FORBIDDEN')
-  }
-  return { role: membership.role as MembershipRole }
-}
-
-async function requireAdmin(userId: string, orgId: string) {
-  const { role } = await getMembership(userId, orgId)
-  if (role !== 'admin' && role !== 'owner') {
-    throw new AppError(403, 'Admin access required', 'FORBIDDEN')
-  }
-}
 
 async function getConversationOrgId(conversationId: string): Promise<string> {
   const conversation = await prisma.conversation.findUnique({
@@ -75,7 +58,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const { role, content } = request.body as { role: 'user' | 'assistant'; content: string }
 
     const orgId = await getConversationOrgId(id)
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const [message] = await prisma.$transaction([
       prisma.message.create({
@@ -90,6 +73,79 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     return { data: message }
   })
 
+  // POST /api/conversations/:id/messages/stream — Send user message, stream AI response via SSE
+  fastify.post('/conversations/:id/messages/stream', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: convParamsSchema, body: createMessageBodySchema }),
+    ],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { content } = request.body as { role: string; content: string; stream?: boolean }
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id },
+      include: { bot: { include: { agent: true } } },
+    })
+
+    if (!conversation) throw new AppError(404, 'Conversation not found')
+
+    const orgId = conversation.bot.organizationId
+    await fastify.getMembership(request.userId!, orgId)
+
+    await prisma.message.create({
+      data: { conversationId: id, role: 'user', content, status: 'sent' },
+    })
+
+    const agent = conversation.bot.agent
+
+    const history = await prisma.message.findMany({
+      where: { conversationId: id },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    })
+
+    const aiMessages = [
+      { role: 'system' as const, content: agent.systemPrompt },
+      ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+    ]
+
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    })
+
+    try {
+      const provider = getProviderForModel(agent.model)
+      const stream = provider.stream({
+        model: agent.model,
+        messages: aiMessages,
+        temperature: agent.temperature ?? 0.7,
+        maxTokens: agent.maxTokens ?? 2048,
+      })
+
+      let fullResponse = ''
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'text' && chunk.content) {
+          fullResponse += chunk.content
+        }
+        reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`)
+      }
+
+      await prisma.message.create({
+        data: { conversationId: id, role: 'assistant', content: fullResponse, status: 'sent' },
+      })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Stream failed'
+      reply.raw.write(`data: ${JSON.stringify({ type: 'error', error: message })}\n\n`)
+    } finally {
+      reply.raw.end()
+    }
+  })
+
   // GET /api/conversations/:id/messages — List messages (protected, member only, paginated, oldest-first)
   fastify.get('/conversations/:id/messages', {
     preHandler: [
@@ -101,7 +157,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const { cursor, limit } = request.query as { cursor?: string; limit: number }
 
     const orgId = await getConversationOrgId(id)
-    await getMembership(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
     const messages = await prisma.message.findMany({
       where: { conversationId: id },
@@ -137,7 +193,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     if (!message) throw new AppError(404, 'Message not found')
 
-    await requireAdmin(request.userId!, message.conversation.bot.organizationId)
+    await fastify.ensureAdmin(request.userId!, message.conversation.bot.organizationId)
 
     const updated = await prisma.message.update({
       where: { id },
@@ -165,7 +221,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     if (!message) throw new AppError(404, 'Message not found')
 
-    await requireAdmin(request.userId!, message.conversation.bot.organizationId)
+    await fastify.ensureAdmin(request.userId!, message.conversation.bot.organizationId)
 
     await prisma.message.delete({ where: { id } })
     reply.code(204).send()

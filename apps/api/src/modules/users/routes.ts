@@ -19,16 +19,6 @@ const userByIdParamsSchema = z.object({
   id: z.string().uuid(),
 })
 
-async function requireAdmin(userId: string, orgId: string) {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_organizationId: { userId, organizationId: orgId } },
-  })
-
-  if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
-    throw new AppError(403, 'Admin access required', 'FORBIDDEN')
-  }
-}
-
 export default async function usersRoutes(fastify: FastifyInstance) {
   // GET /api/users/me — Current user profile
   fastify.get('/users/me', {
@@ -71,7 +61,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
       limit: number
     }
 
-    await requireAdmin(request.userId!, orgId)
+    await fastify.ensureAdmin(request.userId!, orgId)
 
     const memberships = await prisma.membership.findMany({
       where: { organizationId: orgId },
@@ -104,7 +94,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string }
     const { orgId } = request.query as { orgId: string }
 
-    await requireAdmin(request.userId!, orgId)
+    await fastify.ensureAdmin(request.userId!, orgId)
 
     const membership = await prisma.membership.findUnique({
       where: { userId_organizationId: { userId: id, organizationId: orgId } },
