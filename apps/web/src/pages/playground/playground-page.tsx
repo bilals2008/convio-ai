@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -32,6 +31,7 @@ import {
   Terminal,
   Key,
   Globe,
+  Loader2,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -50,11 +50,11 @@ interface LogEntry {
 }
 
 const PROVIDERS = [
-  { id: 'openai', name: 'OpenAI', color: '#10a37f', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'] },
-  { id: 'anthropic', name: 'Anthropic', color: '#d4a574', models: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'] },
-  { id: 'google', name: 'Google AI', color: '#4285f4', models: ['gemini-1.5-pro', 'gemini-1.5-flash'] },
-  { id: 'groq', name: 'Groq', color: '#f55036', models: ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'] },
-  { id: 'kie', name: 'KIE AI', color: '#8b5cf6', models: ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro'] },
+  { id: 'openai', name: 'OpenAI', color: '#10a37f' },
+  { id: 'anthropic', name: 'Anthropic', color: '#d4a574' },
+  { id: 'google', name: 'Google AI', color: '#4285f4' },
+  { id: 'groq', name: 'Groq', color: '#f55036' },
+  { id: 'kie', name: 'KIE AI', color: '#8b5cf6' },
 ] as const
 
 type ProviderId = (typeof PROVIDERS)[number]['id']
@@ -75,14 +75,54 @@ export default function PlaygroundPage() {
   const [showKey, setShowKey] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [copied, setCopied] = useState(false)
+  const [models, setModels] = useState<string[]>([])
+  const [modelsLoading, setModelsLoading] = useState(false)
   const logsEndRef = useRef<HTMLDivElement>(null)
+  const modelsFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const selectedProvider = PROVIDERS.find((p) => p.id === provider)!
-  const currentModel = model || selectedProvider.models[0]
+  const currentModel = model || models[0] || ''
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
+
+  // Fetch models from backend when API key changes (debounced)
+  useEffect(() => {
+    if (modelsFetchRef.current) {
+      clearTimeout(modelsFetchRef.current)
+    }
+
+    if (!apiKey.trim()) {
+      setModels([])
+      setModel('')
+      return
+    }
+
+    setModelsLoading(true)
+    setModel('')
+
+    modelsFetchRef.current = setTimeout(async () => {
+      try {
+        const res = await api.post('/playground/models', { provider, apiKey })
+        const fetchedModels = res.data.models || []
+        setModels(fetchedModels)
+        if (fetchedModels.length > 0) {
+          setModel(fetchedModels[0])
+        }
+      } catch {
+        setModels([])
+      } finally {
+        setModelsLoading(false)
+      }
+    }, 500)
+
+    return () => {
+      if (modelsFetchRef.current) {
+        clearTimeout(modelsFetchRef.current)
+      }
+    }
+  }, [provider, apiKey])
 
   const testMutation = useMutation({
     mutationFn: async () => {
@@ -125,9 +165,9 @@ export default function PlaygroundPage() {
   })
 
   const handleTest = useCallback(() => {
-    if (!apiKey.trim() || !message.trim()) return
+    if (!apiKey.trim() || !message.trim() || !currentModel) return
     testMutation.mutate()
-  }, [apiKey, message, testMutation])
+  }, [apiKey, message, currentModel, testMutation])
 
   const handleCopyEnv = useCallback(() => {
     const envVar = ENV_KEY_MAP[provider]
@@ -165,6 +205,7 @@ export default function PlaygroundPage() {
                     setProvider(p.id)
                     setModel('')
                     setApiKey('')
+                    setModels([])
                   }}
                   className={cn(
                     'flex flex-col items-center gap-1 rounded-lg p-2 text-[10px] font-medium transition-all',
@@ -234,20 +275,34 @@ export default function PlaygroundPage() {
                 <Zap className="size-4 text-primary" />
               </div>
               <h2 className="text-sm font-semibold">Model</h2>
+              {modelsLoading && (
+                <Loader2 className="size-3.5 animate-spin text-muted-foreground ml-auto" />
+              )}
+              {!modelsLoading && models.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] ml-auto">
+                  {models.length} models
+                </Badge>
+              )}
             </div>
 
-            <Select value={currentModel} onValueChange={setModel}>
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {selectedProvider.models.map((m) => (
-                  <SelectItem key={m} value={m} className="text-sm">
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!apiKey.trim() ? (
+              <div className="flex items-center justify-center h-9 rounded-md border border-dashed text-xs text-muted-foreground">
+                Enter API key to load models
+              </div>
+            ) : (
+              <Select value={currentModel} onValueChange={setModel} disabled={modelsLoading}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder={modelsLoading ? 'Loading models...' : 'Select model'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((m) => (
+                    <SelectItem key={m} value={m} className="text-sm">
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </Card>
 
           <Card className="p-4 space-y-4">
@@ -261,12 +316,12 @@ export default function PlaygroundPage() {
               <Button
                 size="sm"
                 onClick={handleTest}
-                disabled={!apiKey.trim() || !message.trim() || testMutation.isPending}
+                disabled={!apiKey.trim() || !message.trim() || !currentModel || testMutation.isPending}
                 className="gap-1.5 text-xs"
               >
                 {testMutation.isPending ? (
                   <>
-                    <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <Loader2 className="size-3.5 animate-spin" />
                     Testing...
                   </>
                 ) : (
@@ -286,12 +341,14 @@ export default function PlaygroundPage() {
               className="text-sm resize-none"
             />
 
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
-              <span>
-                Using <strong>{currentModel}</strong> via <strong>{selectedProvider.name}</strong>
-              </span>
-            </div>
+            {currentModel && (
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                <span>
+                  Using <strong>{currentModel}</strong> via <strong>{selectedProvider.name}</strong>
+                </span>
+              </div>
+            )}
           </Card>
         </div>
 
