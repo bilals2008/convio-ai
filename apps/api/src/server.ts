@@ -4,6 +4,7 @@ import errorHandlerPlugin from './plugins/error.js'
 import corsPlugin from './plugins/cors.js'
 import authPlugin from './plugins/auth.js'
 import validationPlugin from './plugins/validate.js'
+import membershipPlugin from './plugins/membership.js'
 import swaggerPlugin from './plugins/swagger.js'
 import rateLimitPlugin from './plugins/rate-limit.js'
 
@@ -19,6 +20,8 @@ import analyticsRoutes from './modules/analytics/routes.js'
 import integrationsRoutes from './modules/integrations/routes.js'
 import aiRoutes from './modules/ai/routes.js'
 import playgroundRoutes from './modules/playground/routes.js'
+import billingRoutes from './modules/billing/routes.js'
+import widgetsRoutes from './modules/widgets/routes.js'
 
 async function buildServer() {
   const app = Fastify({
@@ -30,6 +33,7 @@ async function buildServer() {
   await app.register(errorHandlerPlugin)
   await app.register(corsPlugin)
   await app.register(authPlugin)
+  await app.register(membershipPlugin)
   await app.register(validationPlugin)
   await app.register(swaggerPlugin)
   await app.register(rateLimitPlugin)
@@ -50,6 +54,8 @@ async function buildServer() {
   await app.register(integrationsRoutes, { prefix: '/api' })
   await app.register(aiRoutes, { prefix: '/api' })
   await app.register(playgroundRoutes, { prefix: '/api' })
+  await app.register(billingRoutes, { prefix: '/api' })
+  await app.register(widgetsRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {
