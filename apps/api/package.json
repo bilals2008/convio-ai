@@ -11,26 +11,28 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "fastify": "^5.0.0",
-    "fastify-plugin": "^5.0.0",
-    "@fastify/cors": "^10.0.0",
-    "@fastify/error": "^4.0.0",
-    "@fastify/type-provider-typebox": "^5.0.0",
-    "@fastify/swagger": "^9.0.0",
-    "@fastify/swagger-ui": "^5.0.0",
-    "@fastify/rate-limit": "^10.0.0",
-    "@sinclair/typebox": "^0.34.0",
-    "env-schema": "^6.0.0",
-    "dotenv": "^16.4.0",
-    "zod": "^3.22.0",
     "@convio/ai": "workspace:*",
     "@convio/auth": "workspace:*",
     "@convio/database": "workspace:*",
-    "@convio/validation": "workspace:*"
+    "@convio/validation": "workspace:*",
+    "@fastify/cors": "^10.0.0",
+    "@fastify/error": "^4.0.0",
+    "@fastify/rate-limit": "^10.0.0",
+    "@fastify/swagger": "^9.0.0",
+    "@fastify/swagger-ui": "^5.0.0",
+    "@fastify/type-provider-typebox": "^5.0.0",
+    "@sinclair/typebox": "^0.34.0",
+    "dotenv": "^16.4.0",
+    "env-schema": "^6.0.0",
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0",
-    "@types/node": "^22.0.0"
+    "vitest": "^4.1.10"
   }
 }
