@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatsGrid } from '@/components/dashboard/stats-grid'
-import { QuickActions } from '@/components/dashboard/quick-actions'
 import { ConversationsChart } from '@/components/dashboard/conversations-chart'
 import { MessagesChart } from '@/components/dashboard/messages-chart'
 import { ChannelDistribution } from '@/components/dashboard/channel-distribution'
@@ -134,7 +133,6 @@ export default function DashboardOverviewPage() {
       />
 
       <StatsGrid data={mockStats} />
-      <QuickActions />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">

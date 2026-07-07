@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Download } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
+import { StatsCard } from '@/components/dashboard/stats-card'
+import { MessagesSquare, Send, Timer, Cpu } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
-import { StatsCard } from '@/components/dashboard/stats-card'
 import { ConversationsChart } from '@/components/dashboard/conversations-chart'
 import { MessagesChart } from '@/components/dashboard/messages-chart'
 import { ChannelDistribution } from '@/components/dashboard/channel-distribution'
 import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
 import { BotsPerformanceTable } from '@/components/analytics/bots-performance-table'
-import { ResolutionMetrics } from '@/components/analytics/resolution-metrics'
-import { MessageSquare, MessageCircle, Clock, Bot } from 'lucide-react'
+
 import { analytics as analyticsApi } from '@/lib/api'
 
 const dateRanges = [
@@ -82,7 +82,7 @@ export default function AnalyticsPage() {
         title="Analytics"
         description="Track performance across your chatbots and channels"
         action={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-1 rounded-lg bg-muted p-1">
               {dateRanges.map((range) => (
                 <button
@@ -107,46 +107,40 @@ export default function AnalyticsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatsCard
-          icon={MessageSquare}
+          icon={MessagesSquare}
           label="Conversations"
           value={totalConversations.toLocaleString()}
-          iconClassName="bg-blue-500/10 text-blue-600"
+          description="Last 30 days"
+          iconClassName="bg-blue-500/10 text-blue-500 dark:text-blue-400"
         />
         <StatsCard
-          icon={MessageCircle}
+          icon={Send}
           label="Messages"
           value={totalMessages.toLocaleString()}
-          iconClassName="bg-emerald-500/10 text-emerald-600"
+          description={`${Math.round(totalMessages / Math.max(totalConversations, 1))} per conversation`}
+          iconClassName="bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
         />
         <StatsCard
-          icon={Clock}
+          icon={Timer}
           label="Avg Response"
           value={`${avgResponseTime}s`}
-          iconClassName="bg-amber-500/10 text-amber-600"
+          description={avgResponseTime < 1 ? 'Excellent' : avgResponseTime < 2 ? 'Good' : 'Needs improvement'}
+          descriptionClassName={avgResponseTime < 1 ? 'text-emerald-500' : avgResponseTime < 2 ? 'text-amber-500' : 'text-red-500'}
+          iconClassName="bg-amber-500/10 text-amber-500 dark:text-amber-400"
         />
         <StatsCard
-          icon={Bot}
+          icon={Cpu}
           label="Active Bots"
           value="5"
-          iconClassName="bg-pink-500/10 text-pink-600"
+          description="Across all channels"
+          iconClassName="bg-violet-500/10 text-violet-500 dark:text-violet-400"
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <ConversationsChart data={chartData} loading={isLoading} />
-        </div>
-        <div>
-          <ResolutionMetrics
-            resolutionRate={78}
-            avgHandleTime={4.2}
-            totalConversations={totalConversations}
-            totalMessages={totalMessages}
-            loading={isLoading}
-          />
-        </div>
+      <div>
+        <ConversationsChart data={chartData} loading={isLoading} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

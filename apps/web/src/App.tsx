@@ -15,7 +15,7 @@ import ConversationsListPage from '@/pages/conversations/conversations-list-page
 import ConversationDetailPage from '@/pages/conversations/conversation-detail-page'
 import KnowledgeListPage from '@/pages/knowledge/knowledge-list-page'
 import KnowledgeDetailPage from '@/pages/knowledge/knowledge-detail-page'
-import Documents from '@/pages/documents'
+
 import AnalyticsPage from '@/pages/analytics/analytics-page'
 import WidgetsListPage from '@/pages/widgets/widgets-list-page'
 import WidgetDemoPage from '@/pages/widget/WidgetDemo'
@@ -58,7 +58,6 @@ export function App() {
               <Route path="/knowledge" element={<KnowledgeListPage />} />
               <Route path="/knowledge/new" element={<KnowledgeDetailPage />} />
               <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
-              <Route path="/knowledge/documents" element={<Documents />} />
               <Route path="/widgets" element={<WidgetsListPage />} />
               <Route path="/conversations" element={<ConversationsListPage />} />
               <Route path="/conversations/:id" element={<ConversationDetailPage />} />
