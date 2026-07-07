@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   BarChart3,
@@ -35,7 +35,14 @@ import { useSidebar } from '@/lib/sidebar-context'
 import { cn } from '@/lib/utils'
 
 export function Sidebar() {
-  const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
+  const { collapsed, setCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    if (pathname.startsWith('/settings')) {
+      setCollapsed(true)
+    }
+  }, [pathname, setCollapsed])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
