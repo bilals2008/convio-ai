@@ -26,11 +26,16 @@ export function AuthFooter({ mode }: AuthFooterProps) {
   const config = footerConfig[mode]
 
   return (
-    <div className="text-center text-sm">
-      <span className="text-muted-foreground">{config.text} </span>
-      <Link to={config.linkTo} className="font-medium text-primary hover:underline">
-        {config.linkText}
-      </Link>
+    <div className="text-center">
+      <p className="text-sm text-muted-foreground">
+        {config.text}{' '}
+        <Link
+          to={config.linkTo}
+          className="font-medium text-primary hover:text-primary/80 transition-colors"
+        >
+          {config.linkText}
+        </Link>
+      </p>
     </div>
   )
 }

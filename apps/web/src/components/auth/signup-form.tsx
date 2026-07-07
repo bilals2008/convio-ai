@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, XCircle, Mail, Lock, User, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,12 +8,20 @@ import { SocialLoginButtons } from './social-login-buttons'
 import { auth } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-function passwordStrength(password: string): { label: string; color: string; width: string } {
-  if (!password) return { label: '', color: '', width: '0%' }
-  if (password.length < 6) return { label: 'Weak', color: 'bg-destructive', width: '25%' }
-  if (password.length < 8) return { label: 'Fair', color: 'bg-warning', width: '50%' }
-  if (/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) return { label: 'Strong', color: 'bg-success', width: '100%' }
-  return { label: 'Good', color: 'bg-info', width: '75%' }
+function passwordStrength(password: string): { label: string; color: string; width: string; segments: number } {
+  if (!password) return { label: '', color: '', width: '0%', segments: 0 }
+  let score = 0
+  if (password.length >= 6) score++
+  if (password.length >= 8) score++
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++
+  if (/\d/.test(password)) score++
+  if (/[^a-zA-Z0-9]/.test(password)) score++
+
+  const segments = Math.min(score, 4)
+  if (segments <= 1) return { label: 'Weak', color: 'bg-destructive', width: '25%', segments: 1 }
+  if (segments === 2) return { label: 'Fair', color: 'bg-warning', width: '50%', segments: 2 }
+  if (segments === 3) return { label: 'Good', color: 'bg-info', width: '75%', segments: 3 }
+  return { label: 'Strong', color: 'bg-success', width: '100%', segments: 4 }
 }
 
 export function SignupForm() {
@@ -27,6 +35,7 @@ export function SignupForm() {
   const [error, setError] = useState('')
 
   const strength = passwordStrength(password)
+  const passwordsMatch = confirmPassword ? password === confirmPassword : true
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -70,40 +79,57 @@ export function SignupForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+        <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3.5 py-3 text-sm text-destructive">
+          <XCircle className="size-4 mt-0.5 shrink-0" />
+          <p className="flex-1">{error}</p>
+          <button
+            type="button"
+            onClick={() => setError('')}
+            className="shrink-0 text-destructive/60 hover:text-destructive transition-colors"
+          >
+            <XCircle className="size-4" />
+          </button>
         </div>
       )}
 
       <div className="space-y-2">
         <Label htmlFor="name">Full Name</Label>
-        <Input
-          id="name"
-          type="text"
-          placeholder="John Doe"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          disabled={loading}
-        />
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input
+            id="name"
+            type="text"
+            placeholder="John Doe"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={loading}
+            className="pl-10"
+          />
+        </div>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={loading}
-        />
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
+            className="pl-10"
+          />
+        </div>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <div className="relative">
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
           <Input
             id="password"
             type={showPassword ? 'text' : 'password'}
@@ -111,41 +137,58 @@ export function SignupForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={loading}
-            className="pr-10"
+            className="pl-10 pr-10"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             tabIndex={-1}
           >
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         </div>
         {password && (
-          <div className="space-y-1">
-            <div className="h-1 rounded-full bg-muted">
-              <div
-                className={cn('h-full rounded-full transition-all', strength.color)}
-                style={{ width: strength.width }}
-              />
+          <div className="space-y-2">
+            <div className="flex gap-1">
+              {[1, 2, 3, 4].map((seg) => (
+                <div
+                  key={seg}
+                  className={cn(
+                    'h-1.5 flex-1 rounded-full transition-all duration-300',
+                    seg <= strength.segments ? strength.color : 'bg-muted'
+                  )}
+                />
+              ))}
             </div>
-            <p className="text-xs text-muted-foreground">{strength.label}</p>
+            <p className={cn(
+              'text-xs font-medium transition-colors duration-300',
+              strength.segments <= 1 && 'text-destructive',
+              strength.segments === 2 && 'text-warning',
+              strength.segments === 3 && 'text-info',
+              strength.segments === 4 && 'text-success',
+            )}>
+              {strength.label}
+            </p>
           </div>
         )}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="confirm-password">Confirm Password</Label>
-        <Input
-          id="confirm-password"
-          type={showPassword ? 'text' : 'password'}
-          placeholder="Re-enter your password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          disabled={loading}
-        />
-        {confirmPassword && password !== confirmPassword && (
+        <div className="relative">
+          <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input
+            id="confirm-password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Re-enter your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            disabled={loading}
+            className="pl-10"
+          />
+        </div>
+        {confirmPassword && !passwordsMatch && (
           <p className="text-xs text-destructive">Passwords do not match</p>
         )}
       </div>
@@ -156,15 +199,15 @@ export function SignupForm() {
           type="checkbox"
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
-          className="mt-0.5 size-4 rounded border-input accent-primary"
+          className="mt-0.5 size-4 rounded border-input cursor-pointer accent-primary"
         />
         <Label htmlFor="terms" className="text-sm font-normal cursor-pointer leading-relaxed">
           I agree to the{' '}
-          <a href="/terms" target="_blank" className="text-primary hover:underline">
+          <a href="/terms" target="_blank" className="font-medium text-primary hover:text-primary/80 transition-colors">
             Terms of Service
           </a>{' '}
           and{' '}
-          <a href="/privacy" target="_blank" className="text-primary hover:underline">
+          <a href="/privacy" target="_blank" className="font-medium text-primary hover:text-primary/80 transition-colors">
             Privacy Policy
           </a>
         </Label>
@@ -172,11 +215,14 @@ export function SignupForm() {
 
       <Button
         type="submit"
-        className={cn('w-full', loading && 'opacity-70')}
+        className={cn('w-full h-11 text-sm font-semibold transition-all', loading && 'opacity-70')}
         disabled={loading}
       >
         {loading ? (
-          <Loader2 className="size-4 animate-spin" />
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            <span className="ml-2">Creating account...</span>
+          </>
         ) : (
           'Create account'
         )}
@@ -187,7 +233,7 @@ export function SignupForm() {
           <Separator />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-2 text-muted-foreground">or continue with</span>
+          <span className="bg-card px-3 text-muted-foreground">or continue with</span>
         </div>
       </div>
 
