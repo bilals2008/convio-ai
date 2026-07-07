@@ -56,30 +56,26 @@ export function ResolutionMetrics({
     <div className="grid grid-cols-2 gap-3">
       <MetricCard
         icon={CheckCircle}
-        label="Resolution Rate"
+        label="Resolution"
         value={`${resolutionRate}%`}
-        sublabel="of conversations resolved"
         iconClassName="bg-emerald-500/10 text-emerald-600"
       />
       <MetricCard
         icon={Clock}
-        label="Avg Handle Time"
+        label="Handle Time"
         value={`${avgHandleTime}m`}
-        sublabel="per conversation"
         iconClassName="bg-amber-500/10 text-amber-600"
       />
       <MetricCard
         icon={MessageSquare}
-        label="Messages/Conv"
+        label="Msgs/Conv"
         value={totalConversations > 0 ? (totalMessages / totalConversations).toFixed(1) : '0'}
-        sublabel="average per conversation"
         iconClassName="bg-blue-500/10 text-blue-600"
       />
       <MetricCard
         icon={XCircle}
-        label="Escalation Rate"
+        label="Escalation"
         value={`${(100 - resolutionRate).toFixed(0)}%`}
-        sublabel="transferred to human"
         iconClassName="bg-purple-500/10 text-purple-600"
       />
     </div>

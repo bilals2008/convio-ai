@@ -55,6 +55,11 @@ const PROVIDERS = [
   { id: 'google', name: 'Google AI', color: '#4285f4' },
   { id: 'groq', name: 'Groq', color: '#f55036' },
   { id: 'kie', name: 'KIE AI', color: '#8b5cf6' },
+  { id: 'openrouter', name: 'OpenRouter', color: '#71717a' },
+  { id: 'mistral', name: 'Mistral', color: '#f59e0b' },
+  { id: 'together', name: 'Together', color: '#0ea5e9' },
+  { id: 'deepseek', name: 'DeepSeek', color: '#3b82f6' },
+  { id: 'perplexity', name: 'Perplexity', color: '#06b6d4' },
 ] as const
 
 type ProviderId = (typeof PROVIDERS)[number]['id']
@@ -65,6 +70,11 @@ const ENV_KEY_MAP: Record<ProviderId, string> = {
   google: 'GOOGLE_API_KEY',
   groq: 'GROQ_API_KEY',
   kie: 'KIE_API_KEY',
+  openrouter: 'OPENROUTER_API_KEY',
+  mistral: 'MISTRAL_API_KEY',
+  together: 'TOGETHER_API_KEY',
+  deepseek: 'DEEPSEEK_API_KEY',
+  perplexity: 'PERPLEXITY_API_KEY',
 }
 
 export default function PlaygroundPage() {

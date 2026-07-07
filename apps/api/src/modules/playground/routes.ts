@@ -13,6 +13,11 @@ const PROVIDER_BASE_URLS: Record<string, string> = {
   google: 'https://generativelanguage.googleapis.com/v1beta',
   groq: 'https://api.groq.com/openai/v1',
   kie: 'https://api.kie.ai/v1',
+  openrouter: 'https://openrouter.ai/api/v1',
+  mistral: 'https://api.mistral.ai/v1',
+  together: 'https://api.together.xyz/v1',
+  deepseek: 'https://api.deepseek.com/v1',
+  perplexity: 'https://api.perplexity.ai',
 }
 
 // Fallback models if API fetch fails
@@ -22,6 +27,11 @@ const FALLBACK_MODELS: Record<string, string[]> = {
   google: ['gemini-1.5-pro', 'gemini-1.5-flash'],
   groq: ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
   kie: ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro'],
+  openrouter: ['openai/gpt-4o', 'anthropic/claude-3-5-sonnet', 'google/gemini-2.0-flash', 'meta-llama/llama-3.3-70b-instruct'],
+  mistral: ['mistral-large-latest', 'mistral-small-latest', 'pixtral-large-latest'],
+  together: ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct-Turbo'],
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+  perplexity: ['sonar-pro', 'sonar', 'llama-3.1-sonar-large-128k-online'],
 }
 
 async function fetchOpenAIModels(apiKey: string): Promise<string[]> {
@@ -74,6 +84,57 @@ async function fetchKIEModels(apiKey: string): Promise<string[]> {
   return (data.data || [])
     .map((m: any) => m.id)
     .sort()
+}
+
+async function fetchOpenRouterModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(`${PROVIDER_BASE_URLS.openrouter}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+  if (!res.ok) return FALLBACK_MODELS.openrouter
+  const data = await res.json()
+  return (data.data || [])
+    .map((m: any) => m.id)
+    .filter((id: string) => !id.includes(':free'))
+    .sort()
+}
+
+async function fetchMistralModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(`${PROVIDER_BASE_URLS.mistral}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+  if (!res.ok) return FALLBACK_MODELS.mistral
+  const data = await res.json()
+  return (data.data || [])
+    .map((m: any) => m.id)
+    .sort()
+}
+
+async function fetchTogetherModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(`${PROVIDER_BASE_URLS.together}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+  if (!res.ok) return FALLBACK_MODELS.together
+  const data = await res.json()
+  return (data || [])
+    .map((m: any) => m.id)
+    .filter((id: string) => !id.includes('embed') && !id.includes('rerank'))
+    .sort()
+    .slice(0, 40)
+}
+
+async function fetchDeepSeekModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(`${PROVIDER_BASE_URLS.deepseek}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+  if (!res.ok) return FALLBACK_MODELS.deepseek
+  const data = await res.json()
+  return (data.data || [])
+    .map((m: any) => m.id)
+    .sort()
+}
+
+async function fetchPerplexityModels(apiKey: string): Promise<string[]> {
+  return FALLBACK_MODELS.perplexity
 }
 
 async function testOpenAI(apiKey: string, model: string, message: string) {
@@ -186,6 +247,28 @@ async function testKIE(apiKey: string, model: string, message: string) {
   }
 }
 
+async function testOpenAICompat(baseUrl: string, apiKey: string, model: string, message: string) {
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: message }],
+      max_tokens: 256,
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
+  return {
+    response: data.choices?.[0]?.message?.content || '',
+    model: data.model,
+    usage: data.usage,
+  }
+}
+
 export default async function playgroundRoutes(fastify: FastifyInstance) {
   // Fetch models dynamically from provider API using the user's key
   fastify.post('/playground/models', async (request, reply) => {
@@ -213,6 +296,21 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
           break
         case 'kie':
           models = await fetchKIEModels(apiKey)
+          break
+        case 'openrouter':
+          models = await fetchOpenRouterModels(apiKey)
+          break
+        case 'mistral':
+          models = await fetchMistralModels(apiKey)
+          break
+        case 'together':
+          models = await fetchTogetherModels(apiKey)
+          break
+        case 'deepseek':
+          models = await fetchDeepSeekModels(apiKey)
+          break
+        case 'perplexity':
+          models = await fetchPerplexityModels(apiKey)
           break
         default:
           return reply.status(400).send({ error: `Unknown provider: ${provider}` })
@@ -259,6 +357,15 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
           break
         case 'kie':
           result = await testKIE(apiKey, testModel, message)
+          break
+        case 'openrouter':
+        case 'mistral':
+        case 'together':
+        case 'deepseek':
+          result = await testOpenAICompat(PROVIDER_BASE_URLS[provider], apiKey, testModel, message)
+          break
+        case 'perplexity':
+          result = await testOpenAICompat(PROVIDER_BASE_URLS.perplexity, apiKey, testModel, message)
           break
         default:
           return reply.status(400).send({ error: `Unsupported provider: ${provider}` })

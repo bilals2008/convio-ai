@@ -4,7 +4,6 @@ import { Download } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { ConversationsChart } from '@/components/dashboard/conversations-chart'
 import { MessagesChart } from '@/components/dashboard/messages-chart'
@@ -12,7 +11,7 @@ import { ChannelDistribution } from '@/components/dashboard/channel-distribution
 import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
 import { BotsPerformanceTable } from '@/components/analytics/bots-performance-table'
 import { ResolutionMetrics } from '@/components/analytics/resolution-metrics'
-import { MessageSquare, MessageCircle, Users, Clock, TrendingUp, Bot } from 'lucide-react'
+import { MessageSquare, MessageCircle, Clock, Bot } from 'lucide-react'
 import { analytics as analyticsApi } from '@/lib/api'
 
 const dateRanges = [
@@ -108,47 +107,29 @@ export default function AnalyticsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatsCard
           icon={MessageSquare}
           label="Conversations"
           value={totalConversations.toLocaleString()}
-          change={12.5}
           iconClassName="bg-blue-500/10 text-blue-600"
         />
         <StatsCard
           icon={MessageCircle}
           label="Messages"
           value={totalMessages.toLocaleString()}
-          change={8.3}
           iconClassName="bg-emerald-500/10 text-emerald-600"
-        />
-        <StatsCard
-          icon={Users}
-          label="Unique Users"
-          value="1,847"
-          change={5.1}
-          iconClassName="bg-purple-500/10 text-purple-600"
         />
         <StatsCard
           icon={Clock}
           label="Avg Response"
           value={`${avgResponseTime}s`}
-          change={-15.0}
           iconClassName="bg-amber-500/10 text-amber-600"
-        />
-        <StatsCard
-          icon={TrendingUp}
-          label="Resolution"
-          value="78%"
-          change={3.2}
-          iconClassName="bg-cyan-500/10 text-cyan-600"
         />
         <StatsCard
           icon={Bot}
           label="Active Bots"
           value="5"
-          change={0}
           iconClassName="bg-pink-500/10 text-pink-600"
         />
       </div>
