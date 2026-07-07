@@ -8,7 +8,6 @@ import {
   MessageSquare,
   MessageCircle,
   BookOpen,
-  FileText,
   Settings,
   Users,
   Key,
@@ -75,17 +74,17 @@ export function Sidebar() {
       aria-label="Main navigation"
     >
       {/* Logo area */}
-      <div className="flex items-center h-14 px-3 border-b">
+      <div className="flex items-center py-5 px-4 border-b border-border/50">
         {!collapsed && (
           <>
-            <img src="/logo.png" alt="Convio" className="h-7 w-auto" />
-            <span className="ml-2 text-lg font-semibold truncate">Convio</span>
+            <img src="/logo.png" alt="Convio" className="h-8 w-auto" />
+            <span className="ml-2.5 text-[15px] font-semibold tracking-tight truncate">Convio</span>
           </>
         )}
         <Button
           variant="ghost"
           size="icon"
-          className={cn('ml-auto size-8 shrink-0', collapsed && 'mx-auto ml-0')}
+          className={cn('ml-auto size-7 shrink-0 text-muted-foreground hover:text-foreground', collapsed && 'mx-auto ml-0')}
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
@@ -110,7 +109,6 @@ export function Sidebar() {
 
           <SidebarGroup label="Knowledge">
             <SidebarItem icon={BookOpen} label="Knowledge Base" href="/knowledge" />
-            <SidebarItem icon={FileText} label="Documents" href="/knowledge/documents" />
           </SidebarGroup>
 
           <SidebarGroup label="Conversations">
@@ -130,24 +128,24 @@ export function Sidebar() {
       </ScrollArea>
 
       {/* User section */}
-      <div className="border-t p-3">
+      <div className="border-t border-border/50 p-2 mt-auto">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               className={cn(
-                'w-full h-auto justify-start gap-3 px-2 py-1.5 hover:bg-muted',
+                'w-full h-auto justify-start gap-3 px-3 py-2.5 hover:bg-muted/60 rounded-lg',
                 collapsed && 'justify-center px-0'
               )}
             >
               <Avatar className="size-8 shrink-0">
                 <AvatarImage src="" />
-                <AvatarFallback className="text-xs">MU</AvatarFallback>
+                <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">MU</AvatarFallback>
               </Avatar>
               {!collapsed && (
-                <div className="flex-1 truncate text-left text-sm">
-                  <div className="font-medium truncate">Muhammad</div>
-                  <div className="text-xs text-muted-foreground truncate">muhammad@example.com</div>
+                <div className="flex-1 truncate text-left">
+                  <div className="text-sm font-medium truncate">Muhammad</div>
+                  <div className="text-[11px] text-muted-foreground truncate">muhammad@example.com</div>
                 </div>
               )}
             </Button>
@@ -206,7 +204,7 @@ export function Sidebar() {
               {/* Mobile always expanded */}
               <aside className="flex h-full flex-col bg-card border-r w-[280px]">
                 <div className="flex items-center h-14 px-4 border-b">
-                  <img src="/logo.png" alt="Convio" className="h-7 w-auto" />
+            <img src="/logo.png" alt="Convio" className="h-9 w-auto" />
                   <span className="ml-2 text-lg font-semibold">Convio</span>
                 </div>
 
@@ -282,7 +280,6 @@ const mobileNavGroups = [
     label: 'Knowledge',
     items: [
       { icon: BookOpen, label: 'Knowledge Base', href: '/knowledge' },
-      { icon: FileText, label: 'Documents', href: '/knowledge/documents' },
     ],
   },
   {

@@ -7,7 +7,7 @@ interface PageContainerProps {
 
 export function PageContainer({ children, className }: PageContainerProps) {
   return (
-    <div className={cn('space-y-6', className)}>
+    <div className={cn('space-y-6 overflow-hidden', className)}>
       {children}
     </div>
   )

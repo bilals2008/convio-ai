@@ -1,42 +1,32 @@
+import { useNavigate } from 'react-router-dom'
 import { Bot, MessageSquare, FileText, MessageCircle } from 'lucide-react'
-import { QuickActionCard } from './quick-action-card'
+import { cn } from '@/lib/utils'
 
 const actions = [
-  {
-    icon: Bot,
-    title: 'Create Agent',
-    description: 'Configure a new AI agent with custom prompts',
-    href: '/agents/new',
-    iconClassName: 'bg-blue-500/10 text-blue-600',
-  },
-  {
-    icon: MessageSquare,
-    title: 'Create Bot',
-    description: 'Deploy a chatbot to your channels',
-    href: '/chatbots/new',
-    iconClassName: 'bg-emerald-500/10 text-emerald-600',
-  },
-  {
-    icon: FileText,
-    title: 'Upload Document',
-    description: 'Add documents to your knowledge base',
-    href: '/knowledge',
-    iconClassName: 'bg-purple-500/10 text-purple-600',
-  },
-  {
-    icon: MessageCircle,
-    title: 'View Conversations',
-    description: 'Browse and manage chat conversations',
-    href: '/conversations',
-    iconClassName: 'bg-amber-500/10 text-amber-600',
-  },
+  { icon: Bot, label: 'Create Agent', href: '/agents/new', iconClassName: 'text-blue-500' },
+  { icon: MessageSquare, label: 'Create Bot', href: '/chatbots/new', iconClassName: 'text-emerald-500' },
+  { icon: FileText, label: 'Upload Doc', href: '/knowledge', iconClassName: 'text-purple-500' },
+  { icon: MessageCircle, label: 'Conversations', href: '/conversations', iconClassName: 'text-amber-500' },
 ]
 
 export function QuickActions() {
+  const navigate = useNavigate()
+
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="flex items-center gap-1 rounded-lg border border-border/60 bg-card p-1">
       {actions.map((action) => (
-        <QuickActionCard key={action.href} {...action} />
+        <button
+          key={action.href}
+          type="button"
+          onClick={() => navigate(action.href)}
+          className={cn(
+            'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors',
+            'hover:bg-muted hover:text-foreground'
+          )}
+        >
+          <action.icon className={cn('size-4', action.iconClassName)} />
+          {action.label}
+        </button>
       ))}
     </div>
   )

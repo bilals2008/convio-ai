@@ -23,22 +23,31 @@ export function SidebarItem({ icon: Icon, label, href, badge, exact }: SidebarIt
       end={exact}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+          'group/item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
           isActive
-            ? 'bg-primary/10 text-primary'
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            ? 'bg-primary/8 text-primary'
+            : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
           collapsed && 'justify-center px-2'
         )
       }
     >
-      <Icon className="size-4 shrink-0" />
-      {!collapsed && (
+      {({ isActive }) => (
         <>
-          <span className="flex-1 truncate">{label}</span>
-          {badge != null && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 leading-none">
-              {badge}
-            </Badge>
+          <Icon
+            className={cn(
+              'size-4 shrink-0 transition-colors duration-150',
+              isActive ? 'text-primary' : 'text-muted-foreground/40 group-hover/item:text-muted-foreground/70'
+            )}
+          />
+          {!collapsed && (
+            <>
+              <span className="flex-1 truncate">{label}</span>
+              {badge != null && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 leading-none">
+                  {badge}
+                </Badge>
+              )}
+            </>
           )}
         </>
       )}
@@ -68,9 +77,9 @@ export function SidebarGroup({ label, children, className, ...props }: SidebarGr
   const { collapsed } = useSidebar()
 
   return (
-    <div className={cn('space-y-1', className)} {...props}>
+    <div className={cn('space-y-0.5 first:mt-0 mt-4', className)} {...props}>
       {!collapsed && (
-        <h4 className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h4 className="px-3 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
           {label}
         </h4>
       )}
