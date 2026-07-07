@@ -18,6 +18,7 @@ import knowledgeRoutes from './modules/knowledge/routes.js'
 import analyticsRoutes from './modules/analytics/routes.js'
 import integrationsRoutes from './modules/integrations/routes.js'
 import aiRoutes from './modules/ai/routes.js'
+import playgroundRoutes from './modules/playground/routes.js'
 
 async function buildServer() {
   const app = Fastify({
@@ -48,6 +49,7 @@ async function buildServer() {
   await app.register(analyticsRoutes, { prefix: '/api' })
   await app.register(integrationsRoutes, { prefix: '/api' })
   await app.register(aiRoutes, { prefix: '/api' })
+  await app.register(playgroundRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {

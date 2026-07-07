@@ -12,6 +12,7 @@ import {
   Settings,
   Users,
   Key,
+  Terminal,
   Link as LinkIcon,
   ChevronLeft,
   LogOut,
@@ -116,6 +117,7 @@ export function Sidebar() {
             <SidebarItem icon={Users} label="Team" href="/settings/team" />
             <SidebarItem icon={LinkIcon} label="Integrations" href="/settings/integrations" />
             <SidebarItem icon={Key} label="API Keys" href="/settings/api-keys" />
+            <SidebarItem icon={Terminal} label="Playground" href="/settings/playground" />
           </SidebarGroup>
         </nav>
       </ScrollArea>
@@ -291,6 +293,7 @@ const mobileNavGroups = [
       { icon: Users, label: 'Team', href: '/settings/team' },
       { icon: LinkIcon, label: 'Integrations', href: '/settings/integrations' },
       { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
+      { icon: Terminal, label: 'Playground', href: '/settings/playground' },
     ],
   },
 ]

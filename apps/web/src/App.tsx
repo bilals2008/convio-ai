@@ -26,6 +26,7 @@ import Integrations from '@/pages/integrations'
 import Settings from '@/pages/settings'
 import WidgetsListPage from '@/pages/widgets/widgets-list-page'
 import WidgetDemoPage from '@/pages/widget/WidgetDemo'
+import PlaygroundPage from '@/pages/playground/playground-page'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import OrganizationSettingsPage from '@/pages/settings/organization-settings-page'
 import TeamMembersPage from '@/pages/settings/team-members-page'
@@ -74,6 +75,7 @@ export function App() {
                 <Route path="team" element={<TeamMembersPage />} />
                 <Route path="integrations" element={<IntegrationsPage />} />
                 <Route path="api-keys" element={<ApiKeysPage />} />
+                <Route path="playground" element={<PlaygroundPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
