@@ -7,8 +7,10 @@ import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { Skeleton } from '@/components/shared/loading'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { AgentForm } from '@/components/agents/agent-form'
 import type { AgentFormData } from '@/components/agents/agent-form'
+import { AgentChatPanel } from '@/components/agents/agent-chat-panel'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
@@ -25,7 +27,7 @@ const agentSchema = z.object({
 const defaultFormData: AgentFormData = {
   name: '',
   description: '',
-  model: 'gpt-4o-mini',
+  model: 'auto/best-chat',
   systemPrompt: '',
   temperature: 0.7,
   maxTokens: 2048,
@@ -79,7 +81,7 @@ export default function AgentEditorPage() {
 
   const createMutation = useMutation({
     mutationFn: (data: AgentFormData) =>
-      agentsApi.create({ ...data, organizationId: orgId! }),
+      agentsApi.create({ ...data, organizationId: orgId! } as Record<string, unknown>),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       navigate('/agents')
@@ -87,7 +89,7 @@ export default function AgentEditorPage() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: (data: AgentFormData) => agentsApi.update(id!, data),
+    mutationFn: (data: AgentFormData) => agentsApi.update(id!, data as unknown as Record<string, unknown>),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       navigate('/agents')
@@ -158,12 +160,39 @@ export default function AgentEditorPage() {
         }
       />
 
-      <AgentForm
-        data={formData}
-        onChange={setFormData}
-        errors={errors}
-        disabled={saving}
-      />
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuration</CardTitle>
+              <CardDescription>Configure your agent&apos;s behavior and model</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AgentForm
+                data={formData}
+                onChange={setFormData}
+                errors={errors}
+                disabled={saving}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-2">
+          <div className="lg:sticky lg:top-6">
+            <AgentChatPanel
+              agentConfig={{
+                name: formData.name,
+                model: formData.model,
+                systemPrompt: formData.systemPrompt,
+                temperature: formData.temperature,
+                maxTokens: formData.maxTokens,
+                providerKeyId: formData.providerKeyId,
+              }}
+            />
+          </div>
+        </div>
+      </div>
     </PageContainer>
   )
 }

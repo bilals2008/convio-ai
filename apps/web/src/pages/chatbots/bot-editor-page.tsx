@@ -10,9 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { BotForm } from '@/components/chatbots/bot-form'
 import type { BotFormData } from '@/components/chatbots/bot-form'
-import { BotWidgetPreview } from '@/components/chatbots/bot-widget-preview'
-import { BotStatusToggle } from '@/components/chatbots/bot-status-toggle'
-import { bots as botsApi } from '@/lib/api'
+import { BotChatPanel } from '@/components/chatbots/bot-chat-panel'
+import { bots as botsApi, agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
 type BotStatus = 'draft' | 'active' | 'paused' | 'archived'
@@ -27,6 +26,14 @@ interface Chatbot {
   agentId: string
   welcomeMessage?: string
   organizationId: string
+}
+
+interface AgentDetail {
+  model: string
+  systemPrompt: string
+  temperature: number
+  maxTokens: number
+  providerKeyId?: string | null
 }
 
 const botSchema = z.object({
@@ -83,9 +90,18 @@ export default function BotEditorPage() {
     }
   }, [existingBot])
 
+  const { data: linkedAgent } = useQuery({
+    queryKey: ['agent', formData.agentId],
+    queryFn: async () => {
+      const res = await agentsApi.get(formData.agentId)
+      return res.data.data as AgentDetail
+    },
+    enabled: !!formData.agentId && formData.agentId.length > 0,
+  })
+
   const createMutation = useMutation({
     mutationFn: (data: BotFormData) =>
-      botsApi.create({ ...data, organizationId: orgId! }),
+      botsApi.create({ ...data, organizationId: orgId! } as Record<string, unknown>),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatbots'] })
       navigate('/chatbots')
@@ -97,7 +113,7 @@ export default function BotEditorPage() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: (data: BotFormData) => botsApi.update(id!, data),
+    mutationFn: (data: BotFormData) => botsApi.update(id!, data as unknown as Record<string, unknown>),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatbots'] })
       navigate('/chatbots')
@@ -143,6 +159,16 @@ export default function BotEditorPage() {
       </PageContainer>
     )
   }
+
+  const agentConfig = linkedAgent
+    ? {
+        model: linkedAgent.model,
+        systemPrompt: linkedAgent.systemPrompt,
+        temperature: linkedAgent.temperature,
+        maxTokens: linkedAgent.maxTokens,
+        providerKeyId: linkedAgent.providerKeyId || undefined,
+      }
+    : undefined
 
   return (
     <PageContainer>
@@ -190,13 +216,21 @@ export default function BotEditorPage() {
         </div>
 
         <div className="lg:col-span-2">
-          <div className="lg:sticky lg:top-6 space-y-4">
-            <BotWidgetPreview
-              name={formData.name}
-              welcomeMessage={formData.welcomeMessage}
-              widgetColor={formData.widgetColor}
-              avatar={formData.avatar}
-            />
+          <div className="lg:sticky lg:top-6">
+            {agentConfig ? (
+              <BotChatPanel
+                botName={formData.name}
+                widgetColor={formData.widgetColor}
+                avatar={formData.avatar}
+                agentConfig={agentConfig}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+                <p className="text-sm text-muted-foreground">
+                  {formData.agentId ? 'Loading agent config...' : 'Select an agent to preview the chatbot'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

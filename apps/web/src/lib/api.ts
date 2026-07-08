@@ -60,6 +60,27 @@ export const agents = {
   update: (id: string, data: Record<string, unknown>) => api.patch(`/agents/${id}`, data),
   delete: (id: string) => api.delete(`/agents/${id}`),
   test: (id: string, message: string) => api.post(`/agents/${id}/test`, { message }),
+  testStream: async (config: {
+    model: string
+    systemPrompt: string
+    message: string
+    temperature: number
+    maxTokens: number
+    providerKeyId?: string
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>
+  }) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+    const response = await fetch(`${baseURL}/agents/test-stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify(config),
+    })
+    return response
+  },
   addTool: (id: string, toolId: string) => api.post(`/agents/${id}/tools`, { toolId }),
   removeTool: (id: string, toolId: string) => api.delete(`/agents/${id}/tools/${toolId}`),
 }
@@ -81,7 +102,7 @@ export const messages = {
   list: (conversationId: string, params?: { cursor?: string; limit?: number }) =>
     api.get(`/conversations/${conversationId}/messages`, { params }),
   stream: (conversationId: string, content: string) =>
-    api.post(`/conversations/${conversationId}/messages/stream`, { role: 'user', content }, { responseType: 'stream' }),
+    api.post(`/conversations/${conversationId}/messages/stream`, { role: 'user', content }),
   update: (id: string, data: Record<string, unknown>) => api.patch(`/messages/${id}`, data),
   delete: (id: string) => api.delete(`/messages/${id}`),
 }
