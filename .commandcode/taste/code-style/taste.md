@@ -5,3 +5,4 @@
 - Run `pnpm --filter @convio/web typecheck` after editing any frontend file. Confidence: 0.75
 - Keep each component in its own file with organized folder structure; avoid monolithic single-file components. Confidence: 0.75
 - Use design tokens (bg-background, text-foreground, etc.) from the theme for Tailwind classes; never use hardcoded colors. Confidence: 0.80
+- When using TanStack Query with conditional `enabled`, always check the enabled-condition state (e.g., orgLoading, !orgId) before `isLoading` to avoid infinite skeleton when query is disabled. Use optional chaining (`data?.field`) for all data access after loading checks. Confidence: 0.65
