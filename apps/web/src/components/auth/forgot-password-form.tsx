@@ -4,17 +4,17 @@ import { ArrowLeft, Loader2, CheckCircle, XCircle, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import api from '@/lib/api'
+import { useForgotPassword } from '@/lib/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
+  const forgotPassword = useForgotPassword()
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -23,15 +23,13 @@ export function ForgotPasswordForm() {
       return
     }
 
-    setLoading(true)
-    try {
-      await api.post('/auth/forgot-password', { email })
-      setSent(true)
-    } catch {
-      setSent(true)
-    } finally {
-      setLoading(false)
-    }
+    forgotPassword.mutate(
+      { email },
+      {
+        onSuccess: () => setSent(true),
+        onError: () => setSent(true),
+      }
+    )
   }
 
   if (sent) {
@@ -97,7 +95,7 @@ export function ForgotPasswordForm() {
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
+            disabled={forgotPassword.isPending}
             className="pl-10"
           />
         </div>
@@ -105,10 +103,10 @@ export function ForgotPasswordForm() {
 
       <Button
         type="submit"
-        className={cn('w-full h-11 text-sm font-semibold transition-all', loading && 'opacity-70')}
-        disabled={loading}
+        className={cn('w-full h-11 text-sm font-semibold transition-all', forgotPassword.isPending && 'opacity-70')}
+        disabled={forgotPassword.isPending}
       >
-        {loading ? (
+        {forgotPassword.isPending ? (
           <>
             <Loader2 className="size-4 animate-spin" />
             <span className="ml-2">Sending...</span>

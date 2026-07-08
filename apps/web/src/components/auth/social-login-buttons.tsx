@@ -1,4 +1,7 @@
+import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -36,8 +39,15 @@ const providers = [
 ] as const
 
 export function SocialLoginButtons() {
-  const handleOAuth = (provider: string) => {
-    window.location.assign(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/${provider}`)
+  const [pending, setPending] = useState<string | null>(null)
+
+  const handleOAuth = async (provider: string) => {
+    setPending(provider)
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: provider as 'google' | 'github',
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    })
+    if (error) setPending(null)
   }
 
   return (
@@ -52,8 +62,13 @@ export function SocialLoginButtons() {
             'group'
           )}
           onClick={() => handleOAuth(id)}
+          disabled={pending !== null}
         >
-          <Icon className="size-4.5 shrink-0" />
+          {pending === id ? (
+            <Loader2 className="size-4.5 shrink-0 animate-spin" />
+          ) : (
+            <Icon className="size-4.5 shrink-0" />
+          )}
           <span>{label}</span>
         </Button>
       ))}

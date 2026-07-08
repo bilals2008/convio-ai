@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { SocialLoginButtons } from './social-login-buttons'
-import { auth } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 
 export function LoginForm() {
@@ -14,10 +14,10 @@ export function LoginForm() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const { login } = useAuth()
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -26,16 +26,15 @@ export function LoginForm() {
       return
     }
 
-    setLoading(true)
-    try {
-      await auth.signIn(email, password)
-      window.location.href = '/dashboard'
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Invalid email or password'
-      setError(message)
-    } finally {
-      setLoading(false)
-    }
+    login.mutate(
+      { email, password },
+      {
+        onError: (err) => {
+          const msg = (err as { response?: { data?: { error?: string; message?: string } } }).response?.data
+          setError(msg?.error || msg?.message || 'Invalid email or password')
+        },
+      }
+    )
   }
 
   return (
@@ -64,7 +63,7 @@ export function LoginForm() {
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
+            disabled={login.isPending}
             className="pl-10"
           />
         </div>
@@ -85,7 +84,7 @@ export function LoginForm() {
             placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
+            disabled={login.isPending}
             className="pl-10 pr-10"
           />
           <button
@@ -114,10 +113,10 @@ export function LoginForm() {
 
       <Button
         type="submit"
-        className={cn('w-full h-11 text-sm font-semibold transition-all', loading && 'opacity-70')}
-        disabled={loading}
+        className={cn('w-full h-11 text-sm font-semibold transition-all', login.isPending && 'opacity-70')}
+        disabled={login.isPending}
       >
-        {loading ? (
+        {login.isPending ? (
           <>
             <Loader2 className="size-4 animate-spin" />
             <span className="ml-2">Signing in...</span>

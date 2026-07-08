@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { SocialLoginButtons } from './social-login-buttons'
-import { auth } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 
 function passwordStrength(password: string): { label: string; color: string; width: string; segments: number } {
@@ -31,13 +31,13 @@ export function SignupForm() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [agreed, setAgreed] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const { signup } = useAuth()
 
   const strength = passwordStrength(password)
   const passwordsMatch = confirmPassword ? password === confirmPassword : true
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -66,16 +66,15 @@ export function SignupForm() {
       return
     }
 
-    setLoading(true)
-    try {
-      await auth.signUp(email, password, name)
-      window.location.href = '/login'
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to create account'
-      setError(message)
-    } finally {
-      setLoading(false)
-    }
+    signup.mutate(
+      { email, password, name },
+      {
+        onError: (err) => {
+          const msg = (err as { response?: { data?: { error?: string; message?: string } } }).response?.data
+          setError(msg?.error || msg?.message || 'Failed to create account')
+        },
+      }
+    )
   }
 
   return (
@@ -104,7 +103,7 @@ export function SignupForm() {
             placeholder="John Doe"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            disabled={loading}
+            disabled={signup.isPending}
             className="pl-10"
           />
         </div>
@@ -120,7 +119,7 @@ export function SignupForm() {
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
+            disabled={signup.isPending}
             className="pl-10"
           />
         </div>
@@ -136,7 +135,7 @@ export function SignupForm() {
             placeholder="Min 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
+            disabled={signup.isPending}
             className="pl-10 pr-10"
           />
           <button
@@ -184,7 +183,7 @@ export function SignupForm() {
             placeholder="Re-enter your password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            disabled={loading}
+            disabled={signup.isPending}
             className="pl-10"
           />
         </div>
@@ -215,10 +214,10 @@ export function SignupForm() {
 
       <Button
         type="submit"
-        className={cn('w-full h-11 text-sm font-semibold transition-all', loading && 'opacity-70')}
-        disabled={loading}
+        className={cn('w-full h-11 text-sm font-semibold transition-all', signup.isPending && 'opacity-70')}
+        disabled={signup.isPending}
       >
-        {loading ? (
+        {signup.isPending ? (
           <>
             <Loader2 className="size-4 animate-spin" />
             <span className="ml-2">Creating account...</span>
