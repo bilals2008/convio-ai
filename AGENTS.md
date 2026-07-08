@@ -33,6 +33,22 @@ Rules for AI agents working on this codebase.
 - Hooks in `lib/hooks/`
 - API functions in `lib/api/`
 
+## Auth
+
+- **Supabase Auth** (not Better Auth) — frontend uses `@supabase/supabase-js` directly
+- Backend verifies JWT from Authorization header via `supabase.auth.getUser(token)`
+- User profiles synced from `auth.users` → `public.profiles` via DB trigger
+- API endpoints use `fastify.authenticate` middleware
+- Auth hooks in `lib/hooks/useAuth.ts` use Supabase + TanStack Query
+
+## Prisma
+
+- Prisma v7 with `@prisma/adapter-pg` driver adapter
+- Generator: `prisma-client` with explicit output path
+- Config: `prisma.config.ts` at project root
+- Client is lazy-initialized via Proxy in `packages/database/src/index.ts`
+- Run `pnpm exec prisma generate` after schema changes
+
 ## Code Quality
 
 - TypeScript strict mode

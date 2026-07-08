@@ -1,15 +1,30 @@
 import { useState, useCallback } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, Navigate } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
 import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { SidebarContext } from '@/lib/sidebar-context'
+import { useAuth } from '@/lib/auth-context'
 
 export function DashboardLayout() {
+  const { isAuthenticated, isLoading } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const toggleCollapsed = useCallback(() => setCollapsed((c) => !c), [])
   const toggleMobile = useCallback(() => setMobileOpen((o) => !o), [])
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
 
   return (
     <SidebarContext.Provider

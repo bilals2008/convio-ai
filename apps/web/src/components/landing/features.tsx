@@ -1,13 +1,5 @@
-import { Card, CardContent } from '@/components/ui/card'
+import { Brain, Bot, Globe, MessageSquare, BarChart3, Zap } from 'lucide-react'
 import { ScrollReveal } from './scroll-reveal'
-import {
-  Bot,
-  Brain,
-  Globe,
-  BarChart3,
-  MessageSquare,
-  Zap
-} from 'lucide-react'
 
 const features = [
   {
@@ -42,42 +34,39 @@ const features = [
   },
 ]
 
+function FeatureBlock({ icon: Icon, title, description }: { icon: typeof Brain; title: string; description: string }) {
+  return (
+    <div className="bg-card rounded-[14px] p-[34px_30px] border border-border">
+      <div className="w-10 h-10 rounded-[9px] bg-primary/10 flex items-center justify-center text-primary mb-4">
+        <Icon className="size-5" />
+      </div>
+      <h3 className="text-[14px] font-semibold text-foreground mb-[7px]">{title}</h3>
+      <p className="text-[13px] text-muted-foreground leading-[1.65]">{description}</p>
+    </div>
+  )
+}
+
 export function Features() {
   return (
-    <section id="features" className="py-20 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <ScrollReveal>
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything you need to build{' '}
-              <span className="text-primary">powerful chatbots</span>
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              From AI configuration to multi-channel deployment, Convio has all the tools
-              you need to create intelligent conversational experiences.
-            </p>
-          </div>
-        </ScrollReveal>
-
-        {/* Features Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, i) => (
-            <ScrollReveal key={feature.title} delay={i * 0.08}>
-              <Card className="group hover:shadow-lg transition-all hover:border-primary/30 h-full">
-                <CardContent className="p-6">
-                  <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 mb-4 group-hover:bg-primary/20 transition-colors">
-                    <feature.icon className="size-6 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {feature.description}
-                  </p>
-                </CardContent>
-              </Card>
-            </ScrollReveal>
-          ))}
+    <section id="features" className="max-w-[1160px] mx-auto px-5 md:px-10 py-16">
+      <ScrollReveal>
+        <div className="text-center mb-14">
+          <div className="text-[11px] font-semibold tracking-[0.1em] uppercase text-primary mb-2">Why Convio</div>
+          <h2 className="font-heading text-[clamp(26px,3.6vw,46px)] text-foreground leading-[1.15] tracking-[-0.02em] mb-3">
+            Built different. By design.
+          </h2>
+          <p className="text-[15px] text-muted-foreground leading-[1.65] max-w-[490px] mx-auto">
+            Everything you need to build, deploy, and manage intelligent conversational
+            experiences — from one dashboard.
+          </p>
         </div>
+      </ScrollReveal>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-[14px]">
+        {features.map((feature, i) => (
+          <ScrollReveal key={feature.title} delay={i * 0.06}>
+            <FeatureBlock {...feature} />
+          </ScrollReveal>
+        ))}
       </div>
     </section>
   )

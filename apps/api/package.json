@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@convio/ai": "workspace:*",
-    "@convio/auth": "workspace:*",
     "@convio/database": "workspace:*",
+    "@supabase/supabase-js": "^2.0.0",
     "@convio/validation": "workspace:*",
     "@fastify/cors": "^10.0.0",
     "@fastify/error": "^4.0.0",

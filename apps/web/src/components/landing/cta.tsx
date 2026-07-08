@@ -1,43 +1,66 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ScrollReveal } from './scroll-reveal'
-import { ArrowRight } from 'lucide-react'
+import { GlowCard } from './glow-card'
+import { ArrowRight, Copy, Check } from 'lucide-react'
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      onClick={() => navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })}
+      className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+      aria-label="Copy install command"
+    >
+      {copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
+    </button>
+  )
+}
 
 export function CTA() {
   return (
-    <section className="py-20 sm:py-32 bg-muted/30">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <ScrollReveal variant="scaleIn">
-          <div className="relative overflow-hidden rounded-3xl bg-card p-8 sm:p-16 text-center">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 -z-10">
-              <div className="absolute -top-40 -right-40 size-80 rounded-full bg-primary/10" />
-              <div className="absolute -bottom-40 -left-40 size-80 rounded-full bg-primary/10" />
+    <section className="max-w-[1160px] mx-auto px-5 md:px-10 py-16">
+      <ScrollReveal variant="scaleIn">
+        <GlowCard>
+          <div className="py-14 md:py-20 px-6 md:px-14 flex flex-col md:flex-row items-start md:items-center gap-10 md:gap-16">
+            <div className="flex-1 min-w-0">
+              <h2 className="font-heading text-[clamp(24px,3.2vw,42px)] text-foreground leading-[1.12] tracking-[-0.02em] mb-3">
+                Your next project deserves a better chatbot.
+              </h2>
+              <p className="text-[15px] text-muted-foreground leading-[1.65] max-w-[420px] mb-6">
+                Build, deploy, and manage AI chatbots across every channel. No coding required.
+              </p>
+
+              <div className="inline-flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
+                <span className="text-primary text-[13px] font-mono font-medium">$</span>
+                <code className="text-[13px] font-mono text-foreground/70">npx create-convio</code>
+                <CopyButton text="npx create-convio" />
+              </div>
             </div>
 
-            <h2 className="text-3xl font-bold tracking-tight text-card-foreground sm:text-4xl">
-              Ready to build your AI chatbot?
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
-              Join 2,500+ teams already using Convio to create intelligent conversational experiences.
-            </p>
-
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col items-stretch gap-3 w-full md:w-auto md:min-w-[200px] shrink-0">
               <Link to="/signup">
-                <Button size="lg" className="gap-2 px-8 py-3 text-base h-auto glow-primary-sm hover:glow-primary transition-shadow">
-                  Get Started Free
+                <Button className="w-full justify-center glow-primary-sm">
+                  Start Free
                   <ArrowRight className="size-4" />
                 </Button>
               </Link>
-              <a href="#pricing">
-                <Button size="lg" variant="outline" className="px-8 py-3 text-base h-auto border-border text-card-foreground hover:bg-muted">
-                  View Pricing
+              <a href="#features">
+                <Button variant="outline" className="w-full justify-center bg-card/60">
+                  Explore Features
                 </Button>
               </a>
+              <Link
+                to="/docs"
+                className="inline-flex items-center justify-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors py-1"
+              >
+                Read the docs
+              </Link>
             </div>
           </div>
-        </ScrollReveal>
-      </div>
+        </GlowCard>
+      </ScrollReveal>
     </section>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   BarChart3,
@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -31,11 +32,29 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { SidebarGroup, SidebarItem } from './sidebar-nav'
 import { useSidebar } from '@/lib/sidebar-context'
+import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 
 export function Sidebar() {
   const { collapsed, setCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const { user, isAuthenticated, logout } = useAuth()
+
+  const initials = user?.name
+    ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : user?.email?.slice(0, 2).toUpperCase() || 'U'
+
+  const handleProfileMenuSelect = (value: string | null) => {
+    if (!value) return
+    if (value === 'profile') navigate('/settings/profile')
+    else if (value === 'settings') navigate('/settings/organization')
+    else if (value === 'signout') {
+      logout.mutate(undefined, {
+        onSuccess: () => navigate('/login', { replace: true }),
+      })
+    }
+  }
 
   useEffect(() => {
     if (pathname.startsWith('/settings')) {
@@ -139,37 +158,46 @@ export function Sidebar() {
               )}
             >
               <Avatar className="size-8 shrink-0">
-                <AvatarImage src="" />
-                <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">MU</AvatarFallback>
+                <AvatarImage src={user?.avatar || undefined} />
+                <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
               </Avatar>
               {!collapsed && (
                 <div className="flex-1 truncate text-left">
-                  <div className="text-sm font-medium truncate">Muhammad</div>
-                  <div className="text-[11px] text-muted-foreground truncate">muhammad@example.com</div>
+                  <div className="text-sm font-medium truncate">{user?.name || 'User'}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{user?.email}</div>
                 </div>
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56" side={collapsed ? 'right' : 'top'}>
-            <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span>Muhammad</span>
-                <span className="text-xs font-normal text-muted-foreground">muhammad@example.com</span>
-              </div>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span>{user?.name || 'User'}</span>
+                  <span className="text-xs font-normal text-muted-foreground truncate">{user?.email}</span>
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
               <User className="mr-2 size-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/settings/organization')}>
               <Settings className="mr-2 size-4" />
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => {
+                logout.mutate(undefined, {
+                  onSuccess: () => navigate('/login', { replace: true }),
+                })
+              }}
+            >
               <LogOut className="mr-2 size-4" />
-              Logout
+              Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -241,13 +269,13 @@ export function Sidebar() {
                 <div className="border-t p-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="size-8">
-                      <AvatarImage src="" />
-                      <AvatarFallback className="text-xs">MU</AvatarFallback>
+                      <AvatarImage src={user?.avatar || undefined} />
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 truncate text-sm">
-                      <div className="font-medium">Muhammad</div>
+                      <div className="font-medium">{user?.name || 'User'}</div>
                       <div className="text-xs text-muted-foreground truncate">
-                        muhammad@example.com
+                        {user?.email}
                       </div>
                     </div>
                   </div>

@@ -1,171 +1,156 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ArrowRight, Sparkles, Bot, MessageSquare, Zap } from 'lucide-react'
+import { Sparkles, ArrowRight, Sun, Moon, Bot, MessageSquare, BarChart3, Brain } from 'lucide-react'
+import { WhatsAppIcon, TelegramIcon, DiscordIcon, SlackIcon, WebIcon } from './channel-icons'
 
-const headlineWords = ['Build', 'AI', 'Chatbots', 'That', 'Actually', 'Work']
-
-const wordVariants = {
-  hidden: { opacity: 0, y: 20, filter: 'blur(4px)' },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    filter: 'blur(0px)',
-    transition: {
-      delay: 0.3 + i * 0.08,
-      duration: 0.5,
-      ease: [0.25, 0.1, 0.25, 1],
-    },
-  }),
-}
-
-const features = [
-  { icon: Bot, label: 'AI Agents' },
-  { icon: MessageSquare, label: 'Multi-Channel' },
-  { icon: Zap, label: 'Real-time Streaming' },
+const channels = [
+  { name: 'Web', icon: WebIcon },
+  { name: 'WhatsApp', icon: WhatsAppIcon },
+  { name: 'Telegram', icon: TelegramIcon },
+  { name: 'Discord', icon: DiscordIcon },
+  { name: 'Slack', icon: SlackIcon },
 ]
 
 export function HeroSection() {
+  const { theme, setTheme } = useTheme()
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const card = cardRef.current
+    if (!card) return
+    function tick() {
+      const sy = window.scrollY
+      const wh = window.innerHeight
+      const p = Math.min(sy / (wh * 0.55), 1)
+      card.style.transform = `scale(${1 - p * 0.1})`
+      card.style.opacity = String(1 - p * 0.12)
+    }
+    window.addEventListener('scroll', tick, { passive: true })
+    tick()
+    return () => window.removeEventListener('scroll', tick)
+  }, [])
+
   return (
-    <section className="relative overflow-hidden py-24 sm:py-32">
-      {/* Dot grid background */}
-      <div className="absolute inset-0 -z-20 bg-dot-pattern opacity-40" />
+    <div className="relative min-h-screen flex items-start justify-center pt-[10px]">
+      <div
+        ref={cardRef}
+        className="sticky top-[10px] w-[calc(100%-20px)] mx-[10px] h-[calc(100vh-20px)] rounded-[18px] overflow-hidden origin-top will-change-transform"
+      >
+        {/* Background */}
+        <div className="absolute inset-0 bg-background" />
+        <div className="absolute inset-0 bg-dot-pattern opacity-50" />
+        <div className="absolute -top-40 right-0 size-[600px] rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute -bottom-40 left-0 size-[600px] rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[420px] rounded-full bg-accent/10 blur-3xl" />
 
-      {/* Glow orbs */}
-      <div className="absolute inset-0 -z-10">
-        <motion.div
-          className="absolute -top-40 right-0 size-[600px] rounded-full bg-primary/5 blur-3xl"
-          animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.7, 0.5] }}
-          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute -bottom-40 left-0 size-[600px] rounded-full bg-primary/5 blur-3xl"
-          animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.6, 0.4] }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-        />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[400px] rounded-full bg-accent/5 blur-3xl" />
-      </div>
-
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <Badge variant="secondary" className="mb-6 gap-1.5 px-4 py-1.5 text-sm">
-              <Sparkles className="size-4 text-primary" />
-              <span>AI-Powered Platform</span>
-            </Badge>
-          </motion.div>
-
-          {/* Headline — word-by-word stagger */}
-          <h1 className="mx-auto max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-7xl">
-            {headlineWords.map((word, i) => (
-              <motion.span
-                key={`${word}-${i}`}
-                custom={i}
-                initial="hidden"
-                animate="visible"
-                variants={wordVariants}
-                className={
-                  word === 'Chatbots' || word === 'Actually'
-                    ? 'text-primary mr-[0.25em]'
-                    : 'mr-[0.25em]'
-                }
-                style={{ display: 'inline-block' }}
-              >
-                {word}
-              </motion.span>
-            ))}
-          </h1>
-
-          {/* Subheadline */}
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.9 }}
-            className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl"
-          >
-            Create intelligent agents, deploy to every channel, and manage everything
-            from one powerful dashboard. No coding required.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1.1 }}
-            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
-            <Link to="/signup">
-              <Button size="lg" className="gap-2 px-8 text-base glow-primary-sm hover:glow-primary transition-shadow">
-                Start Free
-                <ArrowRight className="size-4" />
-              </Button>
+        {/* Hero overlay */}
+        <div className="absolute inset-0 z-[2] flex flex-col justify-between p-[18px] md:p-[26px_40px]">
+          {/* Top bar — hero-internal nav */}
+          <div className="relative flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2 text-foreground font-semibold text-[15px]">
+              <img src="/logo.png" alt="Convio" className="h-6 w-auto" />
+              Convio
             </Link>
-            <a href="#features">
-              <Button size="lg" variant="outline" className="px-8 text-base">
-                See How It Works
-              </Button>
-            </a>
-          </motion.div>
+            <nav className="hidden md:flex gap-7 absolute left-1/2 -translate-x-1/2">
+              <a href="#features" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Features</a>
+              <a href="#channels" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Channels</a>
+              <a href="#pricing" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            </nav>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-border bg-card/60 backdrop-blur-lg hover:bg-card transition-colors cursor-pointer"
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? <Sun className="size-[15px]" /> : <Moon className="size-[15px]" />}
+              </button>
+              <div className="hidden md:flex gap-2">
+                <Link to="/login">
+                  <Button variant="ghost" size="sm">Log In</Button>
+                </Link>
+                <Link to="/signup">
+                  <Button size="sm" className="glow-primary-sm">Get Started</Button>
+                </Link>
+              </div>
+            </div>
+          </div>
 
-          {/* Social Proof */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1.3 }}
-            className="mt-16 flex flex-col items-center gap-4"
-          >
-            <div className="flex -space-x-3">
+          {/* Center content */}
+          <div className="text-center px-3">
+            <div className="flex items-center justify-center gap-2 mb-5 flex-wrap">
+              <div className="inline-flex items-center gap-[6px] bg-card/60 backdrop-blur-lg border border-border rounded-full px-[14px] py-[6px] text-[12px] text-foreground/90">
+                <Sparkles className="size-4 text-primary" />
+                AI-Powered Platform
+              </div>
+              <div className="inline-flex items-center gap-[6px] bg-card/60 backdrop-blur-lg border border-border rounded-full px-[14px] py-[6px] text-[12px] text-foreground/90">
+                <span className="w-[6px] h-[6px] bg-primary rounded-full shrink-0 animate-pulse" />
+                New: Knowledge Base (RAG)
+              </div>
+            </div>
+            <h1 className="font-heading text-[clamp(30px,6.2vw,76px)] font-semibold text-foreground leading-[1.08] tracking-[-0.02em] mb-4">
+              The chatbot platform<br />builders actually want.
+            </h1>
+            <p className="text-[clamp(13px,1.45vw,18px)] text-muted-foreground leading-[1.65] max-w-[520px] mx-auto mb-7">
+              Create intelligent agents, deploy to every channel, and manage everything
+              from one powerful dashboard. No coding required.
+            </p>
+            <div className="flex items-center justify-center gap-[10px] flex-wrap">
+              <Link to="/signup">
+                <Button className="glow-primary-sm px-6">
+                  Get Started
+                  <ArrowRight className="size-4" />
+                </Button>
+              </Link>
+              <a href="#features">
+                <Button variant="outline" className="bg-card/60 backdrop-blur-lg px-6">
+                  <Bot className="size-4" />
+                  Explore Features
+                </Button>
+              </a>
+            </div>
+
+            {/* Channel integrations */}
+            <div className="mt-14 flex flex-col items-center justify-center gap-3.5 select-none">
+              <span className="text-[10px] tracking-[0.15em] text-muted-foreground/60 uppercase font-semibold">Deploy to</span>
+              <div className="flex items-center justify-center gap-4 sm:gap-7 flex-wrap max-w-[600px]">
+                {channels.map((c) => (
+                  <div
+                    key={c.name}
+                    title={c.name}
+                    className="flex items-center gap-1.5 text-muted-foreground/60 hover:text-foreground hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer text-[13px] font-medium"
+                  >
+                    <c.icon className="size-[18px]" />
+                    <span className="hidden sm:inline">{c.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom bar — stats */}
+          <div className="flex items-end justify-center sm:justify-between">
+            <div className="flex gap-[26px]">
               {[
-                'bg-primary text-primary-foreground',
-                'bg-secondary text-secondary-foreground',
-                'bg-muted text-muted-foreground',
-                'bg-accent text-accent-foreground',
-                'bg-primary/80 text-primary-foreground',
-              ].map((color, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: 1.4 + i * 0.06 }}
-                  className={`size-10 rounded-full border-2 border-background ${color} flex items-center justify-center text-xs font-medium`}
-                >
-                  {String.fromCharCode(65 + i)}
-                </motion.div>
+                { num: '2,500+', label: 'Teams' },
+                { num: '5', label: 'Channels' },
+                { num: '10+', label: 'AI Models' },
+              ].map((s) => (
+                <div key={s.label}>
+                  <div className="font-heading text-[19px] font-semibold text-foreground leading-[1.2]">{s.num}</div>
+                  <div className="text-[11px] text-muted-foreground/60">{s.label}</div>
+                </div>
               ))}
             </div>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">2,500+</span> teams building with Convio
-            </p>
-          </motion.div>
-
-          {/* Feature Pills — float in */}
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
-            {features.map((feature, i) => (
-              <motion.div
-                key={feature.label}
-                initial={{ opacity: 0, y: 12, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{
-                  duration: 0.4,
-                  delay: 1.5 + i * 0.1,
-                  ease: [0.25, 0.1, 0.25, 1],
-                }}
-                whileHover={{ y: -2, transition: { duration: 0.2 } }}
-                className="flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground"
-              >
-                <feature.icon className="size-4 text-primary" />
-                {feature.label}
-              </motion.div>
-            ))}
+            <div className="hidden sm:flex items-center gap-3 text-[13px] text-muted-foreground/50">
+              <span className="flex items-center gap-1.5"><Brain className="size-4 text-primary" />RAG</span>
+              <span className="flex items-center gap-1.5"><MessageSquare className="size-4 text-primary" />Real-time</span>
+              <span className="flex items-center gap-1.5"><BarChart3 className="size-4 text-primary" />Analytics</span>
+            </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
   )
 }

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/components/theme-provider'
+import { AuthProvider } from '@/lib/auth-context'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import Landing from '@/pages/landing'
 import LoginPage from '@/pages/auth/login-page'
@@ -40,6 +41,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <Router>
+          <AuthProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<LoginPage />} />
@@ -72,6 +74,7 @@ export function App() {
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
+          </AuthProvider>
         </Router>
       </ThemeProvider>
     </QueryClientProvider>

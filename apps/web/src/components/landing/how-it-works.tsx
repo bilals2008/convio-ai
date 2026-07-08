@@ -1,22 +1,18 @@
-import { Card, CardContent } from '@/components/ui/card'
 import { ScrollReveal } from './scroll-reveal'
 import { Bot, Settings, Rocket } from 'lucide-react'
 
 const steps = [
   {
-    step: '01',
     icon: Bot,
     title: 'Create Your Agent',
     description: 'Configure your AI brain with custom prompts, choose a model, and add tools.',
   },
   {
-    step: '02',
     icon: Settings,
     title: 'Design Your Bot',
     description: 'Set up appearance, welcome message, and connect to your knowledge base.',
   },
   {
-    step: '03',
     icon: Rocket,
     title: 'Deploy Everywhere',
     description: 'One click to deploy to Web, WhatsApp, Telegram, Discord, or Slack.',
@@ -25,51 +21,31 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 sm:py-32 bg-muted/30">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <ScrollReveal>
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Get started in{' '}
-              <span className="text-primary">three simple steps</span>
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              From zero to deployed chatbot in minutes, not months.
-            </p>
-          </div>
-        </ScrollReveal>
-
-        {/* Steps */}
-        <div className="grid gap-8 md:grid-cols-3">
-          {steps.map((step, index) => (
-            <div key={step.step} className="relative">
-              {/* Connector Line */}
-              {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-12 left-[calc(50%+40px)] right-[calc(-50%+40px)] h-0.5 bg-border overflow-hidden">
-                  <ScrollReveal variant="fadeIn" delay={0.3 + index * 0.2} duration={0.8}>
-                    <div className="h-full bg-primary/40" />
-                  </ScrollReveal>
-                </div>
-              )}
-
-              <ScrollReveal delay={index * 0.15}>
-                <Card className="relative text-center border-0 shadow-none bg-transparent">
-                  <CardContent className="p-6">
-                    <div className="flex size-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground text-xl font-bold mx-auto mb-4">
-                      {step.step}
-                    </div>
-                    <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 mx-auto -mt-2 mb-4">
-                      <step.icon className="size-5 text-primary" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-                    <p className="text-sm text-muted-foreground">{step.description}</p>
-                  </CardContent>
-                </Card>
-              </ScrollReveal>
-            </div>
-          ))}
+    <section id="how-it-works" className="max-w-[1160px] mx-auto px-5 md:px-10 py-16">
+      <ScrollReveal>
+        <div className="text-center mb-14">
+          <div className="text-[11px] font-semibold tracking-[0.1em] uppercase text-primary mb-2">How it Works</div>
+          <h2 className="font-heading text-[clamp(26px,3.6vw,46px)] text-foreground leading-[1.15] tracking-[-0.02em] mb-3">
+            Ship in minutes, not months.
+          </h2>
+          <p className="text-[15px] text-muted-foreground leading-[1.65] max-w-[490px] mx-auto">
+            Three steps from zero to a fully deployed AI chatbot across every channel.
+          </p>
         </div>
+      </ScrollReveal>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-[14px]">
+        {steps.map((step, i) => (
+          <ScrollReveal key={step.title} delay={i * 0.06}>
+            <div className="bg-card rounded-[14px] p-[34px_30px] border border-border">
+              <div className="w-10 h-10 rounded-[9px] bg-primary/10 flex items-center justify-center text-primary mb-4">
+                <step.icon className="size-5" />
+              </div>
+              <h3 className="text-[14px] font-semibold text-foreground mb-[7px]">{step.title}</h3>
+              <p className="text-[13px] text-muted-foreground leading-[1.65]">{step.description}</p>
+            </div>
+          </ScrollReveal>
+        ))}
       </div>
     </section>
   )
