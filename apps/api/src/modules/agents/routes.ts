@@ -3,6 +3,8 @@ import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { createAgentSchema, updateAgentSchema } from '@convio/validation'
 import { AppError } from '../../plugins/error.js'
+import { getProviderForModel } from '@convio/ai/providers'
+import { getCorsHeaders } from '../../plugins/cors.js'
 import { z } from 'zod'
 
 const orgParamsSchema = z.object({
@@ -29,6 +31,19 @@ const addToolSchema = z.object({
 
 const testAgentSchema = z.object({
   message: z.string().min(1),
+})
+
+const testStreamSchema = z.object({
+  model: z.string().min(1),
+  systemPrompt: z.string().min(1),
+  message: z.string().min(1),
+  temperature: z.number().min(0).max(2).default(0.7),
+  maxTokens: z.number().min(1).max(512000).default(2048),
+  providerKeyId: z.string().uuid().optional(),
+  history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string(),
+  })).optional().default([]),
 })
 
 export default async function agentsRoutes(fastify: FastifyInstance) {
@@ -216,11 +231,137 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string }
     const { message } = request.body as { message: string }
 
-    const agent = await prisma.agent.findUnique({ where: { id } })
+    const agent = await prisma.agent.findUnique({
+      where: { id },
+      include: { tools: true },
+    })
     if (!agent) throw new AppError(404, 'Agent not found')
 
     await fastify.getMembership(request.userId!, agent.organizationId)
 
-    return { data: { response: `Echo: ${message} (Agent: ${agent.name})` } }
+    let apiKey: string | undefined
+    if (agent.providerKeyId) {
+      const providerKey = await prisma.providerKey.findUnique({
+        where: { id: agent.providerKeyId },
+      })
+      if (providerKey && providerKey.organizationId === agent.organizationId) {
+        apiKey = providerKey.apiKey
+      }
+    }
+
+    let provider
+    try {
+      provider = getProviderForModel(agent.model)
+    } catch {
+      throw new AppError(400, `No provider configured for model: ${agent.model}`)
+    }
+
+    const response = await provider.generate({
+      model: agent.model,
+      messages: [
+        { role: 'system', content: agent.systemPrompt },
+        { role: 'user', content: message },
+      ],
+      temperature: agent.temperature ?? 0.7,
+      maxTokens: agent.maxTokens ?? 2048,
+      apiKey,
+    })
+
+    return {
+      data: {
+        response: response.content,
+        usage: response.usage,
+      },
+    }
+  })
+
+  // POST /api/agents/test-stream — Test agent config with SSE streaming (authenticated)
+  fastify.post('/agents/test-stream', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ body: testStreamSchema }),
+    ],
+  }, async (request, reply) => {
+    const {
+      model,
+      systemPrompt,
+      message,
+      temperature,
+      maxTokens,
+      providerKeyId,
+      history,
+    } = request.body as z.infer<typeof testStreamSchema>
+
+    let apiKey: string | undefined
+    if (providerKeyId) {
+      const providerKey = await prisma.providerKey.findUnique({
+        where: { id: providerKeyId },
+      })
+      if (providerKey) {
+        const orgs = await prisma.membership.findMany({
+          where: { userId: request.userId },
+          select: { organizationId: true },
+        })
+        const userOrgIds = orgs.map((m) => m.organizationId)
+        if (userOrgIds.includes(providerKey.organizationId)) {
+          apiKey = providerKey.apiKey
+        }
+      }
+    }
+
+    const corsHeaders = getCorsHeaders(fastify.config.CORS_ORIGIN, request)
+
+    let provider
+    try {
+      provider = getProviderForModel(model)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown provider error'
+      reply.raw.writeHead(400, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        ...corsHeaders,
+      })
+      reply.raw.write(`data: ${JSON.stringify({ error: msg })}\n\n`)
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+      return
+    }
+
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...history.map((h) => ({ role: h.role, content: h.content })),
+      { role: 'user' as const, content: message },
+    ]
+
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      ...corsHeaders,
+    })
+
+    try {
+      const stream = provider.stream({
+        model,
+        messages,
+        temperature,
+        maxTokens,
+        apiKey,
+      })
+
+      for await (const chunk of stream) {
+        if (chunk.content) {
+          reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+        }
+        if (chunk.type === 'done') break
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Stream generation failed'
+      reply.raw.write(`data: ${JSON.stringify({ error: msg })}\n\n`)
+    }
+
+    reply.raw.write('data: [DONE]\n\n')
+    reply.raw.end()
   })
 }
