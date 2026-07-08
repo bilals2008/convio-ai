@@ -77,7 +77,7 @@ export function ConversationFilters({
       </Select>
 
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={onClear} className="gap-1">
+        <Button variant="ghost" size="default" onClick={onClear} className="gap-1">
           <X className="size-3" />
           Clear
         </Button>

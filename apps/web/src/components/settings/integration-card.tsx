@@ -62,10 +62,10 @@ export function IntegrationCard({ integration, onEdit, onDelete, onTest }: Integ
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => onTest(integration.id)}>
+          <Button variant="outline" size="default" onClick={() => onTest(integration.id)}>
             Test
           </Button>
-          <Button variant="outline" size="sm" onClick={() => onEdit(integration.id)}>
+          <Button variant="outline" size="default" onClick={() => onEdit(integration.id)}>
             Configure
           </Button>
           <Button variant="ghost" size="icon" onClick={() => onDelete(integration.id)}>

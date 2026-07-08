@@ -98,7 +98,7 @@ export function ChatPanel({
           {onClear && messages.length > 0 && (
             <Button
               variant="ghost"
-              size="sm"
+              size="default"
               onClick={onClear}
               className="text-xs text-muted-foreground"
             >

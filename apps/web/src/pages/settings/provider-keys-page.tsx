@@ -211,7 +211,7 @@ export default function ProviderKeysPage() {
                       Connected
                     </Badge>
                     <Button
-                      size="icon-sm"
+                      size="icon"
                       variant="ghost"
                       onClick={() => deleteMutation.mutate(key.id)}
                       disabled={deleteMutation.isPending}

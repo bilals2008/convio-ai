@@ -103,7 +103,7 @@ export function ConversationStats({
             {(status === 'active' || status === 'waiting') && (
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={() => onStatusChange('resolved')}
                 disabled={loading}
                 className="gap-1"
@@ -115,7 +115,7 @@ export function ConversationStats({
             {(status === 'active' || status === 'waiting' || status === 'resolved') && (
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={() => onStatusChange('closed')}
                 disabled={loading}
                 className="gap-1"
@@ -127,7 +127,7 @@ export function ConversationStats({
             {(status === 'closed' || status === 'resolved') && (
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={() => onStatusChange('active')}
                 disabled={loading}
                 className="gap-1"

@@ -177,7 +177,7 @@ export default function AnalyticsPage() {
                 </button>
               ))}
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="default">
               <Download className="size-4" />
               Export
             </Button>

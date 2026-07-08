@@ -87,8 +87,28 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         { totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0 },
       )
 
-    const totals = calcTotals(analyticsRecords)
-    const prevTotals = calcTotals(prevAnalyticsRecords)
+    let totals = calcTotals(analyticsRecords)
+    let prevTotals = calcTotals(prevAnalyticsRecords)
+
+    if (analyticsRecords.length === 0) {
+      const realtimeConversations = await prisma.conversation.count({
+        where: { bot: { organizationId: orgId }, createdAt: { gte: fromDate, lte: toDate } },
+      })
+      const realtimeMessages = await prisma.message.count({
+        where: { conversation: { bot: { organizationId: orgId } }, createdAt: { gte: fromDate, lte: toDate } },
+      })
+      const realtimeUsers = await prisma.conversation.groupBy({
+        by: ['userId'],
+        where: { bot: { organizationId: orgId }, createdAt: { gte: fromDate, lte: toDate }, userId: { not: null } },
+        _count: { id: true },
+      })
+      totals = { totalConversations: realtimeConversations, totalMessages: realtimeMessages, uniqueUsers: realtimeUsers.length, avgResponseTime: 0 }
+
+      const prevConversations = await prisma.conversation.count({
+        where: { bot: { organizationId: orgId }, createdAt: { gte: prevFromDate, lte: prevToDate } },
+      })
+      prevTotals = { totalConversations: prevConversations, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0 }
+    }
 
     const recordCount = analyticsRecords.length
     const prevRecordCount = prevAnalyticsRecords.length
@@ -122,6 +142,10 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       return acc
     }, {})
 
+    const fallbackDaily = Object.keys(dailyBreakdown).length === 0 && totals.totalConversations > 0
+      ? [{ date: new Date().toISOString().slice(0, 10), totalConversations: totals.totalConversations, totalMessages: totals.totalMessages, uniqueUsers: totals.uniqueUsers, avgResponseTime: 0 }]
+      : []
+
     const channelBreakdownResult = await prisma.conversation.groupBy({
       by: ['channel'],
       where: {
@@ -147,7 +171,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         usersChange: pctChange(totals.uniqueUsers, prevTotals.uniqueUsers),
         responseTimeChange: -pctChange(avgResponseTime, prevAvgResponseTime),
         channelBreakdown,
-        dailyBreakdown: Object.values(dailyBreakdown).map((d) => {
+        dailyBreakdown: fallbackDaily.length > 0 ? fallbackDaily : Object.values(dailyBreakdown).map((d) => {
           const count = dailyCounts.get(d.date) || 1
           return {
             ...d,

@@ -123,10 +123,10 @@ export function Navbar() {
             ) : !isLoading ? (
               <div className="hidden md:flex items-center gap-2">
                 <Link to="/login">
-                  <Button variant="ghost" size="sm">Log In</Button>
+                  <Button variant="ghost" size="default">Log In</Button>
                 </Link>
                 <Link to="/signup">
-                  <Button size="sm" className="glow-primary-sm">Get Started</Button>
+                  <Button size="default" className="glow-primary-sm">Get Started</Button>
                 </Link>
               </div>
             ) : null}

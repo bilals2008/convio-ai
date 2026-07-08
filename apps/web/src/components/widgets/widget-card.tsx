@@ -79,7 +79,7 @@ export function WidgetCard({ widget, onDelete }: WidgetCardProps) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon"
               className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
             >
               <MoreVertical className="size-4" />
@@ -135,7 +135,7 @@ export function WidgetCard({ widget, onDelete }: WidgetCardProps) {
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon"
               className="size-6"
               onClick={() => navigate(`/widgets/${widget.id}/edit`)}
             >

@@ -49,14 +49,13 @@ export default function ConversationsListPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [botSelectorOpen, setBotSelectorOpen] = useState(false)
 
-  const params: Record<string, string | undefined> = {}
-  if (statusFilter !== 'all') params.status = statusFilter
-  if (channelFilter !== 'all') params.channel = channelFilter
-  if (cursor) params.cursor = cursor
-
   const { data: convsData, isLoading } = useQuery({
-    queryKey: ['conversations', params, cursor],
+    queryKey: ['conversations', orgId, statusFilter, channelFilter, cursor],
     queryFn: async () => {
+      const params: Record<string, string | undefined> = {}
+      if (statusFilter !== 'all') params.status = statusFilter
+      if (channelFilter !== 'all') params.channel = channelFilter
+      if (cursor) params.cursor = cursor
       try {
         const res = await conversationsApi.list(params)
         setNextCursor(res.data.nextCursor ?? null)
@@ -65,6 +64,7 @@ export default function ConversationsListPage() {
         return [] as ConversationItem[]
       }
     },
+    enabled: !!orgId,
   })
 
   const { data: bots, isLoading: botsLoading } = useQuery({
@@ -187,7 +187,7 @@ export default function ConversationsListPage() {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              size="sm"
+              size="default"
               disabled={!cursor}
               onClick={() => setCursor(undefined)}
             >
@@ -195,7 +195,7 @@ export default function ConversationsListPage() {
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="default"
               disabled={!nextCursor}
               onClick={() => setCursor(nextCursor!)}
             >

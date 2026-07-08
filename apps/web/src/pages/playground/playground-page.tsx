@@ -264,7 +264,7 @@ export default function PlaygroundPage() {
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
                       placeholder={`Enter ${selectedProvider.name} API key`}
-                      className="h-9 text-sm font-mono pr-9"
+                      className="h-10 text-sm font-mono pr-9"
                     />
                     <button
                       type="button"
@@ -275,7 +275,7 @@ export default function PlaygroundPage() {
                     </button>
                   </div>
                   <Button
-                    size="icon-sm"
+                    size="icon"
                     variant="outline"
                     onClick={handleCopyEnv}
                     disabled={!apiKey}
@@ -336,7 +336,7 @@ export default function PlaygroundPage() {
                 <h2 className="text-sm font-semibold">Test Message</h2>
               </div>
               <Button
-                size="sm"
+                size="default"
                 onClick={handleTest}
                 disabled={(provider !== 'local' && !apiKey.trim()) || !message.trim() || !currentModel || testMutation.isPending}
                 className="gap-1.5 text-xs"
@@ -388,7 +388,7 @@ export default function PlaygroundPage() {
             </div>
             {logs.length > 0 && (
               <Button
-                size="sm"
+                size="default"
                 variant="ghost"
                 onClick={handleClearLogs}
                 className="gap-1.5 text-xs text-muted-foreground"

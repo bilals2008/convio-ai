@@ -144,7 +144,7 @@ export default function WidgetDemoPage() {
       <div className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-md">
         <div className="flex items-center justify-between h-14 px-4 max-w-[1400px] mx-auto">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon-sm" asChild>
+            <Button variant="ghost" size="icon" asChild>
               <Link to="/dashboard">
                 <ArrowLeft className="size-4" />
               </Link>
@@ -156,7 +156,7 @@ export default function WidgetDemoPage() {
             </div>
           </div>
           <Button
-            size="sm"
+            size="default"
             variant={copied ? 'secondary' : 'outline'}
             onClick={handleCopy}
             className="gap-1.5 text-xs"
@@ -234,7 +234,7 @@ export default function WidgetDemoPage() {
                       value={config.botName}
                       onChange={(e) => update({ botName: e.target.value })}
                       placeholder="My Chatbot"
-                      className="h-9 text-sm"
+                      className="h-10 text-sm"
                     />
                   </div>
 
@@ -301,7 +301,7 @@ export default function WidgetDemoPage() {
                     <Input
                       value={config.primaryColor}
                       onChange={(e) => update({ primaryColor: e.target.value })}
-                      className="h-8 text-xs font-mono"
+                      className="h-10 text-sm font-mono"
                     />
                   </div>
 
@@ -332,7 +332,7 @@ export default function WidgetDemoPage() {
                     <Input
                       value={config.backgroundColor}
                       onChange={(e) => update({ backgroundColor: e.target.value })}
-                      className="h-8 text-xs font-mono"
+                      className="h-10 text-sm font-mono"
                     />
                   </div>
 
@@ -395,7 +395,7 @@ export default function WidgetDemoPage() {
                     <code className="text-muted-foreground">{currentEmbed}</code>
                   </pre>
                   <Button
-                    size="icon-sm"
+                    size="icon"
                     variant="ghost"
                     onClick={handleCopy}
                     className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"

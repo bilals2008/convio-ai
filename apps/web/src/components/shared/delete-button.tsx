@@ -13,7 +13,7 @@ export function DeleteButton({ onClick, loading, label = 'Delete', className }: 
   return (
     <Button
       variant="destructive"
-      size="sm"
+      size="default"
       onClick={onClick}
       disabled={loading}
       className={cn('gap-2', className)}
