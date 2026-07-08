@@ -37,10 +37,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
+const DEFAULT_AUTH: AuthContextValue = {
+  session: undefined,
+  user: undefined,
+  isAuthenticated: false,
+  isLoading: true,
+  login: {} as AuthContextValue['login'],
+  signup: {} as AuthContextValue['signup'],
+  logout: {} as AuthContextValue['logout'],
+}
+
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
+  return context ?? DEFAULT_AUTH
 }

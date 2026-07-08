@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { AgentForm } from '@/components/agents/agent-form'
 import type { AgentFormData } from '@/components/agents/agent-form'
 import { agents as agentsApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 const agentSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be 100 characters or less'),
@@ -18,6 +19,7 @@ const agentSchema = z.object({
   systemPrompt: z.string().min(10, 'System prompt must be at least 10 characters'),
   temperature: z.number().min(0).max(2),
   maxTokens: z.number().min(100).max(8192),
+  providerKeyId: z.string().optional(),
 })
 
 const defaultFormData: AgentFormData = {
@@ -27,6 +29,7 @@ const defaultFormData: AgentFormData = {
   systemPrompt: '',
   temperature: 0.7,
   maxTokens: 2048,
+  providerKeyId: undefined,
 }
 
 interface Agent {
@@ -37,15 +40,15 @@ interface Agent {
   systemPrompt: string
   temperature: number
   maxTokens: number
+  providerKeyId?: string | null
   organizationId: string
 }
-
-const MOCK_ORG_ID = 'mock-org-id'
 
 export default function AgentEditorPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { orgId } = useOrg()
   const isEdit = !!id
 
   const [formData, setFormData] = useState<AgentFormData>(defaultFormData)
@@ -69,16 +72,14 @@ export default function AgentEditorPage() {
         systemPrompt: existingAgent.systemPrompt,
         temperature: existingAgent.temperature,
         maxTokens: existingAgent.maxTokens || 2048,
+        providerKeyId: existingAgent.providerKeyId || undefined,
       })
     }
   }, [existingAgent])
 
   const createMutation = useMutation({
     mutationFn: (data: AgentFormData) =>
-      agentsApi.create({
-        ...data,
-        organizationId: MOCK_ORG_ID,
-      }),
+      agentsApi.create({ ...data, organizationId: orgId! }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       navigate('/agents')

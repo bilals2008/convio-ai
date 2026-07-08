@@ -29,8 +29,8 @@ export interface Widget {
   name: string
   botId: string
   botName?: string
-  primaryColor: string
-  position: 'bottom-right' | 'bottom-left'
+  primaryColor?: string
+  position?: 'bottom-right' | 'bottom-left'
   greeting?: string
   status: 'active' | 'inactive'
   conversations?: number
@@ -60,11 +60,11 @@ export function WidgetCard({ widget, onDelete }: WidgetCardProps) {
         <div className="flex items-center gap-3 min-w-0">
           <div
             className="flex size-10 shrink-0 items-center justify-center rounded-xl shadow-sm"
-            style={{ backgroundColor: `${widget.primaryColor}15` }}
+            style={{ backgroundColor: `${widget.primaryColor || '#fb923c'}15` }}
           >
             <MessageCircle
               className="size-5"
-              style={{ color: widget.primaryColor }}
+              style={{ color: widget.primaryColor || '#fb923c' }}
             />
           </div>
           <div className="min-w-0">
@@ -112,9 +112,9 @@ export function WidgetCard({ widget, onDelete }: WidgetCardProps) {
         <div className="flex items-center gap-1.5">
           <span
             className="size-2 rounded-full"
-            style={{ backgroundColor: widget.primaryColor }}
+            style={{ backgroundColor: widget.primaryColor || '#fb923c' }}
           />
-          <span className="capitalize">{widget.position.replace('-', ' ')}</span>
+          <span className="capitalize">{(widget.position || 'bottom-right').replace('-', ' ')}</span>
         </div>
         <Badge
           variant={widget.status === 'active' ? 'default' : 'secondary'}

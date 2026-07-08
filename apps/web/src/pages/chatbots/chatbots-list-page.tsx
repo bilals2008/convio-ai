@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { BotCard } from '@/components/chatbots/bot-card'
 import { BotDeleteDialog } from '@/components/chatbots/bot-delete-dialog'
 import { bots as botsApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 type BotStatus = 'draft' | 'active' | 'paused' | 'archived'
 
@@ -27,27 +28,27 @@ interface Chatbot {
   updatedAt: string
 }
 
-const MOCK_ORG_ID = 'mock-org-id'
-
 const statusFilters = ['all', 'draft', 'active', 'paused', 'archived'] as const
 
 export default function ChatbotsListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { orgId } = useOrg()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>('all')
   const [deleteBot, setDeleteBot] = useState<Chatbot | null>(null)
 
   const { data: botsData, isLoading } = useQuery({
-    queryKey: ['chatbots', MOCK_ORG_ID],
+    queryKey: ['chatbots', orgId],
     queryFn: async () => {
       try {
-        const res = await botsApi.list(MOCK_ORG_ID)
+        const res = await botsApi.list(orgId!)
         return (res.data.data || []) as Chatbot[]
       } catch {
         return [] as Chatbot[]
       }
     },
+    enabled: !!orgId,
   })
 
   const deleteMutation = useMutation({

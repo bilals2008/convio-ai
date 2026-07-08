@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Loader2, Save } from 'lucide-react'
+import { ArrowLeft, Loader2, Save, AlertCircle } from 'lucide-react'
 import { z } from 'zod'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
@@ -11,7 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BotForm } from '@/components/chatbots/bot-form'
 import type { BotFormData } from '@/components/chatbots/bot-form'
 import { BotWidgetPreview } from '@/components/chatbots/bot-widget-preview'
+import { BotStatusToggle } from '@/components/chatbots/bot-status-toggle'
 import { bots as botsApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 type BotStatus = 'draft' | 'active' | 'paused' | 'archived'
 
@@ -28,7 +30,7 @@ interface Chatbot {
 }
 
 const botSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100, 'Name must be 100 characters or less'),
+  name: z.string().min(1, 'Name is required').max(100),
   description: z.string().max(500).optional().default(''),
   agentId: z.string().min(1, 'Please select an agent'),
   welcomeMessage: z.string().max(500).optional().default(''),
@@ -47,16 +49,16 @@ const defaultFormData: BotFormData = {
   status: 'draft',
 }
 
-const MOCK_ORG_ID = 'mock-org-id'
-
 export default function BotEditorPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { orgId } = useOrg()
   const isCreate = !id
 
   const [formData, setFormData] = useState<BotFormData>(defaultFormData)
   const [errors, setErrors] = useState<Partial<Record<keyof BotFormData, string>>>({})
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { data: existingBot, isLoading } = useQuery({
     queryKey: ['chatbot', id],
@@ -83,10 +85,14 @@ export default function BotEditorPage() {
 
   const createMutation = useMutation({
     mutationFn: (data: BotFormData) =>
-      botsApi.create({ ...data, organizationId: MOCK_ORG_ID }),
+      botsApi.create({ ...data, organizationId: orgId! }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatbots'] })
       navigate('/chatbots')
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to create bot'
+      setSaveError(msg)
     },
   })
 
@@ -96,11 +102,16 @@ export default function BotEditorPage() {
       queryClient.invalidateQueries({ queryKey: ['chatbots'] })
       navigate('/chatbots')
     },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to update bot'
+      setSaveError(msg)
+    },
   })
 
   const saving = createMutation.isPending || updateMutation.isPending
 
   const handleSave = () => {
+    setSaveError(null)
     const result = botSchema.safeParse(formData)
     if (!result.success) {
       const fieldErrors: Partial<Record<keyof BotFormData, string>> = {}
@@ -112,10 +123,12 @@ export default function BotEditorPage() {
       return
     }
     setErrors({})
+    const payload = result.data
+    if (payload.avatar === '') delete (payload as any).avatar
     if (isCreate) {
-      createMutation.mutate(result.data)
+      createMutation.mutate(payload)
     } else {
-      updateMutation.mutate(result.data)
+      updateMutation.mutate(payload)
     }
   }
 
@@ -150,6 +163,13 @@ export default function BotEditorPage() {
         }
       />
 
+      {saveError && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="size-4 shrink-0" />
+          {saveError}
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <Card>
@@ -170,7 +190,7 @@ export default function BotEditorPage() {
         </div>
 
         <div className="lg:col-span-2">
-          <div className="lg:sticky lg:top-6">
+          <div className="lg:sticky lg:top-6 space-y-4">
             <BotWidgetPreview
               name={formData.name}
               welcomeMessage={formData.welcomeMessage}

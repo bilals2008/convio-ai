@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Settings, Users, Link, Key, Terminal } from 'lucide-react'
+import { Settings, Users, Link, Key, Terminal, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageContainer } from '@/components/shared/page-container'
 
@@ -8,6 +8,7 @@ const navItems = [
   { icon: Users, label: 'Team Members', href: '/settings/team' },
   { icon: Link, label: 'Integrations', href: '/settings/integrations' },
   { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
+  { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
   { icon: Terminal, label: 'Playground', href: '/settings/playground' },
 ]
 

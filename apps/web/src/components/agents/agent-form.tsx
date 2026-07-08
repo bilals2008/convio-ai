@@ -1,9 +1,26 @@
+import { useQuery } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { AgentModelPicker } from './agent-model-picker'
 import { AgentPromptEditor } from './agent-prompt-editor'
 import { AgentSettings } from './agent-settings'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { providerKeys as keysApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
+
+interface ProviderKeyOption {
+  id: string
+  provider: string
+  keyPreview: string
+  label: string | null
+}
 
 interface AgentFormData {
   name: string
@@ -12,6 +29,7 @@ interface AgentFormData {
   systemPrompt: string
   temperature: number
   maxTokens: number
+  providerKeyId?: string
 }
 
 interface AgentFormProps {
@@ -22,6 +40,17 @@ interface AgentFormProps {
 }
 
 export function AgentForm({ data, onChange, errors, disabled }: AgentFormProps) {
+  const { orgId } = useOrg()
+
+  const { data: providerKeys } = useQuery<ProviderKeyOption[]>({
+    queryKey: ['provider-keys', orgId],
+    queryFn: async () => {
+      const res = await keysApi.list(orgId!)
+      return (res.data.data || []) as ProviderKeyOption[]
+    },
+    enabled: !!orgId,
+  })
+
   function update<K extends keyof AgentFormData>(key: K, value: AgentFormData[K]) {
     onChange({ ...data, [key]: value })
   }
@@ -66,6 +95,34 @@ export function AgentForm({ data, onChange, errors, disabled }: AgentFormProps) 
           disabled={disabled}
         />
         {errors.model && <p className="text-xs text-destructive">{errors.model}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label>API Key (optional)</Label>
+        <Select
+          value={data.providerKeyId || ''}
+          onValueChange={(v) => update('providerKeyId', v || undefined)}
+          disabled={disabled}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Use default system key" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Default system key</SelectItem>
+            {providerKeys?.map((key) => (
+              <SelectItem key={key.id} value={key.id}>
+                {key.label || key.provider} ({key.keyPreview})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Optionally use your own API key from the{' '}
+          <a href="/settings/provider-keys" className="underline underline-offset-2 hover:text-foreground transition-colors">
+            Provider Keys
+          </a>{' '}
+          settings.
+        </p>
       </div>
 
       <div className="space-y-2">

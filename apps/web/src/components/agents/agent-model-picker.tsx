@@ -1,54 +1,21 @@
+import { useQuery } from '@tanstack/react-query'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectLabel,
   SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { chat as chatApi } from '@/lib/api'
 
-const modelGroups = [
-  {
-    provider: 'OpenAI',
-    models: [
-      { value: 'gpt-4o', label: 'GPT-4o' },
-      { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-    ],
-  },
-  {
-    provider: 'Anthropic',
-    models: [
-      { value: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
-      { value: 'claude-3-haiku', label: 'Claude 3 Haiku' },
-    ],
-  },
-  {
-    provider: 'Google',
-    models: [
-      { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-      { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-    ],
-  },
-  {
-    provider: 'Groq',
-    models: [
-      { value: 'llama-3.1-8b', label: 'Llama 3.1 8B' },
-      { value: 'mixtral-8x7b', label: 'Mixtral 8x7B' },
-    ],
-  },
-  {
-    provider: 'KIE',
-    models: [
-      { value: 'gpt-5-2', label: 'GPT 5.2' },
-      { value: 'gpt-5-4', label: 'GPT 5.4' },
-      { value: 'claude-opus-4-7', label: 'Claude Opus 4.7' },
-      { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-      { value: 'gemini-2-5-pro', label: 'Gemini 2.5 Pro' },
-      { value: 'gemini-2-5-flash', label: 'Gemini 2.5 Flash' },
-    ],
-  },
-]
+interface Model {
+  id: string
+  name: string
+  provider: string
+}
 
 interface AgentModelPickerProps {
   value: string
@@ -57,22 +24,49 @@ interface AgentModelPickerProps {
 }
 
 export function AgentModelPicker({ value, onChange, disabled }: AgentModelPickerProps) {
+  const { data: models, isLoading } = useQuery<Model[]>({
+    queryKey: ['models'],
+    queryFn: async () => {
+      const res = await chatApi.models()
+      return (res.data.data || []) as Model[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const groupedModels: Record<string, Model[]> = {}
+  if (models) {
+    for (const m of models) {
+      if (!groupedModels[m.provider]) groupedModels[m.provider] = []
+      groupedModels[m.provider].push(m)
+    }
+  }
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
+    <Select value={value} onValueChange={onChange} disabled={disabled || isLoading}>
       <SelectTrigger className="w-full">
-        <SelectValue placeholder="Select a model" />
+        <SelectValue placeholder={isLoading ? 'Loading models...' : 'Select a model'} />
       </SelectTrigger>
       <SelectContent>
-        {modelGroups.map((group) => (
-          <div key={group.provider}>
-            <SelectLabel>{group.provider}</SelectLabel>
-            {group.models.map((model) => (
-              <SelectItem key={model.value} value={model.value}>
-                {model.label}
+        {isLoading && (
+          <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+            Loading models...
+          </div>
+        )}
+        {!isLoading && Object.keys(groupedModels).length === 0 && (
+          <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+            No models available. Configure API keys in Settings.
+          </div>
+        )}
+        {Object.entries(groupedModels).map(([provider, providerModels]) => (
+          <SelectGroup key={provider}>
+            <SelectLabel className="capitalize">{provider}</SelectLabel>
+            {providerModels.map((model) => (
+              <SelectItem key={model.id} value={model.id}>
+                {model.name}
               </SelectItem>
             ))}
             <SelectSeparator />
-          </div>
+          </SelectGroup>
         ))}
       </SelectContent>
     </Select>

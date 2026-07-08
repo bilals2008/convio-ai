@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { IntegrationCard } from '@/components/settings/integration-card'
 import { IntegrationForm } from '@/components/settings/integration-form'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { integrations as integrationsApi } from '@/lib/api'
+import { bots as botsApi, integrations as integrationsApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
 type IntegrationStatus = 'active' | 'inactive' | 'pending' | 'error'
@@ -23,29 +24,45 @@ interface IntegrationItem {
   updatedAt: string
 }
 
-const MOCK_ORG_ID = 'mock-org-id'
-
 export default function IntegrationsPage() {
   const queryClient = useQueryClient()
+  const { orgId } = useOrg()
   const [formOpen, setFormOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
-  const { data: integrations, isLoading } = useQuery({
-    queryKey: ['integrations', MOCK_ORG_ID],
+  const { data: botsList } = useQuery({
+    queryKey: ['bots-for-integrations', orgId],
     queryFn: async () => {
-      try {
-        const res = await integrationsApi.list(MOCK_ORG_ID)
-        return (res.data.data || []) as IntegrationItem[]
-      } catch {
-        return [] as IntegrationItem[]
-      }
+      const res = await botsApi.list(orgId!)
+      return (res.data.data || []) as { id: string; name: string }[]
     },
+    enabled: !!orgId,
+  })
+
+  const { data: integrations, isLoading } = useQuery({
+    queryKey: ['integrations', orgId],
+    queryFn: async () => {
+      if (!botsList || botsList.length === 0) return []
+      const results = await Promise.allSettled(
+        botsList.map((bot) => integrationsApi.list(bot.id))
+      )
+      return results
+        .filter((r) => r.status === 'fulfilled')
+        .flatMap((r, i) => {
+          const items = (r.value.data.data || []) as IntegrationItem[]
+          return items.map((item) => ({ ...item, botName: item.botName || botsList[i].name }))
+        })
+    },
+    enabled: !!orgId && !!botsList,
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: { channel: Channel; config: Record<string, string> }) =>
-      integrationsApi.create({ ...data, organizationId: MOCK_ORG_ID }),
+    mutationFn: (data: { channel: Channel; config: Record<string, string> }) => {
+      const botId = botsList?.[0]?.id
+      if (!botId) throw new Error('No bot available')
+      return integrationsApi.create(botId, data)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['integrations'] })
       setFormOpen(false)
@@ -64,16 +81,6 @@ export default function IntegrationsPage() {
     await integrationsApi.test(id)
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Integrations" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -87,7 +94,14 @@ export default function IntegrationsPage() {
         }
       />
 
-      {!integrations || integrations.length === 0 ? (
+      {isLoading && (
+        <div className="space-y-3">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      )}
+
+      {!isLoading && (!integrations || integrations.length === 0) ? (
         <EmptyState
           icon={Link}
           title="No integrations yet"
@@ -95,17 +109,19 @@ export default function IntegrationsPage() {
           action={{ label: 'Add Integration', onClick: () => setFormOpen(true) }}
         />
       ) : (
-        <div className="space-y-3">
-          {integrations.map((integration) => (
-            <IntegrationCard
-              key={integration.id}
-              integration={integration}
-              onEdit={(id) => { setEditId(id); setFormOpen(true) }}
-              onDelete={(id) => setDeleteId(id)}
-              onTest={handleTest}
-            />
-          ))}
-        </div>
+        !isLoading && (
+          <div className="space-y-3">
+            {integrations?.map((integration) => (
+              <IntegrationCard
+                key={integration.id}
+                integration={integration}
+                onEdit={(id) => { setEditId(id); setFormOpen(true) }}
+                onDelete={(id) => setDeleteId(id)}
+                onTest={handleTest}
+              />
+            ))}
+          </div>
+        )
       )}
 
       <IntegrationForm

@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Download } from 'lucide-react'
+import { Download, MessagesSquare, Send, Timer, Cpu, Building2 } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { StatsCard } from '@/components/dashboard/stats-card'
-import { MessagesSquare, Send, Timer, Cpu } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
 import { ConversationsChart } from '@/components/dashboard/conversations-chart'
@@ -11,8 +10,11 @@ import { MessagesChart } from '@/components/dashboard/messages-chart'
 import { ChannelDistribution } from '@/components/dashboard/channel-distribution'
 import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
 import { BotsPerformanceTable } from '@/components/analytics/bots-performance-table'
-
+import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
+import { EmptyState } from '@/components/shared/empty-state'
 import { analytics as analyticsApi } from '@/lib/api'
+import api from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 const dateRanges = [
   { label: '7 days', value: '7d' },
@@ -20,61 +22,137 @@ const dateRanges = [
   { label: '90 days', value: '90d' },
 ] as const
 
-const MOCK_ORG_ID = 'mock-org-id'
+function getDateRange(range: string) {
+  const now = new Date()
+  const to = now.toISOString().slice(0, 10)
+  let from: string
 
-function generateDailyData(days: number) {
-  return Array.from({ length: days }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (days - 1 - i))
-    return {
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      conversations: Math.floor(Math.random() * 60) + 15,
-      messages: Math.floor(Math.random() * 300) + 40,
-      userMessages: Math.floor(Math.random() * 150) + 20,
-      assistantMessages: Math.floor(Math.random() * 150) + 20,
-      avgTime: +(Math.random() * 2 + 0.5).toFixed(1),
-    }
-  })
+  switch (range) {
+    case '7d':
+      from = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10)
+      break
+    case '90d':
+      from = new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10)
+      break
+    case '30d':
+    default:
+      from = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10)
+      break
+  }
+
+  return { from, to }
 }
 
-const mockChannelData = [
-  { channel: 'web' as const, count: 567 },
-  { channel: 'whatsapp' as const, count: 345 },
-  { channel: 'slack' as const, count: 156 },
-  { channel: 'discord' as const, count: 112 },
-  { channel: 'telegram' as const, count: 45 },
-  { channel: 'api' as const, count: 9 },
-]
-
-const mockBots = [
-  { id: '1', name: 'Support Bot', conversations: 567, messages: 3200, avgResponseTime: 0.8, satisfactionScore: 4.8 },
-  { id: '2', name: 'Sales Bot', conversations: 345, messages: 2100, avgResponseTime: 1.2, satisfactionScore: 4.6 },
-  { id: '3', name: 'FAQ Bot', conversations: 234, messages: 890, avgResponseTime: 0.5, satisfactionScore: 4.5 },
-  { id: '4', name: 'Lead Qualifier', conversations: 156, messages: 1200, avgResponseTime: 1.4 },
-  { id: '5', name: 'Onboarding Bot', conversations: 89, messages: 450, avgResponseTime: 0.9, satisfactionScore: 4.2 },
-]
+function formatShortDate(dateStr: string) {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 export default function AnalyticsPage() {
+  const { orgId, isLoading: orgLoading } = useOrg()
   const [dateRange, setDateRange] = useState<string>('30d')
+  const { from, to } = getDateRange(dateRange)
 
-  const days = dateRange === '7d' ? 7 : dateRange === '90d' ? 90 : 30
-  const chartData = generateDailyData(days)
-
-  const { isLoading } = useQuery({
-    queryKey: ['analytics', MOCK_ORG_ID, dateRange],
+  const { data: overview, isLoading, isError, error } = useQuery({
+    queryKey: ['analytics', orgId, dateRange],
     queryFn: async () => {
-      try {
-        await analyticsApi.overview(MOCK_ORG_ID)
-      } catch {}
-      return true
+      const res = await analyticsApi.overview(orgId!, { from, to })
+      return res.data.data
     },
+    enabled: !!orgId,
+    retry: false,
   })
 
-  const totalConversations = chartData.reduce((s, d) => s + d.conversations, 0)
-  const totalMessages = chartData.reduce((s, d) => s + d.messages, 0)
-  const avgResponseTime = chartData.length > 0
-    ? +(chartData.reduce((s, d) => s + d.avgTime, 0) / chartData.length).toFixed(1)
-    : 0
+  const { data: topBotsData } = useQuery({
+    queryKey: ['analytics-top-bots', orgId, dateRange],
+    queryFn: async () => {
+      const res = await api.get(`/organizations/${orgId}/analytics/top-bots`, {
+        params: { from, to, limit: 10 },
+      })
+      return res.data.data as { botId: string; botName: string; totalConversations: number; totalMessages: number; avgResponseTime: number; satisfactionScore?: number | null }[]
+    },
+    enabled: !!orgId,
+    retry: false,
+  })
+
+  if (orgLoading) return <OverviewSkeleton />
+
+  if (!orgId) {
+    return (
+      <PageContainer>
+        <PageHeader title="Analytics" description="Track performance across your chatbots and channels" />
+        <EmptyState
+          icon={Building2}
+          title="No organization found"
+          description="Create an organization to get started with Convio."
+          action={{ label: 'Create Organization', onClick: () => window.location.href = '/settings/organization' }}
+        />
+      </PageContainer>
+    )
+  }
+
+  if (isLoading) return <OverviewSkeleton />
+
+  if (isError) {
+    return (
+      <PageContainer>
+        <PageHeader title="Analytics" description="Track performance across your chatbots and channels" />
+        <EmptyState
+          icon={Building2}
+          title="Failed to load analytics"
+          description={(error as Error)?.message || 'Something went wrong. Please try again.'}
+        />
+      </PageContainer>
+    )
+  }
+
+  const conversationsChartData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; totalConversations: number }) => ({
+      date: formatShortDate(d.date),
+      conversations: d.totalConversations,
+    }),
+  )
+
+  const messagesChartData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; totalMessages: number }) => {
+      const half = Math.round(d.totalMessages / 2)
+      return {
+        date: formatShortDate(d.date),
+        userMessages: half,
+        assistantMessages: d.totalMessages - half,
+      }
+    },
+  )
+
+  const channelData = (overview?.channelBreakdown || []).map(
+    (c: { channel: string; count: number }) => ({
+      channel: c.channel as 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api',
+      count: c.count,
+    }),
+  )
+
+  const botsPerformance = (topBotsData || []).map(
+    (b) => ({
+      id: b.botId,
+      name: b.botName,
+      conversations: b.totalConversations,
+      messages: b.totalMessages,
+      avgResponseTime: b.avgResponseTime,
+      satisfactionScore: b.satisfactionScore ?? undefined,
+    }),
+  )
+
+  const responseTimeData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; avgResponseTime: number }) => ({
+      date: formatShortDate(d.date),
+      avgTime: d.avgResponseTime,
+    }),
+  )
+
+  const totalConversations = overview?.totalConversations || 0
+  const totalMessages = overview?.totalMessages || 0
+  const avgResponseTime = overview?.avgResponseTime || 0
+  const activeBots = (topBotsData || []).length
 
   return (
     <PageContainer>
@@ -112,7 +190,7 @@ export default function AnalyticsPage() {
           icon={MessagesSquare}
           label="Conversations"
           value={totalConversations.toLocaleString()}
-          description="Last 30 days"
+          description={`${overview?.conversationsChange >= 0 ? '+' : ''}${overview?.conversationsChange ?? 0}% from prev`}
           iconClassName="bg-blue-500/10 text-blue-500 dark:text-blue-400"
         />
         <StatsCard
@@ -133,34 +211,31 @@ export default function AnalyticsPage() {
         <StatsCard
           icon={Cpu}
           label="Active Bots"
-          value="5"
+          value={activeBots.toString()}
           description="Across all channels"
           iconClassName="bg-violet-500/10 text-violet-500 dark:text-violet-400"
         />
       </div>
 
       <div>
-        <ConversationsChart data={chartData} loading={isLoading} />
+        <ConversationsChart data={conversationsChartData} loading={isLoading} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <MessagesChart data={chartData} loading={isLoading} />
+          <MessagesChart data={messagesChartData} loading={isLoading} />
         </div>
         <div>
-          <ChannelDistribution data={mockChannelData} loading={isLoading} />
+          <ChannelDistribution data={channelData} loading={isLoading} />
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <BotsPerformanceTable bots={mockBots} loading={isLoading} />
+          <BotsPerformanceTable bots={botsPerformance} loading={isLoading} />
         </div>
         <div>
-          <ResponseTimeChart
-            data={chartData.map((d) => ({ date: d.date, avgTime: d.avgTime }))}
-            loading={isLoading}
-          />
+          <ResponseTimeChart data={responseTimeData} loading={isLoading} />
         </div>
       </div>
     </PageContainer>

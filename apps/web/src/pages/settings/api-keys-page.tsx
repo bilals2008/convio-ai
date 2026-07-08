@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ApiKeyTable } from '@/components/settings/api-key-table'
 import { ApiKeyCreateDialog } from '@/components/settings/api-key-create-dialog'
 import { ApiKeyDeleteDialog } from '@/components/settings/api-key-delete-dialog'
-import api from '@/lib/api'
+import { apiKeys as apiKeysClient } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 interface ApiKey {
   id: string
@@ -19,39 +20,42 @@ interface ApiKey {
   lastUsedAt?: string
 }
 
+interface CreatedKey {
+  name: string
+  key: string
+}
+
 export default function ApiKeysPage() {
+  const { orgId } = useOrg()
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteKeyId, setDeleteKeyId] = useState<string | null>(null)
-  const [createdKey, setCreatedKey] = useState<{ name: string; key: string } | null>(null)
+  const [createdKey, setCreatedKey] = useState<CreatedKey | null>(null)
 
   const { data: apiKeys, isLoading } = useQuery({
-    queryKey: ['api-keys'],
+    queryKey: ['api-keys', orgId],
     queryFn: async () => {
-      try {
-        const res = await api.get('/api-keys')
-        return (res.data.data || []) as ApiKey[]
-      } catch {
-        return [] as ApiKey[]
-      }
+      const res = await apiKeysClient.list(orgId!)
+      return (res.data.data || []) as ApiKey[]
     },
+    enabled: !!orgId,
   })
 
   const createMutation = useMutation({
     mutationFn: async (name: string) => {
-      const res = await api.post('/api-keys', { name })
-      return res.data.data as { name: string; key: string }
+      const res = await apiKeysClient.create(orgId!, name)
+      return res.data.data as CreatedKey
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['api-keys'] })
+      queryClient.invalidateQueries({ queryKey: ['api-keys', orgId] })
       setCreatedKey(data)
     },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/api-keys/${id}`),
+    mutationFn: (id: string) => apiKeysClient.delete(orgId!, id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['api-keys'] })
+      queryClient.invalidateQueries({ queryKey: ['api-keys', orgId] })
       setDeleteKeyId(null)
     },
   })

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { AgentCard } from '@/components/agents/agent-card'
 import { AgentDeleteDialog } from '@/components/agents/agent-delete-dialog'
 import { agents as agentsApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 interface Agent {
   id: string
@@ -22,24 +23,24 @@ interface Agent {
   createdAt: string
 }
 
-const MOCK_ORG_ID = 'mock-org-id'
-
 export default function AgentsListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { orgId } = useOrg()
   const [search, setSearch] = useState('')
   const [deleteAgent, setDeleteAgent] = useState<Agent | null>(null)
 
   const { data: agentsData, isLoading } = useQuery({
-    queryKey: ['agents', MOCK_ORG_ID],
+    queryKey: ['agents', orgId],
     queryFn: async () => {
       try {
-        const res = await agentsApi.list(MOCK_ORG_ID)
+        const res = await agentsApi.list(orgId!)
         return (res.data.data || []) as Agent[]
       } catch {
         return [] as Agent[]
       }
     },
+    enabled: !!orgId,
   })
 
   const deleteMutation = useMutation({

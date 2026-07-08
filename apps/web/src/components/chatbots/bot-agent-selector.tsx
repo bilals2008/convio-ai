@@ -8,14 +8,13 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { agents as agentsApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 interface Agent {
   id: string
   name: string
   model: string
 }
-
-const MOCK_ORG_ID = 'mock-org-id'
 
 interface BotAgentSelectorProps {
   value: string
@@ -25,16 +24,18 @@ interface BotAgentSelectorProps {
 }
 
 export function BotAgentSelector({ value, onChange, error, disabled }: BotAgentSelectorProps) {
+  const { orgId } = useOrg()
   const { data: agentsData, isLoading } = useQuery({
-    queryKey: ['agents', MOCK_ORG_ID],
+    queryKey: ['agents', orgId],
     queryFn: async () => {
       try {
-        const res = await agentsApi.list(MOCK_ORG_ID)
+        const res = await agentsApi.list(orgId!)
         return (res.data.data || []) as Agent[]
       } catch {
         return [] as Agent[]
       }
     },
+    enabled: !!orgId,
   })
 
   const agents = agentsData || []

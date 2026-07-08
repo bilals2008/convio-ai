@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/lib/auth-context'
+import { OrgProvider } from '@/lib/org-context'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import Landing from '@/pages/landing'
 import LoginPage from '@/pages/auth/login-page'
@@ -26,6 +27,7 @@ import OrganizationSettingsPage from '@/pages/settings/organization-settings-pag
 import TeamMembersPage from '@/pages/settings/team-members-page'
 import IntegrationsPage from '@/pages/settings/integrations-page'
 import ApiKeysPage from '@/pages/settings/api-keys-page'
+import ProviderKeysPage from '@/pages/settings/provider-keys-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +44,7 @@ export function App() {
       <ThemeProvider>
         <Router>
           <AuthProvider>
+            <OrgProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<LoginPage />} />
@@ -69,11 +72,13 @@ export function App() {
                 <Route path="team" element={<TeamMembersPage />} />
                 <Route path="integrations" element={<IntegrationsPage />} />
                 <Route path="api-keys" element={<ApiKeysPage />} />
+                <Route path="provider-keys" element={<ProviderKeysPage />} />
                 <Route path="playground" element={<PlaygroundPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
+            </OrgProvider>
           </AuthProvider>
         </Router>
       </ThemeProvider>

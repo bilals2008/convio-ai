@@ -10,25 +10,26 @@ import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
 import { WidgetCard, WidgetDeleteDialog, type Widget } from '@/components/widgets/widget-card'
 import { widgets as widgetsApi } from '@/lib/api'
-
-const MOCK_ORG_ID = 'mock-org-id'
+import { useOrg } from '@/lib/org-context'
 
 export default function WidgetsListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { orgId } = useOrg()
   const [search, setSearch] = useState('')
   const [deleteWidget, setDeleteWidget] = useState<Widget | null>(null)
 
   const { data: widgetsData, isLoading } = useQuery({
-    queryKey: ['widgets', MOCK_ORG_ID],
+    queryKey: ['widgets', orgId],
     queryFn: async () => {
       try {
-        const res = await widgetsApi.list(MOCK_ORG_ID)
+        const res = await widgetsApi.list(orgId!)
         return (res.data.data || []) as Widget[]
       } catch {
         return [] as Widget[]
       }
     },
+    enabled: !!orgId,
   })
 
   const deleteMutation = useMutation({
@@ -71,7 +72,7 @@ export default function WidgetsListPage() {
         title="Widgets"
         description="Embeddable chat widgets for your website"
         action={
-          <Button onClick={() => navigate('/widgets/new')}>
+          <Button onClick={() => navigate('/chatbots/new')}>
             <Plus className="size-4" />
             Create Widget
           </Button>
@@ -101,7 +102,7 @@ export default function WidgetsListPage() {
           action={
             search
               ? { label: 'Clear search', onClick: () => setSearch('') }
-              : { label: 'Create Widget', onClick: () => navigate('/widgets/new') }
+              : { label: 'Create Widget', onClick: () => navigate('/chatbots/new') }
           }
         />
       )}

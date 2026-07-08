@@ -8,9 +8,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { MemberTable } from '@/components/settings/member-table'
 import { MemberInviteForm } from '@/components/settings/member-invite-form'
 import { MemberRemoveDialog } from '@/components/settings/member-remove-dialog'
+import { useOrg } from '@/lib/org-context'
 import { organizations as orgsApi } from '@/lib/api'
-
-const MOCK_ORG_ID = 'mock-org-id'
 
 type MemberRole = 'owner' | 'admin' | 'member'
 
@@ -25,39 +24,50 @@ interface Member {
 
 export default function TeamMembersPage() {
   const queryClient = useQueryClient()
+  const { orgId } = useOrg()
   const [inviteOpen, setInviteOpen] = useState(false)
   const [removeMember, setRemoveMember] = useState<Member | null>(null)
 
-  const { data: members, isLoading } = useQuery({
-    queryKey: ['members', MOCK_ORG_ID],
+  const { data: rawMembers, isLoading } = useQuery({
+    queryKey: ['members', orgId],
     queryFn: async () => {
-      const res = await orgsApi.members(MOCK_ORG_ID)
-      return (res.data.data || []) as Member[]
+      const res = await orgsApi.members(orgId!)
+      return res.data.data as { id: string; role: MemberRole; joinedAt: string; user: { id: string; name?: string; email: string; image?: string } }[]
     },
+    enabled: !!orgId,
   })
+
+  const members: Member[] = (rawMembers || []).map((m) => ({
+    id: m.id,
+    userId: m.user.id,
+    name: m.user.name || 'Unknown',
+    email: m.user.email,
+    role: m.role,
+    joinedAt: m.joinedAt,
+  }))
 
   const roleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: MemberRole }) =>
-      orgsApi.api.patch(`/organizations/${MOCK_ORG_ID}/members/${userId}/role`, { role }),
+      orgsApi.updateMemberRole(orgId!, userId, role),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['members', MOCK_ORG_ID] })
+      queryClient.invalidateQueries({ queryKey: ['members', orgId] })
     },
   })
 
   const removeMutation = useMutation({
     mutationFn: (userId: string) =>
-      orgsApi.api.delete(`/organizations/${MOCK_ORG_ID}/members/${userId}`),
+      orgsApi.removeMember(orgId!, userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['members', MOCK_ORG_ID] })
+      queryClient.invalidateQueries({ queryKey: ['members', orgId] })
       setRemoveMember(null)
     },
   })
 
   const inviteMutation = useMutation({
     mutationFn: (data: { email: string; role: string }) =>
-      orgsApi.api.post(`/organizations/${MOCK_ORG_ID}/members`, data),
+      orgsApi.addMember(orgId!, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['members', MOCK_ORG_ID] })
+      queryClient.invalidateQueries({ queryKey: ['members', orgId] })
       setInviteOpen(false)
     },
   })
