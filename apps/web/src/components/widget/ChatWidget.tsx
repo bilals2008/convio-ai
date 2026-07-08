@@ -18,8 +18,8 @@ export interface ChatWidgetProps {
 
 const defaultTheme: WidgetTheme = {
   primaryColor: '#fb923c',
-  backgroundColor: '#ffffff',
-  textColor: '#1f2937',
+  backgroundColor: '#1c1c1c',
+  textColor: '#f3f4f6',
 }
 
 function WidgetBackdrop({ show, onClose }: { show: boolean; onClose: () => void }) {

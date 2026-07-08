@@ -26,8 +26,8 @@ export interface WidgetConfig {
 
 const defaultTheme: WidgetTheme = {
   primaryColor: '#fb923c',
-  backgroundColor: '#ffffff',
-  textColor: '#1f2937',
+  backgroundColor: '#1c1c1c',
+  textColor: '#f3f4f6',
 }
 
 function generateId(): string {
@@ -49,9 +49,10 @@ export function useWidget(config: WidgetConfig) {
 
   const createConversation = useCallback(async () => {
     try {
-      const { data } = await api.post('/widget/conversations', { botId: config.botId })
-      setConversationId(data.id)
-      return data.id
+      const { data } = await api.post(`/widget/bots/${config.botId}/conversations`, { channel: 'web' })
+      const conversation = data.data || data
+      setConversationId(conversation.id)
+      return conversation.id
     } catch {
       setError('Failed to start conversation')
       return null
@@ -88,10 +89,11 @@ export function useWidget(config: WidgetConfig) {
           content: content.trim(),
           role: 'user',
         })
+        const res = data.data || data
         const assistantMessage: WidgetMessage = {
           id: generateId(),
           role: 'assistant',
-          content: data.response || data.content || 'Sorry, I could not process that.',
+          content: res.response || res.content || data.response || data.content || 'Sorry, I could not process that.',
           timestamp: new Date(),
         }
         setMessages((prev) => [...prev, assistantMessage])
