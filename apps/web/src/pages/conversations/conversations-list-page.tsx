@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, Plus } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -10,7 +10,8 @@ import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
 import { ConversationCard } from '@/components/conversations/conversation-card'
 import { ConversationFilters } from '@/components/conversations/conversation-filters'
-import { conversations as conversationsApi } from '@/lib/api'
+import { conversations as conversationsApi, bots as botsApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
 type ConvStatus = 'active' | 'waiting' | 'resolved' | 'closed' | 'archived'
@@ -28,26 +29,58 @@ interface ConversationItem {
   updatedAt: string
 }
 
-const MOCK_ORG_ID = 'mock-org-id'
-
 export default function ConversationsListPage() {
   const navigate = useNavigate()
+  const { orgId } = useOrg()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [channelFilter, setChannelFilter] = useState('all')
-  const [page, setPage] = useState(1)
+  const [cursor, setCursor] = useState<string | undefined>()
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+
+  const params: Record<string, string | undefined> = {}
+  if (statusFilter !== 'all') params.status = statusFilter
+  if (channelFilter !== 'all') params.channel = channelFilter
+  if (cursor) params.cursor = cursor
 
   const { data: convsData, isLoading } = useQuery({
-    queryKey: ['conversations', MOCK_ORG_ID, statusFilter, channelFilter, page],
+    queryKey: ['conversations', params, cursor],
     queryFn: async () => {
       try {
-        const res = await conversationsApi.list(MOCK_ORG_ID)
+        const res = await conversationsApi.list(params)
+        setNextCursor(res.data.nextCursor ?? null)
         return (res.data.data || []) as ConversationItem[]
       } catch {
         return [] as ConversationItem[]
       }
     },
   })
+
+  const { data: bots } = useQuery({
+    queryKey: ['bots-list', orgId],
+    queryFn: async () => {
+      const res = await botsApi.list(orgId!)
+      return (res.data.data || []) as { id: string; name: string; status: string }[]
+    },
+    enabled: !!orgId,
+  })
+
+  const createConvMutation = useMutation({
+    mutationFn: async (botId: string) => {
+      const res = await conversationsApi.create(botId, { channel: 'web' })
+      return res.data.data as { id: string }
+    },
+    onSuccess: (data) => {
+      navigate(`/conversations/${data.id}`)
+    },
+  })
+
+  const handleStartChat = () => {
+    const activeBot = (bots || []).find((b) => b.status === 'active')
+    if (activeBot) {
+      createConvMutation.mutate(activeBot.id)
+    }
+  }
 
   const conversations = convsData || []
 
@@ -79,6 +112,12 @@ export default function ConversationsListPage() {
       <PageHeader
         title="Conversations"
         description="View and manage all chat conversations"
+        action={
+          <Button onClick={handleStartChat} disabled={createConvMutation.isPending || !(bots || []).some(b => b.status === 'active')}>
+            <Plus className="size-4" />
+            {createConvMutation.isPending ? 'Starting...' : 'Start Chat'}
+          </Button>
+        }
       />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -135,15 +174,16 @@ export default function ConversationsListPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
+              disabled={!cursor}
+              onClick={() => setCursor(undefined)}
             >
               Previous
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage((p) => p + 1)}
+              disabled={!nextCursor}
+              onClick={() => setCursor(nextCursor!)}
             >
               Next
             </Button>

@@ -66,6 +66,9 @@ export default function ConversationDetailPage() {
     setSending(true)
     try {
       await messagesApi.send(id, content)
+      await messagesApi.stream(id, content)
+      queryClient.invalidateQueries({ queryKey: ['conversation', id] })
+    } catch {
       queryClient.invalidateQueries({ queryKey: ['conversation', id] })
     } finally {
       setSending(false)

@@ -14,6 +14,7 @@ import type { KnowledgeFormData } from '@/components/knowledge/knowledge-form'
 import { DocumentCard } from '@/components/knowledge/document-card'
 import { DocumentUploadForm } from '@/components/knowledge/document-upload-form'
 import { knowledge as knowledgeApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 type DocType = 'txt' | 'pdf' | 'csv' | 'md' | 'json' | 'url'
 type DocStatus = 'pending' | 'processing' | 'ready' | 'error' | 'archived'
@@ -33,7 +34,6 @@ interface KnowledgeBase {
   name: string
   description?: string
   documentCount: number
-  documents?: DocumentItem[]
   organizationId: string
   createdAt: string
   updatedAt: string
@@ -49,12 +49,11 @@ const defaultFormData: KnowledgeFormData = {
   description: '',
 }
 
-const MOCK_ORG_ID = 'mock-org-id'
-
 export default function KnowledgeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { orgId } = useOrg()
   const isCreate = id === 'new'
   const isEdit = !!id && !isCreate
 
@@ -71,6 +70,17 @@ export default function KnowledgeDetailPage() {
     enabled: isEdit,
   })
 
+  const { data: documents = [] } = useQuery({
+    queryKey: ['knowledge-base-documents', id],
+    queryFn: async () => {
+      const res = await knowledgeApi.getDocuments(id!)
+      return (res.data.data || []) as DocumentItem[]
+    },
+    enabled: isEdit,
+  })
+
+  const documentCount = kb?.documentCount ?? documents.length
+
   useEffect(() => {
     if (kb) {
       setFormData({ name: kb.name, description: kb.description || '' })
@@ -79,7 +89,7 @@ export default function KnowledgeDetailPage() {
 
   const createMutation = useMutation({
     mutationFn: (data: KnowledgeFormData) =>
-      knowledgeApi.create({ ...data, organizationId: MOCK_ORG_ID }),
+      knowledgeApi.create({ ...data, organizationId: orgId! }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] })
       navigate('/knowledge')
@@ -121,6 +131,11 @@ export default function KnowledgeDetailPage() {
       setUploadLoading(false)
       queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
     })
+  }
+
+  const handleDeleteDocument = async (docId: string) => {
+    await knowledgeApi.deleteDocument(docId)
+    queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
   }
 
   if (isEdit && isLoading) {
@@ -171,21 +186,21 @@ export default function KnowledgeDetailPage() {
 
       {isEdit && kb && (
         <>
-          <Section title="Documents" description={`${kb.documents?.length || 0} documents in this knowledge base`}>
+          <Section title="Documents" description={`${documentCount} document${documentCount !== 1 ? 's' : ''} in this knowledge base`}>
             <Card>
               <CardContent className="pt-6">
                 <DocumentUploadForm onSubmit={handleUploadDocument} loading={uploadLoading} />
               </CardContent>
             </Card>
 
-            {kb.documents && kb.documents.length > 0 && (
+            {documents.length > 0 && (
               <div className="space-y-2">
-                {kb.documents.map((doc) => (
+                {documents.map((doc) => (
                   <DocumentCard
                     key={doc.id}
                     doc={doc}
                     onView={() => {}}
-                    onDelete={() => {}}
+                    onDelete={() => handleDeleteDocument(doc.id)}
                   />
                 ))}
               </div>

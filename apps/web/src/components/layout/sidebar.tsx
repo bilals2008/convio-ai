@@ -149,25 +149,20 @@ export function Sidebar() {
       {/* User section */}
       <div className="border-t border-border/50 p-2 mt-auto">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className={cn(
-                'w-full h-auto justify-start gap-3 px-3 py-2.5 hover:bg-muted/60 rounded-lg',
-                collapsed && 'justify-center px-0'
-              )}
-            >
-              <Avatar className="size-8 shrink-0">
-                <AvatarImage src={user?.avatar || undefined} />
-                <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
-              </Avatar>
-              {!collapsed && (
-                <div className="flex-1 truncate text-left">
-                  <div className="text-sm font-medium truncate">{user?.name || 'User'}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">{user?.email}</div>
-                </div>
-              )}
-            </Button>
+          <DropdownMenuTrigger className={cn(
+            'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted/60',
+            collapsed && 'justify-center px-0'
+          )}>
+            <Avatar className="size-8 shrink-0">
+              <AvatarImage src={user?.avatar || undefined} />
+              <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+              <div className="flex-1 truncate text-left">
+                <div className="text-sm font-medium truncate">{user?.name || 'User'}</div>
+                <div className="text-[11px] text-muted-foreground truncate">{user?.email}</div>
+              </div>
+            )}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56" side={collapsed ? 'right' : 'top'}>
             <DropdownMenuGroup>

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { KnowledgeCard } from '@/components/knowledge/knowledge-card'
 import { KnowledgeDeleteDialog } from '@/components/knowledge/knowledge-delete-dialog'
 import { knowledge as knowledgeApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 interface KnowledgeBase {
   id: string
@@ -22,24 +23,24 @@ interface KnowledgeBase {
   updatedAt: string
 }
 
-const MOCK_ORG_ID = 'mock-org-id'
-
 export default function KnowledgeListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { orgId } = useOrg()
   const [search, setSearch] = useState('')
   const [deleteKb, setDeleteKb] = useState<KnowledgeBase | null>(null)
 
   const { data: kbData, isLoading } = useQuery({
-    queryKey: ['knowledge-bases', MOCK_ORG_ID],
+    queryKey: ['knowledge-bases', orgId],
     queryFn: async () => {
       try {
-        const res = await knowledgeApi.list(MOCK_ORG_ID)
+        const res = await knowledgeApi.list(orgId!)
         return (res.data.data || []) as KnowledgeBase[]
       } catch {
         return [] as KnowledgeBase[]
       }
     },
+    enabled: !!orgId,
   })
 
   const deleteMutation = useMutation({

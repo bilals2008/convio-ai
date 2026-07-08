@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Building2 } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatsGrid } from '@/components/dashboard/stats-grid'
@@ -9,16 +10,16 @@ import { ChannelDistribution } from '@/components/dashboard/channel-distribution
 import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { TopBots } from '@/components/dashboard/top-bots'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
-import { Button } from '@/components/ui/button'
-import { analytics as analyticsApi } from '@/lib/api'
+import { EmptyState } from '@/components/shared/empty-state'
+import { analytics as analyticsApi, conversations as conversationsApi } from '@/lib/api'
+import api from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
 const dateRanges = [
   { label: 'Today', value: 'today' },
   { label: '7 days', value: '7d' },
   { label: '30 days', value: '30d' },
 ] as const
-
-const MOCK_ORG_ID = 'mock-org-id'
 
 function getDateRange(range: string) {
   const now = new Date()
@@ -41,71 +42,132 @@ function getDateRange(range: string) {
   return { from, to }
 }
 
-const mockStats = {
-  totalConversations: 1234,
-  totalMessages: 12456,
-  activeUsers: 456,
-  avgResponseTime: 1.2,
-  conversationsChange: 12.5,
-  messagesChange: 8.3,
-  usersChange: -2.1,
-  responseTimeChange: -15.0,
+function formatShortDate(dateStr: string) {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-const mockChartData = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date()
-  d.setDate(d.getDate() - (29 - i))
-  return {
-    date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    conversations: Math.floor(Math.random() * 50) + 20,
-    messages: Math.floor(Math.random() * 200) + 50,
-    userMessages: Math.floor(Math.random() * 100) + 25,
-    assistantMessages: Math.floor(Math.random() * 100) + 25,
-  }
-})
-
-const mockChannelData = [
-  { channel: 'web' as const, count: 567 },
-  { channel: 'whatsapp' as const, count: 345 },
-  { channel: 'slack' as const, count: 156 },
-  { channel: 'discord' as const, count: 112 },
-  { channel: 'telegram' as const, count: 45 },
-  { channel: 'api' as const, count: 9 },
-]
-
-const mockActivities = [
-  { id: '1', userName: 'Alice', botName: 'Support Bot', channel: 'web' as const, action: 'started conversation with', timestamp: new Date(Date.now() - 120000).toISOString() },
-  { id: '2', userName: 'Bob', botName: 'Sales Bot', channel: 'whatsapp' as const, action: 'sent message via', timestamp: new Date(Date.now() - 300000).toISOString() },
-  { id: '3', userName: 'Charlie', botName: 'FAQ Bot', channel: 'slack' as const, action: 'started conversation with', timestamp: new Date(Date.now() - 900000).toISOString() },
-  { id: '4', userName: 'Diana', botName: 'Support Bot', channel: 'web' as const, action: 'sent message via', timestamp: new Date(Date.now() - 1800000).toISOString() },
-  { id: '5', botName: 'Support Bot', channel: 'telegram' as const, action: 'conversation resolved on', timestamp: new Date(Date.now() - 3600000).toISOString() },
-]
-
-const mockTopBots = [
-  { id: '1', name: 'Support Bot', conversationCount: 567 },
-  { id: '2', name: 'Sales Bot', conversationCount: 345 },
-  { id: '3', name: 'FAQ Bot', conversationCount: 234 },
-  { id: '4', name: 'Lead Bot', conversationCount: 156 },
-  { id: '5', name: 'Onboarding Bot', conversationCount: 89 },
-]
-
 export default function DashboardOverviewPage() {
+  const { orgId, isLoading: orgLoading } = useOrg()
   const [dateRange, setDateRange] = useState<string>('30d')
+  const { from, to } = getDateRange(dateRange)
 
-  const { isLoading } = useQuery({
-    queryKey: ['dashboard', MOCK_ORG_ID, dateRange],
+  const { data: overview, isLoading, isError, error } = useQuery({
+    queryKey: ['dashboard', orgId, dateRange],
     queryFn: async () => {
-      const { from, to } = getDateRange(dateRange)
-      try {
-        await analyticsApi.overview(MOCK_ORG_ID)
-      } catch {}
-      return { from, to }
+      const res = await analyticsApi.overview(orgId!, { from, to })
+      return res.data.data
     },
+    enabled: !!orgId,
+    retry: false,
   })
 
-  if (isLoading) {
-    return <OverviewSkeleton />
+  const { data: topBotsData } = useQuery({
+    queryKey: ['dashboard-top-bots', orgId, dateRange],
+    queryFn: async () => {
+      const res = await api.get(`/organizations/${orgId}/analytics/top-bots`, {
+        params: { from, to, limit: 5 },
+      })
+      return res.data.data as { botId: string; botName: string; totalConversations: number; totalMessages: number; avgResponseTime: number; satisfactionScore?: number | null }[]
+    },
+    enabled: !!orgId,
+    retry: false,
+  })
+
+  const { data: recentConversations } = useQuery({
+    queryKey: ['dashboard-recent-activity', orgId],
+    queryFn: async () => {
+      const res = await conversationsApi.list({ limit: 8 })
+      return res.data.data
+    },
+    enabled: !!orgId,
+    retry: false,
+  })
+
+  if (orgLoading) return <OverviewSkeleton />
+
+  if (!orgId) {
+    return (
+      <PageContainer>
+        <PageHeader title="Dashboard" description="Overview of your AI chatbot platform" />
+        <EmptyState
+          icon={Building2}
+          title="No organization found"
+          description="Create an organization to get started with Convio."
+          action={{ label: 'Create Organization', onClick: () => window.location.href = '/settings/organization' }}
+        />
+      </PageContainer>
+    )
   }
+
+  if (isLoading) return <OverviewSkeleton />
+
+  if (isError) {
+    return (
+      <PageContainer>
+        <PageHeader title="Dashboard" description="Overview of your AI chatbot platform" />
+        <EmptyState
+          icon={Building2}
+          title="Failed to load dashboard"
+          description={(error as Error)?.message || 'Something went wrong. Please try again.'}
+        />
+      </PageContainer>
+    )
+  }
+
+  const stats = {
+    totalConversations: overview?.totalConversations || 0,
+    totalMessages: overview?.totalMessages || 0,
+    activeUsers: overview?.uniqueUsers || 0,
+    avgResponseTime: overview?.avgResponseTime || 0,
+    conversationsChange: overview?.conversationsChange ?? 0,
+    messagesChange: overview?.messagesChange ?? 0,
+    usersChange: overview?.usersChange ?? 0,
+    responseTimeChange: overview?.responseTimeChange ?? 0,
+  }
+
+  const conversationsChartData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; totalConversations: number }) => ({
+      date: formatShortDate(d.date),
+      conversations: d.totalConversations,
+    }),
+  )
+
+  const messagesChartData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; totalMessages: number }) => {
+      const half = Math.round(d.totalMessages / 2)
+      return {
+        date: formatShortDate(d.date),
+        userMessages: half,
+        assistantMessages: d.totalMessages - half,
+      }
+    },
+  )
+
+  const channelData = (overview?.channelBreakdown || []).map(
+    (c: { channel: string; count: number }) => ({
+      channel: c.channel as 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api',
+      count: c.count,
+    }),
+  )
+
+  const topBots = (topBotsData || []).map(
+    (b: { botId: string; botName: string; totalConversations: number }) => ({
+      id: b.botId,
+      name: b.botName,
+      conversationCount: b.totalConversations,
+    }),
+  )
+
+  const activities = (recentConversations || []).slice(0, 5).map(
+    (c: { id: string; bot?: { name?: string }; channel: string; status: string; createdAt: string }) => ({
+      id: c.id,
+      botName: c.bot?.name ?? 'Unknown Bot',
+      channel: (c.channel || 'web') as 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api',
+      action: c.status === 'active' ? 'started conversation on' : `${c.status} conversation on`,
+      timestamp: c.createdAt,
+    }),
+  )
 
   return (
     <PageContainer>
@@ -132,20 +194,20 @@ export default function DashboardOverviewPage() {
         }
       />
 
-      <StatsGrid data={mockStats} />
+      <StatsGrid data={stats} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <ConversationsChart data={mockChartData} />
-          <MessagesChart data={mockChartData} />
+          <ConversationsChart data={conversationsChartData} />
+          <MessagesChart data={messagesChartData} />
         </div>
         <div className="space-y-6">
-          <ChannelDistribution data={mockChannelData} />
-          <TopBots bots={mockTopBots} />
+          <ChannelDistribution data={channelData} />
+          <TopBots bots={topBots} />
         </div>
       </div>
 
-      <RecentActivity activities={mockActivities} />
+      <RecentActivity activities={activities} />
     </PageContainer>
   )
 }
