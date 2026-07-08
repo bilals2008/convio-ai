@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Separator } from '@/components/ui/separator'
 import { ScrollReveal } from './scroll-reveal'
+import { DirectionHover } from './direction-hover'
 
 const footerLinks = {
   Product: [
@@ -55,9 +56,9 @@ export function Footer() {
                     <li key={link.label}>
                       <a
                         href={link.href}
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-sm text-muted-foreground transition-colors inline-flex"
                       >
-                        {link.label}
+                        <DirectionHover title={link.label} fontSize={14} hoverColor="var(--foreground)" />
                       </a>
                     </li>
                   ))}

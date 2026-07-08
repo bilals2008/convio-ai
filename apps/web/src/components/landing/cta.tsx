@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ScrollReveal } from './scroll-reveal'
 import { GlowCard } from './glow-card'
+import { Typewriter } from './typewriter'
 import { ArrowRight, Copy, Check } from 'lucide-react'
 
 function CopyButton({ text }: { text: string }) {
@@ -28,9 +29,18 @@ export function CTA() {
               <h2 className="font-heading text-[clamp(24px,3.2vw,42px)] text-foreground leading-[1.12] tracking-[-0.02em] mb-3">
                 Your next project deserves a better chatbot.
               </h2>
-              <p className="text-[15px] text-muted-foreground leading-[1.65] max-w-[420px] mb-6">
+              <p className="text-[15px] text-muted-foreground leading-[1.65] max-w-[420px] mb-4">
                 Build, deploy, and manage AI chatbots across every channel. No coding required.
               </p>
+
+              <div className="text-[15px] font-medium mb-6 h-6">
+                <Typewriter
+                  prefix="Start building "
+                  texts={['chatbots', 'AI agents', 'automations', 'support']}
+                  typedColor="var(--primary)"
+                  color="var(--muted-foreground)"
+                />
+              </div>
 
               <div className="inline-flex items-center gap-3 bg-secondary border border-border rounded-xl px-4 py-2.5">
                 <span className="text-primary text-[13px] font-mono font-medium">$</span>

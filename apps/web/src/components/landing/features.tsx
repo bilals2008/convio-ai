@@ -36,12 +36,15 @@ const features = [
 
 function FeatureBlock({ icon: Icon, title, description }: { icon: typeof Brain; title: string; description: string }) {
   return (
-    <div className="bg-card rounded-[14px] p-[34px_30px] border border-border">
-      <div className="w-10 h-10 rounded-[9px] bg-primary/10 flex items-center justify-center text-primary mb-4">
-        <Icon className="size-5" />
+    <div className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 p-7 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_10px_40px_-15px_rgba(0,0,0,0.25)]">
+      <div className="pointer-events-none absolute inset-x-0 -top-px h-24 bg-gradient-to-b from-primary/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="relative">
+        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors duration-300 group-hover:bg-primary/15">
+          <Icon className="size-5" />
+        </div>
+        <h3 className="mb-1.5 text-[14px] font-semibold text-foreground">{title}</h3>
+        <p className="text-[13px] leading-[1.65] text-muted-foreground">{description}</p>
       </div>
-      <h3 className="text-[14px] font-semibold text-foreground mb-[7px]">{title}</h3>
-      <p className="text-[13px] text-muted-foreground leading-[1.65]">{description}</p>
     </div>
   )
 }
@@ -61,7 +64,7 @@ export function Features() {
           </p>
         </div>
       </ScrollReveal>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-[14px]">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         {features.map((feature, i) => (
           <ScrollReveal key={feature.title} delay={i * 0.06}>
             <FeatureBlock {...feature} />

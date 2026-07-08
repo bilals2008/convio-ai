@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
-import { Sparkles, ArrowRight, Sun, Moon, Bot, MessageSquare, BarChart3, Brain } from 'lucide-react'
+import { Sparkles, ArrowRight, Bot, MessageSquare, BarChart3, Brain } from 'lucide-react'
 import { WhatsAppIcon, TelegramIcon, DiscordIcon, SlackIcon, WebIcon } from './channel-icons'
+import { LogoMarquee } from './logo-marquee'
 
 const channels = [
   { name: 'Web', icon: WebIcon },
@@ -14,7 +14,6 @@ const channels = [
 ]
 
 export function HeroSection() {
-  const { theme, setTheme } = useTheme()
   const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -47,35 +46,8 @@ export function HeroSection() {
 
         {/* Hero overlay */}
         <div className="absolute inset-0 z-[2] flex flex-col justify-between p-[18px] md:p-[26px_40px]">
-          {/* Top bar — hero-internal nav */}
-          <div className="relative flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 text-foreground font-semibold text-[15px]">
-              <img src="/logo.png" alt="Convio" className="h-6 w-auto" />
-              Convio
-            </Link>
-            <nav className="hidden md:flex gap-7 absolute left-1/2 -translate-x-1/2">
-              <a href="#features" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Features</a>
-              <a href="#channels" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Channels</a>
-              <a href="#pricing" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            </nav>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="w-8 h-8 flex items-center justify-center rounded-full border border-border bg-card/60 backdrop-blur-lg hover:bg-card transition-colors cursor-pointer"
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? <Sun className="size-[15px]" /> : <Moon className="size-[15px]" />}
-              </button>
-              <div className="hidden md:flex gap-2">
-                <Link to="/login">
-                  <Button variant="ghost" size="sm">Log In</Button>
-                </Link>
-                <Link to="/signup">
-                  <Button size="sm" className="glow-primary-sm">Get Started</Button>
-                </Link>
-              </div>
-            </div>
-          </div>
+          {/* Spacer for navbar */}
+          <div className="h-14" />
 
           {/* Center content */}
           <div className="text-center px-3">
@@ -127,6 +99,11 @@ export function HeroSection() {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Logo marquee */}
+          <div className="px-2">
+            <LogoMarquee label="Trusted by teams at" />
           </div>
 
           {/* Bottom bar — stats */}
