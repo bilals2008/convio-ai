@@ -170,6 +170,14 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       await prisma.message.create({
         data: { conversationId: id, role: 'assistant', content: fullResponse, status: 'sent' },
       })
+
+      try {
+        fastify.supabase.channel(`conversation:${id}`).send({
+          type: 'broadcast',
+          event: 'message',
+          payload: {},
+        })
+      } catch {}
     }
 
     reply.raw.write('data: [DONE]\n\n')

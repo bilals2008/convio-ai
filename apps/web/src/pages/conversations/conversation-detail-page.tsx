@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
@@ -47,6 +47,24 @@ export default function ConversationDetailPage() {
   const [sending, setSending] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const [streaming, setStreaming] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+
+    const channel = supabase.channel(`conversation:${id}`, {
+      config: { broadcast: { self: true } },
+    })
+
+    channel.on('broadcast', { event: 'message' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['conversation', id] })
+    })
+
+    channel.subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [id, queryClient])
 
   const { data: conversation, isLoading } = useQuery({
     queryKey: ['conversation', id],
