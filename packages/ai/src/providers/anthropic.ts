@@ -6,13 +6,13 @@ export class AnthropicProvider implements AIProvider {
   id = 'anthropic'
   name = 'Anthropic'
 
-  private getClient() {
-    return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  private getClient(apiKey?: string) {
+    return createAnthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY })
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
     const result = await generateText({
-      model: this.getClient()(params.model),
+      model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,
@@ -30,7 +30,7 @@ export class AnthropicProvider implements AIProvider {
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const result = streamText({
-      model: this.getClient()(params.model),
+      model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,

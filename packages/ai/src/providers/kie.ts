@@ -25,9 +25,9 @@ export class KIEProvider implements AIProvider {
   id = 'kie'
   name = 'KIE AI'
 
-  private getHeaders() {
+  private getHeaders(apiKey?: string) {
     return {
-      'Authorization': `Bearer ${process.env.KIE_API_KEY}`,
+      'Authorization': `Bearer ${apiKey || process.env.KIE_API_KEY}`,
       'Content-Type': 'application/json',
     }
   }
@@ -35,7 +35,7 @@ export class KIEProvider implements AIProvider {
   async generate(params: GenerateParams): Promise<GenerateResult> {
     const response = await fetch(`${KIE_BASE}/${params.model}/v1/chat/completions`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(params.apiKey),
       body: JSON.stringify({
         model: params.model,
         messages: params.messages,
@@ -62,7 +62,7 @@ export class KIEProvider implements AIProvider {
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const response = await fetch(`${KIE_BASE}/${params.model}/v1/chat/completions`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(params.apiKey),
       body: JSON.stringify({
         model: params.model,
         messages: params.messages,

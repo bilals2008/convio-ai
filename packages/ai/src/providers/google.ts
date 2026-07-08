@@ -6,13 +6,13 @@ export class GoogleProvider implements AIProvider {
   id = 'google'
   name = 'Google'
 
-  private getClient() {
-    return createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })
+  private getClient(apiKey?: string) {
+    return createGoogleGenerativeAI({ apiKey: apiKey || process.env.GOOGLE_API_KEY })
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
     const result = await generateText({
-      model: this.getClient()(params.model),
+      model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,
@@ -30,7 +30,7 @@ export class GoogleProvider implements AIProvider {
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const result = streamText({
-      model: this.getClient()(params.model),
+      model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,

@@ -5,11 +5,11 @@ export class GroqProvider implements AIProvider {
   name = 'Groq'
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
-    // Groq uses OpenAI-compatible API
+    const apiKey = params.apiKey || process.env.GROQ_API_KEY
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -34,10 +34,11 @@ export class GroqProvider implements AIProvider {
   }
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
+    const apiKey = params.apiKey || process.env.GROQ_API_KEY
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

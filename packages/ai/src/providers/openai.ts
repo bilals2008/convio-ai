@@ -7,13 +7,13 @@ export class OpenAIProvider implements AIProvider {
   id = 'openai'
   name = 'OpenAI'
 
-  private getClient() {
-    return createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  private getClient(apiKey?: string) {
+    return createOpenAI({ apiKey: apiKey || process.env.OPENAI_API_KEY })
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
     const result = await generateText({
-      model: this.getClient()(params.model),
+      model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,
@@ -31,7 +31,7 @@ export class OpenAIProvider implements AIProvider {
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const result = streamText({
-      model: this.getClient()(params.model),
+      model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
       maxTokens: params.maxTokens,
@@ -52,12 +52,12 @@ export class OpenAIProvider implements AIProvider {
     return result.embedding
   }
 
-  async moderate(text: string): Promise<ModerationResult> {
+  async moderate(text: string, apiKey?: string): Promise<ModerationResult> {
     try {
       const response = await fetch('https://api.openai.com/v1/moderations', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKey || process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ input: text }),

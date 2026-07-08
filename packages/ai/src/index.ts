@@ -16,6 +16,7 @@ export interface GenerateParams {
   tools?: Tool[]
   temperature?: number
   maxTokens?: number
+  apiKey?: string
 }
 
 export interface Message {
