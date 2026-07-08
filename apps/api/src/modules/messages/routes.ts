@@ -267,23 +267,74 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
-      include: { bot: { select: { status: true } } },
+      include: {
+        bot: {
+          include: { agent: true },
+        },
+      },
     })
 
     if (!conversation || conversation.bot.status !== 'active') {
       throw new AppError(404, 'Conversation not found or bot is not active')
     }
 
-    const [message] = await prisma.$transaction([
-      prisma.message.create({
-        data: { conversationId: id, role: 'user', content, status: 'sent' },
-      }),
-      prisma.conversation.update({
-        where: { id },
-        data: { status: 'active' },
-      }),
-    ])
+    await prisma.message.create({
+      data: { conversationId: id, role: 'user', content, status: 'sent' },
+    })
+    await prisma.conversation.update({
+      where: { id },
+      data: { status: 'active' },
+    })
 
-    return { data: message }
+    const agent = conversation.bot.agent
+    if (!agent || !agent.model) {
+      return { data: { response: 'I am not configured to respond yet.' } }
+    }
+
+    let provider
+    try {
+      provider = getProviderForModel(agent.model)
+    } catch {
+      return { data: { response: 'AI provider is not available.' } }
+    }
+
+    let apiKey: string | undefined
+    if (agent.providerKeyId) {
+      const providerKey = await prisma.providerKey.findUnique({
+        where: { id: agent.providerKeyId },
+      })
+      if (providerKey && providerKey.organizationId === conversation.bot.organizationId) {
+        apiKey = providerKey.apiKey
+      }
+    }
+
+    const history = await prisma.message.findMany({
+      where: { conversationId: id },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    })
+
+    const aiMessages = [
+      { role: 'system' as const, content: agent.systemPrompt },
+      ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+    ]
+
+    try {
+      const response = await provider.generate({
+        model: agent.model,
+        messages: aiMessages,
+        temperature: agent.temperature ?? 0.7,
+        maxTokens: agent.maxTokens ?? 2048,
+        apiKey,
+      })
+
+      await prisma.message.create({
+        data: { conversationId: id, role: 'assistant', content: response.content, status: 'sent' },
+      })
+
+      return { data: { response: response.content } }
+    } catch {
+      return { data: { response: 'Sorry, something went wrong. Please try again.' } }
+    }
   })
 }
