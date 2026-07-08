@@ -7,77 +7,20 @@ datasource db {
   provider = "postgresql"
 }
 
-// Better Auth core models (names must be lowercase to match the Prisma adapter)
-model user {
-  id            String    @id @default(uuid())
-  name          String
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now()) @db.Timestamptz()
-  updatedAt     DateTime  @updatedAt @db.Timestamptz()
+model Profile {
+  id        String    @id
+  email     String
+  name      String?
+  avatar    String?
+  createdAt DateTime  @default(now()) @db.Timestamptz()
+  updatedAt DateTime  @updatedAt @db.Timestamptz()
 
   memberships Membership[]
-  bots        Bot[]       @relation("BotCreator")
-  sessions    session[]
-  accounts    account[]
+  createdBots Bot[]       @relation("BotCreator")
 
-  @@index([email])
-  @@map("users")
+  @@map("profiles")
 }
 
-model session {
-  id        String   @id @default(uuid())
-  expiresAt DateTime @db.Timestamptz()
-  token     String   @unique
-  createdAt DateTime @default(now()) @db.Timestamptz()
-  updatedAt DateTime @updatedAt @db.Timestamptz()
-  ipAddress String?
-  userAgent String?
-  userId    String
-
-  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([token])
-  @@map("sessions")
-}
-
-model account {
-  id                    String    @id @default(uuid())
-  accountId             String
-  providerId            String
-  userId                String
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime? @db.Timestamptz()
-  refreshTokenExpiresAt DateTime? @db.Timestamptz()
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now()) @db.Timestamptz()
-  updatedAt             DateTime  @updatedAt @db.Timestamptz()
-
-  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([providerId, accountId])
-  @@map("accounts")
-}
-
-model verification {
-  id         String   @id @default(uuid())
-  identifier String
-  value      String
-  expiresAt  DateTime @db.Timestamptz()
-  createdAt  DateTime @default(now()) @db.Timestamptz()
-  updatedAt  DateTime @updatedAt @db.Timestamptz()
-
-  @@index([identifier])
-  @@map("verifications")
-}
-
-// App models
 model Organization {
   id        String   @id @default(uuid())
   name      String
@@ -103,7 +46,7 @@ model Membership {
   role           String   @default("member")
   createdAt      DateTime @default(now()) @db.Timestamptz()
 
-  user         user         @relation(fields: [userId], references: [id])
+  profile      Profile      @relation(fields: [userId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([userId, organizationId])
@@ -147,7 +90,7 @@ model Bot {
 
   organization Organization @relation(fields: [organizationId], references: [id])
   agent        Agent         @relation(fields: [agentId], references: [id])
-  creator      user?         @relation("BotCreator", fields: [createdById], references: [id])
+  creator      Profile?      @relation("BotCreator", fields: [createdById], references: [id])
   conversations Conversation[]
   integrations  Integration[]
   analytics     Analytics[]
