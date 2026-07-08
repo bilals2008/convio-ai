@@ -35,8 +35,25 @@ model Organization {
   bots           Bot[]
   knowledgeBases KnowledgeBase[]
   tools          Tool[]
+  providerKeys   ProviderKey[]
+  apiKeys        ApiKey[]
 
   @@index([slug])
+}
+
+model ApiKey {
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  key            String    @unique
+  keyPreview     String
+  lastUsedAt     DateTime?
+  createdAt      DateTime  @default(now()) @db.Timestamptz()
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([key])
 }
 
 model Membership {
@@ -63,13 +80,32 @@ model Agent {
   systemPrompt   String
   temperature    Float    @default(0.7)
   maxTokens      Int?
+  providerKeyId  String?
   createdAt      DateTime @default(now()) @db.Timestamptz()
   updatedAt      DateTime @updatedAt @db.Timestamptz()
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  providerKey  ProviderKey? @relation(fields: [providerKeyId], references: [id])
   bots         Bot[]
   tools        AgentTool[]
 
+  @@index([organizationId])
+}
+
+model ProviderKey {
+  id             String   @id @default(uuid())
+  organizationId String
+  provider       String
+  apiKey         String
+  keyPreview     String
+  label          String?
+  createdAt      DateTime @default(now()) @db.Timestamptz()
+  updatedAt      DateTime @updatedAt @db.Timestamptz()
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  agents       Agent[]
+
+  @@unique([organizationId, provider])
   @@index([organizationId])
 }
 
