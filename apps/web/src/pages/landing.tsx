@@ -1,4 +1,4 @@
-import { Navbar, HeroSection, Features, HowItWorks, Pricing, CTA, Footer } from '@/components/landing'
+import { Navbar, HeroSection, Features, ChatPreview, Channels, ChannelOrbit, Pricing, CTA, Footer } from '@/components/landing'
 
 export default function Landing() {
   return (
@@ -7,7 +7,9 @@ export default function Landing() {
       <main>
         <HeroSection />
         <Features />
-        <HowItWorks />
+        <ChatPreview />
+        <Channels />
+        <ChannelOrbit />
         <Pricing />
         <CTA />
       </main>

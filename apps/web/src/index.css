@@ -200,3 +200,44 @@
   from { opacity: 1; }
   to { opacity: 0; }
 }
+
+@keyframes orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orbit-counter {
+  to { transform: rotate(-360deg); }
+}
+
+@layer utilities {
+  .animate-orbit-slow {
+    animation: orbit 48s linear infinite;
+  }
+  .animate-orbit-mid {
+    animation: orbit 38s linear infinite;
+  }
+  .animate-orbit-fast {
+    animation: orbit 28s linear infinite;
+  }
+  .animate-orbit-counter-slow {
+    animation: orbit-counter 48s linear infinite;
+  }
+  .animate-orbit-counter-mid {
+    animation: orbit-counter 38s linear infinite;
+  }
+  .animate-orbit-counter-fast {
+    animation: orbit-counter 28s linear infinite;
+  }
+
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(to right, var(--border) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+    background-size: calc(100% / 12) calc(100% / 12);
+  }
+
+  .mask-radial {
+    mask-image: radial-gradient(circle at center, #000 55%, transparent 85%);
+    -webkit-mask-image: radial-gradient(circle at center, #000 55%, transparent 85%);
+  }
+}
