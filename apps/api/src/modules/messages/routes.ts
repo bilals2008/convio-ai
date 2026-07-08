@@ -3,6 +3,7 @@ import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { getProviderForModel } from '@convio/ai/providers'
+import { getCorsHeaders } from '../../plugins/cors.js'
 import { z } from 'zod'
 
 const convParamsSchema = z.object({
@@ -73,7 +74,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     return { data: message }
   })
 
-  // POST /api/conversations/:id/messages/stream — Send user message, stream AI response via SSE
+  // POST /api/conversations/:id/messages/stream — Generate AI response via SSE
   fastify.post('/conversations/:id/messages/stream', {
     preHandler: [
       fastify.authenticate,
@@ -93,11 +94,15 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const orgId = conversation.bot.organizationId
     await fastify.getMembership(request.userId!, orgId)
 
-    await prisma.message.create({
-      data: { conversationId: id, role: 'user', content, status: 'sent' },
-    })
-
     const agent = conversation.bot.agent
+
+    if (!agent) {
+      throw new AppError(400, 'Bot has no agent configured')
+    }
+
+    if (!agent.model) {
+      throw new AppError(400, 'Agent has no model configured')
+    }
 
     const history = await prisma.message.findMany({
       where: { conversationId: id },
@@ -110,42 +115,65 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     ]
 
+    let provider
+    try {
+      provider = getProviderForModel(agent.model)
+    } catch {
+      throw new AppError(400, `No provider configured for model: ${agent.model}`)
+    }
+
+    let apiKey: string | undefined
+    if (agent.providerKeyId) {
+      const providerKey = await prisma.providerKey.findUnique({
+        where: { id: agent.providerKeyId },
+      })
+      if (providerKey && providerKey.organizationId === conversation.bot.organizationId) {
+        apiKey = providerKey.apiKey
+      }
+    }
+
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
-      'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
-      'Access-Control-Allow-Credentials': 'true',
+      ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
     })
 
+    let fullResponse = ''
+
     try {
-      const provider = getProviderForModel(agent.model)
       const stream = provider.stream({
         model: agent.model,
         messages: aiMessages,
         temperature: agent.temperature ?? 0.7,
         maxTokens: agent.maxTokens ?? 2048,
+        apiKey,
       })
 
-      let fullResponse = ''
-
       for await (const chunk of stream) {
-        if (chunk.type === 'text' && chunk.content) {
+        if (chunk.content) {
           fullResponse += chunk.content
+          reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
         }
-        reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`)
+        if (chunk.type === 'done') break
       }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'AI generation failed'
+      reply.raw.write(`data: ${JSON.stringify({ error: msg })}\n\n`)
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+      return
+    }
 
+    if (fullResponse) {
       await prisma.message.create({
         data: { conversationId: id, role: 'assistant', content: fullResponse, status: 'sent' },
       })
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Stream failed'
-      reply.raw.write(`data: ${JSON.stringify({ type: 'error', error: message })}\n\n`)
-    } finally {
-      reply.raw.end()
     }
+
+    reply.raw.write('data: [DONE]\n\n')
+    reply.raw.end()
   })
 
   // GET /api/conversations/:id/messages — List messages (protected, member only, paginated, oldest-first)
