@@ -32,17 +32,20 @@ const createBotBodySchema = z.object({
   agentId: z.string().uuid(),
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
-  avatar: z.string().url().optional(),
+  avatar: z.string().url().optional().nullable().transform((v) => v || null),
   widgetColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   welcomeMessage: z.string().max(500).optional(),
+  status: z.enum(['draft', 'active', 'paused', 'archived']).optional(),
 })
 
 const updateBotBodySchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  description: z.string().max(500).optional(),
+  description: z.string().max(500).optional().nullable(),
   avatar: z.string().url().optional().nullable(),
   widgetColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   welcomeMessage: z.string().max(500).optional().nullable(),
+  status: z.enum(botStatuses).optional(),
+  agentId: z.string().uuid().optional(),
 })
 
 const updateStatusBodySchema = z.object({

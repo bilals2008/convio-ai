@@ -14,7 +14,7 @@ declare module 'fastify' {
     }
   }
   interface FastifyInstance {
-    supabase: ReturnType<typeof createClient>
+    supabase: any
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
     optionalAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
   }

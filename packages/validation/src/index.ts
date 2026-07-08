@@ -24,7 +24,7 @@ export const organizationSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
   logo: z.string().url().optional(),
-  plan: z.enum(['free', 'pro', 'enterprise']),
+  plan: z.enum(['free', 'pro', 'enterprise']).default('free'),
   createdAt: z.date(),
   updatedAt: z.date(),
 })
@@ -64,16 +64,18 @@ export const agentSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
-  model: aiModelSchema,
+  model: z.string(),
   systemPrompt: z.string().min(1).max(10000),
   temperature: z.number().min(0).max(2).default(0.7),
   maxTokens: z.number().positive().optional(),
+  providerKeyId: z.string().uuid().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })
 
 export const createAgentSchema = agentSchema.omit({
   id: true,
+  organizationId: true,
   createdAt: true,
   updatedAt: true,
 })
@@ -99,6 +101,7 @@ export const botSchema = z.object({
 
 export const createBotSchema = botSchema.omit({
   id: true,
+  organizationId: true,
   createdAt: true,
   updatedAt: true,
 })
@@ -121,6 +124,7 @@ export const conversationSchema = z.object({
 
 export const createConversationSchema = conversationSchema.omit({
   id: true,
+  botId: true,
   createdAt: true,
   updatedAt: true,
 })
@@ -158,6 +162,7 @@ export const knowledgeBaseSchema = z.object({
 
 export const createKnowledgeBaseSchema = knowledgeBaseSchema.omit({
   id: true,
+  organizationId: true,
   createdAt: true,
   updatedAt: true,
 })

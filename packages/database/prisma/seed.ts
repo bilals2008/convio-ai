@@ -1,14 +1,36 @@
-import { PrismaClient } from '@prisma/client'
+import { getPrisma } from '../src/index.js'
 
-const prisma = new PrismaClient()
+const prisma = getPrisma()
+
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 async function main() {
+  const profile = await prisma.profile.upsert({
+    where: { id: DEMO_USER_ID },
+    update: {},
+    create: {
+      id: DEMO_USER_ID,
+      email: 'demo@convio.dev',
+      name: 'Demo User',
+    },
+  })
+
   const org = await prisma.organization.upsert({
     where: { slug: 'demo' },
     update: {},
     create: {
       name: 'Demo Org',
       slug: 'demo',
+    },
+  })
+
+  await prisma.membership.upsert({
+    where: { userId_organizationId: { userId: DEMO_USER_ID, organizationId: org.id } },
+    update: {},
+    create: {
+      userId: DEMO_USER_ID,
+      organizationId: org.id,
+      role: 'owner',
     },
   })
 
@@ -40,7 +62,7 @@ async function main() {
     },
   })
 
-  console.log('Seeded:', { org: org.name, agent: agent.name, bot: bot.name })
+  console.log('Seeded:', { profile: profile.name, org: org.name, agent: agent.name, bot: bot.name })
 }
 
 main()

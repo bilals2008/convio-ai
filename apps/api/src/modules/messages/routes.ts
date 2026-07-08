@@ -115,6 +115,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
+      'Access-Control-Allow-Credentials': 'true',
     })
 
     try {

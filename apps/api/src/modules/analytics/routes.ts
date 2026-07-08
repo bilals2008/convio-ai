@@ -57,6 +57,10 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
 
     const { fromDate, toDate } = getDefaultDateRange(from, to)
 
+    const rangeMs = toDate.getTime() - fromDate.getTime()
+    const prevFromDate = new Date(fromDate.getTime() - rangeMs)
+    const prevToDate = new Date(fromDate.getTime() - 1)
+
     const analyticsRecords = await prisma.analytics.findMany({
       where: {
         bot: { organizationId: orgId },
@@ -65,17 +69,37 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       orderBy: { date: 'asc' },
     })
 
-    const totals = analyticsRecords.reduce(
-      (acc, r) => ({
-        totalConversations: acc.totalConversations + r.totalConversations,
-        totalMessages: acc.totalMessages + r.totalMessages,
-        uniqueUsers: acc.uniqueUsers + r.uniqueUsers,
-        avgResponseTime: analyticsRecords.length > 0
-          ? acc.avgResponseTime + r.avgResponseTime
-          : acc.avgResponseTime,
-      }),
-      { totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0 },
-    )
+    const prevAnalyticsRecords = await prisma.analytics.findMany({
+      where: {
+        bot: { organizationId: orgId },
+        date: { gte: prevFromDate, lte: prevToDate },
+      },
+    })
+
+    const calcTotals = (records: typeof analyticsRecords) =>
+      records.reduce(
+        (acc, r) => ({
+          totalConversations: acc.totalConversations + r.totalConversations,
+          totalMessages: acc.totalMessages + r.totalMessages,
+          uniqueUsers: acc.uniqueUsers + r.uniqueUsers,
+          avgResponseTime: records.length > 0 ? acc.avgResponseTime + r.avgResponseTime : 0,
+        }),
+        { totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0 },
+      )
+
+    const totals = calcTotals(analyticsRecords)
+    const prevTotals = calcTotals(prevAnalyticsRecords)
+
+    const recordCount = analyticsRecords.length
+    const prevRecordCount = prevAnalyticsRecords.length
+
+    const avgResponseTime = recordCount > 0 ? Math.round((totals.avgResponseTime / recordCount) * 100) / 100 : 0
+    const prevAvgResponseTime = prevRecordCount > 0 ? Math.round((prevTotals.avgResponseTime / prevRecordCount) * 100) / 100 : 0
+
+    function pctChange(current: number, previous: number) {
+      if (previous === 0) return current > 0 ? 100 : 0
+      return Math.round(((current - previous) / previous) * 1000) / 10
+    }
 
     const dailyCounts = new Map<string, number>()
     const dailyBreakdown = analyticsRecords.reduce<Record<string, {
@@ -98,14 +122,31 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       return acc
     }, {})
 
+    const channelBreakdownResult = await prisma.conversation.groupBy({
+      by: ['channel'],
+      where: {
+        bot: { organizationId: orgId },
+        createdAt: { gte: fromDate, lte: toDate },
+      },
+      _count: { id: true },
+    })
+
+    const channelBreakdown = channelBreakdownResult.map((c) => ({
+      channel: c.channel,
+      count: c._count.id,
+    }))
+
     return {
       data: {
         totalConversations: totals.totalConversations,
         totalMessages: totals.totalMessages,
         uniqueUsers: totals.uniqueUsers,
-        avgResponseTime: analyticsRecords.length > 0
-          ? Math.round((totals.avgResponseTime / analyticsRecords.length) * 100) / 100
-          : 0,
+        avgResponseTime,
+        conversationsChange: pctChange(totals.totalConversations, prevTotals.totalConversations),
+        messagesChange: pctChange(totals.totalMessages, prevTotals.totalMessages),
+        usersChange: pctChange(totals.uniqueUsers, prevTotals.uniqueUsers),
+        responseTimeChange: -pctChange(avgResponseTime, prevAvgResponseTime),
+        channelBreakdown,
         dailyBreakdown: Object.values(dailyBreakdown).map((d) => {
           const count = dailyCounts.get(d.date) || 1
           return {
@@ -134,29 +175,52 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
 
     const { fromDate, toDate } = getDefaultDateRange(from, to)
 
+    const rangeMs = toDate.getTime() - fromDate.getTime()
+    const prevFromDate = new Date(fromDate.getTime() - rangeMs)
+    const prevToDate = new Date(fromDate.getTime() - 1)
+
     const records = await prisma.analytics.findMany({
       where: { botId, date: { gte: fromDate, lte: toDate } },
       orderBy: { date: 'asc' },
     })
 
-    const totals = records.reduce(
-      (acc, r) => ({
-        totalConversations: acc.totalConversations + r.totalConversations,
-        totalMessages: acc.totalMessages + r.totalMessages,
-        uniqueUsers: acc.uniqueUsers + r.uniqueUsers,
-        avgResponseTime: acc.avgResponseTime + r.avgResponseTime,
-        satisfactionScores: r.satisfactionScore != null
-          ? [...acc.satisfactionScores, r.satisfactionScore]
-          : acc.satisfactionScores,
-      }),
-      {
-        totalConversations: 0,
-        totalMessages: 0,
-        uniqueUsers: 0,
-        avgResponseTime: 0,
-        satisfactionScores: [] as number[],
-      },
-    )
+    const prevRecords = await prisma.analytics.findMany({
+      where: { botId, date: { gte: prevFromDate, lte: prevToDate } },
+    })
+
+    const calcTotals = (recs: typeof records) =>
+      recs.reduce(
+        (acc, r) => ({
+          totalConversations: acc.totalConversations + r.totalConversations,
+          totalMessages: acc.totalMessages + r.totalMessages,
+          uniqueUsers: acc.uniqueUsers + r.uniqueUsers,
+          avgResponseTime: recs.length > 0 ? acc.avgResponseTime + r.avgResponseTime : 0,
+          satisfactionScores: r.satisfactionScore != null
+            ? [...acc.satisfactionScores, r.satisfactionScore]
+            : acc.satisfactionScores,
+        }),
+        {
+          totalConversations: 0,
+          totalMessages: 0,
+          uniqueUsers: 0,
+          avgResponseTime: 0,
+          satisfactionScores: [] as number[],
+        },
+      )
+
+    const totals = calcTotals(records)
+    const prevTotals = calcTotals(prevRecords)
+
+    const recordCount = records.length
+    const prevRecordCount = prevRecords.length
+
+    const avgResponseTime = recordCount > 0 ? Math.round((totals.avgResponseTime / recordCount) * 100) / 100 : 0
+    const prevAvgResponseTime = prevRecordCount > 0 ? Math.round((prevTotals.avgResponseTime / prevRecordCount) * 100) / 100 : 0
+
+    function pctChange(current: number, previous: number) {
+      if (previous === 0) return current > 0 ? 100 : 0
+      return Math.round(((current - previous) / previous) * 1000) / 10
+    }
 
     const dailyBreakdown = records.map((r) => ({
       date: r.date.toISOString().slice(0, 10),
@@ -166,17 +230,31 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       avgResponseTime: r.avgResponseTime,
     }))
 
+    const channelBreakdownResult = await prisma.conversation.groupBy({
+      by: ['channel'],
+      where: { botId, createdAt: { gte: fromDate, lte: toDate } },
+      _count: { id: true },
+    })
+
+    const channelBreakdown = channelBreakdownResult.map((c) => ({
+      channel: c.channel,
+      count: c._count.id,
+    }))
+
     return {
       data: {
         totalConversations: totals.totalConversations,
         totalMessages: totals.totalMessages,
         uniqueUsers: totals.uniqueUsers,
-        avgResponseTime: records.length > 0
-          ? Math.round((totals.avgResponseTime / records.length) * 100) / 100
-          : 0,
+        avgResponseTime,
+        conversationsChange: pctChange(totals.totalConversations, prevTotals.totalConversations),
+        messagesChange: pctChange(totals.totalMessages, prevTotals.totalMessages),
+        usersChange: pctChange(totals.uniqueUsers, prevTotals.uniqueUsers),
+        responseTimeChange: -pctChange(avgResponseTime, prevAvgResponseTime),
         satisfactionScore: totals.satisfactionScores.length > 0
           ? Math.round((totals.satisfactionScores.reduce((s, v) => s + v, 0) / totals.satisfactionScores.length) * 100) / 100
           : null,
+        channelBreakdown,
         dailyBreakdown,
       },
     }
@@ -248,6 +326,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       },
       _avg: {
         avgResponseTime: true,
+        satisfactionScore: true,
       },
       orderBy: {
         _sum: { totalConversations: 'desc' },
@@ -274,6 +353,9 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         avgResponseTime: r._avg.avgResponseTime
           ? Math.round(r._avg.avgResponseTime * 100) / 100
           : 0,
+        satisfactionScore: r._avg.satisfactionScore
+          ? Math.round(r._avg.satisfactionScore * 100) / 100
+          : null,
       })),
     }
   })

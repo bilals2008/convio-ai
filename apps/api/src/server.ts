@@ -29,6 +29,8 @@ import aiRoutes from './modules/ai/routes.js'
 import playgroundRoutes from './modules/playground/routes.js'
 import billingRoutes from './modules/billing/routes.js'
 import widgetsRoutes from './modules/widgets/routes.js'
+import providerKeysRoutes from './modules/provider-keys/routes.js'
+import apiKeysRoutes from './modules/api-keys/routes.js'
 
 async function buildServer() {
   const app = Fastify({
@@ -63,6 +65,8 @@ async function buildServer() {
   await app.register(playgroundRoutes, { prefix: '/api' })
   await app.register(billingRoutes, { prefix: '/api' })
   await app.register(widgetsRoutes, { prefix: '/api' })
+  await app.register(providerKeysRoutes, { prefix: '/api' })
+  await app.register(apiKeysRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {

@@ -43,10 +43,10 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, orgId)
 
-    const body = request.body as { name: string; description?: string; model: string; systemPrompt: string; temperature?: number; maxTokens?: number }
+    const body = request.body as Record<string, unknown>
 
     const agent = await prisma.agent.create({
-      data: { ...body, organizationId: orgId },
+      data: { ...body, organizationId: orgId } as any,
     })
 
     return { data: agent }

@@ -15,11 +15,12 @@ const memberParamsSchema = z.object({
 })
 
 const addMemberSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.string().uuid().optional(),
+  email: z.string().email().optional(),
   role: membershipRoleSchema.refine((r) => r !== 'owner', {
     message: 'Cannot add a member as owner. Use transfer ownership instead.',
   }),
-})
+}).refine((d) => d.userId || d.email, { message: 'Either userId or email is required' })
 
 const updateRoleSchema = z.object({
   role: membershipRoleSchema,
@@ -136,7 +137,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
 
     const memberships = await prisma.membership.findMany({
       where: { organizationId: id },
-      include: { user: true },
+      include: { profile: true },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { createdAt: 'asc' },
@@ -151,10 +152,10 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
         role: m.role,
         joinedAt: m.createdAt,
         user: {
-          id: m.user.id,
-          name: m.user.name,
-          email: m.user.email,
-          image: m.user.image,
+          id: m.profile.id,
+          name: m.profile.name,
+          email: m.profile.email,
+          image: m.profile.avatar,
         },
       })),
       nextCursor: hasNextPage ? items[items.length - 1].id : null,
@@ -169,9 +170,21 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
-    const { userId, role } = request.body as { userId: string; role: 'admin' | 'member' | 'viewer' }
+    const { userId: bodyUserId, email, role } = request.body as { userId?: string; email?: string; role: 'admin' | 'member' | 'viewer' }
 
     await fastify.ensureAdmin(request.userId!, id)
+
+    let userId = bodyUserId
+
+    if (!userId && email) {
+      const profile = await prisma.profile.findFirst({ where: { email } })
+      if (!profile) throw new AppError(404, 'No user found with that email')
+      userId = profile.id
+    }
+
+    if (!userId) {
+      throw new AppError(400, 'Could not resolve user')
+    }
 
     const existing = await prisma.membership.findUnique({
       where: { userId_organizationId: { userId, organizationId: id } },
@@ -181,12 +194,12 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
       throw new AppError(409, 'User is already a member of this organization', 'CONFLICT')
     }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    if (!user) throw new AppError(404, 'User not found')
+    const profile = await prisma.profile.findUnique({ where: { id: userId } })
+    if (!profile) throw new AppError(404, 'User not found')
 
     const membership = await prisma.membership.create({
       data: { userId, organizationId: id, role },
-      include: { user: true },
+      include: { profile: true },
     })
 
     return {
@@ -195,10 +208,10 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
         role: membership.role,
         joinedAt: membership.createdAt,
         user: {
-          id: membership.user.id,
-          name: membership.user.name,
-          email: membership.user.email,
-          image: membership.user.image,
+          id: membership.profile.id,
+          name: membership.profile.name,
+          email: membership.profile.email,
+          image: membership.profile.avatar,
         },
       },
     }
@@ -284,7 +297,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     const updated = await prisma.membership.update({
       where: { userId_organizationId: { userId, organizationId: id } },
       data: { role },
-      include: { user: true },
+      include: { profile: true },
     })
 
     return {
@@ -293,10 +306,10 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
         role: updated.role,
         joinedAt: updated.createdAt,
         user: {
-          id: updated.user.id,
-          name: updated.user.name,
-          email: updated.user.email,
-          image: updated.user.image,
+          id: updated.profile.id,
+          name: updated.profile.name,
+          email: updated.profile.email,
+          image: updated.profile.avatar,
         },
       },
     }

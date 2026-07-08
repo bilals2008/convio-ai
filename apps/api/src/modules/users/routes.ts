@@ -24,7 +24,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
   fastify.get('/users/me', {
     preHandler: [fastify.authenticate],
   }, async (request) => {
-    const user = await prisma.user.findUnique({ where: { id: request.userId } })
+    const user = await prisma.profile.findUnique({ where: { id: request.userId } })
     if (!user) throw new AppError(404, 'User not found')
     return { data: user }
   })
@@ -33,7 +33,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
   fastify.patch('/users/me', {
     preHandler: [fastify.authenticate, validate({ body: updateUserSchema })],
   }, async (request) => {
-    const user = await prisma.user.update({
+    const user = await prisma.profile.update({
       where: { id: request.userId },
       data: request.body as any,
     })
@@ -44,7 +44,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
   fastify.delete('/users/me', {
     preHandler: [fastify.authenticate],
   }, async (request, reply) => {
-    await prisma.user.delete({ where: { id: request.userId } })
+    await prisma.profile.delete({ where: { id: request.userId } })
     reply.code(204).send()
   })
 
@@ -65,7 +65,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
 
     const memberships = await prisma.membership.findMany({
       where: { organizationId: orgId },
-      include: { user: true },
+      include: { profile: true },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { id: 'desc' },
@@ -76,7 +76,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
 
     return {
       data: items.map((m) => ({
-        ...m.user,
+        ...m.profile,
         role: m.role,
         joinedAt: m.createdAt,
       })),
@@ -98,14 +98,14 @@ export default async function usersRoutes(fastify: FastifyInstance) {
 
     const membership = await prisma.membership.findUnique({
       where: { userId_organizationId: { userId: id, organizationId: orgId } },
-      include: { user: true },
+      include: { profile: true },
     })
 
     if (!membership) throw new AppError(404, 'User not found in this organization')
 
     return {
       data: {
-        ...membership.user,
+        ...membership.profile,
         role: membership.role,
         joinedAt: membership.createdAt,
       },
