@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Bot } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { Skeleton } from '@/components/shared/loading'
+import { TypingIndicator } from '@/components/shared/typing-indicator'
 import { Button } from '@/components/ui/button'
 import { ConversationStatusBadge } from '@/components/conversations/conversation-status-badge'
 import type { ConvStatus } from '@/components/conversations/conversation-status-badge'
@@ -47,6 +48,30 @@ export default function ConversationDetailPage() {
   const [sending, setSending] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const [streaming, setStreaming] = useState(false)
+  const [typingAgents, setTypingAgents] = useState<string[]>([])
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const presenceRef = useRef<{ online: boolean }>({ online: false })
+
+  const broadcastTyping = useCallback(() => {
+    if (!id) return
+    supabase.channel(`conversation:${id}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: {},
+    })
+  }, [id])
+
+  const handleInputChange = () => {
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+    broadcastTyping()
+    typingTimerRef.current = setTimeout(() => {
+      supabase.channel(`conversation:${id}`).send({
+        type: 'broadcast',
+        event: 'typing_stop',
+        payload: {},
+      })
+    }, 2000)
+  }
 
   useEffect(() => {
     if (!id) return
@@ -59,10 +84,20 @@ export default function ConversationDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['conversation', id] })
     })
 
+    channel.on('broadcast', { event: 'typing' }, () => {
+      setTypingAgents(['Agent'])
+      setTimeout(() => setTypingAgents([]), 3000)
+    })
+
+    channel.on('broadcast', { event: 'typing_stop' }, () => {
+      setTypingAgents([])
+    })
+
     channel.subscribe()
 
     return () => {
       supabase.removeChannel(channel)
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
     }
   }, [id, queryClient])
 
@@ -208,10 +243,20 @@ export default function ConversationDetailPage() {
             loading={isLoading}
             streamingMessage={streaming ? { role: 'assistant', content: streamingContent, id: 'streaming', createdAt: new Date().toISOString(), status: 'sending' } : undefined}
           />
+
+          {typingAgents.length > 0 && !streaming && (
+            <div className="flex items-center gap-2 px-4 pb-1 text-xs text-muted-foreground">
+              <Bot className="size-3 text-primary" />
+              <span>{typingAgents.join(', ')} is typing</span>
+              <TypingIndicator className="scale-75 origin-left" />
+            </div>
+          )}
+
           <MessageInput
             onSend={handleSendMessage}
             loading={sending}
             disabled={isClosed}
+            onInputChange={handleInputChange}
             placeholder={
               isClosed
                 ? 'This conversation is closed'

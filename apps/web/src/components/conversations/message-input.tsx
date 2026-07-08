@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 
 interface MessageInputProps {
   onSend: (message: string) => void
+  onInputChange?: () => void
   loading?: boolean
   disabled?: boolean
   placeholder?: string
@@ -12,6 +13,7 @@ interface MessageInputProps {
 
 export function MessageInput({
   onSend,
+  onInputChange,
   loading,
   disabled,
   placeholder = 'Type a message...',
@@ -32,11 +34,16 @@ export function MessageInput({
     }
   }
 
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value)
+    onInputChange?.()
+  }
+
   return (
     <div className="flex items-end gap-2 border-t p-4">
       <textarea
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled || loading}
