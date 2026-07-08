@@ -12,6 +12,7 @@ import { MessageList } from '@/components/conversations/message-list'
 import { MessageInput } from '@/components/conversations/message-input'
 import { ConversationStats } from '@/components/conversations/conversation-stats'
 import { conversations as conversationsApi, messages as messagesApi } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 
 type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
 type MessageRole = 'user' | 'assistant' | 'system'
@@ -44,12 +45,19 @@ export default function ConversationDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [sending, setSending] = useState(false)
+  const [streamingContent, setStreamingContent] = useState('')
+  const [streaming, setStreaming] = useState(false)
 
   const { data: conversation, isLoading } = useQuery({
     queryKey: ['conversation', id],
     queryFn: async () => {
       const res = await conversationsApi.get(id!)
-      return res.data.data as ConversationDetail
+      const raw = res.data.data
+      return {
+        ...raw,
+        botName: raw.bot?.name || raw.botName || 'Unknown Bot',
+        botId: raw.bot?.id || raw.botId,
+      } as ConversationDetail
     },
     enabled: !!id,
   })
@@ -64,14 +72,62 @@ export default function ConversationDetailPage() {
   const handleSendMessage = async (content: string) => {
     if (!id) return
     setSending(true)
+    setStreaming(true)
+    setStreamingContent('')
+
     try {
       await messagesApi.send(id, content)
-      await messagesApi.stream(id, content)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+      const response = await fetch(`${baseURL}/conversations/${id}/messages/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ role: 'user', content }),
+      })
+
+      if (!response.ok) throw new Error('Stream request failed')
+
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response body')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let fullContent = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') break
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.content) {
+                fullContent += parsed.content
+                setStreamingContent(fullContent)
+              }
+            } catch { /* skip */ }
+          }
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ['conversation', id] })
     } catch {
       queryClient.invalidateQueries({ queryKey: ['conversation', id] })
     } finally {
       setSending(false)
+      setStreaming(false)
+      setStreamingContent('')
     }
   }
 
@@ -109,6 +165,8 @@ export default function ConversationDetailPage() {
 
   const isClosed = conversation.status === 'closed' || conversation.status === 'archived'
 
+  const displayMessages = (conversation.messages || []) as MessageItem[]
+
   return (
     <PageContainer>
       <PageHeader
@@ -128,8 +186,9 @@ export default function ConversationDetailPage() {
       <div className="grid gap-6 lg:grid-cols-4">
         <div className="lg:col-span-3 flex flex-col rounded-xl border bg-card min-h-[500px]">
           <MessageList
-            messages={conversation.messages || []}
+            messages={displayMessages}
             loading={isLoading}
+            streamingMessage={streaming ? { role: 'assistant', content: streamingContent, id: 'streaming', createdAt: new Date().toISOString(), status: 'sending' } : undefined}
           />
           <MessageInput
             onSend={handleSendMessage}

@@ -10,6 +10,7 @@ import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
 import { ConversationCard } from '@/components/conversations/conversation-card'
 import { ConversationFilters } from '@/components/conversations/conversation-filters'
+import { BotSelectorDialog } from '@/components/conversations/bot-selector-dialog'
 import { conversations as conversationsApi, bots as botsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
@@ -29,6 +30,15 @@ interface ConversationItem {
   updatedAt: string
 }
 
+interface BotOption {
+  id: string
+  name: string
+  status: string
+  agentName?: string
+  agentModel?: string
+  conversations?: number
+}
+
 export default function ConversationsListPage() {
   const navigate = useNavigate()
   const { orgId } = useOrg()
@@ -37,6 +47,7 @@ export default function ConversationsListPage() {
   const [channelFilter, setChannelFilter] = useState('all')
   const [cursor, setCursor] = useState<string | undefined>()
   const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [botSelectorOpen, setBotSelectorOpen] = useState(false)
 
   const params: Record<string, string | undefined> = {}
   if (statusFilter !== 'all') params.status = statusFilter
@@ -56,11 +67,11 @@ export default function ConversationsListPage() {
     },
   })
 
-  const { data: bots } = useQuery({
+  const { data: bots, isLoading: botsLoading } = useQuery({
     queryKey: ['bots-list', orgId],
     queryFn: async () => {
       const res = await botsApi.list(orgId!)
-      return (res.data.data || []) as { id: string; name: string; status: string }[]
+      return (res.data.data || []) as BotOption[]
     },
     enabled: !!orgId,
   })
@@ -71,15 +82,13 @@ export default function ConversationsListPage() {
       return res.data.data as { id: string }
     },
     onSuccess: (data) => {
+      setBotSelectorOpen(false)
       navigate(`/conversations/${data.id}`)
     },
   })
 
-  const handleStartChat = () => {
-    const activeBot = (bots || []).find((b) => b.status === 'active')
-    if (activeBot) {
-      createConvMutation.mutate(activeBot.id)
-    }
+  const handleSelectBot = (botId: string) => {
+    createConvMutation.mutate(botId)
   }
 
   const conversations = convsData || []
@@ -92,6 +101,8 @@ export default function ConversationsListPage() {
           c.lastMessage?.toLowerCase().includes(search.toLowerCase())
       )
     : conversations
+
+  const botCount = (bots || []).length
 
   const loadingSkeletons = Array.from({ length: 5 }, (_, i) => (
     <div key={i} className="rounded-xl border bg-card p-4 flex items-center gap-4">
@@ -113,7 +124,10 @@ export default function ConversationsListPage() {
         title="Conversations"
         description="View and manage all chat conversations"
         action={
-          <Button onClick={handleStartChat} disabled={createConvMutation.isPending || !(bots || []).some(b => b.status === 'active')}>
+          <Button
+            onClick={() => setBotSelectorOpen(true)}
+            disabled={createConvMutation.isPending || botCount === 0}
+          >
             <Plus className="size-4" />
             {createConvMutation.isPending ? 'Starting...' : 'Start Chat'}
           </Button>
@@ -152,7 +166,7 @@ export default function ConversationsListPage() {
           action={
             search
               ? { label: 'Clear search', onClick: () => setSearch('') }
-              : undefined
+              : { label: 'Start Chat', onClick: () => setBotSelectorOpen(true) }
           }
         />
       )}
@@ -190,6 +204,14 @@ export default function ConversationsListPage() {
           </div>
         </div>
       )}
+
+      <BotSelectorDialog
+        open={botSelectorOpen}
+        onOpenChange={setBotSelectorOpen}
+        bots={(bots || []) as BotOption[]}
+        loading={botsLoading}
+        onSelect={handleSelectBot}
+      />
     </PageContainer>
   )
 }

@@ -44,13 +44,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       <div
         className={cn(
           'flex size-8 items-center justify-center rounded-full shrink-0',
-          isUser ? 'bg-primary/10' : 'bg-muted'
+          isUser ? 'bg-primary/10' : 'bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20'
         )}
       >
         {isUser ? (
           <User className="size-4 text-primary" />
         ) : (
-          <Bot className="size-4 text-muted-foreground" />
+          <Bot className="size-4 text-primary" />
         )}
       </div>
 
