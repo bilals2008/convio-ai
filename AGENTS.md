@@ -55,3 +55,20 @@ Rules for AI agents working on this codebase.
 - No `any` types
 - Functional components only
 - Early returns over nested if/else
+
+## UI Components (shadcn/ui v4)
+
+- shadcn/ui v4 uses **Base UI React** — `asChild` is NOT supported on triggers
+- Use `className` directly on trigger elements instead of `<Button asChild>`
+- Base UI Select requires `<SelectGroup>` wrapping `<SelectLabel>` and `<SelectSeparator>`
+
+## Provider API Keys (BYOK)
+
+- Users can bring their own API keys per provider in Settings → Provider Keys
+- Stored in `ProviderKey` table (org-scoped, one key per provider)
+- Agents reference keys via optional `providerKeyId` field
+- On stream: backend looks up user's key → passes via `GenerateParams.apiKey`
+- Falls back to `process.env` if no user key configured
+- All AI providers accept optional `apiKey` in `GenerateParams`
+- Backend routes: `GET/POST/PATCH/DELETE /organizations/:orgId/provider-keys`
+- Models endpoint includes user-configured providers
