@@ -60,6 +60,7 @@ const PROVIDERS = [
   { id: 'together', name: 'Together', color: '#0ea5e9' },
   { id: 'deepseek', name: 'DeepSeek', color: '#3b82f6' },
   { id: 'perplexity', name: 'Perplexity', color: '#06b6d4' },
+  { id: 'local', name: 'Local API', color: '#22c55e' },
 ] as const
 
 type ProviderId = (typeof PROVIDERS)[number]['id']
@@ -75,6 +76,7 @@ const ENV_KEY_MAP: Record<ProviderId, string> = {
   together: 'TOGETHER_API_KEY',
   deepseek: 'DEEPSEEK_API_KEY',
   perplexity: 'PERPLEXITY_API_KEY',
+  local: 'LOCAL_API_URL',
 }
 
 export default function PlaygroundPage() {
@@ -97,13 +99,16 @@ export default function PlaygroundPage() {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
 
-  // Fetch models from backend when API key changes (debounced)
+  // Fetch models from backend when API key or provider changes (debounced)
   useEffect(() => {
     if (modelsFetchRef.current) {
       clearTimeout(modelsFetchRef.current)
     }
 
-    if (!apiKey.trim()) {
+    const isLocal = provider === 'local'
+    const effectiveKey = isLocal ? 'no-key-needed' : apiKey
+
+    if (!isLocal && !apiKey.trim()) {
       setModels([])
       setModel('')
       return
@@ -114,7 +119,7 @@ export default function PlaygroundPage() {
 
     modelsFetchRef.current = setTimeout(async () => {
       try {
-        const res = await api.post('/playground/models', { provider, apiKey })
+        const res = await api.post('/playground/models', { provider, apiKey: effectiveKey })
         const fetchedModels = res.data.models || []
         setModels(fetchedModels)
         if (fetchedModels.length > 0) {
@@ -175,13 +180,14 @@ export default function PlaygroundPage() {
   })
 
   const handleTest = useCallback(() => {
-    if (!apiKey.trim() || !message.trim() || !currentModel) return
+    const isLocal = provider === 'local'
+    if ((!isLocal && !apiKey.trim()) || !message.trim() || !currentModel) return
     testMutation.mutate()
-  }, [apiKey, message, currentModel, testMutation])
+  }, [provider, apiKey, message, currentModel, testMutation])
 
   const handleCopyEnv = useCallback(() => {
     const envVar = ENV_KEY_MAP[provider]
-    navigator.clipboard.writeText(`${envVar}=${apiKey}`)
+    navigator.clipboard.writeText(`${envVar}=${apiKey || 'http://localhost:20128'}`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }, [provider, apiKey])
@@ -245,38 +251,44 @@ export default function PlaygroundPage() {
               </Badge>
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Input
-                    type={showKey ? 'text' : 'password'}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder={`Enter ${selectedProvider.name} API key`}
-                    className="h-9 text-sm font-mono pr-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowKey(!showKey)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showKey ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                  </button>
-                </div>
-                <Button
-                  size="icon-sm"
-                  variant="outline"
-                  onClick={handleCopyEnv}
-                  disabled={!apiKey}
-                  title="Copy env variable"
-                >
-                  {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
-                </Button>
+            {provider === 'local' ? (
+              <div className="flex items-center justify-center h-9 rounded-md border border-dashed text-xs text-emerald-500 bg-emerald-500/5">
+                No API key required — local server
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Key is sent to backend only for this test. Not stored anywhere.
-              </p>
-            </div>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      type={showKey ? 'text' : 'password'}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder={`Enter ${selectedProvider.name} API key`}
+                      className="h-9 text-sm font-mono pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowKey(!showKey)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showKey ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                    </button>
+                  </div>
+                  <Button
+                    size="icon-sm"
+                    variant="outline"
+                    onClick={handleCopyEnv}
+                    disabled={!apiKey}
+                    title="Copy env variable"
+                  >
+                    {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Key is sent to backend only for this test. Not stored anywhere.
+                </p>
+              </div>
+            )}
           </Card>
 
           <Card className="p-4 space-y-4">
@@ -295,7 +307,7 @@ export default function PlaygroundPage() {
               )}
             </div>
 
-            {!apiKey.trim() ? (
+            {provider !== 'local' && !apiKey.trim() ? (
               <div className="flex items-center justify-center h-9 rounded-md border border-dashed text-xs text-muted-foreground">
                 Enter API key to load models
               </div>
@@ -326,7 +338,7 @@ export default function PlaygroundPage() {
               <Button
                 size="sm"
                 onClick={handleTest}
-                disabled={!apiKey.trim() || !message.trim() || !currentModel || testMutation.isPending}
+                disabled={(provider !== 'local' && !apiKey.trim()) || !message.trim() || !currentModel || testMutation.isPending}
                 className="gap-1.5 text-xs"
               >
                 {testMutation.isPending ? (
