@@ -73,7 +73,13 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
       data: { botId, userId: userId || request.userId, channel },
     })
 
-    return { data: conversation }
+    let userName: string | undefined
+    if (conversation.userId) {
+      const profile = await prisma.profile.findUnique({ where: { id: conversation.userId }, select: { name: true } })
+      userName = profile?.name || undefined
+    }
+
+    return { data: { ...conversation, userName } }
   })
 
   // GET /api/conversations — List conversations across user's orgs (protected, with filters)
@@ -119,8 +125,20 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     const hasNextPage = conversations.length > limit
     const items = hasNextPage ? conversations.slice(0, limit) : conversations
 
+    // Enrich with user names
+    const userIds = [...new Set(items.map((c) => c.userId).filter(Boolean))] as string[]
+    const profiles = userIds.length > 0
+      ? await prisma.profile.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } })
+      : []
+    const profileMap = new Map(profiles.map((p) => [p.id, p.name]))
+
+    const enriched = items.map((c) => ({
+      ...c,
+      userName: c.userId ? (profileMap.get(c.userId) || undefined) : undefined,
+    }))
+
     return {
-      data: items,
+      data: enriched,
       nextCursor: hasNextPage ? items[items.length - 1].id : null,
     }
   })
@@ -160,8 +178,19 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     const hasNextPage = conversations.length > limit
     const items = hasNextPage ? conversations.slice(0, limit) : conversations
 
+    const userIds = [...new Set(items.map((c) => c.userId).filter(Boolean))] as string[]
+    const profiles = userIds.length > 0
+      ? await prisma.profile.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } })
+      : []
+    const profileMap = new Map(profiles.map((p) => [p.id, p.name]))
+
+    const enriched = items.map((c) => ({
+      ...c,
+      userName: c.userId ? (profileMap.get(c.userId) || undefined) : undefined,
+    }))
+
     return {
-      data: items,
+      data: enriched,
       nextCursor: hasNextPage ? items[items.length - 1].id : null,
     }
   })
@@ -187,7 +216,13 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, conversation.bot.organizationId)
 
-    return { data: conversation }
+    let userName: string | undefined
+    if (conversation.userId) {
+      const profile = await prisma.profile.findUnique({ where: { id: conversation.userId }, select: { name: true } })
+      userName = profile?.name || undefined
+    }
+
+    return { data: { ...conversation, userName } }
   })
 
   // PATCH /api/conversations/:id — Update conversation (protected, member only)

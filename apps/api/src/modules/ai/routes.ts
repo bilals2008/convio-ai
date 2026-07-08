@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { getProviderForModel, getProviderById, allProviders } from '@convio/ai/providers'
+import { getCorsHeaders } from '../../plugins/cors.js'
 import { z } from 'zod'
 
 const keyMap: Record<string, string> = {
@@ -14,6 +15,7 @@ const keyMap: Record<string, string> = {
   together: 'TOGETHER_API_KEY',
   deepseek: 'DEEPSEEK_API_KEY',
   perplexity: 'PERPLEXITY_API_KEY',
+  local: 'LOCAL_API_URL',
 }
 
 export default async function aiRoutes(fastify: FastifyInstance) {
@@ -47,8 +49,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
-      'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
-      'Access-Control-Allow-Credentials': 'true',
+      ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
     })
 
     const systemMessages = [
@@ -92,7 +93,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
 
     const models = await Promise.all(
       allProviders
-        .filter((p) => !!process.env[keyMap[p.id]] || userKeyMap.has(p.id))
+        .filter((p) => p.id === 'local' || !!process.env[keyMap[p.id]] || userKeyMap.has(p.id))
         .map(async (p) => {
           try {
             return await p.listModels()
@@ -102,6 +103,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
         }),
     )
 
-    return { data: models.flat() }
+    const deduped = [...new Map(models.flat().map((m) => [m.id, m])).values()]
+    return { data: deduped }
   })
 }

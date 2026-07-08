@@ -18,6 +18,7 @@ const PROVIDER_BASE_URLS: Record<string, string> = {
   together: 'https://api.together.xyz/v1',
   deepseek: 'https://api.deepseek.com/v1',
   perplexity: 'https://api.perplexity.ai',
+  local: 'http://localhost:20128/v1',
 }
 
 // Fallback models if API fetch fails
@@ -32,6 +33,7 @@ const FALLBACK_MODELS: Record<string, string[]> = {
   together: ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct-Turbo'],
   deepseek: ['deepseek-chat', 'deepseek-reasoner'],
   perplexity: ['sonar-pro', 'sonar', 'llama-3.1-sonar-large-128k-online'],
+  local: ['auto/best-coding', 'auto/best-reasoning', 'auto/best-fast', 'auto/best-vision', 'auto/best-chat', 'auto/pro-coding', 'auto/coding', 'auto/fast', 'auto/chat'],
 }
 
 async function fetchOpenAIModels(apiKey: string): Promise<string[]> {
@@ -133,8 +135,22 @@ async function fetchDeepSeekModels(apiKey: string): Promise<string[]> {
     .sort()
 }
 
-async function fetchPerplexityModels(apiKey: string): Promise<string[]> {
+async function fetchPerplexityModels(_apiKey: string): Promise<string[]> {
   return FALLBACK_MODELS.perplexity
+}
+
+async function fetchLocalModels(): Promise<string[]> {
+  try {
+    const res = await fetch(`${PROVIDER_BASE_URLS.local}/models`)
+    if (!res.ok) return FALLBACK_MODELS.local
+    const data = await res.json()
+    return (data.data || [])
+      .filter((m: any) => !m.id.startsWith('no-think/'))
+      .map((m: any) => m.id)
+      .sort()
+  } catch {
+    return FALLBACK_MODELS.local
+  }
 }
 
 async function testOpenAI(apiKey: string, model: string, message: string) {
@@ -248,24 +264,58 @@ async function testKIE(apiKey: string, model: string, message: string) {
 }
 
 async function testOpenAICompat(baseUrl: string, apiKey: string, model: string, message: string) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (apiKey && apiKey !== 'no-key-needed') {
+    headers['Authorization'] = `Bearer ${apiKey}`
+  }
+
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers,
     body: JSON.stringify({
       model,
       messages: [{ role: 'user', content: message }],
       max_tokens: 256,
     }),
   })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
-  return {
-    response: data.choices?.[0]?.message?.content || '',
-    model: data.model,
-    usage: data.usage,
+
+  const rawText = await res.text()
+
+  if (!res.ok) {
+    try {
+      const errData = JSON.parse(rawText)
+      throw new Error(errData.error?.message || `HTTP ${res.status}`)
+    } catch (e) {
+      if (e instanceof SyntaxError) throw new Error(`HTTP ${res.status}: ${rawText.slice(0, 200)}`)
+      throw e
+    }
+  }
+
+  try {
+    const data = JSON.parse(rawText)
+    return {
+      response: data.choices?.[0]?.message?.content || '',
+      model: data.model,
+      usage: data.usage,
+    }
+  } catch {
+    // Response might be SSE format — extract content from stream chunks
+    const chunks: string[] = []
+    for (const line of rawText.split('\n')) {
+      if (line.startsWith('data: ') && line.slice(6) !== '[DONE]') {
+        try {
+          const parsed = JSON.parse(line.slice(6))
+          const content = parsed.choices?.[0]?.delta?.content
+          if (content) chunks.push(content)
+        } catch { /* skip */ }
+      }
+    }
+    if (chunks.length > 0) {
+      return { response: chunks.join(''), model, usage: undefined }
+    }
+    throw new Error(`Unexpected response format: ${rawText.slice(0, 200)}`)
   }
 }
 
@@ -312,6 +362,9 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
         case 'perplexity':
           models = await fetchPerplexityModels(apiKey)
           break
+        case 'local':
+          models = await fetchLocalModels()
+          break
         default:
           return reply.status(400).send({ error: `Unknown provider: ${provider}` })
       }
@@ -326,8 +379,12 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
   fastify.post('/playground/test', async (request, reply) => {
     const { provider, apiKey, model, message } = request.body as PlaygroundTestRequest
 
-    if (!provider || !apiKey || !message) {
-      return reply.status(400).send({ error: 'provider, apiKey, and message are required' })
+    if (!provider || !message) {
+      return reply.status(400).send({ error: 'provider and message are required' })
+    }
+
+    if (provider !== 'local' && !apiKey) {
+      return reply.status(400).send({ error: 'apiKey is required for this provider' })
     }
 
     const baseUrl = PROVIDER_BASE_URLS[provider]
@@ -366,6 +423,9 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
           break
         case 'perplexity':
           result = await testOpenAICompat(PROVIDER_BASE_URLS.perplexity, apiKey, testModel, message)
+          break
+        case 'local':
+          result = await testOpenAICompat(PROVIDER_BASE_URLS.local, apiKey, testModel, message)
           break
         default:
           return reply.status(400).send({ error: `Unsupported provider: ${provider}` })
