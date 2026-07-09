@@ -22,6 +22,15 @@ const addMemberSchema = z.object({
   }),
 }).refine((d) => d.userId || d.email, { message: 'Either userId or email is required' })
 
+const bulkInviteBodySchema = z.object({
+  members: z.array(z.object({
+    email: z.string().email(),
+    role: membershipRoleSchema.refine((r) => r !== 'owner', {
+      message: 'Cannot add a member as owner.',
+    }),
+  })).min(1).max(50),
+})
+
 const updateRoleSchema = z.object({
   role: membershipRoleSchema,
 })
@@ -49,6 +58,15 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
 
     await prisma.membership.create({
       data: { userId: request.userId!, organizationId: org.id, role: 'owner' },
+    })
+
+    await fastify.auditLog({
+      organizationId: org.id,
+      actorId: request.userId,
+      action: 'organization.created',
+      entityType: 'organization',
+      entityId: org.id,
+      metadata: { name: org.name, slug: org.slug },
     })
 
     return { data: org }
@@ -105,6 +123,15 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
       data: request.body as any,
     })
 
+    await fastify.auditLog({
+      organizationId: id,
+      actorId: request.userId,
+      action: 'organization.updated',
+      entityType: 'organization',
+      entityId: id,
+      metadata: request.body as Record<string, unknown>,
+    })
+
     return { data: org }
   })
 
@@ -119,7 +146,19 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
 
     await fastify.ensureOwner(request.userId!, id)
 
+    const orgToDelete = await prisma.organization.findUnique({ where: { id } })
+
     await prisma.organization.delete({ where: { id } })
+
+    await fastify.auditLog({
+      organizationId: id,
+      actorId: request.userId,
+      action: 'organization.deleted',
+      entityType: 'organization',
+      entityId: id,
+      metadata: { name: orgToDelete?.name, slug: orgToDelete?.slug },
+    })
+
     reply.code(204).send()
   })
 
@@ -202,6 +241,15 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
       include: { profile: true },
     })
 
+    await fastify.auditLog({
+      organizationId: id,
+      actorId: request.userId,
+      action: 'member.invited',
+      entityType: 'membership',
+      entityId: membership.id,
+      metadata: { userId, email: membership.profile.email, role },
+    })
+
     return {
       data: {
         id: membership.id,
@@ -215,6 +263,59 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
         },
       },
     }
+  })
+
+  // POST /api/organizations/:id/members/bulk — Bulk invite members (admin only)
+  fastify.post('/organizations/:id/members/bulk', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: orgParamsSchema, body: bulkInviteBodySchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { members } = request.body as { members: Array<{ email: string; role: string }> }
+
+    await fastify.ensureAdmin(request.userId!, id)
+
+    const results: Array<{ email: string; status: string; error?: string }> = []
+
+    for (const member of members) {
+      try {
+        const profile = await prisma.profile.findFirst({ where: { email: member.email } })
+        if (!profile) {
+          results.push({ email: member.email, status: 'skipped', error: 'No user found with that email' })
+          continue
+        }
+
+        const existing = await prisma.membership.findUnique({
+          where: { userId_organizationId: { userId: profile.id, organizationId: id } },
+        })
+
+        if (existing) {
+          results.push({ email: member.email, status: 'skipped', error: 'Already a member' })
+          continue
+        }
+
+        const membership = await prisma.membership.create({
+          data: { userId: profile.id, organizationId: id, role: member.role },
+        })
+
+        await fastify.auditLog({
+          organizationId: id,
+          actorId: request.userId,
+          action: 'member.invited',
+          entityType: 'membership',
+          entityId: membership.id,
+          metadata: { userId: profile.id, email: member.email, role: member.role },
+        })
+
+        results.push({ email: member.email, status: 'added', role: member.role })
+      } catch (err) {
+        results.push({ email: member.email, status: 'error', error: (err as Error).message })
+      }
+    }
+
+    return { data: { results, total: members.length, succeeded: results.filter((r) => r.status === 'added').length } }
   })
 
   // DELETE /api/organizations/:id/members/:userId — Remove member (admin or self-leave)
@@ -252,6 +353,15 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
 
     await prisma.membership.delete({
       where: { userId_organizationId: { userId, organizationId: id } },
+    })
+
+    await fastify.auditLog({
+      organizationId: id,
+      actorId: request.userId,
+      action: 'member.removed',
+      entityType: 'membership',
+      entityId: targetMembership.id,
+      metadata: { userId, role: targetMembership.role, isSelf },
     })
 
     reply.code(204).send()
@@ -298,6 +408,15 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
       where: { userId_organizationId: { userId, organizationId: id } },
       data: { role },
       include: { profile: true },
+    })
+
+    await fastify.auditLog({
+      organizationId: id,
+      actorId: request.userId,
+      action: 'member.role_changed',
+      entityType: 'membership',
+      entityId: updated.id,
+      metadata: { userId, oldRole: targetMembership.role, newRole: role },
     })
 
     return {

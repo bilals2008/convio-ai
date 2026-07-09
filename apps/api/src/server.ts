@@ -12,6 +12,7 @@ import corsPlugin from './plugins/cors.js'
 import authPlugin from './plugins/auth.js'
 import validationPlugin from './plugins/validate.js'
 import membershipPlugin from './plugins/membership.js'
+import auditLoggerPlugin from './plugins/audit-logger.js'
 import swaggerPlugin from './plugins/swagger.js'
 import rateLimitPlugin from './plugins/rate-limit.js'
 import multipart from '@fastify/multipart'
@@ -31,6 +32,8 @@ import billingRoutes from './modules/billing/routes.js'
 import widgetsRoutes from './modules/widgets/routes.js'
 import providerKeysRoutes from './modules/provider-keys/routes.js'
 import apiKeysRoutes from './modules/api-keys/routes.js'
+import auditLogRoutes from './modules/audit-logs/routes.js'
+import ssoRoutes from './modules/sso/routes.js'
 
 async function buildServer() {
   const app = Fastify({
@@ -43,6 +46,7 @@ async function buildServer() {
   await app.register(corsPlugin)
   await app.register(authPlugin)
   await app.register(membershipPlugin)
+  await app.register(auditLoggerPlugin)
   await app.register(validationPlugin)
   await app.register(swaggerPlugin)
   await app.register(rateLimitPlugin)
@@ -67,6 +71,8 @@ async function buildServer() {
   await app.register(widgetsRoutes, { prefix: '/api' })
   await app.register(providerKeysRoutes, { prefix: '/api' })
   await app.register(apiKeysRoutes, { prefix: '/api' })
+  await app.register(auditLogRoutes, { prefix: '/api' })
+  await app.register(ssoRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {
