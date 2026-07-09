@@ -25,8 +25,8 @@ export function AgentSettings({
           <span className="text-sm text-muted-foreground">{temperature}</span>
         </div>
         <Slider
-          value={[temperature]}
-          onValueChange={(value) => onTemperatureChange(value[0])}
+          defaultValue={[temperature]}
+          onValueCommitted={(value) => onTemperatureChange(value[0])}
           min={0}
           max={2}
           step={0.1}

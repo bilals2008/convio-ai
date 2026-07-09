@@ -90,31 +90,85 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     let totals = calcTotals(analyticsRecords)
     let prevTotals = calcTotals(prevAnalyticsRecords)
 
+    let dailyBreakdownData: { date: string; totalConversations: number; totalMessages: number; uniqueUsers: number; avgResponseTime: number }[] = []
+
     if (analyticsRecords.length === 0) {
-      const realtimeConversations = await prisma.conversation.count({
-        where: { bot: { organizationId: orgId }, createdAt: { gte: fromDate, lte: toDate } },
-      })
-      const realtimeMessages = await prisma.message.count({
-        where: { conversation: { bot: { organizationId: orgId } }, createdAt: { gte: fromDate, lte: toDate } },
-      })
-      const realtimeUsers = await prisma.conversation.groupBy({
-        by: ['userId'],
-        where: { bot: { organizationId: orgId }, createdAt: { gte: fromDate, lte: toDate }, userId: { not: null } },
+      const botWhere = { bot: { organizationId: orgId } }
+
+      const [realtimeConversations, realtimeMessages, realtimeUsers, prevConversations, prevMessages] = await Promise.all([
+        prisma.conversation.count({
+          where: { ...botWhere, createdAt: { gte: fromDate, lte: toDate } },
+        }),
+        prisma.message.count({
+          where: { conversation: botWhere, createdAt: { gte: fromDate, lte: toDate } },
+        }),
+        prisma.conversation.groupBy({
+          by: ['userId'],
+          where: { ...botWhere, createdAt: { gte: fromDate, lte: toDate }, userId: { not: null } },
+          _count: { id: true },
+        }),
+        prisma.conversation.count({
+          where: { ...botWhere, createdAt: { gte: prevFromDate, lte: prevToDate } },
+        }),
+        prisma.message.count({
+          where: { conversation: botWhere, createdAt: { gte: prevFromDate, lte: prevToDate } },
+        }),
+      ])
+
+      totals = {
+        totalConversations: realtimeConversations,
+        totalMessages: realtimeMessages,
+        uniqueUsers: realtimeUsers.length,
+        avgResponseTime: 0,
+      }
+      prevTotals = {
+        totalConversations: prevConversations,
+        totalMessages: prevMessages,
+        uniqueUsers: 0,
+        avgResponseTime: 0,
+      }
+
+      const convByDate = await prisma.conversation.groupBy({
+        by: ['createdAt'],
+        where: { ...botWhere, createdAt: { gte: fromDate, lte: toDate } },
         _count: { id: true },
       })
-      totals = { totalConversations: realtimeConversations, totalMessages: realtimeMessages, uniqueUsers: realtimeUsers.length, avgResponseTime: 0 }
 
-      const prevConversations = await prisma.conversation.count({
-        where: { bot: { organizationId: orgId }, createdAt: { gte: prevFromDate, lte: prevToDate } },
-      })
-      prevTotals = { totalConversations: prevConversations, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0 }
+      const msgByDate = await prisma.$queryRaw<{ date: Date; count: bigint }[]>`
+        SELECT DATE(m."createdAt") as date, COUNT(*)::int as count
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        JOIN "Bot" b ON b."id" = c."botId"
+        WHERE b."organizationId" = ${orgId}
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+        GROUP BY DATE(m."createdAt")
+        ORDER BY date ASC
+      `
+
+      const msgMap = new Map(msgByDate.map((r) => [r.date.toISOString().slice(0, 10), Number(r.count)]))
+
+      const dailyMap = new Map<string, { date: string; totalConversations: number; totalMessages: number; uniqueUsers: number; avgResponseTime: number }>()
+      for (const r of convByDate) {
+        const key = r.createdAt.toISOString().slice(0, 10)
+        if (!dailyMap.has(key)) {
+          dailyMap.set(key, { date: key, totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0 })
+        }
+        dailyMap.get(key)!.totalConversations += r._count.id
+      }
+      for (const [date, count] of msgMap) {
+        if (!dailyMap.has(date)) {
+          dailyMap.set(date, { date, totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0 })
+        }
+        dailyMap.get(date)!.totalMessages += count
+      }
+      dailyBreakdownData = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date))
     }
 
-    const recordCount = analyticsRecords.length
-    const prevRecordCount = prevAnalyticsRecords.length
+    const recordCount = analyticsRecords.length || 1
 
     const avgResponseTime = recordCount > 0 ? Math.round((totals.avgResponseTime / recordCount) * 100) / 100 : 0
-    const prevAvgResponseTime = prevRecordCount > 0 ? Math.round((prevTotals.avgResponseTime / prevRecordCount) * 100) / 100 : 0
+    const prevAvgResponseTime = prevTotals.avgResponseTime > 0 ? Math.round((prevTotals.avgResponseTime / (prevAnalyticsRecords.length || 1)) * 100) / 100 : 0
 
     function pctChange(current: number, previous: number) {
       if (previous === 0) return current > 0 ? 100 : 0
@@ -122,7 +176,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     }
 
     const dailyCounts = new Map<string, number>()
-    const dailyBreakdown = analyticsRecords.reduce<Record<string, {
+    const dailyBreakdownFromSnapshots = analyticsRecords.reduce<Record<string, {
       date: string
       totalConversations: number
       totalMessages: number
@@ -142,9 +196,12 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       return acc
     }, {})
 
-    const fallbackDaily = Object.keys(dailyBreakdown).length === 0 && totals.totalConversations > 0
-      ? [{ date: new Date().toISOString().slice(0, 10), totalConversations: totals.totalConversations, totalMessages: totals.totalMessages, uniqueUsers: totals.uniqueUsers, avgResponseTime: 0 }]
-      : []
+    const finalDaily = dailyBreakdownData.length > 0
+      ? dailyBreakdownData
+      : Object.values(dailyBreakdownFromSnapshots).map((d) => ({
+          ...d,
+          avgResponseTime: Math.round((d.avgResponseTime / (dailyCounts.get(d.date) || 1)) * 100) / 100,
+        }))
 
     const channelBreakdownResult = await prisma.conversation.groupBy({
       by: ['channel'],
@@ -169,15 +226,9 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         conversationsChange: pctChange(totals.totalConversations, prevTotals.totalConversations),
         messagesChange: pctChange(totals.totalMessages, prevTotals.totalMessages),
         usersChange: pctChange(totals.uniqueUsers, prevTotals.uniqueUsers),
-        responseTimeChange: -pctChange(avgResponseTime, prevAvgResponseTime),
+        responseTimeChange: prevAvgResponseTime > 0 ? -pctChange(avgResponseTime, prevAvgResponseTime) : 0,
         channelBreakdown,
-        dailyBreakdown: fallbackDaily.length > 0 ? fallbackDaily : Object.values(dailyBreakdown).map((d) => {
-          const count = dailyCounts.get(d.date) || 1
-          return {
-            ...d,
-            avgResponseTime: Math.round((d.avgResponseTime / count) * 100) / 100,
-          }
-        }),
+        dailyBreakdown: finalDaily,
       },
     }
   })
@@ -246,13 +297,50 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       return Math.round(((current - previous) / previous) * 1000) / 10
     }
 
-    const dailyBreakdown = records.map((r) => ({
+    let dailyBreakdown = records.map((r) => ({
       date: r.date.toISOString().slice(0, 10),
       totalConversations: r.totalConversations,
       totalMessages: r.totalMessages,
       uniqueUsers: r.uniqueUsers,
       avgResponseTime: r.avgResponseTime,
     }))
+
+    if (dailyBreakdown.length === 0) {
+      const convByDate = await prisma.conversation.groupBy({
+        by: ['createdAt'],
+        where: { botId, createdAt: { gte: fromDate, lte: toDate } },
+        _count: { id: true },
+      })
+
+      const msgByDate = await prisma.$queryRaw<{ date: Date; count: bigint }[]>`
+        SELECT DATE(m."createdAt") as date, COUNT(*)::int as count
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."botId" = ${botId}
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+        GROUP BY DATE(m."createdAt")
+        ORDER BY date ASC
+      `
+
+      const msgMap = new Map(msgByDate.map((r) => [r.date.toISOString().slice(0, 10), Number(r.count)]))
+      const dailyMap = new Map<string, { date: string; totalConversations: number; totalMessages: number; uniqueUsers: number; avgResponseTime: number }>()
+
+      for (const r of convByDate) {
+        const key = r.createdAt.toISOString().slice(0, 10)
+        if (!dailyMap.has(key)) {
+          dailyMap.set(key, { date: key, totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0 })
+        }
+        dailyMap.get(key)!.totalConversations += r._count.id
+      }
+      for (const [date, count] of msgMap) {
+        if (!dailyMap.has(date)) {
+          dailyMap.set(date, { date, totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0 })
+        }
+        dailyMap.get(date)!.totalMessages += count
+      }
+      dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+    }
 
     const channelBreakdownResult = await prisma.conversation.groupBy({
       by: ['channel'],
@@ -358,29 +446,62 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       take: limit,
     })
 
-    const botIds = records.map((r) => r.botId)
-    const bots = botIds.length > 0
-      ? await prisma.bot.findMany({
-          where: { id: { in: botIds } },
-          select: { id: true, name: true },
-        })
-      : []
+    if (records.length > 0) {
+      const botIds = records.map((r) => r.botId)
+      const bots = botIds.length > 0
+        ? await prisma.bot.findMany({
+            where: { id: { in: botIds } },
+            select: { id: true, name: true },
+          })
+        : []
+      const botMap = new Map(bots.map((b) => [b.id, b.name]))
 
-    const botMap = new Map(bots.map((b) => [b.id, b.name]))
+      return {
+        data: records.map((r) => ({
+          botId: r.botId,
+          botName: botMap.get(r.botId) || 'Unknown',
+          totalConversations: r._sum.totalConversations || 0,
+          totalMessages: r._sum.totalMessages || 0,
+          avgResponseTime: r._avg.avgResponseTime
+            ? Math.round(r._avg.avgResponseTime * 100) / 100
+            : 0,
+          satisfactionScore: r._avg.satisfactionScore
+            ? Math.round(r._avg.satisfactionScore * 100) / 100
+            : null,
+        })),
+      }
+    }
+
+    const liveBots = await prisma.bot.findMany({
+      where: { organizationId: orgId },
+      select: { id: true, name: true },
+    })
+
+    const liveBotData = await Promise.all(
+      liveBots.map(async (bot) => {
+        const [convCount, msgCount] = await Promise.all([
+          prisma.conversation.count({
+            where: { botId: bot.id, createdAt: { gte: fromDate, lte: toDate } },
+          }),
+          prisma.message.count({
+            where: { conversation: { botId: bot.id }, createdAt: { gte: fromDate, lte: toDate } },
+          }),
+        ])
+        return {
+          botId: bot.id,
+          botName: bot.name,
+          totalConversations: convCount,
+          totalMessages: msgCount,
+          avgResponseTime: 0,
+          satisfactionScore: null,
+        }
+      }),
+    )
+
+    liveBotData.sort((a, b) => b.totalConversations - a.totalConversations)
 
     return {
-      data: records.map((r) => ({
-        botId: r.botId,
-        botName: botMap.get(r.botId) || 'Unknown',
-        totalConversations: r._sum.totalConversations || 0,
-        totalMessages: r._sum.totalMessages || 0,
-        avgResponseTime: r._avg.avgResponseTime
-          ? Math.round(r._avg.avgResponseTime * 100) / 100
-          : 0,
-        satisfactionScore: r._avg.satisfactionScore
-          ? Math.round(r._avg.satisfactionScore * 100) / 100
-          : null,
-      })),
+      data: liveBotData.slice(0, limit),
     }
   })
 
