@@ -9,7 +9,24 @@ import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
 import { WidgetCard, WidgetDeleteDialog, type Widget } from '@/components/widgets/widget-card'
-import { widgets as widgetsApi } from '@/lib/api'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { widgets as widgetsApi, agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
 export default function WidgetsListPage() {
@@ -18,6 +35,11 @@ export default function WidgetsListPage() {
   const { orgId } = useOrg()
   const [search, setSearch] = useState('')
   const [deleteWidget, setDeleteWidget] = useState<Widget | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [selectedAgentId, setSelectedAgentId] = useState('')
+  const [widgetPosition, setWidgetPosition] = useState('bottom-right')
+  const [primaryColor, setPrimaryColor] = useState('#fb923c')
+  const [greeting, setGreeting] = useState('Hello! How can I help you?')
 
   const { data: widgetsData, isLoading } = useQuery({
     queryKey: ['widgets', orgId],
@@ -32,6 +54,30 @@ export default function WidgetsListPage() {
     enabled: !!orgId,
   })
 
+  const { data: agentsData } = useQuery({
+    queryKey: ['agents-for-widgets', orgId],
+    queryFn: () => agentsApi.list(orgId!),
+    enabled: !!orgId,
+  })
+
+  const enableWidgetMutation = useMutation({
+    mutationFn: async () => {
+      const res = await agentsApi.update(selectedAgentId, {
+        widgetColor: primaryColor,
+        welcomeMessage: greeting,
+        widgetConfig: { position: widgetPosition, primaryColor, greeting },
+        status: 'active',
+      })
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['widgets'] })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      setCreateOpen(false)
+      setSelectedAgentId('')
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => widgetsApi.delete(id),
     onSuccess: () => {
@@ -40,12 +86,13 @@ export default function WidgetsListPage() {
   })
 
   const widgets = widgetsData || []
+  const agents = (agentsData?.data || agentsData || [])
 
   const filteredWidgets = widgets.filter((w) => {
     if (!search) return true
     return (
       w.name.toLowerCase().includes(search.toLowerCase()) ||
-      w.botName?.toLowerCase().includes(search.toLowerCase())
+      w.agentName?.toLowerCase().includes(search.toLowerCase())
     )
   })
 
@@ -72,7 +119,7 @@ export default function WidgetsListPage() {
         title="Widgets"
         description="Embeddable chat widgets for your website"
         action={
-          <Button onClick={() => navigate('/agents/new')}>
+          <Button size="lg" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             Create Widget
           </Button>
@@ -97,12 +144,12 @@ export default function WidgetsListPage() {
           description={
             search
               ? 'No widgets match your search. Try a different query.'
-              : 'Create your first widget to embed on your website.'
+              : 'Enable widget mode on an agent to embed it on your website.'
           }
           action={
             search
               ? { label: 'Clear search', onClick: () => setSearch('') }
-              : { label: 'Create Widget', onClick: () => navigate('/agents/new') }
+              : { label: 'Create Widget', onClick: () => setCreateOpen(true) }
           }
         />
       )}
@@ -126,6 +173,90 @@ export default function WidgetsListPage() {
           }}
         />
       )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Widget</DialogTitle>
+            <DialogDescription>
+              Enable widget mode on an agent to embed it on your website.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Select Agent</Label>
+              <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose an agent..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.isArray(agents) && agents.length > 0 ? (
+                    agents.map((a: { id: string; name: string }) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="__none" disabled>No agents available</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="position">Position</Label>
+              <Select value={widgetPosition} onValueChange={setWidgetPosition}>
+                <SelectTrigger id="position">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                  <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="color">Primary Color</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  id="color"
+                  type="color"
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  className="w-12 h-9 p-1"
+                />
+                <Input
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  className="font-mono text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="greeting">Greeting Message</Label>
+              <Input
+                id="greeting"
+                value={greeting}
+                onChange={(e) => setGreeting(e.target.value)}
+                placeholder="Hello! How can I help you?"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => enableWidgetMutation.mutate()}
+              disabled={!selectedAgentId || enableWidgetMutation.isPending}
+            >
+              {enableWidgetMutation.isPending ? 'Enabling...' : 'Enable Widget'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   )
 }
