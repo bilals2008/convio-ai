@@ -15,6 +15,8 @@ import AgentsListPage from '@/pages/agents/agents-list-page'
 import AgentEditorPage from '@/pages/agents/agent-editor-page'
 import ConversationsListPage from '@/pages/conversations/conversations-list-page'
 import ConversationDetailPage from '@/pages/conversations/conversation-detail-page'
+import { ConversationsLayout } from '@/components/conversations/conversations-layout'
+import { ChatView } from '@/components/conversations/chat-view'
 import KnowledgeListPage from '@/pages/knowledge/knowledge-list-page'
 import KnowledgeDetailPage from '@/pages/knowledge/knowledge-detail-page'
 
@@ -64,8 +66,10 @@ export function App() {
               <Route path="/knowledge/new" element={<KnowledgeDetailPage />} />
               <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
               <Route path="/widgets" element={<WidgetsListPage />} />
-              <Route path="/conversations" element={<ConversationsListPage />} />
-              <Route path="/conversations/:id" element={<ConversationDetailPage />} />
+              <Route path="/conversations" element={<ConversationsLayout />}>
+                <Route index element={<ConversationsListPage />} />
+                <Route path=":id" element={<ChatView />} />
+              </Route>
               <Route path="/settings" element={<SettingsLayout />}>
                 <Route index element={<OrganizationSettingsPage />} />
                 <Route path="organization" element={<OrganizationSettingsPage />} />
