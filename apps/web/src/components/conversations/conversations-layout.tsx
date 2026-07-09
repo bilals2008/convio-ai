@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button'
 import { SearchInput } from '@/components/shared/search-input'
 import { Skeleton } from '@/components/shared/loading'
 import { ConversationStatusBadge } from './conversation-status-badge'
-import { BotSelectorDialog } from './bot-selector-dialog'
 import type { ConvStatus } from './conversation-status-badge'
-import { conversations as conversationsApi, bots as botsApi } from '@/lib/api'
+import { conversations as conversationsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
@@ -18,8 +17,8 @@ interface ConversationItem {
   id: string
   userId?: string
   userName?: string
-  botName: string
-  botId: string
+  agentName: string
+  agentId: string
   channel: Channel
   status: ConvStatus
   messageCount: number
@@ -59,8 +58,6 @@ export function ConversationsLayout() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedId, setSelectedId] = useState<string | null>(id || null)
-  const [botSelectorOpen, setBotSelectorOpen] = useState(false)
-
   const { data: convsData, isLoading } = useQuery({
     queryKey: ['conversations', orgId, statusFilter],
     queryFn: async () => {
@@ -76,22 +73,12 @@ export function ConversationsLayout() {
     enabled: !!orgId,
   })
 
-  const { data: bots } = useQuery({
-    queryKey: ['bots-list', orgId],
-    queryFn: async () => {
-      const res = await botsApi.list(orgId!)
-      return (res.data.data || []) as Array<{ id: string; name: string }>
-    },
-    enabled: !!orgId,
-  })
-
   const createConvMutation = useMutation({
-    mutationFn: async (botId: string) => {
-      const res = await conversationsApi.create(botId, { channel: 'web' })
+    mutationFn: async (agentId: string) => {
+      const res = await conversationsApi.create(agentId, { channel: 'web' })
       return res.data.data as { id: string }
     },
     onSuccess: (data) => {
-      setBotSelectorOpen(false)
       setSelectedId(data.id)
       navigate(`/conversations/${data.id}`)
     },
@@ -103,7 +90,7 @@ export function ConversationsLayout() {
     ? conversations.filter(
         (c) =>
           c.userName?.toLowerCase().includes(search.toLowerCase()) ||
-          c.botName?.toLowerCase().includes(search.toLowerCase()) ||
+          c.agentName?.toLowerCase().includes(search.toLowerCase()) ||
           c.lastMessage?.toLowerCase().includes(search.toLowerCase())
       )
     : conversations
@@ -136,8 +123,7 @@ export function ConversationsLayout() {
           <h2 className="text-base font-semibold">Chats</h2>
           <Button
             size="sm"
-            onClick={() => setBotSelectorOpen(true)}
-            disabled={createConvMutation.isPending || !(bots && bots.length > 0)}
+            disabled={createConvMutation.isPending}
           >
             <Plus className="size-3.5" />
             {createConvMutation.isPending ? 'Starting...' : 'New'}
@@ -266,13 +252,6 @@ export function ConversationsLayout() {
         )}
       </div>
 
-      <BotSelectorDialog
-        open={botSelectorOpen}
-        onOpenChange={setBotSelectorOpen}
-        bots={(bots || []) as Array<{ id: string; name: string; status: string }>}
-        loading={false}
-        onSelect={(botId) => createConvMutation.mutate(botId)}
-      />
     </div>
   )
 }

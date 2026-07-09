@@ -9,7 +9,7 @@ import { ConversationsChart } from '@/components/dashboard/conversations-chart'
 import { MessagesChart } from '@/components/dashboard/messages-chart'
 import { ChannelDistribution } from '@/components/dashboard/channel-distribution'
 import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
-import { BotsPerformanceTable } from '@/components/analytics/bots-performance-table'
+import { AgentsPerformanceTable } from '@/components/analytics/agents-performance-table'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
 import { analytics as analyticsApi } from '@/lib/api'
@@ -63,13 +63,13 @@ export default function AnalyticsPage() {
     retry: false,
   })
 
-  const { data: topBotsData } = useQuery({
-    queryKey: ['analytics-top-bots', orgId, dateRange],
+  const { data: topAgentsData } = useQuery({
+    queryKey: ['analytics-top-agents', orgId, dateRange],
     queryFn: async () => {
-      const res = await api.get(`/organizations/${orgId}/analytics/top-bots`, {
+      const res = await api.get(`/organizations/${orgId}/analytics/top-agents`, {
         params: { from, to, limit: 10 },
       })
-      return res.data.data as { botId: string; botName: string; totalConversations: number; totalMessages: number; avgResponseTime: number; satisfactionScore?: number | null }[]
+      return res.data.data as { agentId: string; agentName: string; totalConversations: number; totalMessages: number; avgResponseTime: number; satisfactionScore?: number | null }[]
     },
     enabled: !!orgId,
     retry: false,
@@ -80,7 +80,7 @@ export default function AnalyticsPage() {
   if (!orgId) {
     return (
       <PageContainer>
-        <PageHeader title="Analytics" description="Track performance across your chatbots and channels" />
+        <PageHeader title="Analytics" description="Track performance across your agents and channels" />
         <EmptyState
           icon={Building2}
           title="No organization found"
@@ -96,7 +96,7 @@ export default function AnalyticsPage() {
   if (isError) {
     return (
       <PageContainer>
-        <PageHeader title="Analytics" description="Track performance across your chatbots and channels" />
+        <PageHeader title="Analytics" description="Track performance across your agents and channels" />
         <EmptyState
           icon={Building2}
           title="Failed to load analytics"
@@ -131,10 +131,10 @@ export default function AnalyticsPage() {
     }),
   )
 
-  const botsPerformance = (topBotsData || []).map(
+  const agentsPerformance = (topAgentsData || []).map(
     (b) => ({
-      id: b.botId,
-      name: b.botName,
+      id: b.agentId,
+      name: b.agentName,
       conversations: b.totalConversations,
       messages: b.totalMessages,
       avgResponseTime: b.avgResponseTime,
@@ -152,13 +152,13 @@ export default function AnalyticsPage() {
   const totalConversations = overview?.totalConversations || 0
   const totalMessages = overview?.totalMessages || 0
   const avgResponseTime = overview?.avgResponseTime || 0
-  const activeBots = (topBotsData || []).length
+  const activeAgents = (topAgentsData || []).length
 
   return (
     <PageContainer>
       <PageHeader
         title="Analytics"
-        description="Track performance across your chatbots and channels"
+        description="Track performance across your agents and channels"
         action={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-1 rounded-lg bg-muted p-1">
@@ -210,8 +210,8 @@ export default function AnalyticsPage() {
         />
         <StatsCard
           icon={Cpu}
-          label="Active Bots"
-          value={activeBots.toString()}
+          label="Active Agents"
+          value={activeAgents.toString()}
           description="Across all channels"
           iconClassName="bg-violet-500/10 text-violet-500 dark:text-violet-400"
         />
@@ -232,7 +232,7 @@ export default function AnalyticsPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <BotsPerformanceTable bots={botsPerformance} loading={isLoading} />
+          <AgentsPerformanceTable agents={agentsPerformance} loading={isLoading} />
         </div>
         <div>
           <ResponseTimeChart data={responseTimeData} loading={isLoading} />

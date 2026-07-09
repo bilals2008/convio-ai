@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Bot, AlertCircle } from 'lucide-react'
+import { ArrowLeft, MessageSquare, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
@@ -32,8 +32,8 @@ interface ConversationDetail {
   id: string
   userId?: string
   userName?: string
-  botName: string
-  botId: string
+  agentName: string
+  agentId: string
   channel: Channel
   status: ConvStatus
   messageCount: number
@@ -109,8 +109,8 @@ export default function ConversationDetailPage() {
       const raw = res.data.data
       return {
         ...raw,
-        botName: raw.bot?.name || raw.botName || 'Unknown Bot',
-        botId: raw.bot?.id || raw.botId,
+        agentName: raw.agent?.name || raw.agentName || 'Unknown Agent',
+        agentId: raw.agent?.id || raw.agentId,
       } as ConversationDetail
     },
     enabled: !!id,
@@ -264,7 +264,7 @@ export default function ConversationDetailPage() {
 
           {typingAgents.length > 0 && !streaming && (
             <div className="flex items-center gap-2 px-4 pb-1 text-xs text-muted-foreground">
-              <Bot className="size-3 text-primary" />
+              <MessageSquare className="size-3 text-primary" />
               <span>{typingAgents.join(', ')} is typing</span>
               <TypingIndicator className="scale-75 origin-left" />
             </div>
@@ -293,7 +293,7 @@ export default function ConversationDetailPage() {
         <div className="lg:col-span-1">
           <ConversationStats
             userName={conversation.userName}
-            botName={conversation.botName}
+            agentName={conversation.agentName}
             channel={conversation.channel}
             status={conversation.status}
             messageCount={conversation.messageCount}

@@ -6,7 +6,7 @@ import { PageContainer } from '@/components/shared/page-container'
 const navItems = [
   { icon: Settings, label: 'Organization', href: '/settings/organization' },
   { icon: Users, label: 'Team Members', href: '/settings/team' },
-  { icon: Link, label: 'Integrations', href: '/settings/integrations' },
+  { icon: Link, label: 'Deployments', href: '/settings/deployments' },
   { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
   { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
   { icon: Terminal, label: 'Playground', href: '/settings/playground' },

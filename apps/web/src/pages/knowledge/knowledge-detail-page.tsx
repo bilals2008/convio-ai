@@ -126,10 +126,16 @@ export default function KnowledgeDetailPage() {
 
   const handleUploadDocument = (data: { name: string; type: DocType; content?: string; url?: string }) => {
     if (!isEdit || !id) return
+    if (data.type === 'pdf') {
+      knowledgeApi.getDocuments(id!).finally(() => {
+        queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
+      })
+      return
+    }
     setUploadLoading(true)
     knowledgeApi.uploadDocument(id, data).finally(() => {
       setUploadLoading(false)
-      queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
+      queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
     })
   }
 
@@ -189,7 +195,7 @@ export default function KnowledgeDetailPage() {
           <Section title="Documents" description={`${documentCount} document${documentCount !== 1 ? 's' : ''} in this knowledge base`}>
             <Card>
               <CardContent className="pt-6">
-                <DocumentUploadForm onSubmit={handleUploadDocument} loading={uploadLoading} />
+                <DocumentUploadForm onSubmit={handleUploadDocument} knowledgeBaseId={id!} loading={uploadLoading} />
               </CardContent>
             </Card>
 

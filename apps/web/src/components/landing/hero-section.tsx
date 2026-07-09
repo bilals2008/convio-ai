@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Sparkles, ArrowRight, Bot, MessageSquare, BarChart3, Brain } from 'lucide-react'
+import { Sparkles, ArrowRight, MessageSquare, BarChart3, Brain } from 'lucide-react'
 import { WhatsAppIcon, TelegramIcon, DiscordIcon, SlackIcon, WebIcon } from './channel-icons'
 import { LogoMarquee } from './logo-marquee'
 
@@ -77,7 +77,7 @@ export function HeroSection() {
               </Link>
               <a href="#features">
                 <Button variant="outline" className="bg-card/60 backdrop-blur-lg px-6">
-                  <Bot className="size-4" />
+                  <MessageSquare className="size-4" />
                   Explore Features
                 </Button>
               </a>

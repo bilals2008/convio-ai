@@ -12,32 +12,32 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Copy, Check, ArrowLeft, Settings2, Code2, Palette, MessageSquare, Rocket, Bot } from 'lucide-react'
+import { Copy, Check, ArrowLeft, Settings2, Code2, Palette, MessageSquare, Rocket } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { bots as botsApi } from '@/lib/api'
+import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
 type Position = 'bottom-right' | 'bottom-left'
 
 interface DemoConfig {
-  botId: string
+  agentId: string
   position: Position
   primaryColor: string
   backgroundColor: string
   greeting: string
-  botName: string
+  agentName: string
   quickReplies: string
 }
 
 const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173'
 
-function getEmbedScript(botId: string, position: string, primaryColor: string) {
+function getEmbedScript(agentId: string, position: string, primaryColor: string) {
   return `<script>
   (function() {
     var script = document.createElement('script');
     script.src = '${appUrl}/widget.js';
-    script.dataset.botId = '${botId || 'YOUR_BOT_ID'}';
+    script.dataset.agentId = '${agentId || 'YOUR_AGENT_ID'}';
     script.dataset.position = '${position}';
     script.dataset.primary = '${primaryColor}';
     document.body.appendChild(script);
@@ -45,9 +45,12 @@ function getEmbedScript(botId: string, position: string, primaryColor: string) {
 </script>`
 }
 
-function getEmbedIframe(botId: string) {
+function getEmbedIframe(agentId: string, position?: string, primaryColor?: string) {
+  const params = new URLSearchParams({ embed: 'true', agentId: agentId || 'YOUR_AGENT_ID' })
+  if (position) params.set('position', position)
+  if (primaryColor) params.set('primaryColor', primaryColor)
   return `<iframe
-  src="${appUrl}/widget/demo?embed=true&botId=${botId || 'YOUR_BOT_ID'}"
+  src="${appUrl}/widget/demo?${params.toString()}"
   width="400"
   height="600"
   frameborder="0"
@@ -79,25 +82,42 @@ function isLightColor(hex: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 > 128
 }
 
+function WidgetEmbedPage() {
+  const params = new URLSearchParams(window.location.search)
+  const agentId = params.get('agentId')
+  if (!agentId) return null
+  const position = (params.get('position') as Position) || 'bottom-right'
+  const primaryColor = params.get('primaryColor') || '#fb923c'
+  const backgroundColor = params.get('backgroundColor') || '#1c1c1c'
+  const greeting = params.get('greeting') || "Hi there! I'm a Convio agent. How can I help you today?"
+  const agentName = params.get('agentName') || 'Convio Demo'
+  const quickReplies = (params.get('quickReplies') || 'What can you help with?\nHow does pricing work?\nTell me about features\nGet started guide').split('\n').map(s => s.trim()).filter(Boolean)
+  return <ChatWidget agentId={agentId} position={position} greeting={greeting} agentName={agentName} quickReplies={quickReplies} theme={{ primaryColor, backgroundColor, textColor: isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6' }} />
+}
+
 export default function WidgetDemoPage() {
+  const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true'
+  if (isEmbed) return <WidgetEmbedPage />
+
   const { orgId } = useOrg()
+
   const [config, setConfig] = useState<DemoConfig>({
-    botId: '',
+    agentId: '',
     position: 'bottom-right',
     primaryColor: '#fb923c',
     backgroundColor: '#1c1c1c',
-    greeting: "Hi there! I'm a Convio chatbot. How can I help you today?",
-    botName: 'Convio Demo',
+    greeting: "Hi there! I'm a Convio agent. How can I help you today?",
+    agentName: 'Convio Demo',
     quickReplies: 'What can you help with?\nHow does pricing work?\nTell me about features\nGet started guide',
   })
   const [copied, setCopied] = useState(false)
   const [embedTab, setEmbedTab] = useState<'script' | 'iframe'>('iframe')
 
-  const { data: botsData, isLoading: botsLoading } = useQuery({
-    queryKey: ['bots', orgId],
+  const { data: agentsData, isLoading: agentsLoading } = useQuery({
+    queryKey: ['agents', orgId],
     queryFn: async () => {
       try {
-        const res = await botsApi.list(orgId!)
+        const res = await agentsApi.list(orgId!)
         return (res.data.data || []) as Array<{ id: string; name: string; status: string; agent?: { model?: string } }>
       } catch {
         return []
@@ -106,12 +126,11 @@ export default function WidgetDemoPage() {
     enabled: !!orgId,
   })
 
-  const bots = botsData || []
-  const selectedBot = bots.find((b) => b.id === config.botId)
+  const agents = agentsData || []
 
   const currentEmbed = embedTab === 'script'
-    ? getEmbedScript(config.botId, config.position, config.primaryColor)
-    : getEmbedIframe(config.botId)
+    ? getEmbedScript(config.agentId, config.position, config.primaryColor)
+    : getEmbedIframe(config.agentId, config.position, config.primaryColor)
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(currentEmbed)
@@ -125,10 +144,10 @@ export default function WidgetDemoPage() {
     .filter(Boolean)
 
   const widgetProps: ChatWidgetProps = {
-    botId: config.botId,
+    agentId: config.agentId,
     position: config.position,
     greeting: config.greeting,
-    botName: config.botName,
+    agentName: config.agentName,
     quickReplies: quickRepliesArray,
     theme: {
       primaryColor: config.primaryColor,
@@ -190,35 +209,35 @@ export default function WidgetDemoPage() {
 
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Select Bot</Label>
-                    {botsLoading ? (
+                    <Label className="text-xs">Select Agent</Label>
+                    {agentsLoading ? (
                       <div className="h-9 rounded-md border bg-muted animate-pulse" />
-                    ) : bots.length === 0 ? (
+                    ) : agents.length === 0 ? (
                       <div className="text-xs text-muted-foreground py-2">
-                        No bots found. Create a chatbot first.
+                        No agents found. Create an agent first.
                       </div>
                     ) : (
                       <Select
-                        value={config.botId}
+                        value={config.agentId}
                         onValueChange={(value) => {
-                          const bot = bots.find((b) => b.id === value)
+                          const agent = agents.find((a) => a.id === value)
                           update({
-                            botId: value,
-                            botName: bot?.name || config.botName,
+                            agentId: value,
+                            agentName: agent?.name || config.agentName,
                           })
                         }}
                       >
                         <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder="Choose a bot..." />
+                          <SelectValue placeholder="Choose an agent..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {bots.map((bot) => (
-                            <SelectItem key={bot.id} value={bot.id}>
+                          {agents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
                               <div className="flex items-center gap-2">
-                                <Bot className="size-3.5 text-muted-foreground" />
-                                <span>{bot.name}</span>
-                                <Badge variant={bot.status === 'active' ? 'default' : 'secondary'} className="text-[9px] ml-auto">
-                                  {bot.status}
+                                <MessageSquare className="size-3.5 text-muted-foreground" />
+                                <span>{agent.name}</span>
+                                <Badge variant={agent.status === 'active' ? 'default' : 'secondary'} className="text-[9px] ml-auto">
+                                  {agent.status}
                                 </Badge>
                               </div>
                             </SelectItem>
@@ -229,11 +248,11 @@ export default function WidgetDemoPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Bot Name</Label>
+                    <Label className="text-xs">Agent Name</Label>
                     <Input
-                      value={config.botName}
-                      onChange={(e) => update({ botName: e.target.value })}
-                      placeholder="My Chatbot"
+                      value={config.agentName}
+                      onChange={(e) => update({ agentName: e.target.value })}
+                      placeholder="My Agent"
                       className="h-10 text-sm"
                     />
                   </div>
@@ -435,15 +454,15 @@ export default function WidgetDemoPage() {
               </div>
             </div>
             <div className="relative bg-muted/30 h-[520px] flex items-center justify-center">
-              {!config.botId ? (
+              {!config.agentId ? (
                 <div className="text-center max-w-[280px] space-y-3">
                   <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-card shadow-sm border">
-                    <Bot className="size-6 text-muted-foreground" />
+                    <MessageSquare className="size-6 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Select a Bot</p>
+                    <p className="text-sm font-medium text-foreground">Select an Agent</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Choose a chatbot from the configuration panel to preview the widget.
+                      Choose an agent from the configuration panel to preview the widget.
                     </p>
                   </div>
                 </div>
@@ -469,8 +488,8 @@ export default function WidgetDemoPage() {
         </div>
       </div>
 
-      {config.botId && (
-        <ChatWidget key={`${config.botId}-${config.position}-${config.primaryColor}`} {...widgetProps} />
+      {config.agentId && (
+        <ChatWidget key={`${config.agentId}-${config.position}-${config.primaryColor}`} {...widgetProps} />
       )}
     </div>
   )

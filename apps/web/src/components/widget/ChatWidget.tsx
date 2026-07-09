@@ -7,12 +7,12 @@ import { WidgetWindow } from './WidgetWindow'
 import { cn } from '@/lib/utils'
 
 export interface ChatWidgetProps {
-  botId: string
+  agentId: string
   position?: 'bottom-right' | 'bottom-left'
   theme?: Partial<WidgetTheme>
   greeting?: string
-  botName?: string
-  botAvatar?: string
+  agentName?: string
+  agentAvatar?: string
   quickReplies?: string[]
 }
 
@@ -38,16 +38,16 @@ function WidgetBackdrop({ show, onClose }: { show: boolean; onClose: () => void 
 }
 
 export function ChatWidget({
-  botId,
+  agentId,
   position = 'bottom-right',
   theme: themeOverride,
   greeting = "Hi there! 👋 I'm here to help. What can I do for you today?",
-  botName = 'Convio Assistant',
-  botAvatar,
+  agentName = 'Convio Assistant',
+  agentAvatar,
   quickReplies,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ botId, position, theme, greeting, botName, botAvatar, quickReplies })
+  const widget = useWidget({ agentId, position, theme, greeting, agentName, agentAvatar, quickReplies })
 
   const stateValue = {
     isOpen: widget.isOpen,
@@ -59,8 +59,8 @@ export function ChatWidget({
     unreadCount: widget.unreadCount,
     error: widget.error,
     theme,
-    botName,
-    botAvatar: botAvatar,
+    agentName,
+    agentAvatar: agentAvatar,
     quickReplies: quickReplies || [],
     position,
     onSendMessage: widget.sendMessage,

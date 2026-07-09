@@ -1,4 +1,4 @@
-import { User, Bot, Clock, MessageSquare, CheckCircle, RotateCcw, XCircle } from 'lucide-react'
+import { User, BotIcon, Clock, MessageSquare, CheckCircle, RotateCcw, XCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -19,7 +19,7 @@ const channelNames: Record<Channel, string> = {
 interface ConversationStatsProps {
   userName?: string
   userEmail?: string
-  botName: string
+  agentName: string
   channel: Channel
   status: ConvStatus
   messageCount: number
@@ -61,10 +61,10 @@ export function ConversationStats({
 
         <div className="space-y-3 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Bot</span>
+            <span className="text-muted-foreground">Agent</span>
             <span className="font-medium flex items-center gap-1">
-              <Bot className="size-3" />
-              {botName}
+              <BotIcon className="size-3" />
+              {agentName}
             </span>
           </div>
           <div className="flex items-center justify-between">

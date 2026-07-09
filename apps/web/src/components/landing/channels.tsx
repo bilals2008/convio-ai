@@ -64,30 +64,30 @@ const cards = [
   {
     title: 'Web Embed',
     icon: <Globe className="size-[18px] text-primary" />,
-    copy: `<script src="https://cdn.convio.ai/widget.js" data-bot="YOUR_BOT_ID"></script>`,
+    copy: `<script src="https://cdn.convio.ai/widget.js" data-agent="YOUR_AGENT_ID"></script>`,
     content: (
       <CodeBlock>
-        {`<script\n  src="https://cdn.convio.ai/widget.js"\n  data-bot="YOUR_BOT_ID"\n></script>`}
+        {`<script\n  src="https://cdn.convio.ai/widget.js"\n  data-agent="YOUR_AGENT_ID"\n></script>`}
       </CodeBlock>
     ),
   },
   {
     title: 'React',
     icon: <Code2 className="size-[18px] text-primary" />,
-    copy: `import { ConvioWidget } from '@convio/react';\n\n<ConvioWidget botId="YOUR_BOT_ID" />`,
+    copy: `import { ConvioWidget } from '@convio/react';\n\n<ConvioWidget agentId="YOUR_AGENT_ID" />`,
     content: (
       <CodeBlock>
-        {`$ npm i @convio/react\n\nimport { ConvioWidget } from '@convio/react';\n\n<ConvioWidget\n  botId="YOUR_BOT_ID"\n/>`}
+        {`$ npm i @convio/react\n\nimport { ConvioWidget } from '@convio/react';\n\n<ConvioWidget\n  agentId="YOUR_AGENT_ID"\n/>`}
       </CodeBlock>
     ),
   },
   {
     title: 'REST API',
     icon: <Terminal className="size-[18px] text-primary" />,
-    copy: `curl -X POST https://api.convio.ai/v1/chat \\\n  -H "Authorization: Bearer $API_KEY" \\\n  -d '{ "botId": "YOUR_BOT_ID", "message": "Hello" }'`,
+    copy: `curl -X POST https://api.convio.ai/v1/chat \\\n  -H "Authorization: Bearer $API_KEY" \\\n  -d '{ "agentId": "YOUR_AGENT_ID", "message": "Hello" }'`,
     content: (
       <CodeBlock>
-        {`$ curl -X POST https://api.convio.ai/v1/chat\n  -H "Authorization: Bearer $API_KEY"\n  -d '{ "botId": "YOUR_BOT_ID",\n         "message": "Hello" }'`}
+        {`$ curl -X POST https://api.convio.ai/v1/chat\n  -H "Authorization: Bearer $API_KEY"\n  -d '{ "agentId": "YOUR_AGENT_ID",\n         "message": "Hello" }'`}
       </CodeBlock>
     ),
   },
@@ -99,7 +99,7 @@ const cards = [
       <StepList items={[
         'Add your WhatsApp Business number in Dashboard',
         'Scan the QR code to verify ownership',
-        'Your bot replies automatically',
+        'Your agent replies automatically',
       ]} />
     ),
   },

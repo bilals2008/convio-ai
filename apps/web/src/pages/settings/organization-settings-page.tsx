@@ -177,7 +177,7 @@ export default function OrganizationSettingsPage() {
             <Building2 className="size-5" />
             Create Organization
           </CardTitle>
-          <CardDescription>Set up your workspace to start managing chatbots and agents.</CardDescription>
+          <CardDescription>Set up your workspace to start managing agents.</CardDescription>
         </CardHeader>
         <CardContent>
           <CreateOrgForm />

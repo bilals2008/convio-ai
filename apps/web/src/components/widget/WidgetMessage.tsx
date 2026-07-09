@@ -9,11 +9,11 @@ interface WidgetMessageProps {
 }
 
 export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProps) {
-  const { botAvatar, botName } = useWidgetState()
+  const { agentAvatar, agentName } = useWidgetState()
   const isUser = message.role === 'user'
 
-  const initials = botName
-    ? botName.split(' ').map((w) => w[0]).slice(0, 1).join('').toUpperCase()
+  const initials = agentName
+    ? agentName.split(' ').map((w) => w[0]).slice(0, 1).join('').toUpperCase()
     : 'A'
 
   return (
@@ -25,10 +25,10 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
     >
       {!isUser && showAvatar && (
         <div className="mt-1 shrink-0">
-          {botAvatar ? (
+          {agentAvatar ? (
             <img
-              src={botAvatar}
-              alt={botName}
+              src={agentAvatar}
+              alt={agentName}
               className="size-7 rounded-full object-cover"
             />
           ) : (

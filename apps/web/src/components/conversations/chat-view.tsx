@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Bot, AlertCircle, MoreVertical, CheckCircle, Archive, Trash2, Clock } from 'lucide-react'
+import { ArrowLeft, MessageSquare, AlertCircle, MoreVertical, CheckCircle, Archive, Trash2, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/shared/loading'
 import { TypingIndicator } from '@/components/shared/typing-indicator'
@@ -48,8 +48,8 @@ interface ConversationDetail {
   id: string
   userId?: string
   userName?: string
-  botName: string
-  botId: string
+  agentName: string
+  agentId: string
   channel: Channel
   status: ConvStatus
   messageCount: number
@@ -131,8 +131,8 @@ export function ChatView() {
       const raw = res.data.data
       return {
         ...raw,
-        botName: raw.bot?.name || raw.botName || 'Unknown Bot',
-        botId: raw.bot?.id || raw.botId,
+        agentName: raw.agent?.name || raw.agentName || 'Unknown Agent',
+        agentId: raw.agent?.id || raw.agentId,
       } as ConversationDetail
     },
     enabled: !!id,
@@ -282,7 +282,7 @@ export function ChatView() {
             <ConversationStatusBadge status={conversation.status} />
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{conversation.botName}</span>
+            <span>{conversation.agentName}</span>
             <span>·</span>
             <span className="capitalize">{conversation.channel}</span>
           </div>
@@ -342,7 +342,7 @@ export function ChatView() {
 
       {typingAgents.length > 0 && !streaming && (
         <div className="flex items-center gap-2 px-4 pb-1 text-xs text-muted-foreground">
-          <Bot className="size-3 text-primary" />
+          <MessageSquare className="size-3 text-primary" />
           <span>{typingAgents.join(', ')} is typing</span>
           <TypingIndicator className="scale-75 origin-left" />
         </div>

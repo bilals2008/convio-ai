@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { MessageSquare, Clock, Bot, Globe, Phone, Hash, Send, Code, MessageCircle } from 'lucide-react'
+import { MessageSquare, Clock, Globe, Phone, Hash, Send, Code, MessageCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ConversationStatusBadge } from './conversation-status-badge'
@@ -36,8 +36,8 @@ interface ConversationItem {
   id: string
   userId?: string
   userName?: string
-  botName: string
-  botId: string
+  agentName: string
+  agentId: string
   channel: Channel
   status: ConvStatus
   messageCount: number
@@ -75,8 +75,8 @@ export function ConversationCard({ conversation }: ConversationCardProps) {
               {conversation.userName || 'Anonymous'}
             </span>
             <Badge variant="secondary" className="text-xs shrink-0 gap-1">
-              <Bot className="size-3" />
-              {conversation.botName}
+              <MessageSquare className="size-3" />
+              {conversation.agentName}
             </Badge>
           </div>
           {conversation.lastMessage && (

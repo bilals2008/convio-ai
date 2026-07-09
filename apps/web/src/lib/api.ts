@@ -37,19 +37,6 @@ export const analytics = {
     api.get(`/organizations/${orgId}/analytics`, { params }),
 }
 
-export const bots = {
-  list: (orgId: string) => api.get(`/organizations/${orgId}/bots`),
-  get: (id: string) => api.get(`/bots/${id}`),
-  create: (body: Record<string, unknown>) => {
-    const { orgId, data } = extractOrgId(body)
-    return api.post(`/organizations/${orgId}/bots`, data)
-  },
-  update: (id: string, data: Record<string, unknown>) => api.patch(`/bots/${id}`, data),
-  delete: (id: string) => api.delete(`/bots/${id}`),
-  updateStatus: (id: string, status: string) => api.patch(`/bots/${id}/status`, { status }),
-  getEmbed: (id: string) => api.get(`/bots/${id}/embed`),
-}
-
 export const agents = {
   list: (orgId: string) => api.get(`/organizations/${orgId}/agents`),
   get: (id: string) => api.get(`/agents/${id}`),
@@ -86,14 +73,14 @@ export const agents = {
 }
 
 export const conversations = {
-  list: (params?: { status?: string; channel?: string; botId?: string; cursor?: string; limit?: number }) =>
+  list: (params?: { status?: string; channel?: string; agentId?: string; cursor?: string; limit?: number }) =>
     api.get('/conversations', { params }),
   get: (id: string) => api.get(`/conversations/${id}`),
   update: (id: string, data: Record<string, unknown>) => api.patch(`/conversations/${id}`, data),
-  create: (botId: string, data?: Record<string, unknown>) =>
-    api.post(`/bots/${botId}/conversations`, data || {}),
-  listByBot: (botId: string, params?: { status?: string; cursor?: string; limit?: number }) =>
-    api.get(`/bots/${botId}/conversations`, { params }),
+  create: (agentId: string, data?: Record<string, unknown>) =>
+    api.post(`/agents/${agentId}/conversations`, data || {}),
+  listByAgent: (agentId: string, params?: { status?: string; cursor?: string; limit?: number }) =>
+    api.get(`/agents/${agentId}/conversations`, { params }),
 }
 
 export const messages = {
@@ -118,6 +105,10 @@ export const knowledge = {
   delete: (id: string) => api.delete(`/knowledge-bases/${id}`),
   uploadDocument: (knowledgeBaseId: string, data: Record<string, unknown>) =>
     api.post(`/knowledge-bases/${knowledgeBaseId}/documents`, data),
+  uploadPdf: (knowledgeBaseId: string, formData: FormData) =>
+    api.post(`/knowledge-bases/${knowledgeBaseId}/documents/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   getDocuments: (knowledgeBaseId: string, params?: { cursor?: string; limit?: number; status?: string }) =>
     api.get(`/knowledge-bases/${knowledgeBaseId}/documents`, { params }),
   deleteDocument: (docId: string) => api.delete(`/documents/${docId}`),
@@ -125,17 +116,19 @@ export const knowledge = {
 
 export const widgets = {
   list: (orgId: string) => api.get(`/organizations/${orgId}/widgets`),
+  get: (id: string) => api.get(`/widgets/${id}`),
   delete: (id: string) => api.delete(`/widgets/${id}`),
+  getEmbed: (id: string) => api.get(`/widgets/${id}/embed`),
 }
 
-export const integrations = {
-  list: (botId: string) => api.get(`/bots/${botId}/integrations`),
-  get: (id: string) => api.get(`/integrations/${id}`),
-  create: (botId: string, data: Record<string, unknown>) =>
-    api.post(`/bots/${botId}/integrations`, data),
-  update: (id: string, data: Record<string, unknown>) => api.patch(`/integrations/${id}`, data),
-  delete: (id: string) => api.delete(`/integrations/${id}`),
-  test: (id: string) => api.post(`/integrations/${id}/test`),
+export const deployments = {
+  list: (agentId: string) => api.get(`/agents/${agentId}/deployments`),
+  get: (id: string) => api.get(`/deployments/${id}`),
+  create: (agentId: string, data: Record<string, unknown>) =>
+    api.post(`/agents/${agentId}/deployments`, data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/deployments/${id}`, data),
+  delete: (id: string) => api.delete(`/deployments/${id}`),
+  test: (id: string) => api.post(`/deployments/${id}/test`),
 }
 
 export const organizations = {
@@ -170,5 +163,10 @@ export const apiKeys = {
   create: (orgId: string, name: string) => api.post(`/organizations/${orgId}/api-keys`, { name }),
   delete: (orgId: string, keyId: string) => api.delete(`/organizations/${orgId}/api-keys/${keyId}`),
 }
+
+export const publicApi = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  headers: { 'Content-Type': 'application/json' },
+})
 
 export default api

@@ -22,6 +22,7 @@ const agentSchema = z.object({
   temperature: z.number().min(0).max(2),
   maxTokens: z.number().min(100).max(8192),
   providerKeyId: z.string().optional(),
+  knowledgeBaseId: z.string().optional(),
 })
 
 const defaultFormData: AgentFormData = {
@@ -32,6 +33,7 @@ const defaultFormData: AgentFormData = {
   temperature: 0.7,
   maxTokens: 2048,
   providerKeyId: undefined,
+  knowledgeBaseId: undefined,
 }
 
 interface Agent {
@@ -43,6 +45,7 @@ interface Agent {
   temperature: number
   maxTokens: number
   providerKeyId?: string | null
+  knowledgeBaseId?: string | null
   organizationId: string
 }
 
@@ -75,6 +78,7 @@ export default function AgentEditorPage() {
         temperature: existingAgent.temperature,
         maxTokens: existingAgent.maxTokens || 2048,
         providerKeyId: existingAgent.providerKeyId || undefined,
+        knowledgeBaseId: existingAgent.knowledgeBaseId || undefined,
       })
     }
   }, [existingAgent])

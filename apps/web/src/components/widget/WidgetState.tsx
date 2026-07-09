@@ -11,8 +11,8 @@ export interface WidgetStateValue {
   unreadCount: number
   error: string | null
   theme: WidgetTheme
-  botName: string
-  botAvatar?: string
+  agentName: string
+  agentAvatar?: string
   quickReplies: string[]
   position: 'bottom-right' | 'bottom-left'
   onSendMessage: (content: string) => void

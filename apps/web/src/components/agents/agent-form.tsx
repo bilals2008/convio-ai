@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { providerKeys as keysApi } from '@/lib/api'
+import { providerKeys as keysApi, knowledge as knowledgeApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
 interface ProviderKeyOption {
@@ -30,6 +30,7 @@ interface AgentFormData {
   temperature: number
   maxTokens: number
   providerKeyId?: string
+  knowledgeBaseId?: string
 }
 
 interface AgentFormProps {
@@ -47,6 +48,15 @@ export function AgentForm({ data, onChange, errors, disabled }: AgentFormProps) 
     queryFn: async () => {
       const res = await keysApi.list(orgId!)
       return (res.data.data || []) as ProviderKeyOption[]
+    },
+    enabled: !!orgId,
+  })
+
+  const { data: knowledgeBases } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['knowledge-bases', orgId],
+    queryFn: async () => {
+      const res = await knowledgeApi.list(orgId!)
+      return (res.data.data || []) as Array<{ id: string; name: string }>
     },
     enabled: !!orgId,
   })
@@ -122,6 +132,30 @@ export function AgentForm({ data, onChange, errors, disabled }: AgentFormProps) 
             Provider Keys
           </a>{' '}
           settings.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Knowledge Base (optional)</Label>
+        <Select
+          value={data.knowledgeBaseId || ''}
+          onValueChange={(v) => update('knowledgeBaseId', v || undefined)}
+          disabled={disabled}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="No knowledge base" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">No knowledge base</SelectItem>
+            {knowledgeBases?.map((kb) => (
+              <SelectItem key={kb.id} value={kb.id}>
+                {kb.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Connect a knowledge base to enable RAG (Retrieval-Augmented Generation).
         </p>
       </div>
 

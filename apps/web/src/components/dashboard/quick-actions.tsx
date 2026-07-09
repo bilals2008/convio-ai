@@ -1,10 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { Bot, MessageSquare, FileText, MessageCircle } from 'lucide-react'
+import { BotIcon, MessageSquare, FileText, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const actions = [
-  { icon: Bot, label: 'Create Agent', href: '/agents/new', iconClassName: 'text-blue-500' },
-  { icon: MessageSquare, label: 'Create Bot', href: '/chatbots/new', iconClassName: 'text-emerald-500' },
+  { icon: BotIcon, label: 'Create Agent', href: '/agents/new', iconClassName: 'text-blue-500' },
   { icon: FileText, label: 'Upload Doc', href: '/knowledge', iconClassName: 'text-purple-500' },
   { icon: MessageCircle, label: 'Conversations', href: '/conversations', iconClassName: 'text-amber-500' },
 ]

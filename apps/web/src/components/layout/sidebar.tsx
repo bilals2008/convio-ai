@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   BarChart3,
-  Bot,
   Brain,
   MessageSquare,
   MessageCircle,
@@ -123,7 +122,6 @@ export function Sidebar() {
 
           <SidebarGroup label="AI">
             <SidebarItem icon={Brain} label="Agents" href="/agents" />
-            <SidebarItem icon={Bot} label="Chatbots" href="/chatbots" />
           </SidebarGroup>
 
           <SidebarGroup label="Knowledge">
@@ -138,7 +136,7 @@ export function Sidebar() {
           <SidebarGroup label="Settings">
             <SidebarItem icon={Settings} label="Organization" href="/settings/organization" />
             <SidebarItem icon={Users} label="Team" href="/settings/team" />
-            <SidebarItem icon={LinkIcon} label="Integrations" href="/settings/integrations" />
+            <SidebarItem icon={LinkIcon} label="Deployments" href="/settings/deployments" />
             <SidebarItem icon={Key} label="API Keys" href="/settings/api-keys" />
             <SidebarItem icon={Terminal} label="Playground" href="/settings/playground" />
           </SidebarGroup>
@@ -295,7 +293,6 @@ const mobileNavGroups = [
     label: 'AI',
     items: [
       { icon: Brain, label: 'Agents', href: '/agents' },
-      { icon: Bot, label: 'Chatbots', href: '/chatbots' },
     ],
   },
   {
@@ -316,7 +313,7 @@ const mobileNavGroups = [
     items: [
       { icon: Settings, label: 'Organization', href: '/settings/organization' },
       { icon: Users, label: 'Team', href: '/settings/team' },
-      { icon: LinkIcon, label: 'Integrations', href: '/settings/integrations' },
+      { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
       { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
       { icon: Terminal, label: 'Playground', href: '/settings/playground' },
     ],

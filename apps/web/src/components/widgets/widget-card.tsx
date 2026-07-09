@@ -27,8 +27,8 @@ import { MoreVertical, Pencil, Trash2, ExternalLink, Eye, MessageCircle } from '
 export interface Widget {
   id: string
   name: string
-  botId: string
-  botName?: string
+  agentId: string
+  agentName?: string
   primaryColor?: string
   position?: 'bottom-right' | 'bottom-left'
   greeting?: string
@@ -70,7 +70,7 @@ export function WidgetCard({ widget, onDelete }: WidgetCardProps) {
           <div className="min-w-0">
             <h3 className="text-sm font-semibold truncate">{widget.name}</h3>
             <p className="text-xs text-muted-foreground truncate">
-              {widget.botName || 'No bot linked'}
+              {widget.agentName || 'No agent linked'}
             </p>
           </div>
         </div>

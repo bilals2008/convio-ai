@@ -9,24 +9,24 @@ const defaultQuickReplies = [
 ]
 
 export function WidgetWelcome() {
-  const { botName, botAvatar, messages, onSendMessage, quickReplies } = useWidgetState()
+  const { agentName, agentAvatar, messages, onSendMessage, quickReplies } = useWidgetState()
 
   if (messages.length > 0) return null
 
   const replies = quickReplies.length > 0 ? quickReplies : defaultQuickReplies
 
-  const initials = botName
-    ? botName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+  const initials = agentName
+    ? agentName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
     : 'AI'
 
   return (
     <div className="convio-welcome flex flex-1 flex-col items-center justify-center px-5 py-6">
       <div className="flex flex-col items-center text-center w-full max-w-[280px]">
         <div className="relative mb-4">
-          {botAvatar ? (
+          {agentAvatar ? (
             <img
-              src={botAvatar}
-              alt={botName}
+              src={agentAvatar}
+              alt={agentName}
               className="size-16 rounded-full object-cover ring-4 ring-[hsl(var(--widget-primary)_/_0.1)]"
             />
           ) : (
@@ -47,7 +47,7 @@ export function WidgetWelcome() {
         </div>
 
         <h3 className="text-[15px] font-semibold text-[hsl(var(--widget-text))] mb-1 tracking-tight">
-          {botName || 'Assistant'}
+          {agentName || 'Assistant'}
         </h3>
         <p className="text-[12px] text-[hsl(var(--widget-muted-foreground))] mb-5 leading-relaxed px-2">
           Hi there! How can I help you today?

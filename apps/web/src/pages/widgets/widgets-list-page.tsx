@@ -72,7 +72,7 @@ export default function WidgetsListPage() {
         title="Widgets"
         description="Embeddable chat widgets for your website"
         action={
-          <Button onClick={() => navigate('/chatbots/new')}>
+          <Button onClick={() => navigate('/agents/new')}>
             <Plus className="size-4" />
             Create Widget
           </Button>
@@ -97,12 +97,12 @@ export default function WidgetsListPage() {
           description={
             search
               ? 'No widgets match your search. Try a different query.'
-              : 'Create your first widget to embed a chatbot on your website.'
+              : 'Create your first widget to embed on your website.'
           }
           action={
             search
               ? { label: 'Clear search', onClick: () => setSearch('') }
-              : { label: 'Create Widget', onClick: () => navigate('/chatbots/new') }
+              : { label: 'Create Widget', onClick: () => navigate('/agents/new') }
           }
         />
       )}

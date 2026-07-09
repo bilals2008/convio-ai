@@ -2,10 +2,10 @@ import { useWidgetState } from './WidgetState'
 import { X, Minus } from 'lucide-react'
 
 export function WidgetHeader() {
-  const { botName, botAvatar, onClose, onMinimize } = useWidgetState()
+  const { agentName, agentAvatar, onClose, onMinimize } = useWidgetState()
 
-  const initials = botName
-    ? botName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+  const initials = agentName
+    ? agentName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
     : 'AI'
 
   return (
@@ -18,10 +18,10 @@ export function WidgetHeader() {
       <div className="absolute inset-0 bg-gradient-to-b from-white/8 to-transparent pointer-events-none" />
       <div className="relative z-10 flex items-center gap-3 min-w-0">
         <div className="relative shrink-0">
-          {botAvatar ? (
+          {agentAvatar ? (
             <img
-              src={botAvatar}
-              alt={botName}
+              src={agentAvatar}
+              alt={agentName}
               className="size-10 rounded-full object-cover ring-2 ring-white/20"
             />
           ) : (
@@ -34,7 +34,7 @@ export function WidgetHeader() {
         </div>
         <div className="min-w-0">
           <p className="truncate text-[14px] font-semibold text-white tracking-tight leading-tight">
-            {botName || 'Assistant'}
+            {agentName || 'Assistant'}
           </p>
           <p className="text-[11px] text-white/70 font-medium">
             Typically replies instantly

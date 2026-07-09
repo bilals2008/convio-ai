@@ -1,30 +1,30 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Bot } from 'lucide-react'
+import { ArrowRight, Trophy } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
-interface TopBot {
+interface TopAgent {
   id: string
   name: string
   conversationCount: number
 }
 
-interface TopBotsProps {
-  bots: TopBot[]
+interface TopAgentsProps {
+  agents: TopAgent[]
   loading?: boolean
 }
 
-export function TopBots({ bots, loading }: TopBotsProps) {
-  const maxCount = bots.length > 0 ? Math.max(...bots.map((b) => b.conversationCount)) : 0
+export function TopAgents({ agents, loading }: TopAgentsProps) {
+  const maxCount = agents.length > 0 ? Math.max(...agents.map((b) => b.conversationCount)) : 0
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Bot className="size-4" />
-          Top Performing Bots
+          <Trophy className="size-4" />
+          Top Performing Agents
         </CardTitle>
-        <Link to="/chatbots" className="flex items-center gap-1 text-xs text-primary hover:underline">
+        <Link to="/agents" className="flex items-center gap-1 text-xs text-primary hover:underline">
           View all
           <ArrowRight className="size-3" />
         </Link>
@@ -42,26 +42,26 @@ export function TopBots({ bots, loading }: TopBotsProps) {
               </div>
             ))}
           </div>
-        ) : bots.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No bots yet</p>
+        ) : agents.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No agents yet</p>
         ) : (
           <div className="space-y-3">
-            {bots.slice(0, 5).map((bot) => (
-              <div key={bot.id} className="flex items-center gap-3 py-1">
+            {agents.slice(0, 5).map((agent) => (
+              <div key={agent.id} className="flex items-center gap-3 py-1">
                 <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                  <Bot className="size-4 text-primary" />
+                  <Trophy className="size-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium truncate">{bot.name}</span>
+                    <span className="text-sm font-medium truncate">{agent.name}</span>
                     <span className="text-xs text-muted-foreground shrink-0">
-                      {bot.conversationCount.toLocaleString()} convs
+                      {agent.conversationCount.toLocaleString()} convs
                     </span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${maxCount > 0 ? (bot.conversationCount / maxCount) * 100 : 0}%` }}
+                      style={{ width: `${maxCount > 0 ? (agent.conversationCount / maxCount) * 100 : 0}%` }}
                     />
                   </div>
                 </div>

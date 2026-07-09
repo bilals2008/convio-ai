@@ -8,7 +8,7 @@ import { ConversationsChart } from '@/components/dashboard/conversations-chart'
 import { MessagesChart } from '@/components/dashboard/messages-chart'
 import { ChannelDistribution } from '@/components/dashboard/channel-distribution'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
-import { TopBots } from '@/components/dashboard/top-bots'
+import { TopAgents } from '@/components/dashboard/top-agents'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
 import { analytics as analyticsApi, conversations as conversationsApi } from '@/lib/api'
@@ -62,13 +62,13 @@ export default function DashboardOverviewPage() {
     retry: false,
   })
 
-  const { data: topBotsData } = useQuery({
-    queryKey: ['dashboard-top-bots', orgId, dateRange],
+  const { data: topAgentsData } = useQuery({
+    queryKey: ['dashboard-top-agents', orgId, dateRange],
     queryFn: async () => {
-      const res = await api.get(`/organizations/${orgId}/analytics/top-bots`, {
+      const res = await api.get(`/organizations/${orgId}/analytics/top-agents`, {
         params: { from, to, limit: 5 },
       })
-      return res.data.data as { botId: string; botName: string; totalConversations: number; totalMessages: number; avgResponseTime: number; satisfactionScore?: number | null }[]
+      return res.data.data as { agentId: string; agentName: string; totalConversations: number; totalMessages: number; avgResponseTime: number; satisfactionScore?: number | null }[]
     },
     enabled: !!orgId,
     retry: false,
@@ -89,7 +89,7 @@ export default function DashboardOverviewPage() {
   if (!orgId) {
     return (
       <PageContainer>
-        <PageHeader title="Dashboard" description="Overview of your AI chatbot platform" />
+        <PageHeader title="Dashboard" description="Overview of your AI agent platform" />
         <EmptyState
           icon={Building2}
           title="No organization found"
@@ -105,7 +105,7 @@ export default function DashboardOverviewPage() {
   if (isError) {
     return (
       <PageContainer>
-        <PageHeader title="Dashboard" description="Overview of your AI chatbot platform" />
+        <PageHeader title="Dashboard" description="Overview of your AI agent platform" />
         <EmptyState
           icon={Building2}
           title="Failed to load dashboard"
@@ -151,18 +151,18 @@ export default function DashboardOverviewPage() {
     }),
   )
 
-  const topBots = (topBotsData || []).map(
-    (b: { botId: string; botName: string; totalConversations: number }) => ({
-      id: b.botId,
-      name: b.botName,
+  const topAgents = (topAgentsData || []).map(
+    (b: { agentId: string; agentName: string; totalConversations: number }) => ({
+      id: b.agentId,
+      name: b.agentName,
       conversationCount: b.totalConversations,
     }),
   )
 
   const activities = (recentConversations || []).slice(0, 5).map(
-    (c: { id: string; bot?: { name?: string }; channel: string; status: string; createdAt: string }) => ({
+    (c: { id: string; agent?: { name?: string }; channel: string; status: string; createdAt: string }) => ({
       id: c.id,
-      botName: c.bot?.name ?? 'Unknown Bot',
+      agentName: c.agent?.name ?? 'Unknown Agent',
       channel: (c.channel || 'web') as 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api',
       action: c.status === 'active' ? 'started conversation on' : `${c.status} conversation on`,
       timestamp: c.createdAt,
@@ -173,7 +173,7 @@ export default function DashboardOverviewPage() {
     <PageContainer>
       <PageHeader
         title="Dashboard"
-        description="Overview of your AI chatbot platform"
+        description="Overview of your AI agent platform"
         action={
           <div className="flex gap-1 rounded-lg bg-muted p-1">
             {dateRanges.map((range) => (
@@ -203,7 +203,7 @@ export default function DashboardOverviewPage() {
         </div>
         <div className="space-y-6">
           <ChannelDistribution data={channelData} />
-          <TopBots bots={topBots} />
+          <TopAgents agents={topAgents} />
         </div>
       </div>
 

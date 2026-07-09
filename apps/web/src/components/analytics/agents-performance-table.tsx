@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Bot } from 'lucide-react'
+import { Activity } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 
-interface BotPerformance {
+interface AgentPerformance {
   id: string
   name: string
   conversations: number
@@ -20,18 +20,18 @@ interface BotPerformance {
   satisfactionScore?: number
 }
 
-interface BotsPerformanceTableProps {
-  bots: BotPerformance[]
+interface AgentsPerformanceTableProps {
+  agents: AgentPerformance[]
   loading?: boolean
 }
 
-export function BotsPerformanceTable({ bots, loading }: BotsPerformanceTableProps) {
+export function AgentsPerformanceTable({ agents, loading }: AgentsPerformanceTableProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Bot className="size-4" />
-          Bot Performance
+          <Activity className="size-4" />
+          Agent Performance
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -41,13 +41,13 @@ export function BotsPerformanceTable({ bots, loading }: BotsPerformanceTableProp
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
-        ) : bots.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No bot data available</p>
+        ) : agents.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No agent data available</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Bot</TableHead>
+                <TableHead>Agent</TableHead>
                 <TableHead className="text-right">Conversations</TableHead>
                 <TableHead className="text-right">Messages</TableHead>
                 <TableHead className="text-right">Avg Response</TableHead>
@@ -55,16 +55,16 @@ export function BotsPerformanceTable({ bots, loading }: BotsPerformanceTableProp
               </TableRow>
             </TableHeader>
             <TableBody>
-              {bots.map((bot) => (
-                <TableRow key={bot.id}>
-                  <TableCell className="font-medium">{bot.name}</TableCell>
-                  <TableCell className="text-right">{bot.conversations.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{bot.messages.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{bot.avgResponseTime.toFixed(1)}s</TableCell>
+              {agents.map((agent) => (
+                <TableRow key={agent.id}>
+                  <TableCell className="font-medium">{agent.name}</TableCell>
+                  <TableCell className="text-right">{agent.conversations.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{agent.messages.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{agent.avgResponseTime.toFixed(1)}s</TableCell>
                   <TableCell className="text-right">
-                    {bot.satisfactionScore != null ? (
+                    {agent.satisfactionScore != null ? (
                       <Badge variant="secondary" className="text-xs">
-                        {bot.satisfactionScore.toFixed(1)}
+                        {agent.satisfactionScore.toFixed(1)}
                       </Badge>
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import api from '@/lib/api'
+import { publicApi as api } from '@/lib/api'
 
 export interface WidgetMessage {
   id: string
@@ -15,12 +15,12 @@ export interface WidgetTheme {
 }
 
 export interface WidgetConfig {
-  botId: string
+  agentId: string
   position: 'bottom-right' | 'bottom-left'
   theme: WidgetTheme
   greeting: string
-  botName?: string
-  botAvatar?: string
+  agentName?: string
+  agentAvatar?: string
   quickReplies?: string[]
 }
 
@@ -49,7 +49,7 @@ export function useWidget(config: WidgetConfig) {
 
   const createConversation = useCallback(async () => {
     try {
-      const { data } = await api.post(`/widget/bots/${config.botId}/conversations`, { channel: 'web' })
+      const { data } = await api.post(`/widget/agents/${config.agentId}/conversations`, { channel: 'web' })
       const conversation = data.data || data
       setConversationId(conversation.id)
       return conversation.id
@@ -57,7 +57,7 @@ export function useWidget(config: WidgetConfig) {
       setError('Failed to start conversation')
       return null
     }
-  }, [config.botId])
+  }, [config.agentId])
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -141,24 +141,24 @@ export function useWidget(config: WidgetConfig) {
     }
   }, [isOpen, openWidget, closeWidget])
 
-  const addBotMessage = useCallback((content: string) => {
-    const botMessage: WidgetMessage = {
+  const addAgentMessage = useCallback((content: string) => {
+    const agentMessage: WidgetMessage = {
       id: generateId(),
       role: 'assistant',
       content,
       timestamp: new Date(),
     }
-    setMessages((prev) => [...prev, botMessage])
+    setMessages((prev) => [...prev, agentMessage])
   }, [])
 
   useEffect(() => {
     if (config.greeting && messages.length === 0) {
       const timer = setTimeout(() => {
-        addBotMessage(config.greeting)
+        addAgentMessage(config.greeting)
       }, 600)
       return () => clearTimeout(timer)
     }
-  }, [config.greeting, messages.length, addBotMessage])
+  }, [config.greeting, messages.length, addAgentMessage])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

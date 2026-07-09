@@ -146,7 +146,7 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
       onClear={handleClear}
       placeholder={canSend ? 'Test your agent...' : 'Add a system prompt and model to start testing'}
       className={cn('min-h-[500px]', className)}
-      botName={agentConfig.name}
+      agentName={agentConfig.name}
       header={
         <div className="flex items-center gap-2">
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">

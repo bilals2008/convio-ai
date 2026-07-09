@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Bot, User, Trash2, Loader2 } from 'lucide-react'
+import { User, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { TypingIndicator } from './typing-indicator'
@@ -22,11 +22,11 @@ interface ChatPanelProps {
   placeholder?: string
   className?: string
   header?: React.ReactNode
-  botName?: string
-  botAvatar?: string
+  agentName?: string
+  agentAvatar?: string
 }
 
-function BotAvatar({ name, avatar, size = 'sm' }: { name: string; avatar?: string; size?: 'sm' | 'lg' }) {
+function AgentAvatar({ name, avatar, size = 'sm' }: { name: string; avatar?: string; size?: 'sm' | 'lg' }) {
   const initial = name.charAt(0).toUpperCase()
   const sizeClasses = size === 'lg' ? 'size-10' : 'size-7'
   const textSize = size === 'lg' ? 'text-sm' : 'text-xs'
@@ -55,8 +55,8 @@ export function ChatPanel({
   placeholder = 'Type a message...',
   className,
   header,
-  botName = 'Bot',
-  botAvatar,
+  agentName = 'Agent',
+  agentAvatar,
 }: ChatPanelProps) {
   const [value, setValue] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -112,7 +112,7 @@ export function ChatPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[500px]">
         {messages.length === 0 && !streaming && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12 text-muted-foreground">
-            <BotAvatar name={botName} avatar={botAvatar} size="lg" />
+            <AgentAvatar name={agentName} avatar={agentAvatar} size="lg" />
             <p className="text-sm mt-3">Send a message to test</p>
           </div>
         )}
@@ -126,7 +126,7 @@ export function ChatPanel({
                   <User className="size-3.5 text-primary" />
                 </div>
               ) : (
-                <BotAvatar name={botName} avatar={botAvatar} />
+                <AgentAvatar name={agentName} avatar={agentAvatar} />
               )}
               <div className={cn('max-w-[75%] space-y-1', isUser && 'items-end')}>
                 <div className={cn('rounded-xl px-3 py-2 text-sm', isUser ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted rounded-tl-sm')}>
@@ -142,7 +142,7 @@ export function ChatPanel({
 
         {streaming && (
           <div className="flex gap-2">
-            <BotAvatar name={botName} avatar={botAvatar} />
+            <AgentAvatar name={agentName} avatar={agentAvatar} />
             <div className="max-w-[75%]">
               <div className="rounded-xl rounded-tl-sm px-3 py-2 text-sm bg-muted">
                 {streamingContent ? (

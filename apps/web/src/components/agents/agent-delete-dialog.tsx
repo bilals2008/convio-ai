@@ -58,7 +58,7 @@ export function AgentDeleteDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the agent
-            and remove it from all bots.
+            and remove it from all deployments.
           </AlertDialogDescription>
         </AlertDialogHeader>
 

@@ -4,7 +4,7 @@ import { MessageCircle, X } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 export function WidgetButton() {
-  const { isOpen, unreadCount, botAvatar, botName, position, onToggle } = useWidgetState()
+  const { isOpen, unreadCount, agentAvatar, agentName, position, onToggle } = useWidgetState()
 
   return (
     <button
@@ -23,11 +23,11 @@ export function WidgetButton() {
           isOpen ? 'scale-0 rotate-90 opacity-0' : 'scale-100 rotate-0 opacity-100'
         )}
       >
-        {botAvatar ? (
+        {agentAvatar ? (
           <Avatar size="default" className="size-9">
-            <AvatarImage src={botAvatar} alt={botName} />
+            <AvatarImage src={agentAvatar} alt={agentName} />
             <AvatarFallback className="bg-transparent text-[hsl(var(--widget-primary-foreground))] text-xs">
-              {botName?.charAt(0).toUpperCase() || 'B'}
+              {agentName?.charAt(0).toUpperCase() || 'A'}
             </AvatarFallback>
           </Avatar>
         ) : (
