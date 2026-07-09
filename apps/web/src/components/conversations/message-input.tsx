@@ -40,7 +40,7 @@ export function MessageInput({
   }
 
   return (
-    <div className="flex items-end gap-2 border-t p-4">
+    <div className="flex items-end gap-2 px-4 py-3">
       <textarea
         value={value}
         onChange={handleChange}

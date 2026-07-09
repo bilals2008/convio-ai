@@ -131,9 +131,8 @@ export function Sidebar() {
           </SidebarGroup>
 
           <SidebarGroup label="Conversations">
-            <SidebarItem icon={MessageSquare} label="Conversations" href="/conversations" badge={12} />
+            <SidebarItem icon={MessageSquare} label="Conversations" href="/conversations" />
             <SidebarItem icon={MessageCircle} label="Widgets" href="/widgets" />
-            <SidebarItem icon={MessageCircle} label="Widget Demo" href="/widget/demo" />
           </SidebarGroup>
 
           <SidebarGroup label="Settings">
@@ -308,9 +307,8 @@ const mobileNavGroups = [
   {
     label: 'Conversations',
     items: [
-      { icon: MessageSquare, label: 'Conversations', href: '/conversations', badge: 12 },
+      { icon: MessageSquare, label: 'Conversations', href: '/conversations' },
       { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
-      { icon: MessageCircle, label: 'Widget Demo', href: '/widget/demo' },
     ],
   },
   {
