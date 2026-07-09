@@ -1,21 +1,20 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Brain, MoreVertical, Pencil, Trash2, ExternalLink } from 'lucide-react'
+import {
+  Plus,
+  Brain,
+  Pencil,
+  Trash2,
+  MessageSquare,
+  Clock,
+} from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { AgentDeleteDialog } from '@/components/agents/agent-delete-dialog'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -29,6 +28,20 @@ interface Agent {
   temperature: number
   createdAt: string
   updatedAt: string
+}
+
+function formatModel(model: string) {
+  const parts = model.split('/')
+  const name = parts[parts.length - 1]
+  return name.length > 22 ? name.slice(0, 19) + '...' : name
+}
+
+function formatPrompt(prompt: string) {
+  return prompt.length > 60 ? prompt.slice(0, 57) + '...' : prompt
+}
+
+function formatTemp(temp: number) {
+  return temp.toFixed(1)
 }
 
 export default function AgentsListPage() {
@@ -69,29 +82,24 @@ export default function AgentsListPage() {
     : agents
 
   const loadingSkeletons = Array.from({ length: 3 }, (_, i) => (
-    <Card key={i} className="overflow-hidden">
-      <CardContent className="p-5 space-y-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <Skeleton className="size-12 rounded-xl" />
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </div>
-          </div>
-          <Skeleton className="size-8 rounded-lg" />
+    <div key={i} className="rounded-xl border bg-card p-4 space-y-3">
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-10 rounded-lg" />
+        <div className="flex-1 space-y-1.5">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-3 w-40" />
         </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-6 w-20 rounded-full" />
-          <Skeleton className="h-6 w-16 rounded-full" />
-        </div>
-        <Separator />
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-3 w-20" />
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="flex gap-1.5">
+        <Skeleton className="h-5 w-16 rounded-md" />
+        <Skeleton className="h-5 w-12 rounded-md" />
+      </div>
+      <Skeleton className="h-px w-full" />
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-3 w-36" />
+        <Skeleton className="h-3 w-14" />
+      </div>
+    </div>
   ))
 
   return (
@@ -103,7 +111,7 @@ export default function AgentsListPage() {
             Create and manage your AI agents
           </p>
         </div>
-        <Button size="lg" onClick={() => navigate('/agents/new')}>
+        <Button onClick={() => navigate('/agents/new')}>
           <Plus className="size-4 mr-2" />
           Create Agent
         </Button>
@@ -116,7 +124,7 @@ export default function AgentsListPage() {
       />
 
       {isLoading && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {loadingSkeletons}
         </div>
       )}
@@ -139,90 +147,93 @@ export default function AgentsListPage() {
       )}
 
       {!isLoading && filteredAgents.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {filteredAgents.map((agent) => (
-            <Card
+            <div
               key={agent.id}
-              className="cursor-pointer transition-all hover:shadow-md hover:border-primary/20 group"
+              className="group relative rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-sm cursor-pointer"
               onClick={() => navigate(`/agents/${agent.id}/edit`)}
             >
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
-                      <Brain className="size-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">{agent.name}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-1">
-                        {agent.description || 'No description'}
-                      </p>
-                    </div>
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Brain className="size-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-sm truncate">{agent.name}</h3>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <MoreVertical className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/agents/${agent.id}/edit`)
-                        }}
-                      >
-                        <Pencil className="size-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/agents/${agent.id}/edit?tab=test-chat`)
-                        }}
-                      >
-                        <ExternalLink className="size-4 mr-2" />
-                        Test Chat
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setDeleteAgent(agent)
-                        }}
-                      >
-                        <Trash2 className="size-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <div className="flex items-center gap-2 mb-4 flex-wrap">
-                  <Badge variant="secondary" className="bg-purple-500/10 text-purple-600">
-                    {agent.model.length > 20 ? agent.model.slice(0, 17) + '...' : agent.model}
-                  </Badge>
-                  <Badge variant="outline">
-                    Temp {agent.temperature}
-                  </Badge>
-                </div>
-
-                <Separator className="mb-4" />
-
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <p className="line-clamp-1 max-w-[60%]">
-                    {agent.systemPrompt.slice(0, 40)}{agent.systemPrompt.length > 40 ? '...' : ''}
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {agent.description || 'No description'}
                   </p>
-                  <span className="text-xs">
-                    {new Date(agent.createdAt).toLocaleDateString()}
-                  </span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] font-mono bg-purple-500/10 text-purple-500 border-0 px-1.5 py-0"
+                >
+                  {formatModel(agent.model)}
+                </Badge>
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] bg-muted/60 text-muted-foreground border-0 px-1.5 py-0"
+                >
+                  {formatTemp(agent.temperature)}
+                </Badge>
+              </div>
+
+              <div className="h-px bg-border/60 mb-3" />
+
+              <p className="text-[11px] text-muted-foreground mb-3 line-clamp-2 leading-relaxed">
+                {formatPrompt(agent.systemPrompt)}
+              </p>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <Clock className="size-3" />
+                  {new Date(agent.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </div>
+
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/agents/${agent.id}/edit?tab=test-chat`)
+                    }}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors"
+                  >
+                    <MessageSquare className="size-3" />
+                    Chat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/agents/${agent.id}/edit`)
+                    }}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                  >
+                    <Pencil className="size-3" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDeleteAgent(agent)
+                    }}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}
