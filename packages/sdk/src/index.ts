@@ -3,14 +3,14 @@
 
 export interface ConvioConfig {
   apiUrl: string
-  botId: string
+  agentId: string
 }
 
 export function createConvio(config: ConvioConfig) {
   return {
     // Chat methods
     async sendMessage(message: string) {
-      const response = await fetch(`${config.apiUrl}/chat/${config.botId}/message`, {
+      const response = await fetch(`${config.apiUrl}/chat/${config.agentId}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message }),
@@ -19,7 +19,7 @@ export function createConvio(config: ConvioConfig) {
     },
 
     async getHistory() {
-      const response = await fetch(`${config.apiUrl}/chat/${config.botId}/history`)
+      const response = await fetch(`${config.apiUrl}/chat/${config.agentId}/history`)
       return response.json()
     },
   }

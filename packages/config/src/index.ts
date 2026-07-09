@@ -1,6 +1,6 @@
 // App config
 export const APP_NAME = 'Convio'
-export const APP_DESCRIPTION = 'AI Chatbot & Agent Management Platform'
+export const APP_DESCRIPTION = 'AI Agent Management Platform'
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 // API config
@@ -26,19 +26,19 @@ export const STORAGE_BUCKET = process.env.STORAGE_BUCKET || 'convio'
 // Limits
 export const LIMITS = {
   free: {
-    bots: 1,
+    agents: 1,
     messagesPerDay: 100,
     knowledgeBases: 1,
     documentsPerKB: 5,
   },
   pro: {
-    bots: Infinity,
+    agents: Infinity,
     messagesPerDay: 10000,
     knowledgeBases: 10,
     documentsPerKB: 100,
   },
   enterprise: {
-    bots: Infinity,
+    agents: Infinity,
     messagesPerDay: Infinity,
     knowledgeBases: Infinity,
     documentsPerKB: Infinity,
@@ -46,7 +46,7 @@ export const LIMITS = {
 } as const
 
 // Channels
-export const CHANNELS = ['web', 'whatsapp', 'telegram', 'discord', 'slack'] as const
+export const CHANNELS = ['web', 'api', 'whatsapp', 'telegram', 'discord', 'slack'] as const
 
 // AI Models
 export const AI_MODELS = [
@@ -65,14 +65,12 @@ export const ROUTES = {
   login: '/login',
   signup: '/signup',
   dashboard: '/dashboard',
-  bots: '/bots',
-  botEditor: (id: string) => `/bots/${id}`,
   agents: '/agents',
   agentEditor: (id: string) => `/agents/${id}`,
+  deployments: '/deployments',
   conversations: '/conversations',
   chat: (id: string) => `/conversations/${id}`,
   knowledge: '/knowledge',
   analytics: '/analytics',
-  integrations: '/integrations',
   settings: '/settings',
 } as const

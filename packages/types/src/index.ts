@@ -39,6 +39,8 @@ export type AIModel =
   | 'gemini-1.5-flash'
   | 'llama-3.1-70b'
 
+export type AgentStatus = 'active' | 'inactive' | 'draft'
+
 export interface Agent {
   id: string
   organizationId: string
@@ -48,34 +50,24 @@ export interface Agent {
   systemPrompt: string
   temperature: number
   maxTokens?: number
-  createdAt: Date
-  updatedAt: Date
-}
-
-// Bot types
-export type BotStatus = 'active' | 'inactive' | 'draft'
-
-export interface Bot {
-  id: string
-  organizationId: string
-  agentId: string
-  name: string
-  description?: string
+  providerKeyId?: string
+  knowledgeBaseId?: string
   avatar?: string
   widgetColor: string
   welcomeMessage?: string
-  status: BotStatus
+  widgetConfig?: Record<string, unknown>
+  status: AgentStatus
   createdAt: Date
   updatedAt: Date
 }
 
 // Conversation types
-export type Channel = 'web' | 'whatsapp' | 'telegram' | 'discord' | 'slack'
-export type ConversationStatus = 'active' | 'closed' | 'transferred'
+export type Channel = 'web' | 'api' | 'whatsapp' | 'telegram' | 'discord' | 'slack'
+export type ConversationStatus = 'active' | 'waiting' | 'resolved' | 'closed' | 'archived'
 
 export interface Conversation {
   id: string
-  botId: string
+  agentId: string
   userId?: string
   channel: Channel
   status: ConversationStatus
@@ -117,6 +109,7 @@ export interface Document {
   type: DocumentType
   content?: string
   url?: string
+  fileKey?: string
   status: DocumentStatus
   createdAt: Date
 }
@@ -134,22 +127,22 @@ export interface Tool {
   createdAt: Date
 }
 
-// Integration types
-export type IntegrationStatus = 'active' | 'inactive' | 'error'
+// Deployment types
+export type DeploymentStatus = 'active' | 'inactive' | 'pending' | 'error'
 
-export interface Integration {
+export interface Deployment {
   id: string
-  botId: string
+  agentId: string
   channel: Channel
   config: Record<string, unknown>
-  status: IntegrationStatus
+  status: DeploymentStatus
   createdAt: Date
 }
 
 // Analytics types
 export interface Analytics {
   id: string
-  botId: string
+  agentId: string
   date: Date
   totalConversations: number
   totalMessages: number

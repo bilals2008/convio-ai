@@ -59,6 +59,8 @@ export const aiModelSchema = z.enum([
   'llama-3.1-70b',
 ])
 
+export const agentStatusSchema = z.enum(['active', 'inactive', 'draft'])
+
 export const agentSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
@@ -69,6 +71,10 @@ export const agentSchema = z.object({
   temperature: z.number().min(0).max(2).default(0.7),
   maxTokens: z.number().positive().optional(),
   providerKeyId: z.string().uuid().optional(),
+  avatar: z.string().url().optional(),
+  widgetColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#fb923c'),
+  welcomeMessage: z.string().max(1000).optional(),
+  status: agentStatusSchema.default('draft'),
   createdAt: z.date(),
   updatedAt: z.date(),
 })
@@ -80,41 +86,19 @@ export const createAgentSchema = agentSchema.omit({
   updatedAt: true,
 })
 
+export const createAgentFullSchema = createAgentSchema.extend({
+  knowledgeBaseId: z.string().uuid().optional(),
+})
+
 export const updateAgentSchema = createAgentSchema.partial()
 
-// Bot schemas
-export const botStatusSchema = z.enum(['active', 'inactive', 'draft'])
-
-export const botSchema = z.object({
-  id: z.string().uuid(),
-  organizationId: z.string().uuid(),
-  agentId: z.string().uuid(),
-  name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
-  avatar: z.string().url().optional(),
-  widgetColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#fb923c'),
-  welcomeMessage: z.string().max(1000).optional(),
-  status: botStatusSchema,
-  createdAt: z.date(),
-  updatedAt: z.date(),
-})
-
-export const createBotSchema = botSchema.omit({
-  id: true,
-  organizationId: true,
-  createdAt: true,
-  updatedAt: true,
-})
-
-export const updateBotSchema = createBotSchema.partial()
-
 // Conversation schemas
-export const channelSchema = z.enum(['web', 'whatsapp', 'telegram', 'discord', 'slack'])
-export const conversationStatusSchema = z.enum(['active', 'closed', 'transferred'])
+export const channelSchema = z.enum(['web', 'api', 'whatsapp', 'telegram', 'discord', 'slack'])
+export const conversationStatusSchema = z.enum(['active', 'waiting', 'resolved', 'closed', 'archived'])
 
 export const conversationSchema = z.object({
   id: z.string().uuid(),
-  botId: z.string().uuid(),
+  agentId: z.string().uuid(),
   userId: z.string().optional(),
   channel: channelSchema,
   status: conversationStatusSchema,
@@ -124,7 +108,7 @@ export const conversationSchema = z.object({
 
 export const createConversationSchema = conversationSchema.omit({
   id: true,
-  botId: true,
+  agentId: true,
   createdAt: true,
   updatedAt: true,
 })
@@ -180,6 +164,7 @@ export const documentSchema = z.object({
   type: documentTypeSchema,
   content: z.string().optional(),
   url: z.string().url().optional(),
+  fileKey: z.string().optional(),
   status: documentStatusSchema,
   createdAt: z.date(),
 })
@@ -209,24 +194,24 @@ export const createToolSchema = toolSchema.omit({
 
 export const updateToolSchema = createToolSchema.partial()
 
-// Integration schemas
-export const integrationStatusSchema = z.enum(['active', 'inactive', 'error'])
+// Deployment schemas
+export const deploymentStatusSchema = z.enum(['active', 'inactive', 'pending', 'error'])
 
-export const integrationSchema = z.object({
+export const deploymentSchema = z.object({
   id: z.string().uuid(),
-  botId: z.string().uuid(),
+  agentId: z.string().uuid(),
   channel: channelSchema,
   config: z.record(z.unknown()),
-  status: integrationStatusSchema,
+  status: deploymentStatusSchema,
   createdAt: z.date(),
 })
 
-export const createIntegrationSchema = integrationSchema.omit({
+export const createDeploymentSchema = deploymentSchema.omit({
   id: true,
   createdAt: true,
 })
 
-export const updateIntegrationSchema = createIntegrationSchema.partial()
+export const updateDeploymentSchema = createDeploymentSchema.partial()
 
 // Auth schemas
 export const signInSchema = z.object({
@@ -245,10 +230,9 @@ export type User = z.infer<typeof userSchema>
 export type Organization = z.infer<typeof organizationSchema>
 export type Membership = z.infer<typeof membershipSchema>
 export type Agent = z.infer<typeof agentSchema>
-export type Bot = z.infer<typeof botSchema>
 export type Conversation = z.infer<typeof conversationSchema>
 export type Message = z.infer<typeof messageSchema>
 export type KnowledgeBase = z.infer<typeof knowledgeBaseSchema>
 export type Document = z.infer<typeof documentSchema>
 export type Tool = z.infer<typeof toolSchema>
-export type Integration = z.infer<typeof integrationSchema>
+export type Deployment = z.infer<typeof deploymentSchema>
