@@ -56,7 +56,10 @@ export default function WidgetsListPage() {
 
   const { data: agentsData } = useQuery({
     queryKey: ['agents-for-widgets', orgId],
-    queryFn: () => agentsApi.list(orgId!),
+    queryFn: async () => {
+      const res = await agentsApi.list(orgId!)
+      return (res.data.data || []) as { id: string; name: string }[]
+    },
     enabled: !!orgId,
   })
 
@@ -86,7 +89,7 @@ export default function WidgetsListPage() {
   })
 
   const widgets = widgetsData || []
-  const agents = (agentsData?.data || agentsData || [])
+  const agents = agentsData || []
 
   const filteredWidgets = widgets.filter((w) => {
     if (!search) return true
