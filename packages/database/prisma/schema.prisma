@@ -36,6 +36,8 @@ model Organization {
   tools          Tool[]
   providerKeys   ProviderKey[]
   apiKeys        ApiKey[]
+  auditLogs      AuditLog[]
+  ssoConfigs     SsoConfig[]
 
   @@index([slug])
 }
@@ -253,4 +255,40 @@ model Analytics {
 
   @@unique([agentId, date])
   @@index([agentId])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  actorId        String?
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  createdAt      DateTime @default(now()) @db.Timestamptz()
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, action])
+  @@index([organizationId, entityType])
+  @@index([actorId])
+  @@map("audit_logs")
+}
+
+model SsoConfig {
+  id              String   @id @default(uuid())
+  organizationId  String   @unique
+  provider        String   @default("saml")
+  issuer          String?
+  entryPoint      String?
+  certificate     String?
+  metadataUrl     String?
+  enabled         Boolean  @default(false)
+  createdAt       DateTime @default(now()) @db.Timestamptz()
+  updatedAt       DateTime @updatedAt @db.Timestamptz()
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("sso_configs")
 }

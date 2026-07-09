@@ -225,6 +225,79 @@ export const signUpSchema = z.object({
   password: z.string().min(8),
 })
 
+// Audit Log schemas
+export const auditLogActionSchema = z.enum([
+  'member.invited',
+  'member.removed',
+  'member.role_changed',
+  'organization.created',
+  'organization.updated',
+  'organization.deleted',
+  'agent.created',
+  'agent.updated',
+  'agent.deleted',
+  'knowledge.created',
+  'knowledge.updated',
+  'knowledge.deleted',
+  'api_key.created',
+  'api_key.deleted',
+  'provider_key.created',
+  'provider_key.updated',
+  'provider_key.deleted',
+  'sso.configured',
+  'sso.disabled',
+])
+
+export const auditLogSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  actorId: z.string().uuid().optional(),
+  action: auditLogActionSchema,
+  entityType: z.string(),
+  entityId: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
+  createdAt: z.date(),
+})
+
+export const auditLogQuerySchema = z.object({
+  cursor: z.string().uuid().optional(),
+  limit: z.coerce.number().min(1).max(100).default(50),
+  action: auditLogActionSchema.optional(),
+  entityType: z.string().optional(),
+})
+
+// SSO Config schemas
+export const ssoConfigSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  provider: z.enum(['saml', 'oidc']).default('saml'),
+  issuer: z.string().optional(),
+  entryPoint: z.string().optional(),
+  certificate: z.string().optional(),
+  metadataUrl: z.string().url().optional(),
+  enabled: z.boolean().default(false),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+})
+
+export const updateSsoConfigSchema = z.object({
+  provider: z.enum(['saml', 'oidc']).optional(),
+  issuer: z.string().optional(),
+  entryPoint: z.string().optional(),
+  certificate: z.string().optional(),
+  metadataUrl: z.string().url().optional().or(z.literal('')),
+  enabled: z.boolean().optional(),
+})
+
+export const bulkInviteSchema = z.object({
+  members: z.array(z.object({
+    email: z.string().email(),
+    role: membershipRoleSchema.refine((r) => r !== 'owner', {
+      message: 'Cannot add a member as owner.',
+    }),
+  })).min(1).max(50),
+})
+
 // Types inferred from schemas
 export type User = z.infer<typeof userSchema>
 export type Organization = z.infer<typeof organizationSchema>
@@ -236,3 +309,5 @@ export type KnowledgeBase = z.infer<typeof knowledgeBaseSchema>
 export type Document = z.infer<typeof documentSchema>
 export type Tool = z.infer<typeof toolSchema>
 export type Deployment = z.infer<typeof deploymentSchema>
+export type AuditLog = z.infer<typeof auditLogSchema>
+export type SsoConfig = z.infer<typeof ssoConfigSchema>
