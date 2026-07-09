@@ -55,18 +55,6 @@ DELETE /agents/:id                 ← Delete agent
 POST   /agents/:id/test            ← Test agent with sample message
 ```
 
-## Bot Endpoints
-
-```
-GET    /bots                       ← List bots
-POST   /bots                       ← Create bot
-GET    /bots/:id                   ← Get bot details
-PATCH  /bots/:id                   ← Update bot
-DELETE /bots/:id                   ← Delete bot
-POST   /bots/:id/deploy            ← Deploy bot to channel
-POST   /bots/:id/test              ← Test bot in sandbox
-```
-
 ## Conversation Endpoints
 
 ```
@@ -112,22 +100,22 @@ PATCH  /tools/:id                  ← Update tool
 DELETE /tools/:id                  ← Delete tool
 ```
 
-## Integration Endpoints
+## Deployment Endpoints
 
 ```
-GET    /integrations               ← List integrations
-POST   /integrations               ← Add integration (WhatsApp, etc.)
-GET    /integrations/:id           ← Get integration details
-PATCH  /integrations/:id           ← Update integration
-DELETE /integrations/:id           ← Remove integration
-POST   /integrations/:id/verify    ← Verify channel connection
+GET    /agents/:agentId/deployments            ← List deployments
+POST   /agents/:agentId/deployments            ← Create deployment
+GET    /agents/:agentId/deployments/:id        ← Get deployment details
+PATCH  /agents/:agentId/deployments/:id        ← Update deployment
+DELETE /agents/:agentId/deployments/:id        ← Remove deployment
+POST   /agents/:agentId/deployments/:id/verify ← Verify channel connection
 ```
 
 ## Analytics Endpoints
 
 ```
 GET    /analytics/overview         ← Dashboard overview
-GET    /analytics/bots/:id         ← Bot-specific analytics
+GET    /agents/:agentId/analytics  ← Agent analytics
 GET    /analytics/conversations    ← Conversation metrics
 GET    /analytics/export           ← Export CSV/PDF
 ```
@@ -135,7 +123,7 @@ GET    /analytics/export           ← Export CSV/PDF
 ## Chat Widget Endpoints (Public)
 
 ```
-POST   /chat/:botId/message        ← Send message to bot
-GET    /chat/:botId/history        ← Get chat history
-POST   /chat/:botId/feedback       ← Submit feedback
+POST   /chat/:agentId/message      ← Send message to agent
+GET    /chat/:agentId/history      ← Get chat history
+POST   /chat/:agentId/feedback     ← Submit feedback
 ```

@@ -21,15 +21,13 @@
 | Login | `/login` | Email/password + OAuth |
 | Signup | `/signup` | Create account |
 | Dashboard | `/dashboard` | Overview, stats |
-| Bots | `/bots` | List all bots (Grid) |
-| Bot Editor | `/bots/:id` | Edit bot config |
-| Agents | `/agents` | List all agents (Table) |
+| Agents | `/agents` | List all agents |
 | Agent Editor | `/agents/:id` | Edit agent config |
 | Conversations | `/conversations` | Chat inbox |
 | Chat | `/conversations/:id` | Single chat (Split View) |
 | Knowledge | `/knowledge` | Knowledge bases |
 | Analytics | `/analytics` | Reports |
-| Integrations | `/integrations` | Channel connections |
+| Deployments | `/deployments` | Channel connections |
 | Settings | `/settings` | Account, org, billing |
 
 ---
@@ -64,24 +62,22 @@ apps/web/src/
 ├── components/
 │   ├── ui/                 ← shadcn components (auto-generated)
 │   ├── layout/             ← Sidebar, Header, Footer
-│   ├── bots/               ← BotCard, BotList, BotEditor
 │   ├── agents/             ← AgentCard, AgentList, AgentEditor
 │   ├── chat/               ← Chat components (modular)
 │   ├── knowledge/          ← KnowledgeCard, DocumentUpload
 │   ├── analytics/          ← Charts, StatsCards
-│   ├── integrations/       ← IntegrationCard, ChannelConfig
+│   ├── deployments/        ← DeploymentCard, ChannelConfig
 │   ├── dashboard/          ← Dashboard widgets
 │   └── shared/             ← Reusable components
 ```
 
 ---
 
-## Bot & Agent Lists
+## Agent List
 
 | Component | Layout | Reason |
 |-----------|--------|--------|
-| **Bots** | Grid | Visual (avatar, status, channels) — cards better |
-| **Agents** | Table | Data-heavy (model, provider, temperature, KB) — table better |
+| **Agents** | Grid | Visual (avatar, status, channels) — cards better |
 
 ---
 
@@ -181,7 +177,7 @@ shared/
 
 ## Forms
 
-Every editor (Bot, Agent, Knowledge, Settings):
+Every editor (Agent, Knowledge, Settings):
 
 - React Hook Form
 - Zod validation
@@ -199,16 +195,16 @@ Every editor (Bot, Agent, Knowledge, Settings):
 lib/
 ├── api/
 │   ├── client.ts
-│   ├── bots.ts
 │   ├── agents.ts
+│   ├── deployments.ts
 │   ├── auth.ts
 │   ├── conversations.ts
 │   ├── knowledge.ts
 │   └── analytics.ts
 │
 ├── hooks/
-│   ├── useBots.ts
 │   ├── useAgents.ts
+│   ├── useDeployments.ts
 │   ├── useConversation.ts
 │   └── useKnowledge.ts
 │
@@ -222,8 +218,7 @@ Components contain NO fetch logic — all in hooks.
 ## Key Decisions
 
 1. Sidebar: Collapsible (Drawer on mobile)
-2. Bot List: Grid
-3. Agent List: Table
+2. Agent List: Grid
 4. Chat: Split View
 5. shadcn AI Components: MessageScroller, Message, Bubble, Attachment, Marker
 6. Forms: React Hook Form + Zod

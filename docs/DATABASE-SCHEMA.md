@@ -5,18 +5,13 @@
 ```
 User ──┬── Membership ──── Organization
        │
-       └── Bot (created_by)
-              │
-              ├── Agent (linked)
-              │      ├── Tool (many-to-many)
-              │      └── KnowledgeBase (many)
-              │             └── Document (many)
-              │
+       └── Agent
+              ├── Tool (many-to-many)
+              ├── KnowledgeBase (many)
+              │      └── Document (many)
               ├── Conversation (many)
               │      └── Message (many)
-              │
-              ├── Integration (many)
-              │
+              ├── Deployment (many)
               └── Analytics (many)
 ```
 
@@ -55,6 +50,10 @@ User ──┬── Membership ──── Organization
 - organizationId (FK → Organization)
 - name (String)
 - description (String, optional)
+- avatar (String, optional)
+- widgetColor (String, default: #fb923c)
+- welcomeMessage (Text, optional)
+- status (Enum: active, inactive, draft)
 - model (Enum: gpt-4, gpt-4o, claude-3, etc.)
 - systemPrompt (Text)
 - temperature (Float, default: 0.7)
@@ -62,24 +61,10 @@ User ──┬── Membership ──── Organization
 - createdAt (DateTime)
 - updatedAt (DateTime)
 
-### Bot
-
-- id (UUID)
-- organizationId (FK → Organization)
-- agentId (FK → Agent)
-- name (String)
-- description (String, optional)
-- avatar (String, optional)
-- widgetColor (String, default: #fb923c)
-- welcomeMessage (Text, optional)
-- status (Enum: active, inactive, draft)
-- createdAt (DateTime)
-- updatedAt (DateTime)
-
 ### Conversation
 
 - id (UUID)
-- botId (FK → Bot)
+- agentId (FK → Agent)
 - userId (String, optional — anonymous users)
 - channel (Enum: web, whatsapp, telegram, discord, slack)
 - status (Enum: active, closed, transferred)
@@ -131,10 +116,10 @@ User ──┬── Membership ──── Organization
 - agentId (FK → Agent)
 - toolId (FK → Tool)
 
-### Integration
+### Deployment
 
 - id (UUID)
-- botId (FK → Bot)
+- agentId (FK → Agent)
 - channel (Enum: whatsapp, telegram, discord, slack)
 - config (JSON — channel-specific settings)
 - status (Enum: active, inactive, error)
@@ -143,7 +128,7 @@ User ──┬── Membership ──── Organization
 ### Analytics
 
 - id (UUID)
-- botId (FK → Bot)
+- agentId (FK → Agent)
 - date (Date)
 - totalConversations (Integer)
 - totalMessages (Integer)
@@ -154,9 +139,8 @@ User ──┬── Membership ──── Organization
 
 ## Key Decisions
 
-1. Bot → Agent: Many-to-One (multiple bots can share same agent)
-2. Tool: Separate model for reusability across agents
-3. KnowledgeBase: Collections of documents, linked to organization
-4. Message: Stores full conversation history with metadata
-5. Analytics: Daily aggregated metrics per bot
-6. Integration: Channel-specific configs stored as JSON
+1. Tool: Separate model for reusability across agents
+2. KnowledgeBase: Collections of documents, linked to organization
+3. Message: Stores full conversation history with metadata
+4. Analytics: Daily aggregated metrics per agent
+5. Deployment: Channel-specific configs stored as JSON

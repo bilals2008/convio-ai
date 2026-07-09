@@ -8,12 +8,11 @@ api/src/modules/
 ├── users/          ← User profiles, settings, avatar upload
 ├── organizations/  ← Multi-tenant teams, invitations
 ├── agents/         ← AI brain config, prompts, templates
-├── chatbots/       ← Bot CRUD, widget embed code
+├── deployments/    ← Channel configs, widget embed code
 ├── conversations/  ← Chat sessions
 ├── messages/       ← Individual messages, streaming
 ├── knowledge/      ← RAG, documents, embeddings
 ├── analytics/      ← Reports, daily aggregates
-├── integrations/   ← WhatsApp, Telegram, Discord, Slack
 ├── billing/        ← Plans, usage (basic structure)
 └── ai/             ← AI providers, tools, streaming
 ```
@@ -44,9 +43,9 @@ api/src/modules/
 - Prompt templates (readymade)
 - Model selection (GPT-4, Claude, etc.)
 
-### 5. chatbots/
+### 5. deployments/
 
-- Bot CRUD
+- Channel configuration (WhatsApp, Telegram, etc.)
 - JavaScript embed snippet generation
 
 ### 6. conversations/
@@ -70,9 +69,9 @@ api/src/modules/
 - Daily aggregates
 - Real-time (later)
 
-### 10. integrations/
+### 10. deployments/
 
-Order: Web Widget → WhatsApp → Telegram → Discord → Slack
+Channel configs: Web Widget → WhatsApp → Telegram → Discord → Slack
 
 ### 11. billing/
 

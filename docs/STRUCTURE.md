@@ -39,13 +39,12 @@ convio/
 │       │   │   ├── auth/
 │       │   │   ├── users/
 │       │   │   ├── organizations/
-│       │   │   ├── chatbots/
+│   │   │   ├── deployments/
 │       │   │   ├── agents/
-│       │   │   ├── conversations/
-│       │   │   ├── messages/
-│       │   │   ├── knowledge/
-│       │   │   ├── analytics/
-│       │   │   ├── integrations/
+│   │   │   ├── conversations/
+│   │   │   ├── messages/
+│   │   │   ├── knowledge/
+│   │   │   ├── analytics/
 │       │   │   └── billing/
 │       │   ├── common/
 │       │   ├── plugins/
