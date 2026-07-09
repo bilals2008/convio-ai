@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Loader2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,7 @@ interface AgentDeleteDialogProps {
   onOpenChange: (open: boolean) => void
   agentName: string
   onConfirm: () => void
+  isPending?: boolean
 }
 
 export function AgentDeleteDialog({
@@ -28,6 +29,7 @@ export function AgentDeleteDialog({
   onOpenChange,
   agentName,
   onConfirm,
+  isPending,
 }: AgentDeleteDialogProps) {
   const [confirmText, setConfirmText] = useState('')
   const [error, setError] = useState('')
@@ -90,10 +92,11 @@ export function AgentDeleteDialog({
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={confirmText !== agentName}
+            disabled={confirmText !== agentName || isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
           >
-            Delete Agent
+            {isPending && <Loader2 className="size-4 animate-spin mr-1" />}
+            {isPending ? 'Deleting...' : 'Delete Agent'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

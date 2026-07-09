@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { toast } from '@/lib/toast'
 import { AgentDeleteDialog } from '@/components/agents/agent-delete-dialog'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -67,7 +68,12 @@ export default function AgentsListPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => agentsApi.delete(id),
     onSuccess: () => {
+      toast.success('Agent deleted')
       queryClient.invalidateQueries({ queryKey: ['agents'] })
+      setDeleteAgent(null)
+    },
+    onError: () => {
+      toast.error('Failed to delete agent')
     },
   })
 
@@ -247,8 +253,8 @@ export default function AgentsListPage() {
           agentName={deleteAgent.name}
           onConfirm={() => {
             deleteMutation.mutate(deleteAgent.id)
-            setDeleteAgent(null)
           }}
+          isPending={deleteMutation.isPending}
         />
       )}
     </PageContainer>
