@@ -103,7 +103,7 @@ export default function AgentsListPage() {
             Create and manage your AI agents
           </p>
         </div>
-        <Button onClick={() => navigate('/agents/new')}>
+        <Button size="lg" onClick={() => navigate('/agents/new')}>
           <Plus className="size-4 mr-2" />
           Create Agent
         </Button>

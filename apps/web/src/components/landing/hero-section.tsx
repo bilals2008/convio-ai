@@ -70,13 +70,13 @@ export function HeroSection() {
             </p>
             <div className="flex items-center justify-center gap-[10px] flex-wrap">
               <Link to="/signup">
-                <Button className="glow-primary-sm px-6">
+                <Button size="lg" className="glow-primary-sm">
                   Get Started
                   <ArrowRight className="size-4" />
                 </Button>
               </Link>
               <a href="#features">
-                <Button variant="outline" className="bg-card/60 backdrop-blur-lg px-6">
+                <Button size="lg" variant="outline" className="bg-card/60 backdrop-blur-lg">
                   <MessageSquare className="size-4" />
                   Explore Features
                 </Button>

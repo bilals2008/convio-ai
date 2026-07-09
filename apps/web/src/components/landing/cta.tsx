@@ -51,13 +51,13 @@ export function CTA() {
 
             <div className="flex flex-col items-stretch gap-3 w-full md:w-auto md:min-w-[200px] shrink-0">
               <Link to="/signup">
-                <Button className="w-full justify-center glow-primary-sm">
+                <Button size="lg" className="w-full justify-center glow-primary-sm">
                   Start Free
                   <ArrowRight className="size-4" />
                 </Button>
               </Link>
               <a href="#features">
-                <Button variant="outline" className="w-full justify-center bg-card/60">
+                <Button size="lg" variant="outline" className="w-full justify-center bg-card/60">
                   Explore Features
                 </Button>
               </a>
