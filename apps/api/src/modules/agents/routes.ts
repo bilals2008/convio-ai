@@ -46,12 +46,18 @@ const testStreamSchema = z.object({
   })).optional().default([]),
 })
 
+const createAgentBodySchema = createAgentSchema.extend({
+  knowledgeBaseId: z.string().uuid().optional(),
+})
+
+const updateAgentBodySchema = updateAgentSchema
+
 export default async function agentsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/agents — Create agent (member only)
   fastify.post('/organizations/:orgId/agents', {
     preHandler: [
       fastify.authenticate,
-      validate({ params: orgParamsSchema, body: createAgentSchema }),
+      validate({ params: orgParamsSchema, body: createAgentBodySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
@@ -59,9 +65,15 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, orgId)
 
     const body = request.body as Record<string, unknown>
+    const { knowledgeBaseId, ...rest } = body
 
     const agent = await prisma.agent.create({
-      data: { ...body, organizationId: orgId } as any,
+      data: {
+        ...rest,
+        knowledgeBaseId: knowledgeBaseId || null,
+        organizationId: orgId,
+        createdById: request.userId,
+      } as any,
     })
 
     return { data: agent }
@@ -81,7 +93,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     const agents = await prisma.agent.findMany({
       where: { organizationId: orgId },
-      include: { tools: true },
+      include: { tools: true, knowledgeBase: { select: { id: true, name: true } } },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { createdAt: 'desc' },
@@ -96,7 +108,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // GET /api/agents/:id — Get agent by ID (member only)
+  // GET /api/agents/:id — Get agent by ID (member only, includes deployments)
   fastify.get('/agents/:id', {
     preHandler: [
       fastify.authenticate,
@@ -107,7 +119,11 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     const agent = await prisma.agent.findUnique({
       where: { id },
-      include: { tools: true },
+      include: {
+        tools: true,
+        knowledgeBase: { select: { id: true, name: true } },
+        deployments: true,
+      },
     })
 
     if (!agent) throw new AppError(404, 'Agent not found')
@@ -121,7 +137,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
   fastify.patch('/agents/:id', {
     preHandler: [
       fastify.authenticate,
-      validate({ params: agentParamsSchema, body: updateAgentSchema }),
+      validate({ params: agentParamsSchema, body: updateAgentBodySchema }),
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
@@ -131,9 +147,12 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, existing.organizationId)
 
+    const body = request.body as Record<string, unknown>
+    const { knowledgeBaseId, ...rest } = body
+
     const agent = await prisma.agent.update({
       where: { id },
-      data: request.body as any,
+      data: { ...rest, knowledgeBaseId: knowledgeBaseId !== undefined ? (knowledgeBaseId || null) : undefined } as any,
     })
 
     return { data: agent }
@@ -363,5 +382,48 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     reply.raw.write('data: [DONE]\n\n')
     reply.raw.end()
+  })
+
+  // PATCH /api/agents/:id/status — Change agent status (admin only, validates transitions)
+  fastify.patch('/agents/:id/status', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: agentParamsSchema, body: z.object({ status: z.enum(['draft', 'active', 'paused', 'archived']) }) }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { status } = request.body as { status: string }
+
+    const existing = await prisma.agent.findUnique({ where: { id } })
+    if (!existing) throw new AppError(404, 'Agent not found')
+
+    await fastify.ensureAdmin(request.userId!, existing.organizationId)
+
+    const agent = await prisma.agent.update({
+      where: { id },
+      data: { status },
+    })
+
+    return { data: agent }
+  })
+
+  // GET /api/agents/:id/embed — Get embed snippet (member only)
+  fastify.get('/agents/:id/embed', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: agentParamsSchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+
+    const existing = await prisma.agent.findUnique({ where: { id } })
+    if (!existing) throw new AppError(404, 'Agent not found')
+
+    await fastify.getMembership(request.userId!, existing.organizationId)
+
+    const baseUrl = process.env.CORS_ORIGIN || 'http://localhost:5173'
+    const snippet = `<script src="${baseUrl}/widget.js" data-agent-id="${id}"></script>\n<div id="convio-widget" data-agent-id="${id}"></div>`
+
+    return { data: { snippet } }
   })
 }

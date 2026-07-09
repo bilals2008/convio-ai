@@ -20,12 +20,11 @@ export default fp(async function swaggerPlugin(fastify: FastifyInstance) {
           { name: 'users', description: 'User management' },
           { name: 'organizations', description: 'Organization management' },
           { name: 'agents', description: 'AI agent management' },
-          { name: 'bots', description: 'Chatbot management' },
+          { name: 'deployments', description: 'Channel deployment management' },
           { name: 'conversations', description: 'Conversation management' },
           { name: 'messages', description: 'Message management' },
           { name: 'knowledge', description: 'Knowledge base management' },
           { name: 'analytics', description: 'Analytics and reports' },
-          { name: 'integrations', description: 'Channel integrations' },
         ],
       },
     })

@@ -14,17 +14,17 @@ import validationPlugin from './plugins/validate.js'
 import membershipPlugin from './plugins/membership.js'
 import swaggerPlugin from './plugins/swagger.js'
 import rateLimitPlugin from './plugins/rate-limit.js'
+import multipart from '@fastify/multipart'
 
 import authRoutes from './modules/auth/routes.js'
 import usersRoutes from './modules/users/routes.js'
 import organizationsRoutes from './modules/organizations/routes.js'
 import agentsRoutes from './modules/agents/routes.js'
-import chatbotsRoutes from './modules/chatbots/routes.js'
+import deploymentsRoutes from './modules/deployments/routes.js'
 import conversationsRoutes from './modules/conversations/routes.js'
 import messagesRoutes from './modules/messages/routes.js'
 import knowledgeRoutes from './modules/knowledge/routes.js'
 import analyticsRoutes from './modules/analytics/routes.js'
-import integrationsRoutes from './modules/integrations/routes.js'
 import aiRoutes from './modules/ai/routes.js'
 import playgroundRoutes from './modules/playground/routes.js'
 import billingRoutes from './modules/billing/routes.js'
@@ -46,6 +46,7 @@ async function buildServer() {
   await app.register(validationPlugin)
   await app.register(swaggerPlugin)
   await app.register(rateLimitPlugin)
+  await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024 } })
 
   // Health
   app.get('/health', async () => ({ status: 'ok' }))
@@ -55,12 +56,11 @@ async function buildServer() {
   await app.register(usersRoutes, { prefix: '/api' })
   await app.register(organizationsRoutes, { prefix: '/api' })
   await app.register(agentsRoutes, { prefix: '/api' })
-  await app.register(chatbotsRoutes, { prefix: '/api' })
+  await app.register(deploymentsRoutes, { prefix: '/api' })
   await app.register(conversationsRoutes, { prefix: '/api' })
   await app.register(messagesRoutes, { prefix: '/api' })
   await app.register(knowledgeRoutes, { prefix: '/api' })
   await app.register(analyticsRoutes, { prefix: '/api' })
-  await app.register(integrationsRoutes, { prefix: '/api' })
   await app.register(aiRoutes, { prefix: '/api' })
   await app.register(playgroundRoutes, { prefix: '/api' })
   await app.register(billingRoutes, { prefix: '/api' })

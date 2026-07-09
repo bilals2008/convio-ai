@@ -24,8 +24,8 @@ const widgetConfigSchema = z.object({
   textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#000000'),
   greeting: z.string().max(200).default('Hello! How can I help you?'),
   quickReplies: z.array(z.string().max(60)).max(10).default([]),
-  botName: z.string().min(1).max(50).default('Assistant'),
-  botAvatar: z.string().url().optional(),
+  agentName: z.string().min(1).max(50).default('Assistant'),
+  agentAvatar: z.string().url().optional(),
 })
 
 const createWidgetBodySchema = z.object({
@@ -53,8 +53,8 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, orgId)
 
-    const widgets = await prisma.bot.findMany({
-      where: { organizationId: orgId },
+    const widgets = await prisma.agent.findMany({
+      where: { organizationId: orgId, widgetConfig: { not: null as any } },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { createdAt: 'desc' },
@@ -69,7 +69,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // POST /api/organizations/:orgId/widgets — Create widget (creates bot + widget config)
+  // POST /api/organizations/:orgId/widgets — Create widget (creates agent with widget config)
   fastify.post('/organizations/:orgId/widgets', {
     preHandler: [
       fastify.authenticate,
@@ -87,8 +87,8 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
         textColor: string
         greeting: string
         quickReplies: string[]
-        botName: string
-        botAvatar?: string
+        agentName: string
+        agentAvatar?: string
       }
     }
 
@@ -99,20 +99,17 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
       throw new AppError(400, 'Agent not found in this organization')
     }
 
-    const bot = await prisma.bot.create({
+    const updated = await prisma.agent.update({
+      where: { id: agentId },
       data: {
-        organizationId: orgId,
-        agentId,
-        createdById: request.userId,
-        name,
         widgetColor: config.primaryColor,
         welcomeMessage: config.greeting,
         widgetConfig: config as any,
-        status: 'draft',
+        status: 'active',
       },
     })
 
-    return { data: bot }
+    return { data: updated }
   })
 
   // GET /api/widgets/:id — Get widget config (public, for embed)
@@ -121,18 +118,18 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { id } = request.params as { id: string }
 
-    const bot = await prisma.bot.findUnique({ where: { id } })
+    const agent = await prisma.agent.findUnique({ where: { id } })
 
-    if (!bot || !bot.widgetConfig || bot.status !== 'active') {
+    if (!agent || !agent.widgetConfig || agent.status !== 'active') {
       throw new AppError(404, 'Widget not found or is not active')
     }
 
     return {
       data: {
-        id: bot.id,
-        name: bot.name,
-        welcomeMessage: bot.welcomeMessage,
-        widgetConfig: bot.widgetConfig,
+        id: agent.id,
+        name: agent.name,
+        welcomeMessage: agent.welcomeMessage,
+        widgetConfig: agent.widgetConfig,
       },
     }
   })
@@ -151,7 +148,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
       status?: string
     }
 
-    const existing = await prisma.bot.findUnique({ where: { id } })
+    const existing = await prisma.agent.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Widget not found')
 
     await fastify.getMembership(request.userId!, existing.organizationId)
@@ -166,7 +163,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
       if (body.config.greeting) data.welcomeMessage = body.config.greeting
     }
 
-    const updated = await prisma.bot.update({
+    const updated = await prisma.agent.update({
       where: { id },
       data: data as any,
     })
@@ -174,7 +171,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     return { data: updated }
   })
 
-  // DELETE /api/widgets/:id — Delete widget
+  // DELETE /api/widgets/:id — Delete widget config
   fastify.delete('/widgets/:id', {
     preHandler: [
       fastify.authenticate,
@@ -183,12 +180,15 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     const { id } = request.params as { id: string }
 
-    const existing = await prisma.bot.findUnique({ where: { id } })
+    const existing = await prisma.agent.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Widget not found')
 
     await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
-    await prisma.bot.delete({ where: { id } })
+    await prisma.agent.update({
+      where: { id },
+      data: { widgetConfig: null as any, status: 'draft' },
+    })
     reply.code(204).send()
   })
 
@@ -201,13 +201,13 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { id } = request.params as { id: string }
 
-    const existing = await prisma.bot.findUnique({ where: { id } })
+    const existing = await prisma.agent.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Widget not found')
 
     await fastify.getMembership(request.userId!, existing.organizationId)
 
     const baseUrl = process.env.CORS_ORIGIN || 'http://localhost:5173'
-    const snippet = `<script src="${baseUrl}/widget.js" data-bot-id="${id}"></script>\n<div id="convio-widget" data-bot-id="${id}"></div>`
+    const snippet = `<script src="${baseUrl}/widget.js" data-agent-id="${id}"></script>\n<div id="convio-widget" data-agent-id="${id}"></div>`
 
     return { data: { snippet } }
   })

@@ -3,6 +3,11 @@ import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
+import { uploadFile, deleteFile, downloadFile } from '../../lib/storage.js'
+import { processPdf } from '../../services/processor.js'
+import { writeFile, unlink } from 'fs/promises'
+import { join } from 'path'
+import { tmpdir } from 'os'
 
 const documentTypes = ['txt', 'pdf', 'csv', 'md', 'json', 'url'] as const
 type DocumentType = (typeof documentTypes)[number]
@@ -42,18 +47,11 @@ const updateKbBodySchema = z.object({
   description: z.string().max(500).optional().nullable(),
 })
 
-const createDocBodySchema = z.object({
-  name: z.string().min(1).max(200),
-  type: z.enum(documentTypes),
-  content: z.string().max(50000).optional(),
-  url: z.string().url().optional(),
-}).refine(
-  (data) => {
-    if (data.type === 'url') return !!data.url
-    return !!data.content
-  },
-  { message: 'Content is required for file types; url is required for url type' },
-)
+const createDocBodySchema = z.discriminatedUnion('type', [
+  z.object({ type: z.enum(['txt', 'csv', 'md', 'json']), name: z.string().min(1).max(200), content: z.string().min(1).max(50000) }),
+  z.object({ type: z.literal('pdf'), name: z.string().min(1).max(200) }),
+  z.object({ type: z.literal('url'), name: z.string().min(1).max(200), url: z.string().url() }),
+])
 
 const updateDocBodySchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -189,7 +187,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     reply.code(204).send()
   })
 
-  // POST /api/knowledge-bases/:id/documents — Add document (member only)
+  // POST /api/knowledge-bases/:id/documents — Add document from text (member only)
   fastify.post('/knowledge-bases/:id/documents', {
     preHandler: [
       fastify.authenticate,
@@ -210,8 +208,50 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, kb.organizationId)
 
     const doc = await prisma.document.create({
-      data: { knowledgeBaseId: id, name, type, content, url },
+      data: { knowledgeBaseId: id, name, type, content, url, status: 'ready' },
     })
+
+    return { data: doc }
+  })
+
+  // POST /api/knowledge-bases/:id/documents/upload — Upload PDF file (member only)
+  fastify.post('/knowledge-bases/:id/documents/upload', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const kb = await prisma.knowledgeBase.findUnique({ where: { id } })
+    if (!kb) throw new AppError(404, 'Knowledge base not found')
+
+    await fastify.getMembership(request.userId!, kb.organizationId)
+
+    const data = await request.file()
+    if (!data) {
+      return reply.code(400).send({ error: 'No file uploaded' })
+    }
+
+    if (data.mimetype !== 'application/pdf') {
+      return reply.code(400).send({ error: 'Only PDF files are supported' })
+    }
+
+    const buffer = await data.toBuffer()
+    const fileName = data.filename || 'document.pdf'
+
+    const fileKey = await uploadFile(buffer, fileName, 'application/pdf')
+
+    const doc = await prisma.document.create({
+      data: {
+        knowledgeBaseId: id,
+        name: fileName.replace(/\.pdf$/i, ''),
+        type: 'pdf',
+        fileKey,
+        status: 'processing',
+      },
+    })
+
+    const tmpPath = join(tmpdir(), `convio-upload-${doc.id}.pdf`)
+    await writeFile(tmpPath, buffer)
+    processPdf(tmpPath, doc.id).finally(() => unlink(tmpPath).catch(() => {}))
 
     return { data: doc }
   })
@@ -292,6 +332,10 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     if (!doc) throw new AppError(404, 'Document not found')
 
     await fastify.getMembership(request.userId!, doc.knowledgeBase.organizationId)
+
+    if (doc.fileKey) {
+      deleteFile(doc.fileKey).catch(() => {})
+    }
 
     await prisma.document.delete({ where: { id } })
     reply.code(204).send()

@@ -17,8 +17,8 @@ const validTransitions: Record<ConversationStatus, ConversationStatus[]> = {
 
 const channels = ['web', 'api', 'whatsapp', 'slack', 'discord', 'telegram'] as const
 
-const botParamsSchema = z.object({
-  botId: z.string().uuid(),
+const agentParamsSchema = z.object({
+  agentId: z.string().uuid(),
 })
 
 const convParamsSchema = z.object({
@@ -27,13 +27,13 @@ const convParamsSchema = z.object({
 
 const conversationsQuerySchema = z.object({
   status: z.enum(conversationStatuses).optional(),
-  botId: z.string().uuid().optional(),
+  agentId: z.string().uuid().optional(),
   channel: z.enum(channels).optional(),
   cursor: z.string().uuid().optional(),
   limit: z.coerce.number().min(1).max(100).default(20),
 })
 
-const botConversationsQuerySchema = z.object({
+const agentConversationsQuerySchema = z.object({
   status: z.enum(conversationStatuses).optional(),
   cursor: z.string().uuid().optional(),
   limit: z.coerce.number().min(1).max(100).default(20),
@@ -54,23 +54,23 @@ const widgetConversationBodySchema = z.object({
 })
 
 export default async function conversationsRoutes(fastify: FastifyInstance) {
-  // POST /api/bots/:botId/conversations — Create conversation (protected, member only)
-  fastify.post('/bots/:botId/conversations', {
+  // POST /api/agents/:agentId/conversations — Create conversation (protected, member only)
+  fastify.post('/agents/:agentId/conversations', {
     preHandler: [
       fastify.authenticate,
-      validate({ params: botParamsSchema, body: createConversationBodySchema }),
+      validate({ params: agentParamsSchema, body: createConversationBodySchema }),
     ],
   }, async (request) => {
-    const { botId } = request.params as { botId: string }
+    const { agentId } = request.params as { agentId: string }
     const { userId, channel } = request.body as { userId?: string; channel: string }
 
-    const bot = await prisma.bot.findUnique({ where: { id: botId } })
-    if (!bot) throw new AppError(404, 'Bot not found')
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+    if (!agent) throw new AppError(404, 'Agent not found')
 
-    await fastify.getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, agent.organizationId)
 
     const conversation = await prisma.conversation.create({
-      data: { botId, userId: userId || request.userId, channel },
+      data: { agentId, userId: userId || request.userId, channel },
     })
 
     let userName: string | undefined
@@ -89,9 +89,9 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
       validate({ query: conversationsQuerySchema }),
     ],
   }, async (request) => {
-    const { status, botId, channel, cursor, limit } = request.query as {
+    const { status, agentId, channel, cursor, limit } = request.query as {
       status?: ConversationStatus
-      botId?: string
+      agentId?: string
       channel?: string
       cursor?: string
       limit: number
@@ -105,16 +105,16 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     const orgIds = memberships.map((m) => m.organizationId)
 
     const where: Record<string, unknown> = {
-      bot: { organizationId: { in: orgIds } },
+      agent: { organizationId: { in: orgIds } },
     }
     if (status) where.status = status
-    if (botId) where.botId = botId
+    if (agentId) where.agentId = agentId
     if (channel) where.channel = channel
 
     const conversations = await prisma.conversation.findMany({
       where: where as any,
       include: {
-        bot: { select: { id: true, name: true, avatar: true } },
+        agent: { select: { id: true, name: true, avatar: true } },
         messages: { take: 1, orderBy: { createdAt: 'desc' } },
       },
       take: limit + 1,
@@ -143,26 +143,26 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // GET /api/bots/:botId/conversations — List conversations for a specific bot (protected, member only)
-  fastify.get('/bots/:botId/conversations', {
+  // GET /api/agents/:agentId/conversations — List conversations for a specific agent (protected, member only)
+  fastify.get('/agents/:agentId/conversations', {
     preHandler: [
       fastify.authenticate,
-      validate({ params: botParamsSchema, query: botConversationsQuerySchema }),
+      validate({ params: agentParamsSchema, query: agentConversationsQuerySchema }),
     ],
   }, async (request) => {
-    const { botId } = request.params as { botId: string }
+    const { agentId } = request.params as { agentId: string }
     const { status, cursor, limit } = request.query as {
       status?: ConversationStatus
       cursor?: string
       limit: number
     }
 
-    const bot = await prisma.bot.findUnique({ where: { id: botId } })
-    if (!bot) throw new AppError(404, 'Bot not found')
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+    if (!agent) throw new AppError(404, 'Agent not found')
 
-    await fastify.getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, agent.organizationId)
 
-    const where: Record<string, unknown> = { botId }
+    const where: Record<string, unknown> = { agentId }
     if (status) where.status = status
 
     const conversations = await prisma.conversation.findMany({
@@ -207,14 +207,14 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     const conversation = await prisma.conversation.findUnique({
       where: { id },
       include: {
-        bot: { select: { id: true, name: true, avatar: true, organizationId: true } },
+        agent: { select: { id: true, name: true, avatar: true, organizationId: true } },
         messages: { orderBy: { createdAt: 'asc' } },
       },
     })
 
     if (!conversation) throw new AppError(404, 'Conversation not found')
 
-    await fastify.getMembership(request.userId!, conversation.bot.organizationId)
+    await fastify.getMembership(request.userId!, conversation.agent.organizationId)
 
     let userName: string | undefined
     if (conversation.userId) {
@@ -237,12 +237,12 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
-      include: { bot: { select: { organizationId: true } } },
+      include: { agent: { select: { organizationId: true } } },
     })
 
     if (!conversation) throw new AppError(404, 'Conversation not found')
 
-    await fastify.getMembership(request.userId!, conversation.bot.organizationId)
+    await fastify.getMembership(request.userId!, conversation.agent.organizationId)
 
     if (status) {
       const currentStatus = conversation.status as ConversationStatus
@@ -279,33 +279,33 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
-      include: { bot: { select: { organizationId: true } } },
+      include: { agent: { select: { organizationId: true } } },
     })
 
     if (!conversation) throw new AppError(404, 'Conversation not found')
 
-    await fastify.ensureAdmin(request.userId!, conversation.bot.organizationId)
+    await fastify.ensureAdmin(request.userId!, conversation.agent.organizationId)
 
     await prisma.conversation.delete({ where: { id } })
     reply.code(204).send()
   })
 
-  // POST /api/widget/bots/:botId/conversations — Public widget endpoint (rate-limited)
-  fastify.post('/widget/bots/:botId/conversations', {
-    preHandler: [validate({ params: botParamsSchema, body: widgetConversationBodySchema })],
+  // POST /api/widget/agents/:agentId/conversations — Public widget endpoint (rate-limited)
+  fastify.post('/widget/agents/:agentId/conversations', {
+    preHandler: [validate({ params: agentParamsSchema, body: widgetConversationBodySchema })],
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
   }, async (request) => {
-    const { botId } = request.params as { botId: string }
+    const { agentId } = request.params as { agentId: string }
     const { visitorId } = request.body as { visitorId?: string }
 
-    const bot = await prisma.bot.findUnique({ where: { id: botId } })
-    if (!bot || bot.status !== 'active') {
-      throw new AppError(404, 'Bot not found or is not active')
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+    if (!agent || agent.status !== 'active') {
+      throw new AppError(404, 'Agent not found or is not active')
     }
 
     const conversation = await prisma.conversation.create({
       data: {
-        botId,
+        agentId,
         userId: visitorId || null,
         channel: 'web',
       },

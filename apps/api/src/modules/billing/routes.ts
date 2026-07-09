@@ -35,7 +35,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
     const analytics = await prisma.analytics.findMany({
       where: {
-        bot: { organizationId: orgId },
+        agent: { organizationId: orgId },
         date: { gte: firstDay, lte: lastDay },
       },
     })
@@ -79,20 +79,20 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     }> = {
       free: {
         name: 'Free',
-        features: ['5 chatbots', '1,000 messages/mo', 'Web widget', 'Basic analytics'],
-        limits: { chatbots: 5, messagesPerMonth: 1000 },
+        features: ['5 agents', '1,000 messages/mo', 'Web widget', 'Basic analytics'],
+        limits: { agents: 5, messagesPerMonth: 1000 },
         price: '$0',
       },
       pro: {
         name: 'Pro',
-        features: ['Unlimited chatbots', '50,000 messages/mo', 'Multi-channel', 'Advanced analytics', 'Custom branding'],
-        limits: { chatbots: Infinity, messagesPerMonth: 50000 },
+        features: ['Unlimited agents', '50,000 messages/mo', 'Multi-channel', 'Advanced analytics', 'Custom branding'],
+        limits: { agents: Infinity, messagesPerMonth: 50000 },
         price: '$29/mo',
       },
       enterprise: {
         name: 'Enterprise',
         features: ['Everything in Pro', 'Unlimited messages', 'SSO', 'Dedicated support', 'SLA'],
-        limits: { chatbots: Infinity, messagesPerMonth: Infinity },
+        limits: { agents: Infinity, messagesPerMonth: Infinity },
         price: 'Custom',
       },
     }

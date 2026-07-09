@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { getProviderForModel, getProviderById, allProviders } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
+import { retrieveContext } from '../../services/processor.js'
 import { z } from 'zod'
 
 const keyMap: Record<string, string> = {
@@ -52,8 +53,24 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
     })
 
+    let systemContext = agent.systemPrompt
+
+    if (agent.knowledgeBaseId) {
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
+      if (lastUserMsg) {
+        try {
+          const context = await retrieveContext(lastUserMsg.content, agent.knowledgeBaseId)
+          if (context) {
+            systemContext += '\n\nUse the following context to answer the user:\n\n' + context
+          }
+        } catch {
+          request.log.warn('RAG retrieval failed')
+        }
+      }
+    }
+
     const systemMessages = [
-      { role: 'system' as const, content: agent.systemPrompt },
+      { role: 'system' as const, content: systemContext },
       ...messages,
     ]
 

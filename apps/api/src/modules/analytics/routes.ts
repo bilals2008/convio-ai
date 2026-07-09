@@ -11,8 +11,8 @@ const orgParamsSchema = z.object({
   orgId: z.string().uuid(),
 })
 
-const botParamsSchema = z.object({
-  botId: z.string().uuid(),
+const agentParamsSchema = z.object({
+  agentId: z.string().uuid(),
 })
 
 const dateRangeQuerySchema = z.object({
@@ -20,7 +20,7 @@ const dateRangeQuerySchema = z.object({
   to: dateSchema.optional(),
 })
 
-const topBotsQuerySchema = z.object({
+const topAgentsQuerySchema = z.object({
   from: dateSchema.optional(),
   to: dateSchema.optional(),
   limit: z.coerce.number().min(1).max(100).default(10),
@@ -63,7 +63,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
 
     const analyticsRecords = await prisma.analytics.findMany({
       where: {
-        bot: { organizationId: orgId },
+        agent: { organizationId: orgId },
         date: { gte: fromDate, lte: toDate },
       },
       orderBy: { date: 'asc' },
@@ -71,7 +71,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
 
     const prevAnalyticsRecords = await prisma.analytics.findMany({
       where: {
-        bot: { organizationId: orgId },
+        agent: { organizationId: orgId },
         date: { gte: prevFromDate, lte: prevToDate },
       },
     })
@@ -93,25 +93,25 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     let dailyBreakdownData: { date: string; totalConversations: number; totalMessages: number; uniqueUsers: number; avgResponseTime: number }[] = []
 
     if (analyticsRecords.length === 0) {
-      const botWhere = { bot: { organizationId: orgId } }
+      const agentWhere = { agent: { organizationId: orgId } }
 
       const [realtimeConversations, realtimeMessages, realtimeUsers, prevConversations, prevMessages] = await Promise.all([
         prisma.conversation.count({
-          where: { ...botWhere, createdAt: { gte: fromDate, lte: toDate } },
+          where: { ...agentWhere, createdAt: { gte: fromDate, lte: toDate } },
         }),
         prisma.message.count({
-          where: { conversation: botWhere, createdAt: { gte: fromDate, lte: toDate } },
+          where: { conversation: agentWhere, createdAt: { gte: fromDate, lte: toDate } },
         }),
         prisma.conversation.groupBy({
           by: ['userId'],
-          where: { ...botWhere, createdAt: { gte: fromDate, lte: toDate }, userId: { not: null } },
+          where: { ...agentWhere, createdAt: { gte: fromDate, lte: toDate }, userId: { not: null } },
           _count: { id: true },
         }),
         prisma.conversation.count({
-          where: { ...botWhere, createdAt: { gte: prevFromDate, lte: prevToDate } },
+          where: { ...agentWhere, createdAt: { gte: prevFromDate, lte: prevToDate } },
         }),
         prisma.message.count({
-          where: { conversation: botWhere, createdAt: { gte: prevFromDate, lte: prevToDate } },
+          where: { conversation: agentWhere, createdAt: { gte: prevFromDate, lte: prevToDate } },
         }),
       ])
 
@@ -130,7 +130,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
 
       const convByDate = await prisma.conversation.groupBy({
         by: ['createdAt'],
-        where: { ...botWhere, createdAt: { gte: fromDate, lte: toDate } },
+        where: { ...agentWhere, createdAt: { gte: fromDate, lte: toDate } },
         _count: { id: true },
       })
 
@@ -138,8 +138,8 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         SELECT DATE(m."createdAt") as date, COUNT(*)::int as count
         FROM "Message" m
         JOIN "Conversation" c ON c."id" = m."conversationId"
-        JOIN "Bot" b ON b."id" = c."botId"
-        WHERE b."organizationId" = ${orgId}
+        JOIN "Agent" a ON a."id" = c."agentId"
+        WHERE a."organizationId" = ${orgId}
           AND m."createdAt" >= ${fromDate}
           AND m."createdAt" <= ${toDate}
         GROUP BY DATE(m."createdAt")
@@ -206,7 +206,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     const channelBreakdownResult = await prisma.conversation.groupBy({
       by: ['channel'],
       where: {
-        bot: { organizationId: orgId },
+        agent: { organizationId: orgId },
         createdAt: { gte: fromDate, lte: toDate },
       },
       _count: { id: true },
@@ -233,20 +233,20 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // GET /api/bots/:botId/analytics — Single bot aggregate analytics
-  fastify.get('/bots/:botId/analytics', {
+  // GET /api/agents/:agentId/analytics — Single agent aggregate analytics
+  fastify.get('/agents/:agentId/analytics', {
     preHandler: [
       fastify.authenticate,
-      validate({ params: botParamsSchema, query: dateRangeQuerySchema }),
+      validate({ params: agentParamsSchema, query: dateRangeQuerySchema }),
     ],
   }, async (request) => {
-    const { botId } = request.params as { botId: string }
+    const { agentId } = request.params as { agentId: string }
     const { from, to } = request.query as { from?: string; to?: string }
 
-    const bot = await prisma.bot.findUnique({ where: { id: botId } })
-    if (!bot) throw new AppError(404, 'Bot not found')
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+    if (!agent) throw new AppError(404, 'Agent not found')
 
-    await fastify.getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, agent.organizationId)
 
     const { fromDate, toDate } = getDefaultDateRange(from, to)
 
@@ -255,12 +255,12 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     const prevToDate = new Date(fromDate.getTime() - 1)
 
     const records = await prisma.analytics.findMany({
-      where: { botId, date: { gte: fromDate, lte: toDate } },
+      where: { agentId, date: { gte: fromDate, lte: toDate } },
       orderBy: { date: 'asc' },
     })
 
     const prevRecords = await prisma.analytics.findMany({
-      where: { botId, date: { gte: prevFromDate, lte: prevToDate } },
+      where: { agentId, date: { gte: prevFromDate, lte: prevToDate } },
     })
 
     const calcTotals = (recs: typeof records) =>
@@ -308,7 +308,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     if (dailyBreakdown.length === 0) {
       const convByDate = await prisma.conversation.groupBy({
         by: ['createdAt'],
-        where: { botId, createdAt: { gte: fromDate, lte: toDate } },
+        where: { agentId, createdAt: { gte: fromDate, lte: toDate } },
         _count: { id: true },
       })
 
@@ -316,7 +316,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         SELECT DATE(m."createdAt") as date, COUNT(*)::int as count
         FROM "Message" m
         JOIN "Conversation" c ON c."id" = m."conversationId"
-        WHERE c."botId" = ${botId}
+        WHERE c."agentId" = ${agentId}
           AND m."createdAt" >= ${fromDate}
           AND m."createdAt" <= ${toDate}
         GROUP BY DATE(m."createdAt")
@@ -344,7 +344,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
 
     const channelBreakdownResult = await prisma.conversation.groupBy({
       by: ['channel'],
-      where: { botId, createdAt: { gte: fromDate, lte: toDate } },
+      where: { agentId, createdAt: { gte: fromDate, lte: toDate } },
       _count: { id: true },
     })
 
@@ -372,25 +372,25 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // GET /api/bots/:botId/analytics/daily — Daily breakdown for charts
-  fastify.get('/bots/:botId/analytics/daily', {
+  // GET /api/agents/:agentId/analytics/daily — Daily breakdown for charts
+  fastify.get('/agents/:agentId/analytics/daily', {
     preHandler: [
       fastify.authenticate,
-      validate({ params: botParamsSchema, query: dateRangeQuerySchema }),
+      validate({ params: agentParamsSchema, query: dateRangeQuerySchema }),
     ],
   }, async (request) => {
-    const { botId } = request.params as { botId: string }
+    const { agentId } = request.params as { agentId: string }
     const { from, to } = request.query as { from?: string; to?: string }
 
-    const bot = await prisma.bot.findUnique({ where: { id: botId } })
-    if (!bot) throw new AppError(404, 'Bot not found')
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+    if (!agent) throw new AppError(404, 'Agent not found')
 
-    await fastify.getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, agent.organizationId)
 
     const { fromDate, toDate } = getDefaultDateRange(from, to)
 
     const records = await prisma.analytics.findMany({
-      where: { botId, date: { gte: fromDate, lte: toDate } },
+      where: { agentId, date: { gte: fromDate, lte: toDate } },
       orderBy: { date: 'asc' },
       select: {
         date: true,
@@ -412,11 +412,11 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // GET /api/organizations/:orgId/analytics/top-bots — Top performing bots
-  fastify.get('/organizations/:orgId/analytics/top-bots', {
+  // GET /api/organizations/:orgId/analytics/top-agents — Top performing agents
+  fastify.get('/organizations/:orgId/analytics/top-agents', {
     preHandler: [
       fastify.authenticate,
-      validate({ params: orgParamsSchema, query: topBotsQuerySchema }),
+      validate({ params: orgParamsSchema, query: topAgentsQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
@@ -427,9 +427,9 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     const { fromDate, toDate } = getDefaultDateRange(from, to)
 
     const records = await prisma.analytics.groupBy({
-      by: ['botId'],
+      by: ['agentId'],
       where: {
-        bot: { organizationId: orgId },
+        agent: { organizationId: orgId },
         date: { gte: fromDate, lte: toDate },
       },
       _sum: {
@@ -447,19 +447,19 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     })
 
     if (records.length > 0) {
-      const botIds = records.map((r) => r.botId)
-      const bots = botIds.length > 0
-        ? await prisma.bot.findMany({
-            where: { id: { in: botIds } },
+      const agentIds = records.map((r) => r.agentId)
+      const agents = agentIds.length > 0
+        ? await prisma.agent.findMany({
+            where: { id: { in: agentIds } },
             select: { id: true, name: true },
           })
         : []
-      const botMap = new Map(bots.map((b) => [b.id, b.name]))
+      const agentMap = new Map(agents.map((b) => [b.id, b.name]))
 
       return {
         data: records.map((r) => ({
-          botId: r.botId,
-          botName: botMap.get(r.botId) || 'Unknown',
+          agentId: r.agentId,
+          agentName: agentMap.get(r.agentId) || 'Unknown',
           totalConversations: r._sum.totalConversations || 0,
           totalMessages: r._sum.totalMessages || 0,
           avgResponseTime: r._avg.avgResponseTime
@@ -472,24 +472,24 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       }
     }
 
-    const liveBots = await prisma.bot.findMany({
+    const liveAgents = await prisma.agent.findMany({
       where: { organizationId: orgId },
       select: { id: true, name: true },
     })
 
-    const liveBotData = await Promise.all(
-      liveBots.map(async (bot) => {
+    const liveAgentData = await Promise.all(
+      liveAgents.map(async (agent) => {
         const [convCount, msgCount] = await Promise.all([
           prisma.conversation.count({
-            where: { botId: bot.id, createdAt: { gte: fromDate, lte: toDate } },
+            where: { agentId: agent.id, createdAt: { gte: fromDate, lte: toDate } },
           }),
           prisma.message.count({
-            where: { conversation: { botId: bot.id }, createdAt: { gte: fromDate, lte: toDate } },
+            where: { conversation: { agentId: agent.id }, createdAt: { gte: fromDate, lte: toDate } },
           }),
         ])
         return {
-          botId: bot.id,
-          botName: bot.name,
+          agentId: agent.id,
+          agentName: agent.name,
           totalConversations: convCount,
           totalMessages: msgCount,
           avgResponseTime: 0,
@@ -498,21 +498,21 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       }),
     )
 
-    liveBotData.sort((a, b) => b.totalConversations - a.totalConversations)
+    liveAgentData.sort((a, b) => b.totalConversations - a.totalConversations)
 
     return {
-      data: liveBotData.slice(0, limit),
+      data: liveAgentData.slice(0, limit),
     }
   })
 
-  // POST /api/bots/:botId/analytics/snapshot — Upsert daily analytics snapshot
-  fastify.post('/bots/:botId/analytics/snapshot', {
+  // POST /api/agents/:agentId/analytics/snapshot — Upsert daily analytics snapshot
+  fastify.post('/agents/:agentId/analytics/snapshot', {
     preHandler: [
       fastify.authenticate,
-      validate({ params: botParamsSchema, body: snapshotBodySchema }),
+      validate({ params: agentParamsSchema, body: snapshotBodySchema }),
     ],
   }, async (request) => {
-    const { botId } = request.params as { botId: string }
+    const { agentId } = request.params as { agentId: string }
     const { date, totalConversations, totalMessages, uniqueUsers, avgResponseTime, satisfactionScore } =
       request.body as {
         date: string
@@ -523,21 +523,21 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         satisfactionScore?: number
       }
 
-    const bot = await prisma.bot.findUnique({ where: { id: botId } })
-    if (!bot) throw new AppError(404, 'Bot not found')
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+    if (!agent) throw new AppError(404, 'Agent not found')
 
-    await fastify.getMembership(request.userId!, bot.organizationId)
+    await fastify.getMembership(request.userId!, agent.organizationId)
 
     const targetDate = new Date(date)
 
     const existing = await prisma.analytics.findUnique({
-      where: { botId_date: { botId, date: targetDate } },
+      where: { agentId_date: { agentId, date: targetDate } },
     })
 
     let result
     if (existing) {
       result = await prisma.analytics.update({
-        where: { botId_date: { botId, date: targetDate } },
+        where: { agentId_date: { agentId, date: targetDate } },
         data: {
           totalConversations: existing.totalConversations + totalConversations,
           totalMessages: existing.totalMessages + totalMessages,
@@ -551,7 +551,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     } else {
       result = await prisma.analytics.create({
         data: {
-          botId,
+          agentId,
           date: targetDate,
           totalConversations,
           totalMessages,

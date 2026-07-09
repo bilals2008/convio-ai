@@ -4,6 +4,7 @@ import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
+import { retrieveContext } from '../../services/processor.js'
 import { z } from 'zod'
 
 const convParamsSchema = z.object({
@@ -37,14 +38,14 @@ const widgetMessageBodySchema = z.object({
 async function getConversationOrgId(conversationId: string): Promise<string> {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    include: { bot: { select: { organizationId: true } } },
+    include: { agent: { select: { organizationId: true } } },
   })
 
   if (!conversation) {
     throw new AppError(404, 'Conversation not found')
   }
 
-  return conversation.bot.organizationId
+  return conversation.agent.organizationId
 }
 
 export default async function messagesRoutes(fastify: FastifyInstance) {
@@ -86,18 +87,18 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
-      include: { bot: { include: { agent: true } } },
+      include: { agent: true },
     })
 
     if (!conversation) throw new AppError(404, 'Conversation not found')
 
-    const orgId = conversation.bot.organizationId
+    const orgId = conversation.agent.organizationId
     await fastify.getMembership(request.userId!, orgId)
 
-    const agent = conversation.bot.agent
+    const agent = conversation.agent
 
     if (!agent) {
-      throw new AppError(400, 'Bot has no agent configured')
+      throw new AppError(400, 'Conversation has no agent configured')
     }
 
     if (!agent.model) {
@@ -110,8 +111,21 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       select: { role: true, content: true },
     })
 
+    let systemContext = agent.systemPrompt
+
+    if (agent.knowledgeBaseId) {
+      try {
+        const context = await retrieveContext(content, agent.knowledgeBaseId)
+        if (context) {
+          systemContext += '\n\nUse the following context to answer the user:\n\n' + context
+        }
+      } catch (err) {
+        request.log.warn({ err }, 'RAG retrieval failed, falling back to base prompt')
+      }
+    }
+
     const aiMessages = [
-      { role: 'system' as const, content: agent.systemPrompt },
+      { role: 'system' as const, content: systemContext },
       ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     ]
 
@@ -127,7 +141,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       const providerKey = await prisma.providerKey.findUnique({
         where: { id: agent.providerKeyId },
       })
-      if (providerKey && providerKey.organizationId === conversation.bot.organizationId) {
+      if (providerKey && providerKey.organizationId === conversation.agent.organizationId) {
         apiKey = providerKey.apiKey
       }
     }
@@ -225,13 +239,13 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const message = await prisma.message.findUnique({
       where: { id },
       include: {
-        conversation: { include: { bot: { select: { organizationId: true } } } },
+        conversation: { include: { agent: { select: { organizationId: true } } } },
       },
     })
 
     if (!message) throw new AppError(404, 'Message not found')
 
-    await fastify.ensureAdmin(request.userId!, message.conversation.bot.organizationId)
+    await fastify.ensureAdmin(request.userId!, message.conversation.agent.organizationId)
 
     const updated = await prisma.message.update({
       where: { id },
@@ -253,13 +267,13 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const message = await prisma.message.findUnique({
       where: { id },
       include: {
-        conversation: { include: { bot: { select: { organizationId: true } } } },
+        conversation: { include: { agent: { select: { organizationId: true } } } },
       },
     })
 
     if (!message) throw new AppError(404, 'Message not found')
 
-    await fastify.ensureAdmin(request.userId!, message.conversation.bot.organizationId)
+    await fastify.ensureAdmin(request.userId!, message.conversation.agent.organizationId)
 
     await prisma.message.delete({ where: { id } })
     reply.code(204).send()
@@ -275,15 +289,11 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
-      include: {
-        bot: {
-          include: { agent: true },
-        },
-      },
+      include: { agent: true },
     })
 
-    if (!conversation || conversation.bot.status !== 'active') {
-      throw new AppError(404, 'Conversation not found or bot is not active')
+    if (!conversation || conversation.agent.status !== 'active') {
+      throw new AppError(404, 'Conversation not found or agent is not active')
     }
 
     await prisma.message.create({
@@ -294,7 +304,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       data: { status: 'active' },
     })
 
-    const agent = conversation.bot.agent
+    const agent = conversation.agent
     if (!agent || !agent.model) {
       return { data: { response: 'I am not configured to respond yet.' } }
     }
@@ -311,7 +321,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       const providerKey = await prisma.providerKey.findUnique({
         where: { id: agent.providerKeyId },
       })
-      if (providerKey && providerKey.organizationId === conversation.bot.organizationId) {
+      if (providerKey && providerKey.organizationId === conversation.agent.organizationId) {
         apiKey = providerKey.apiKey
       }
     }
@@ -322,8 +332,19 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       select: { role: true, content: true },
     })
 
+    let systemContext = agent.systemPrompt
+
+    if (agent.knowledgeBaseId) {
+      try {
+        const context = await retrieveContext(content, agent.knowledgeBaseId)
+        if (context) {
+          systemContext += '\n\nUse the following context to answer the user:\n\n' + context
+        }
+      } catch {}
+    }
+
     const aiMessages = [
-      { role: 'system' as const, content: agent.systemPrompt },
+      { role: 'system' as const, content: systemContext },
       ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     ]
 
