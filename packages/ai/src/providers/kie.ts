@@ -44,6 +44,11 @@ export class KIEProvider implements AIProvider {
       }),
     })
 
+    if (!response.ok) {
+      const err = await response.json().catch(() => null)
+      throw new Error(err?.error?.message || `KIE API error: ${response.status}`)
+    }
+
     const data = await response.json() as {
       choices: Array<{ message: { content: string } }>
       usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
@@ -71,6 +76,11 @@ export class KIEProvider implements AIProvider {
         stream: true,
       }),
     })
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => null)
+      throw new Error(err?.error?.message || `KIE API error: ${response.status}`)
+    }
 
     const reader = response.body?.getReader()
     if (!reader) throw new Error('No response body')

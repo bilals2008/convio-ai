@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Bot } from 'lucide-react'
+import { ArrowLeft, Bot, AlertCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { Skeleton } from '@/components/shared/loading'
@@ -122,11 +123,14 @@ export default function ConversationDetailPage() {
     },
   })
 
+  const [error, setError] = useState<string | null>(null)
+
   const handleSendMessage = async (content: string) => {
     if (!id) return
     setSending(true)
     setStreaming(true)
     setStreamingContent('')
+    setError(null)
 
     try {
       await messagesApi.send(id, content)
@@ -142,7 +146,10 @@ export default function ConversationDetailPage() {
         body: JSON.stringify({ role: 'user', content }),
       })
 
-      if (!response.ok) throw new Error('Stream request failed')
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => null)
+        throw new Error(errBody?.message || 'Stream request failed')
+      }
 
       const reader = response.body?.getReader()
       if (!reader) throw new Error('No response body')
@@ -150,6 +157,7 @@ export default function ConversationDetailPage() {
       const decoder = new TextDecoder()
       let buffer = ''
       let fullContent = ''
+      let streamError: string | null = null
 
       while (true) {
         const { done, value } = await reader.read()
@@ -165,17 +173,27 @@ export default function ConversationDetailPage() {
             if (data === '[DONE]') break
             try {
               const parsed = JSON.parse(data)
-              if (parsed.content) {
+              if (parsed.error) {
+                streamError = parsed.error
+              } else if (parsed.content) {
                 fullContent += parsed.content
                 setStreamingContent(fullContent)
               }
-            } catch { /* skip */ }
+            } catch { /* skip malformed JSON */ }
           }
         }
       }
 
+      if (streamError) {
+        setError(streamError)
+        toast.error(streamError)
+      }
+
       queryClient.invalidateQueries({ queryKey: ['conversation', id] })
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to send message'
+      setError(msg)
+      toast.error(msg)
       queryClient.invalidateQueries({ queryKey: ['conversation', id] })
     } finally {
       setSending(false)
@@ -249,6 +267,13 @@ export default function ConversationDetailPage() {
               <Bot className="size-3 text-primary" />
               <span>{typingAgents.join(', ')} is typing</span>
               <TypingIndicator className="scale-75 origin-left" />
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 px-4 pb-2 text-xs text-destructive">
+              <AlertCircle className="size-3 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 

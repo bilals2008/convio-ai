@@ -20,6 +20,11 @@ export class GroqProvider implements AIProvider {
       }),
     })
 
+    if (!response.ok) {
+      const err = await response.json().catch(() => null)
+      throw new Error(err?.error?.message || `Groq API error: ${response.status}`)
+    }
+
     const data = await response.json()
     const choice = data.choices[0]
 
@@ -49,6 +54,11 @@ export class GroqProvider implements AIProvider {
         stream: true,
       }),
     })
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => null)
+      throw new Error(err?.error?.message || `Groq API error: ${response.status}`)
+    }
 
     const reader = response.body?.getReader()
     if (!reader) throw new Error('No response body')
