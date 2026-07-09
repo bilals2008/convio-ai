@@ -1,88 +1,105 @@
-import { FileText, Globe, BookOpen, Type, Library } from 'lucide-react'
-import { Label } from '@/components/ui/label'
+import {
+  Globe,
+  BookOpen,
+  Type,
+  Library,
+  Upload,
+  Link2,
+  Database,
+  GitBranch,
+  Cloud,
+  FileJson,
+  FileCode,
+  HelpCircle,
+  Table2,
+  Clock,
+} from 'lucide-react'
 
 interface KnowledgeSource {
   id: string
   label: string
   description: string
   icon: React.ReactNode
-  color: string
-}
-
-interface AgentKnowledgeSourcesProps {
-  sources?: KnowledgeSource[]
-  onSelect?: (id: string) => void
-  selected?: string[]
-  disabled?: boolean
+  category: 'upload' | 'web' | 'integration' | 'custom'
 }
 
 const defaultSources: KnowledgeSource[] = [
-  {
-    id: 'upload-documents',
-    label: 'Upload Documents',
-    description: 'PDF, DOCX, TXT',
-    icon: <FileText className="size-5" />,
-    color: 'text-orange-500 bg-orange-500/10',
-  },
-  {
-    id: 'website-url',
-    label: 'Website URL',
-    description: 'Crawl and index content',
-    icon: <Globe className="size-5" />,
-    color: 'text-blue-500 bg-blue-500/10',
-  },
-  {
-    id: 'notion',
-    label: 'Notion',
-    description: 'Sync from Notion',
-    icon: <BookOpen className="size-5" />,
-    color: 'text-gray-600 bg-gray-500/10',
-  },
-  {
-    id: 'custom-text',
-    label: 'Custom Text',
-    description: 'Add text or Q & A',
-    icon: <Type className="size-5" />,
-    color: 'text-green-500 bg-green-500/10',
-  },
+  { id: 'upload-documents', label: 'Upload Documents', description: 'PDF, DOCX, TXT, CSV', icon: <Upload className="size-4" />, category: 'upload' },
+  { id: 'paste-text', label: 'Paste Text', description: 'Raw text or Q&A pairs', icon: <Type className="size-4" />, category: 'upload' },
+  { id: 'website-crawl', label: 'Website Crawl', description: 'Crawl entire site', icon: <Globe className="size-4" />, category: 'web' },
+  { id: 'single-page', label: 'Single Page', description: 'One URL to index', icon: <Link2 className="size-4" />, category: 'web' },
+  { id: 'sitemap', label: 'Sitemap XML', description: 'Bulk URL import', icon: <FileCode className="size-4" />, category: 'web' },
+  { id: 'notion', label: 'Notion', description: 'Sync Notion pages', icon: <BookOpen className="size-4" />, category: 'integration' },
+  { id: 'google-drive', label: 'Google Drive', description: 'Docs, Sheets, Slides', icon: <Cloud className="size-4" />, category: 'integration' },
+  { id: 'confluence', label: 'Confluence', description: 'Wiki pages & spaces', icon: <Database className="size-4" />, category: 'integration' },
+  { id: 'github', label: 'GitHub', description: 'Repos, issues, docs', icon: <GitBranch className="size-4" />, category: 'integration' },
+  { id: 'json-data', label: 'JSON Data', description: 'Structured data import', icon: <FileJson className="size-4" />, category: 'custom' },
+  { id: 'csv-table', label: 'CSV / Table', description: 'Tabular data', icon: <Table2 className="size-4" />, category: 'custom' },
+  { id: 'faq-pairs', label: 'FAQ Pairs', description: 'Question & answer sets', icon: <HelpCircle className="size-4" />, category: 'custom' },
 ]
 
-export function AgentKnowledgeSources({
-  sources = defaultSources,
-  onSelect,
-  selected = [],
-  disabled,
-}: AgentKnowledgeSourcesProps) {
+const categoryLabels: Record<string, string> = {
+  upload: 'Upload',
+  web: 'Web',
+  integration: 'Integrations',
+  custom: 'Custom Data',
+}
+
+export function AgentKnowledgeSources() {
+  const grouped = defaultSources.reduce(
+    (acc, s) => {
+      ;(acc[s.category] ??= []).push(s)
+      return acc
+    },
+    {} as Record<string, KnowledgeSource[]>
+  )
+
   return (
-    <div className="rounded-xl border bg-card p-6">
-      <div className="mb-5">
-        <div className="flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <Library className="size-4" />
-          </div>
+    <div className="rounded-xl border bg-card p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Library className="size-4" />
+        </div>
+        <div>
           <h3 className="font-semibold text-sm">Knowledge Sources</h3>
+          <p className="text-xs text-muted-foreground">Connect data to make your agent smarter</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {sources.map((source) => (
-          <button
-            key={source.id}
-            onClick={() => onSelect?.(source.id)}
-            disabled={disabled}
-            className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all hover:shadow-sm ${
-              selected.includes(source.id)
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/30 bg-muted/30'
-            }`}
-          >
-            <div className={`flex size-12 items-center justify-center rounded-xl ${source.color} mb-3`}>
-              {source.icon}
+      <div className="space-y-4">
+        {Object.entries(grouped).map(([cat, items]) => (
+          <div key={cat}>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+              {categoryLabels[cat] ?? cat}
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {items.map((source) => (
+                <div
+                  key={source.id}
+                  className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border/40 bg-muted/10 cursor-not-allowed opacity-60 relative"
+                >
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-background/40 text-muted-foreground">
+                    {source.icon}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{source.label}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{source.description}</p>
+                  </div>
+                  <div className="absolute top-1.5 right-1.5 flex items-center gap-1 rounded bg-muted/80 px-1.5 py-0.5">
+                    <Clock className="size-2.5 text-muted-foreground" />
+                    <span className="text-[9px] font-medium text-muted-foreground">Soon</span>
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-sm font-medium text-center">{source.label}</p>
-            <p className="text-[10px] text-muted-foreground text-center mt-1">{source.description}</p>
-          </button>
+          </div>
         ))}
+      </div>
+
+      <div className="mt-3 pt-3 border-t">
+        <p className="text-[11px] text-muted-foreground text-center">
+          These integrations are coming soon. Stay tuned!
+        </p>
       </div>
     </div>
   )
