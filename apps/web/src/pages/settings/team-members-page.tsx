@@ -64,10 +64,11 @@ export default function TeamMembersPage() {
   })
 
   const inviteMutation = useMutation({
-    mutationFn: (data: { email: string; role: string }) =>
-      orgsApi.addMember(orgId!, data),
+    mutationFn: (data: { members: Array<{ email: string; role: string }> }) =>
+      orgsApi.api.post(`/organizations/${orgId}/members/bulk`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members', orgId] })
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', orgId] })
       setInviteOpen(false)
     },
   })
