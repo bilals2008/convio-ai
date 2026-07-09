@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Sparkles, Globe, Link, Code, MessageCircle } from 'lucide-react'
@@ -20,7 +20,6 @@ export default function CreateAgentPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
-  const [selectedKnowledgeSources, setSelectedKnowledgeSources] = useState<string[]>([])
   const [deploymentOptions, setDeploymentOptions] = useState([
     { id: 'web-chat-widget', enabled: true },
     { id: 'shareable-link', enabled: false },
@@ -34,7 +33,7 @@ export default function CreateAgentPage() {
   const [systemPrompt, setSystemPrompt] = useState('')
   const [errors, setErrors] = useState<{ name?: string }>({})
 
-  const { data: models = [], isLoading: modelsLoading } = useQuery({
+  const { data: models = [] } = useQuery({
     queryKey: ['models'],
     queryFn: async () => {
       const res = await chatApi.models()
@@ -42,11 +41,7 @@ export default function CreateAgentPage() {
     },
   })
 
-  useEffect(() => {
-    if (models.length > 0 && !model) {
-      setModel(models[0].id)
-    }
-  }, [models, model])
+  const selectedModel = model || models[0]?.id || ''
 
   const createMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => agentsApi.create(data),
@@ -59,12 +54,6 @@ export default function CreateAgentPage() {
   const handleCapabilityToggle = (id: string, enabled: boolean) => {
     setCapabilities((prev) =>
       prev.map((c) => (c.id === id ? { ...c, enabled } : c))
-    )
-  }
-
-  const handleKnowledgeSourceSelect = (id: string) => {
-    setSelectedKnowledgeSources((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     )
   }
 
@@ -84,13 +73,12 @@ export default function CreateAgentPage() {
     createMutation.mutate({
       name,
       description,
-      model,
+      model: selectedModel,
       systemPrompt: systemPrompt || `You are ${name}, a helpful AI assistant.`,
       temperature,
       maxTokens: 2048,
       organizationId: orgId,
       capabilities: capabilities.filter((c) => c.enabled).map((c) => c.id),
-      knowledgeSources: selectedKnowledgeSources,
       deployment: deploymentOptions.filter((o) => o.enabled).map((o) => o.id),
       settings: {
         toneOfVoice,
@@ -125,8 +113,8 @@ export default function CreateAgentPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
           <AgentBasicInfo
             name={name}
             description={description}
@@ -136,16 +124,12 @@ export default function CreateAgentPage() {
             disabled={saving}
           />
 
-          <AgentKnowledgeSources
-            selected={selectedKnowledgeSources}
-            onSelect={handleKnowledgeSourceSelect}
-            disabled={saving}
-          />
+          <AgentKnowledgeSources />
 
           <AgentBehaviorSettings
             toneOfVoice={toneOfVoice}
             language={language}
-            model={model}
+            model={selectedModel}
             temperature={temperature}
             systemPrompt={systemPrompt}
             models={models}
@@ -158,7 +142,7 @@ export default function CreateAgentPage() {
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <AgentCapabilities
             capabilities={capabilities}
             onToggle={handleCapabilityToggle}
@@ -167,10 +151,10 @@ export default function CreateAgentPage() {
 
           <AgentDeployment
             options={[
-              { id: 'web-chat-widget', label: 'Web Chat Widget', description: 'Add to your website', icon: <Globe className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'web-chat-widget')?.enabled ?? true },
-              { id: 'shareable-link', label: 'Shareable Link', description: 'Create a public link', icon: <Link className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'shareable-link')?.enabled ?? false },
-              { id: 'api-access', label: 'API Access', description: 'Access via API', icon: <Code className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'api-access')?.enabled ?? false },
-              { id: 'whatsapp', label: 'WhatsApp', description: 'Connect on WhatsApp', icon: <MessageCircle className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'whatsapp')?.enabled ?? false },
+              { id: 'web-chat-widget', label: 'Web Chat Widget', description: 'Embed on website', icon: <Globe className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'web-chat-widget')?.enabled ?? true },
+              { id: 'shareable-link', label: 'Shareable Link', description: 'Public chat URL', icon: <Link className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'shareable-link')?.enabled ?? false },
+              { id: 'api-access', label: 'API Access', description: 'REST API endpoint', icon: <Code className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'api-access')?.enabled ?? false },
+              { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp Business', icon: <MessageCircle className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'whatsapp')?.enabled ?? false },
             ]}
             onToggle={handleDeploymentToggle}
             disabled={saving}
