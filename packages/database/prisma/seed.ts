@@ -40,29 +40,18 @@ async function main() {
     create: {
       id: 'demo-agent',
       organizationId: org.id,
-      name: 'Support Bot',
+      name: 'Support Agent',
       model: 'gpt-4o-mini',
       systemPrompt: 'You are a helpful support agent.',
       temperature: 0.7,
       maxTokens: 2048,
-    },
-  })
-
-  const bot = await prisma.bot.upsert({
-    where: { id: 'demo-bot' },
-    update: {},
-    create: {
-      id: 'demo-bot',
-      organizationId: org.id,
-      agentId: agent.id,
-      name: 'Demo Widget Bot',
       widgetColor: '#fb923c',
       welcomeMessage: 'Hi! How can I help you today?',
       status: 'active',
     },
   })
 
-  console.log('Seeded:', { profile: profile.name, org: org.name, agent: agent.name, bot: bot.name })
+  console.log('Seeded:', { profile: profile.name, org: org.name, agent: agent.name })
 }
 
 main()

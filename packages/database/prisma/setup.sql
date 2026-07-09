@@ -72,24 +72,26 @@ BEGIN
   END IF;
 END $$;
 
--- Bots: org-scoped via membership
+-- Deployments: scoped via agent's org
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE policyname = 'bots_org_policy'
+    SELECT 1 FROM pg_policies WHERE policyname = 'deployments_org_policy'
   ) THEN
-    ALTER TABLE "Bot" ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE "Deployment" ENABLE ROW LEVEL SECURITY;
 
-    CREATE POLICY bots_org_policy ON "Bot"
+    CREATE POLICY deployments_org_policy ON "Deployment"
       FOR ALL
       TO authenticated
-      USING ("organizationId" IN (
-        SELECT "organizationId" FROM "Membership" WHERE "userId" = (SELECT auth.uid())
+      USING ("agentId" IN (
+        SELECT a.id FROM "Agent" a
+        JOIN "Membership" m ON m."organizationId" = a."organizationId"
+        WHERE m."userId" = (SELECT auth.uid())
       ));
   END IF;
 END $$;
 
--- Conversations: scoped to bot's org via membership
+-- Conversations: scoped to agent's org via membership
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -100,15 +102,15 @@ BEGIN
     CREATE POLICY conversations_org_policy ON "Conversation"
       FOR ALL
       TO authenticated
-      USING ("botId" IN (
-        SELECT b.id FROM "Bot" b
-        JOIN "Membership" m ON m."organizationId" = b."organizationId"
+      USING ("agentId" IN (
+        SELECT a.id FROM "Agent" a
+        JOIN "Membership" m ON m."organizationId" = a."organizationId"
         WHERE m."userId" = (SELECT auth.uid())
       ));
   END IF;
 END $$;
 
--- Messages: scoped via conversation → bot → org → membership
+-- Messages: scoped via conversation -> agent -> org -> membership
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -121,8 +123,8 @@ BEGIN
       TO authenticated
       USING ("conversationId" IN (
         SELECT c.id FROM "Conversation" c
-        JOIN "Bot" b ON b.id = c."botId"
-        JOIN "Membership" m ON m."organizationId" = b."organizationId"
+        JOIN "Agent" a ON a.id = c."agentId"
+        JOIN "Membership" m ON m."organizationId" = a."organizationId"
         WHERE m."userId" = (SELECT auth.uid())
       ));
   END IF;
@@ -145,7 +147,7 @@ BEGIN
   END IF;
 END $$;
 
--- Document: scoped via knowledgebase → org → membership
+-- Document: scoped via knowledgebase -> org -> membership
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -201,30 +203,3 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 -- UUID generation
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- ============================================================
--- 5. MONITORING QUERIES (for reference)
--- ============================================================
-
--- Find missing FK indexes
--- SELECT
---   conrelid::regclass AS table_name,
---   a.attname AS fk_column
--- FROM pg_constraint c
--- JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey)
--- WHERE c.contype = 'f'
---   AND NOT EXISTS (
---     SELECT 1 FROM pg_index i
---     WHERE i.indrelid = c.conrelid AND a.attnum = ANY(i.indkey)
---   );
-
--- Find top slow queries
--- SELECT calls, round(total_exec_time::numeric, 2) AS total_ms, query
--- FROM pg_stat_statements
--- ORDER BY total_exec_time DESC
--- LIMIT 10;
-
--- Check autovacuum status
--- SELECT relname, last_autoanalyze, n_dead_tup
--- FROM pg_stat_user_tables
--- ORDER BY n_dead_tup DESC;
