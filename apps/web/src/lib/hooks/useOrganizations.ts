@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { organizations as orgsApi } from '@/lib/api'
 
-interface Organization {
+export interface Organization {
   id: string
   name: string
   slug: string
   logo?: string
   plan?: string
+  role?: string
 }
 
 export function useOrganizations() {

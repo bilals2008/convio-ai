@@ -1,24 +1,51 @@
-import { createContext, useContext, type ReactNode } from 'react'
-import { useOrganizations } from '@/lib/hooks/useOrganizations'
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { useOrganizations, type Organization } from '@/lib/hooks/useOrganizations'
 
 interface OrgContextValue {
   orgId: string | null
-  org: { id: string; name: string; slug: string; logo?: string; plan?: string } | null
+  org: Organization | null
+  orgs: Organization[]
   isLoading: boolean
+  setOrgId: (id: string) => void
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
 
 export function OrgProvider({ children }: { children: ReactNode }) {
   const { data: orgs, isLoading } = useOrganizations()
-  const currentOrg = orgs && orgs.length > 0 ? orgs[0] : null
+  const [orgId, setOrgId] = useState<string | null>(() => {
+    return localStorage.getItem('currentOrgId')
+  })
+
+  useEffect(() => {
+    if (orgs && orgs.length > 0 && !orgId) {
+      const first = orgs[0]
+      setOrgId(first.id)
+      localStorage.setItem('currentOrgId', first.id)
+    }
+  }, [orgs, orgId])
+
+  useEffect(() => {
+    if (orgId) {
+      localStorage.setItem('currentOrgId', orgId)
+    }
+  }, [orgId])
+
+  const currentOrg = orgs?.find((o) => o.id === orgId) || (orgs && orgs.length > 0 ? orgs[0] : null)
+
+  const handleSetOrgId = (id: string) => {
+    setOrgId(id)
+    localStorage.setItem('currentOrgId', id)
+  }
 
   return (
     <OrgContext.Provider
       value={{
         orgId: currentOrg?.id ?? null,
         org: currentOrg ?? null,
+        orgs: orgs ?? [],
         isLoading,
+        setOrgId: handleSetOrgId,
       }}
     >
       {children}

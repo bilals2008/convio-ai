@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { SidebarGroup, SidebarItem } from './sidebar-nav'
+import { OrgSwitcher } from '@/components/shared/org-switcher'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
@@ -92,17 +93,17 @@ export function Sidebar() {
       aria-label="Main navigation"
     >
       {/* Logo area */}
-      <div className="flex items-center py-5 px-4 border-b border-border/50">
+      <div className="flex items-center py-4 px-3 border-b border-border/50 gap-2">
         {!collapsed && (
-          <>
-            <img src="/logo.png" alt="Convio" className="h-8 w-auto" />
-            <span className="ml-2.5 text-[15px] font-semibold tracking-tight truncate">Convio</span>
-          </>
+          <img src="/logo.png" alt="Convio" className="h-7 w-auto shrink-0" />
         )}
+        <div className={cn('flex-1 min-w-0', collapsed && 'hidden')}>
+          <span className="text-[15px] font-semibold tracking-tight truncate block">Convio</span>
+        </div>
         <Button
           variant="ghost"
           size="icon"
-          className={cn('ml-auto size-7 shrink-0 text-muted-foreground hover:text-foreground', collapsed && 'mx-auto ml-0')}
+          className={cn('size-7 shrink-0 text-muted-foreground hover:text-foreground', collapsed && 'mx-auto')}
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
@@ -111,6 +112,11 @@ export function Sidebar() {
             className={cn('size-4 transition-transform duration-200', collapsed && 'rotate-180')}
           />
         </Button>
+      </div>
+
+      {/* Org switcher */}
+      <div className={cn('px-3 pt-3 pb-1', collapsed && 'px-2')}>
+        <OrgSwitcher collapsed={collapsed} />
       </div>
 
       <ScrollArea className="flex-1">
@@ -136,6 +142,7 @@ export function Sidebar() {
           <SidebarGroup label="Settings">
             <SidebarItem icon={Settings} label="Organization" href="/settings/organization" />
             <SidebarItem icon={Users} label="Team" href="/settings/team" />
+            <SidebarItem icon={LayoutDashboard} label="Audit Logs" href="/settings/audit-logs" />
             <SidebarItem icon={LinkIcon} label="Deployments" href="/settings/deployments" />
             <SidebarItem icon={Key} label="API Keys" href="/settings/api-keys" />
             <SidebarItem icon={Terminal} label="Playground" href="/settings/playground" />
@@ -313,6 +320,7 @@ const mobileNavGroups = [
     items: [
       { icon: Settings, label: 'Organization', href: '/settings/organization' },
       { icon: Users, label: 'Team', href: '/settings/team' },
+      { icon: LayoutDashboard, label: 'Audit Logs', href: '/settings/audit-logs' },
       { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
       { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
       { icon: Terminal, label: 'Playground', href: '/settings/playground' },
