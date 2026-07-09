@@ -129,7 +129,7 @@ model Deployment {
   status    String   @default("active")
   createdAt DateTime @default(now()) @db.Timestamptz()
 
-  agent Agent @relation(fields: [agentId], references: [id])
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@index([agentId])
   @@index([channel, status])
@@ -144,7 +144,8 @@ model Conversation {
   createdAt DateTime @default(now()) @db.Timestamptz()
   updatedAt DateTime @updatedAt @db.Timestamptz()
 
-  agent    Agent     @relation(fields: [agentId], references: [id])
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
   messages Message[]
 
   @@index([agentId, createdAt])
@@ -161,7 +162,7 @@ model Message {
   metadata       Json?
   createdAt      DateTime @default(now()) @db.Timestamptz()
 
-  conversation Conversation @relation(fields: [conversationId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
 }
@@ -230,7 +231,7 @@ model AgentTool {
   agentId String
   toolId  String
 
-  agent Agent @relation(fields: [agentId], references: [id])
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
   tool  Tool  @relation(fields: [toolId], references: [id])
 
   @@id([agentId, toolId])
@@ -248,7 +249,7 @@ model Analytics {
   satisfactionScore  Float?
   createdAt          DateTime @default(now()) @db.Timestamptz()
 
-  agent Agent @relation(fields: [agentId], references: [id])
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([agentId, date])
   @@index([agentId])
