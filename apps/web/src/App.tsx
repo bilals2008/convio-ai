@@ -23,6 +23,8 @@ import AnalyticsPage from '@/pages/analytics/analytics-page'
 import WidgetsListPage from '@/pages/widgets/widgets-list-page'
 import WidgetDemoPage from '@/pages/widget/WidgetDemo'
 import PlaygroundPage from '@/pages/playground/playground-page'
+import AuditLogsPage from '@/pages/settings/audit-logs-page'
+import SsoSettingsPage from '@/pages/settings/sso-settings-page'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import OrganizationSettingsPage from '@/pages/settings/organization-settings-page'
 import TeamMembersPage from '@/pages/settings/team-members-page'
@@ -73,6 +75,8 @@ export function App() {
                 <Route path="deployments" element={<DeploymentsPage />} />
                 <Route path="api-keys" element={<ApiKeysPage />} />
                 <Route path="provider-keys" element={<ProviderKeysPage />} />
+                <Route path="audit-logs" element={<AuditLogsPage />} />
+                <Route path="sso" element={<SsoSettingsPage />} />
                 <Route path="playground" element={<PlaygroundPage />} />
               </Route>
             </Route>

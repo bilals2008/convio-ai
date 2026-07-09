@@ -1,11 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Settings, Users, Link, Key, Terminal, Shield } from 'lucide-react'
+import { Settings, Users, Link, Key, Terminal, Shield, ScrollText, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageContainer } from '@/components/shared/page-container'
 
 const navItems = [
   { icon: Settings, label: 'Organization', href: '/settings/organization' },
   { icon: Users, label: 'Team Members', href: '/settings/team' },
+  { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
+  { icon: Building2, label: 'SSO', href: '/settings/sso' },
   { icon: Link, label: 'Deployments', href: '/settings/deployments' },
   { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
   { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
