@@ -53,11 +53,12 @@ export default function AgentDetailPage() {
   const [systemPrompt, setSystemPrompt] = useState('')
   const [temperature, setTemperature] = useState(0.7)
   const [maxTokens, setMaxTokens] = useState(2048)
+  const [reasoningEffort, setReasoningEffort] = useState('medium')
   const [toneOfVoice, setToneOfVoice] = useState('friendly')
   const [language, setLanguage] = useState('english')
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
 
-  const { data: models = [] } = useAvailableModels()
+  const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
   const [deploymentOptions, setDeploymentOptions] = useState([
     { id: 'web-chat-widget', enabled: true },
     { id: 'shareable-link', enabled: false },
@@ -82,6 +83,7 @@ export default function AgentDetailPage() {
       setSystemPrompt(agent.systemPrompt)
       setTemperature(agent.temperature)
       setMaxTokens(agent.maxTokens || 2048)
+      setReasoningEffort((agent as any).reasoningEffort || 'medium')
     }
   }, [agent])
 
@@ -108,6 +110,7 @@ export default function AgentDetailPage() {
       model,
       systemPrompt,
       temperature,
+      reasoningEffort,
       maxTokens,
     })
   }
@@ -208,6 +211,7 @@ export default function AgentDetailPage() {
             model={model}
             systemPrompt={systemPrompt}
             temperature={temperature}
+            reasoningEffort={reasoningEffort}
             toneOfVoice={toneOfVoice}
             language={language}
             capabilities={capabilities}
@@ -217,10 +221,14 @@ export default function AgentDetailPage() {
             onModelChange={setModel}
             onSystemPromptChange={setSystemPrompt}
             onTemperatureChange={setTemperature}
+            onReasoningEffortChange={setReasoningEffort}
             onToneChange={setToneOfVoice}
             onLanguageChange={setLanguage}
             onCapabilityToggle={handleCapabilityToggle}
             disabled={updateMutation.isPending}
+            modelsLoading={modelsLoading}
+            modelsError={modelsError}
+            modelsErrorMessage={modelsErrorObj instanceof Error ? modelsErrorObj.message : undefined}
           />
         </TabsContent>
 
@@ -236,6 +244,7 @@ export default function AgentDetailPage() {
               systemPrompt: agent.systemPrompt,
               temperature: agent.temperature,
               maxTokens: agent.maxTokens,
+              reasoningEffort: reasoningEffort,
               providerKeyId: agent.providerKeyId || undefined,
             }}
           />

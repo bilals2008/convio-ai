@@ -14,15 +14,20 @@ interface AgentBuilderProps {
   model: string
   systemPrompt: string
   temperature: number
+  reasoningEffort?: string
   toneOfVoice: string
   language: string
   capabilities: Capability[]
   models?: ModelOption[]
+  modelsLoading?: boolean
+  modelsError?: boolean
+  modelsErrorMessage?: string
   onNameChange: (value: string) => void
   onDescriptionChange: (value: string) => void
   onModelChange: (value: string) => void
   onSystemPromptChange: (value: string) => void
   onTemperatureChange: (value: number) => void
+  onReasoningEffortChange?: (value: string) => void
   onToneChange: (value: string) => void
   onLanguageChange: (value: string) => void
   onCapabilityToggle: (id: string, enabled: boolean) => void
@@ -35,15 +40,20 @@ export function AgentBuilder({
   model,
   systemPrompt,
   temperature,
+  reasoningEffort,
   toneOfVoice,
   language,
   capabilities,
   models,
+  modelsLoading,
+  modelsError,
+  modelsErrorMessage,
   onNameChange,
   onDescriptionChange,
   onModelChange,
   onSystemPromptChange,
   onTemperatureChange,
+  onReasoningEffortChange,
   onToneChange,
   onLanguageChange,
   onCapabilityToggle,
@@ -66,13 +76,18 @@ export function AgentBuilder({
           model={model}
           temperature={temperature}
           systemPrompt={systemPrompt}
+          reasoningEffort={reasoningEffort}
           models={models}
           onToneChange={onToneChange}
           onLanguageChange={onLanguageChange}
           onModelChange={onModelChange}
           onTemperatureChange={onTemperatureChange}
           onSystemPromptChange={onSystemPromptChange}
+          onReasoningEffortChange={onReasoningEffortChange}
           disabled={disabled}
+          modelsLoading={modelsLoading}
+          modelsError={modelsError}
+          modelsErrorMessage={modelsErrorMessage}
         />
       </div>
 

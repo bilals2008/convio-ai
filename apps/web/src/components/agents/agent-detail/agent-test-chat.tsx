@@ -27,6 +27,7 @@ interface AgentTestChatProps {
     systemPrompt: string
     temperature: number
     maxTokens: number
+    reasoningEffort?: string
     providerKeyId?: string
   }
 }
@@ -35,6 +36,8 @@ interface MessageItem {
   id: string
   role: 'user' | 'assistant'
   content: string
+  reasoning?: string
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
   createdAt: string
 }
 
@@ -101,6 +104,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [streamingReasoning, setStreamingReasoning] = useState('')
   const [error, setError] = useState('')
   const [inputValue, setInputValue] = useState('')
   const abortRef = useRef<AbortController | null>(null)
@@ -204,6 +208,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
         message: trimmed,
         temperature: cfg.temperature,
         maxTokens: cfg.maxTokens,
+        reasoningEffort: cfg.reasoningEffort,
         providerKeyId: cfg.providerKeyId,
         history,
         signal: controller.signal,
@@ -220,6 +225,8 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
       const decoder = new TextDecoder()
       let buffer = ''
       let assistantContent = ''
+      let assistantReasoning = ''
+      let finalUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
 
       while (true) {
         const { done, value } = await reader.read()
@@ -235,9 +242,15 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
             if (data === '[DONE]') break
             try {
               const parsed = JSON.parse(data)
-              if (parsed.content) {
+              if (parsed.type === 'reasoning') {
+                assistantReasoning += parsed.content
+                queueStreamingContent(assistantContent)
+              } else if (parsed.content) {
                 assistantContent += parsed.content
                 queueStreamingContent(assistantContent)
+              }
+              if (parsed.type === 'usage' && parsed.usage) {
+                finalUsage = parsed.usage
               }
               if (parsed.error) {
                 throw new Error(parsed.error)
@@ -249,11 +262,13 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
         }
       }
 
-      if (assistantContent) {
+      if (assistantContent || assistantReasoning) {
         const assistantMessage: MessageItem = {
           id: crypto.randomUUID(),
           role: 'assistant',
           content: assistantContent,
+          reasoning: assistantReasoning || undefined,
+          usage: finalUsage,
           createdAt: new Date().toISOString(),
         }
         updateActiveConversation((conv) => ({
@@ -441,12 +456,27 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                     </MessageAvatar>
                     <MessageContent>
                       <Bubble variant={isUser ? 'default' : 'muted'}>
+                        {!isUser && msg.reasoning && (
+                          <details className="px-3 pt-2 pb-1 text-xs text-muted-foreground border-b border-border/40 mb-2">
+                            <summary className="cursor-pointer select-none font-medium text-foreground/60 hover:text-foreground transition-colors">
+                              Show reasoning
+                            </summary>
+                            <div className="mt-1.5 whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                              {msg.reasoning}
+                            </div>
+                          </details>
+                        )}
                         <BubbleContent>
                           {isUser ? <span className="whitespace-pre-wrap">{msg.content}</span> : <AiResponse content={msg.content} />}
                         </BubbleContent>
                       </Bubble>
                       <MessageFooter className="gap-2">
                         <span>{formatTime(msg.createdAt)}</span>
+                        {!isUser && msg.usage && (
+                          <span className="text-muted-foreground/60 text-[11px]" title={`Prompt: ${msg.usage.promptTokens}, Completion: ${msg.usage.completionTokens}`}>
+                            {msg.usage.totalTokens} tokens
+                          </span>
+                        )}
                       </MessageFooter>
                     </MessageContent>
                   </Message>

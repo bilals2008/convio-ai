@@ -24,6 +24,7 @@ const createSchema = z.object({
   model: z.string().min(1, 'Please select a model'),
   systemPrompt: z.string(),
   temperature: z.number().min(0).max(2),
+  reasoningEffort: z.string(),
   toneOfVoice: z.string(),
   language: z.string(),
 })
@@ -44,6 +45,7 @@ const DEFAULT_FORM_VALUES: CreateAgentValues = {
   model: '',
   systemPrompt: '',
   temperature: 0.7,
+  reasoningEffort: 'medium',
   toneOfVoice: 'friendly',
   language: 'english',
 }
@@ -52,7 +54,7 @@ export default function CreateAgentPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { orgId } = useOrg()
-  const { data: models = [], isLoading: modelsLoading } = useAvailableModels()
+  const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [deploymentOptions, setDeploymentOptions] = useState(DEFAULT_DEPLOYMENTS)
   const form = useForm<CreateAgentValues>({
@@ -87,6 +89,7 @@ export default function CreateAgentPage() {
       model,
       systemPrompt: data.systemPrompt || `You are ${data.name}, a helpful AI assistant.`,
       temperature: data.temperature,
+      reasoningEffort: data.reasoningEffort,
       maxTokens: 2048,
       organizationId: orgId,
       capabilities: capabilities.filter((capability) => capability.enabled).map((capability) => capability.id),
@@ -146,13 +149,18 @@ export default function CreateAgentPage() {
               model={selectedModel}
               temperature={values.temperature}
               systemPrompt={values.systemPrompt}
+              reasoningEffort={values.reasoningEffort}
               models={models}
               onToneChange={(toneOfVoice) => form.setValue('toneOfVoice', toneOfVoice)}
               onLanguageChange={(language) => form.setValue('language', language)}
               onModelChange={(model) => form.setValue('model', model, { shouldValidate: true })}
               onTemperatureChange={(temperature) => form.setValue('temperature', temperature)}
               onSystemPromptChange={(systemPrompt) => form.setValue('systemPrompt', systemPrompt)}
+              onReasoningEffortChange={(v) => form.setValue('reasoningEffort', v)}
               disabled={saving || modelsLoading}
+              modelsLoading={modelsLoading}
+              modelsError={modelsError}
+              modelsErrorMessage={modelsErrorObj instanceof Error ? modelsErrorObj.message : undefined}
             />
 
             <section className="space-y-1 pt-2">
