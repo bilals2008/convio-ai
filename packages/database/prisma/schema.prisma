@@ -39,6 +39,7 @@ model Organization {
   apiKeys        ApiKey[]
   auditLogs      AuditLog[]
   ssoConfigs     SsoConfig[]
+  widgets        Widget[]
 
   @@index([slug])
 }
@@ -101,6 +102,7 @@ model Agent {
   deployments   Deployment[]
   conversations Conversation[]
   analytics     Analytics[]
+  widgets       Widget[]
 
   @@index([organizationId])
   @@index([knowledgeBaseId])
@@ -137,6 +139,26 @@ model Deployment {
 
   @@index([agentId])
   @@index([channel, status])
+}
+
+model Widget {
+  id             String   @id @default(uuid())
+  publicKey      String   @unique @default(cuid())
+  organizationId String
+  agentId        String
+  name           String
+  status         String   @default("draft")
+  config         Json     @default("{}")
+  allowedDomains String[] @default([])
+  createdAt      DateTime @default(now()) @db.Timestamptz()
+  updatedAt      DateTime @updatedAt @db.Timestamptz()
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agent        Agent        @relation(fields: [agentId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, updatedAt(sort: Desc)])
+  @@index([agentId])
+  @@index([status])
 }
 
 model Conversation {
