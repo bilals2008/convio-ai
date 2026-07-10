@@ -29,7 +29,7 @@ interface SsoConfig {
 
 export default function SsoSettingsPage() {
   const queryClient = useQueryClient()
-  const { orgId } = useOrg()
+  const { orgId, isLoading: orgLoading } = useOrg()
   const [provider, setProvider] = useState('saml')
   const [issuer, setIssuer] = useState('')
   const [entryPoint, setEntryPoint] = useState('')
@@ -73,7 +73,7 @@ export default function SsoSettingsPage() {
     })
   }
 
-  if (isLoading) {
+  if (orgLoading || isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />

@@ -64,7 +64,7 @@ function formatDate(dateString: string) {
 export default function AgentsListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { orgId } = useOrg()
+  const { orgId, isLoading: orgLoading } = useOrg()
   const [search, setSearch] = useState('')
   const [deleteAgent, setDeleteAgent] = useState<Agent | null>(null)
 
@@ -152,13 +152,13 @@ export default function AgentsListPage() {
         placeholder="Search agents by name, description, or model..."
       />
 
-      {isLoading && (
+      {(orgLoading || isLoading) && (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {loadingSkeletons}
         </div>
       )}
 
-      {!isLoading && agents.length === 0 && (
+      {!orgLoading && !isLoading && agents.length === 0 && (
         <EmptyState
           icon={Brain}
           title="No agents yet"
@@ -167,7 +167,7 @@ export default function AgentsListPage() {
         />
       )}
 
-      {!isLoading && agents.length > 0 && filteredAgents.length === 0 && (
+      {!orgLoading && !isLoading && agents.length > 0 && filteredAgents.length === 0 && (
         <EmptyState
           icon={Brain}
           title="No agents match your search"
@@ -176,7 +176,7 @@ export default function AgentsListPage() {
         />
       )}
 
-      {!isLoading && sortedAgents.length > 0 && (
+      {!orgLoading && !isLoading && sortedAgents.length > 0 && (
         <div>
           {search && (
             <p className="text-sm text-muted-foreground">

@@ -24,7 +24,7 @@ interface Member {
 
 export default function TeamMembersPage() {
   const queryClient = useQueryClient()
-  const { orgId } = useOrg()
+  const { orgId, isLoading: orgLoading } = useOrg()
   const [inviteOpen, setInviteOpen] = useState(false)
   const [removeMember, setRemoveMember] = useState<Member | null>(null)
 
@@ -73,7 +73,7 @@ export default function TeamMembersPage() {
     },
   })
 
-  if (isLoading) {
+  if (orgLoading || isLoading) {
     return (
       <div className="space-y-6">
         <PageHeader title="Team Members" />

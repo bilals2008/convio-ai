@@ -26,7 +26,7 @@ interface CreatedKey {
 }
 
 export default function ApiKeysPage() {
-  const { orgId } = useOrg()
+  const { orgId, isLoading: orgLoading } = useOrg()
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteKeyId, setDeleteKeyId] = useState<string | null>(null)
@@ -62,7 +62,7 @@ export default function ApiKeysPage() {
 
   const deleteKeyName = apiKeys?.find((k) => k.id === deleteKeyId)?.name || ''
 
-  if (isLoading) {
+  if (orgLoading || isLoading) {
     return (
       <div className="space-y-6">
         <PageHeader title="API Keys" />

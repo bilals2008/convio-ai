@@ -19,7 +19,7 @@ interface DeploymentItem {
 }
 
 export default function DeploymentsPage() {
-  const { orgId } = useOrg()
+  const { orgId, isLoading: orgLoading } = useOrg()
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<Partial<DeploymentItem> | null>(null)
 
@@ -74,7 +74,7 @@ export default function DeploymentsPage() {
 
   const deployments = allDeploymentsQuery.data || []
 
-  if (allDeploymentsQuery.isLoading) {
+  if (orgLoading || allDeploymentsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center h-48">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />

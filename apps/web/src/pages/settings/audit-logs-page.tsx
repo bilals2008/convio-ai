@@ -61,7 +61,7 @@ const actionColors: Record<string, string> = {
 }
 
 export default function AuditLogsPage() {
-  const { orgId } = useOrg()
+  const { orgId, isLoading: orgLoading } = useOrg()
   const [actionFilter, setActionFilter] = useState('')
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -118,7 +118,7 @@ export default function AuditLogsPage() {
 
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
+          {orgLoading || isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
