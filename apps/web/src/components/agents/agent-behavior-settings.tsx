@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useController, type Control } from "react-hook-form"
 import { Settings, Sparkles, SlidersHorizontal } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -24,60 +25,43 @@ interface ModelOption {
 }
 
 interface AgentBehaviorSettingsProps {
-  toneOfVoice: string
-  language: string
-  model: string
-  temperature: number
-  systemPrompt: string
-  reasoningEffort?: string
-  models?: ModelOption[]
-  onToneChange: (value: string) => void
-  onLanguageChange: (value: string) => void
-  onModelChange: (value: string) => void
-  onTemperatureChange: (value: number) => void
-  onSystemPromptChange: (value: string) => void
-  onReasoningEffortChange?: (value: string) => void
+  control: Control
   disabled?: boolean
+  models?: ModelOption[]
   modelsLoading?: boolean
   modelsError?: boolean
   modelsErrorMessage?: string
 }
 
 export function AgentBehaviorSettings({
-  toneOfVoice,
-  language,
-  model,
-  temperature,
-  systemPrompt,
-  reasoningEffort = "medium",
-  models = [],
-  onToneChange,
-  onLanguageChange,
-  onModelChange,
-  onTemperatureChange,
-  onSystemPromptChange,
-  onReasoningEffortChange,
+  control,
   disabled,
+  models = [],
   modelsLoading = false,
   modelsError = false,
   modelsErrorMessage,
 }: AgentBehaviorSettingsProps) {
-  const safeTemperature = temperature ?? 0.7
+  const { field: toneField } = useController({ name: 'toneOfVoice', control })
+  const { field: langField } = useController({ name: 'language', control })
+  const { field: modelField } = useController({ name: 'model', control })
+  const { field: tempField } = useController({ name: 'temperature', control })
+  const { field: promptField } = useController({ name: 'systemPrompt', control })
+  const { field: reasoningField } = useController({ name: 'reasoningEffort', control })
+
   const [showTemplates, setShowTemplates] = useState(false)
 
-  const selectedModel = models.find((m) => m.id === model)
+  const selectedModel = models.find((m) => m.id === modelField.value)
   const selectedBadges = selectedModel ? getModelBadges(selectedModel) : []
   const reasoningOptions = selectedModel ? getReasoningEfforts(selectedModel) : null
 
   useEffect(() => {
     if (
       reasoningOptions &&
-      onReasoningEffortChange &&
-      !reasoningOptions.some((o) => o.value === reasoningEffort)
+      !reasoningOptions.some((o) => o.value === reasoningField.value)
     ) {
-      onReasoningEffortChange(reasoningOptions[0].value)
+      reasoningField.onChange(reasoningOptions[0].value)
     }
-  }, [reasoningOptions, reasoningEffort, onReasoningEffortChange])
+  }, [reasoningOptions, reasoningField.value, reasoningField.onChange])
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
@@ -100,9 +84,9 @@ export function AgentBehaviorSettings({
             )}
           </div>
           <ModelPicker
-            value={model}
+            value={modelField.value}
             models={models}
-            onSelect={onModelChange}
+            onSelect={modelField.onChange}
             disabled={disabled}
             loading={modelsLoading}
             error={modelsError}
@@ -119,7 +103,7 @@ export function AgentBehaviorSettings({
         <div className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Tone of Voice</Label>
-            <Select value={toneOfVoice} onValueChange={(value) => onToneChange(value ?? "")} disabled={disabled}>
+            <Select value={toneField.value} onValueChange={toneField.onChange} disabled={disabled}>
               <SelectTrigger className="h-9">
                 <SelectValue />
               </SelectTrigger>
@@ -134,7 +118,7 @@ export function AgentBehaviorSettings({
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Language</Label>
-            <Select value={language} onValueChange={(value) => onLanguageChange(value ?? "")} disabled={disabled}>
+            <Select value={langField.value} onValueChange={langField.onChange} disabled={disabled}>
               <SelectTrigger className="h-9">
                 <SelectValue />
               </SelectTrigger>
@@ -151,12 +135,12 @@ export function AgentBehaviorSettings({
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium">Temperature</Label>
               <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-semibold tabular-nums text-foreground">
-                {safeTemperature.toFixed(1)}
+                {tempField.value.toFixed(1)}
               </span>
             </div>
             <Slider
-              value={[safeTemperature]}
-              onValueChange={(value) => onTemperatureChange(Array.isArray(value) ? value[0] : value)}
+              value={[tempField.value]}
+              onValueChange={(value) => tempField.onChange(value[0])}
               min={0}
               max={1}
               step={0.1}
@@ -168,10 +152,10 @@ export function AgentBehaviorSettings({
             </div>
           </div>
 
-          {reasoningOptions && onReasoningEffortChange && (
+          {reasoningOptions && (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Reasoning Effort</Label>
-              <Select value={reasoningEffort} onValueChange={(value) => onReasoningEffortChange(value ?? "medium")} disabled={disabled}>
+              <Select value={reasoningField.value} onValueChange={reasoningField.onChange} disabled={disabled}>
                 <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
@@ -209,8 +193,8 @@ export function AgentBehaviorSettings({
           <Textarea
             id="system-prompt"
             placeholder="Define how your agent should behave, what it knows, and its constraints…"
-            value={systemPrompt}
-            onChange={(e) => onSystemPromptChange(e.target.value)}
+            value={promptField.value}
+            onChange={promptField.onChange}
             disabled={disabled}
             maxLength={2000}
             rows={12}
@@ -222,7 +206,7 @@ export function AgentBehaviorSettings({
               Guides the agent’s personality and guardrails
             </span>
             <span className="text-xs text-muted-foreground tabular-nums">
-              {systemPrompt.length}/2000
+              {promptField.value.length}/2000
             </span>
           </div>
         </div>
@@ -232,7 +216,7 @@ export function AgentBehaviorSettings({
         open={showTemplates}
         onOpenChange={setShowTemplates}
         onSelect={(prompt) => {
-          onSystemPromptChange(prompt)
+          promptField.onChange(prompt)
           setShowTemplates(false)
         }}
       />

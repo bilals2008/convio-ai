@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import {
   Loader2,
   LayoutDashboard,
@@ -41,22 +44,42 @@ interface Agent {
   updatedAt: string
 }
 
+const agentDetailSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(50, 'Name must be 50 characters or less'),
+  description: z.string(),
+  model: z.string().min(1, 'Please select a model'),
+  systemPrompt: z.string(),
+  temperature: z.number().min(0).max(2),
+  reasoningEffort: z.string(),
+  toneOfVoice: z.string(),
+  language: z.string(),
+  maxTokens: z.number(),
+})
+
+type AgentDetailValues = z.infer<typeof agentDetailSchema>
+
 export default function AgentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState('overview')
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [model, setModel] = useState('gpt-4o')
-  const [systemPrompt, setSystemPrompt] = useState('')
-  const [temperature, setTemperature] = useState(0.7)
-  const [maxTokens, setMaxTokens] = useState(2048)
-  const [reasoningEffort, setReasoningEffort] = useState('medium')
-  const [toneOfVoice, setToneOfVoice] = useState('friendly')
-  const [language, setLanguage] = useState('english')
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
+
+  const form = useForm({
+    resolver: zodResolver(agentDetailSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      model: '',
+      systemPrompt: '',
+      temperature: 0.7,
+      reasoningEffort: 'medium',
+      toneOfVoice: 'friendly',
+      language: 'english',
+      maxTokens: 2048,
+    },
+  })
 
   const tabsRootRef = useRef<HTMLDivElement>(null)
 
@@ -86,15 +109,19 @@ export default function AgentDetailPage() {
 
   useEffect(() => {
     if (agent) {
-      setName(agent.name)
-      setDescription(agent.description || '')
-      setModel(agent.model)
-      setSystemPrompt(agent.systemPrompt)
-      setTemperature(agent.temperature)
-      setMaxTokens(agent.maxTokens || 2048)
-      setReasoningEffort((agent as any).reasoningEffort || 'medium')
+      form.reset({
+        name: agent.name,
+        description: agent.description || '',
+        model: agent.model,
+        systemPrompt: agent.systemPrompt,
+        temperature: agent.temperature,
+        maxTokens: agent.maxTokens || 2048,
+        reasoningEffort: (agent as any).reasoningEffort || 'medium',
+        toneOfVoice: 'friendly',
+        language: 'english',
+      })
     }
-  }, [agent])
+  }, [agent, form])
 
   const updateMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => agentsApi.update(id!, data),
@@ -112,17 +139,17 @@ export default function AgentDetailPage() {
     },
   })
 
-  const handleSave = () => {
+  const handleSave = form.handleSubmit((data) => {
     updateMutation.mutate({
-      name,
-      description,
-      model,
-      systemPrompt,
-      temperature,
-      reasoningEffort,
-      maxTokens,
+      name: data.name,
+      description: data.description,
+      model: data.model,
+      systemPrompt: data.systemPrompt,
+      temperature: data.temperature,
+      reasoningEffort: data.reasoningEffort,
+      maxTokens: data.maxTokens,
     })
-  }
+  })
 
   const handleCapabilityToggle = (capabilityId: string, enabled: boolean) => {
     setCapabilities((prev) =>
@@ -155,12 +182,14 @@ export default function AgentDetailPage() {
     )
   }
 
+  const values = form.watch()
+
   return (
     <Tabs ref={tabsRootRef} value={activeTab} onValueChange={setActiveTab}>
       <AgentDetailLayout
-        agentName={agent.name}
+        agentName={values.name || agent.name}
         agentAvatar={agent.avatar}
-        agentDescription={agent.description}
+        agentDescription={values.description || agent.description}
         isSaving={updateMutation.isPending}
         onSave={handleSave}
         onCopyLink={() => navigator.clipboard.writeText(window.location.href)}
@@ -215,26 +244,11 @@ export default function AgentDetailPage() {
 
         <TabsContent value="builder">
           <AgentBuilder
-            name={name}
-            description={description}
-            model={model}
-            systemPrompt={systemPrompt}
-            temperature={temperature}
-            reasoningEffort={reasoningEffort}
-            toneOfVoice={toneOfVoice}
-            language={language}
+            control={form.control}
             capabilities={capabilities}
-            models={models}
-            onNameChange={setName}
-            onDescriptionChange={setDescription}
-            onModelChange={setModel}
-            onSystemPromptChange={setSystemPrompt}
-            onTemperatureChange={setTemperature}
-            onReasoningEffortChange={setReasoningEffort}
-            onToneChange={setToneOfVoice}
-            onLanguageChange={setLanguage}
             onCapabilityToggle={handleCapabilityToggle}
             disabled={updateMutation.isPending}
+            models={models}
             modelsLoading={modelsLoading}
             modelsError={modelsError}
             modelsErrorMessage={modelsErrorObj instanceof Error ? modelsErrorObj.message : undefined}
@@ -248,12 +262,12 @@ export default function AgentDetailPage() {
         <TabsContent value="test-chat">
           <AgentTestChat
             agentConfig={{
-              name: agent.name,
-              model: agent.model,
-              systemPrompt: agent.systemPrompt,
-              temperature: agent.temperature,
-              maxTokens: agent.maxTokens,
-              reasoningEffort: reasoningEffort,
+              name: values.name,
+              model: values.model,
+              systemPrompt: values.systemPrompt,
+              temperature: values.temperature,
+              maxTokens: values.maxTokens,
+              reasoningEffort: values.reasoningEffort,
               providerKeyId: agent.providerKeyId || undefined,
               knowledgeBaseId: agent.knowledgeBaseId || null,
             }}

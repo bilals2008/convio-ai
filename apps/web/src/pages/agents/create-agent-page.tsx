@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { CheckCircle2, Code, Globe, Link, Loader2, MessageCircle, Plus } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -62,9 +62,6 @@ export default function CreateAgentPage() {
     defaultValues: DEFAULT_FORM_VALUES,
   })
 
-  const values: CreateAgentValues = { ...DEFAULT_FORM_VALUES, ...useWatch({ control: form.control }) }
-  const selectedModel = values.model || models[0]?.id || ''
-
   const createMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => agentsApi.create(data),
     onSuccess: () => {
@@ -123,16 +120,7 @@ export default function CreateAgentPage() {
               <h2 className="text-base font-semibold">Identity</h2>
               <p className="text-sm text-muted-foreground">Make it recognizable to your team and customers.</p>
             </section>
-            <AgentBasicInfo
-              name={values.name}
-              description={values.description}
-              avatarUrl={values.avatarUrl}
-              onNameChange={(name) => form.setValue('name', name, { shouldValidate: true })}
-              onDescriptionChange={(description) => form.setValue('description', description)}
-              onAvatarUrlChange={(avatarUrl) => form.setValue('avatarUrl', avatarUrl)}
-              errors={{ name: form.formState.errors.name?.message }}
-              disabled={saving}
-            />
+            <AgentBasicInfo control={form.control} disabled={saving} />
 
             <section className="space-y-1 pt-2">
               <h2 className="text-base font-semibold">How it responds</h2>
@@ -140,20 +128,9 @@ export default function CreateAgentPage() {
             </section>
             {form.formState.errors.model && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{form.formState.errors.model.message}</p>}
             <AgentBehaviorSettings
-              toneOfVoice={values.toneOfVoice}
-              language={values.language}
-              model={selectedModel}
-              temperature={values.temperature}
-              systemPrompt={values.systemPrompt}
-              reasoningEffort={values.reasoningEffort}
-              models={models}
-              onToneChange={(toneOfVoice) => form.setValue('toneOfVoice', toneOfVoice)}
-              onLanguageChange={(language) => form.setValue('language', language)}
-              onModelChange={(model) => form.setValue('model', model, { shouldValidate: true })}
-              onTemperatureChange={(temperature) => form.setValue('temperature', temperature)}
-              onSystemPromptChange={(systemPrompt) => form.setValue('systemPrompt', systemPrompt)}
-              onReasoningEffortChange={(v) => form.setValue('reasoningEffort', v)}
+              control={form.control}
               disabled={saving || modelsLoading}
+              models={models}
               modelsLoading={modelsLoading}
               modelsError={modelsError}
               modelsErrorMessage={modelsErrorObj instanceof Error ? modelsErrorObj.message : undefined}

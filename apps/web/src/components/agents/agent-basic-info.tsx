@@ -1,32 +1,21 @@
 import { useState } from "react"
+import { useController, type Control } from "react-hook-form"
 import { UserRound, ImageIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 interface AgentBasicInfoProps {
-  name: string
-  description: string
-  avatarUrl?: string
-  onNameChange: (value: string) => void
-  onDescriptionChange: (value: string) => void
-  onAvatarUrlChange?: (value: string) => void
-  errors?: {
-    name?: string
-    description?: string
-  }
+  control: Control
   disabled?: boolean
 }
 
 export function AgentBasicInfo({
-  name,
-  description,
-  avatarUrl,
-  onNameChange,
-  onDescriptionChange,
-  onAvatarUrlChange,
-  errors,
+  control,
   disabled,
 }: AgentBasicInfoProps) {
+  const { field: nameField, fieldState: nameState } = useController({ name: 'name', control })
+  const { field: descField } = useController({ name: 'description', control })
+  const { field: avatarField } = useController({ name: 'avatarUrl', control })
   const [previewError, setPreviewError] = useState(false)
 
   return (
@@ -42,9 +31,9 @@ export function AgentBasicInfo({
         {/* Avatar + Name */}
         <div className="flex items-start gap-4">
           <div className="group relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted ring-1 ring-border">
-            {avatarUrl && !previewError ? (
+            {avatarField.value && !previewError ? (
               <img
-                src={avatarUrl}
+                src={avatarField.value}
                 alt="Avatar preview"
                 className="size-full object-cover"
                 onError={() => setPreviewError(true)}
@@ -61,20 +50,20 @@ export function AgentBasicInfo({
             <Input
               id="agent-name"
               placeholder="e.g. Support Assistant"
-              value={name}
-              onChange={(e) => onNameChange(e.target.value)}
+              value={nameField.value}
+              onChange={nameField.onChange}
               disabled={disabled}
               maxLength={50}
-              aria-invalid={!!errors?.name}
+              aria-invalid={!!nameState.error}
               className="h-9"
             />
             <div className="flex items-center justify-between">
-              {errors?.name ? (
-                <p className="text-xs text-destructive">{errors.name}</p>
+              {nameState.error ? (
+                <p className="text-xs text-destructive">{nameState.error.message}</p>
               ) : (
                 <span className="text-[11px] text-muted-foreground">Give your agent a recognizable name</span>
               )}
-              <span className="text-[11px] tabular-nums text-muted-foreground">{name.length}/50</span>
+              <span className="text-[11px] tabular-nums text-muted-foreground">{nameField.value.length}/50</span>
             </div>
           </div>
         </div>
@@ -87,15 +76,15 @@ export function AgentBasicInfo({
           <Input
             id="agent-description"
             placeholder="Brief description of what this agent does…"
-            value={description}
-            onChange={(e) => onDescriptionChange(e.target.value)}
+            value={descField.value}
+            onChange={descField.onChange}
             disabled={disabled}
             maxLength={200}
             className="h-9"
           />
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground">Shown on the agent card and detail page</span>
-            <span className="text-[11px] tabular-nums text-muted-foreground">{description.length}/200</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground">{descField.value.length}/200</span>
           </div>
         </div>
 
@@ -107,10 +96,10 @@ export function AgentBasicInfo({
           <Input
             id="agent-avatar"
             placeholder="https://example.com/avatar.png"
-            value={avatarUrl || ""}
+            value={avatarField.value || ""}
             onChange={(e) => {
               setPreviewError(false)
-              onAvatarUrlChange?.(e.target.value)
+              avatarField.onChange(e.target.value)
             }}
             disabled={disabled}
             className="h-9 font-mono text-xs"

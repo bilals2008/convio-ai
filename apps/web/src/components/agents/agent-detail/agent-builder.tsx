@@ -1,3 +1,4 @@
+import { type Control } from 'react-hook-form'
 import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
 import { AgentCapabilities, type Capability } from '@/components/agents/agent-capabilities'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
@@ -9,82 +10,38 @@ interface ModelOption {
 }
 
 interface AgentBuilderProps {
-  name: string
-  description: string
-  model: string
-  systemPrompt: string
-  temperature: number
-  reasoningEffort?: string
-  toneOfVoice: string
-  language: string
+  control: Control
   capabilities: Capability[]
+  onCapabilityToggle: (id: string, enabled: boolean) => void
+  disabled?: boolean
   models?: ModelOption[]
   modelsLoading?: boolean
   modelsError?: boolean
   modelsErrorMessage?: string
-  onNameChange: (value: string) => void
-  onDescriptionChange: (value: string) => void
-  onModelChange: (value: string) => void
-  onSystemPromptChange: (value: string) => void
-  onTemperatureChange: (value: number) => void
-  onReasoningEffortChange?: (value: string) => void
-  onToneChange: (value: string) => void
-  onLanguageChange: (value: string) => void
-  onCapabilityToggle: (id: string, enabled: boolean) => void
-  disabled?: boolean
 }
 
 export function AgentBuilder({
-  name,
-  description,
-  model,
-  systemPrompt,
-  temperature,
-  reasoningEffort,
-  toneOfVoice,
-  language,
+  control,
   capabilities,
+  onCapabilityToggle,
+  disabled,
   models,
   modelsLoading,
   modelsError,
   modelsErrorMessage,
-  onNameChange,
-  onDescriptionChange,
-  onModelChange,
-  onSystemPromptChange,
-  onTemperatureChange,
-  onReasoningEffortChange,
-  onToneChange,
-  onLanguageChange,
-  onCapabilityToggle,
-  disabled,
 }: AgentBuilderProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
         <AgentBasicInfo
-          name={name}
-          description={description}
-          onNameChange={onNameChange}
-          onDescriptionChange={onDescriptionChange}
+          control={control}
           disabled={disabled}
         />
 
         <AgentBehaviorSettings
-          toneOfVoice={toneOfVoice}
-          language={language}
-          model={model}
-          temperature={temperature}
-          systemPrompt={systemPrompt}
-          reasoningEffort={reasoningEffort}
-          models={models}
-          onToneChange={onToneChange}
-          onLanguageChange={onLanguageChange}
-          onModelChange={onModelChange}
-          onTemperatureChange={onTemperatureChange}
-          onSystemPromptChange={onSystemPromptChange}
-          onReasoningEffortChange={onReasoningEffortChange}
+          control={control}
           disabled={disabled}
+          models={models}
           modelsLoading={modelsLoading}
           modelsError={modelsError}
           modelsErrorMessage={modelsErrorMessage}
