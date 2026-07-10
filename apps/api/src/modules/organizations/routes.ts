@@ -277,7 +277,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
 
     await fastify.ensureAdmin(request.userId!, id)
 
-    const results: Array<{ email: string; status: string; error?: string }> = []
+    const results: Array<{ email: string; status: string; error?: string; role?: string }> = []
 
     for (const member of members) {
       try {

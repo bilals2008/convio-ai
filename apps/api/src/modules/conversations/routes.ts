@@ -97,15 +97,8 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
       limit: number
     }
 
-    const memberships = await prisma.membership.findMany({
-      where: { userId: request.userId },
-      select: { organizationId: true },
-    })
-
-    const orgIds = memberships.map((m) => m.organizationId)
-
     const where: Record<string, unknown> = {
-      agent: { organizationId: { in: orgIds } },
+      agent: { organization: { memberships: { some: { userId: request.userId! } } } },
     }
     if (status) where.status = status
     if (agentId) where.agentId = agentId
@@ -115,7 +108,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
       where: where as any,
       include: {
         agent: { select: { id: true, name: true, avatar: true } },
-        messages: { take: 1, orderBy: { createdAt: 'desc' } },
+        messages: { take: 1, orderBy: { createdAt: 'desc' }, select: { id: true, role: true, content: true, createdAt: true } },
       },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -157,7 +150,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
       limit: number
     }
 
-    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+    const agent = await prisma.agent.findUnique({ where: { id: agentId }, select: { organizationId: true } })
     if (!agent) throw new AppError(404, 'Agent not found')
 
     await fastify.getMembership(request.userId!, agent.organizationId)
@@ -168,7 +161,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     const conversations = await prisma.conversation.findMany({
       where: where as any,
       include: {
-        messages: { take: 1, orderBy: { createdAt: 'desc' } },
+        messages: { take: 1, orderBy: { createdAt: 'desc' }, select: { id: true, role: true, content: true, createdAt: true } },
       },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -208,7 +201,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
       where: { id },
       include: {
         agent: { select: { id: true, name: true, avatar: true, organizationId: true } },
-        messages: { orderBy: { createdAt: 'asc' } },
+        messages: { orderBy: { createdAt: 'asc' }, take: 100 },
       },
     })
 

@@ -30,20 +30,20 @@ const addToolSchema = z.object({
 })
 
 const testAgentSchema = z.object({
-  message: z.string().min(1),
+  message: z.string().min(1).max(12000),
 })
 
 const testStreamSchema = z.object({
   model: z.string().min(1),
   systemPrompt: z.string().min(1),
-  message: z.string().min(1),
+  message: z.string().min(1).max(12000),
   temperature: z.number().min(0).max(2).default(0.7),
   maxTokens: z.number().min(1).max(512000).default(2048),
   providerKeyId: z.string().uuid().optional(),
   history: z.array(z.object({
     role: z.enum(['user', 'assistant']),
-    content: z.string(),
-  })).optional().default([]),
+    content: z.string().min(1).max(12000),
+  })).max(30).optional().default([]),
 })
 
 const createAgentBodySchema = createAgentSchema.extend({
@@ -311,24 +311,20 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       history,
     } = request.body as z.infer<typeof testStreamSchema>
 
-    let apiKey: string | undefined
-    if (providerKeyId) {
-      const providerKey = await prisma.providerKey.findUnique({
-        where: { id: providerKeyId },
-      })
-      if (providerKey) {
-        const orgs = await prisma.membership.findMany({
-          where: { userId: request.userId },
-          select: { organizationId: true },
+    const providerKey = providerKeyId
+      ? await prisma.providerKey.findFirst({
+          where: {
+            id: providerKeyId,
+            organization: { memberships: { some: { userId: request.userId! } } },
+          },
+          select: { apiKey: true },
         })
-        const userOrgIds = orgs.map((m) => m.organizationId)
-        if (userOrgIds.includes(providerKey.organizationId)) {
-          apiKey = providerKey.apiKey
-        }
-      }
-    }
+      : null
+    const apiKey = providerKey?.apiKey
 
     const corsHeaders = getCorsHeaders(fastify.config.CORS_ORIGIN, request)
+
+    reply.hijack()
 
     let provider
     try {
@@ -359,6 +355,12 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       'X-Accel-Buffering': 'no',
       ...corsHeaders,
     })
+    reply.raw.flushHeaders()
+
+    let clientDisconnected = false
+    request.raw.once('close', () => {
+      clientDisconnected = true
+    })
 
     try {
       const stream = provider.stream({
@@ -370,6 +372,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       })
 
       for await (const chunk of stream) {
+        if (clientDisconnected) break
         if (chunk.content) {
           reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
         }
@@ -380,8 +383,10 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       reply.raw.write(`data: ${JSON.stringify({ error: msg })}\n\n`)
     }
 
-    reply.raw.write('data: [DONE]\n\n')
-    reply.raw.end()
+    if (!clientDisconnected) {
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+    }
   })
 
   // PATCH /api/agents/:id/status — Change agent status (admin only, validates transitions)

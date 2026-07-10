@@ -1,6 +1,6 @@
 import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
-import { prisma } from '@convio/database'
+import { prisma, type Prisma } from '@convio/database'
 
 export type AuditAction =
   | 'member.invited' | 'member.removed' | 'member.role_changed'
@@ -40,7 +40,7 @@ export default fp(async function auditLoggerPlugin(fastify: FastifyInstance) {
         action: params.action,
         entityType: params.entityType,
         entityId: params.entityId,
-        metadata: params.metadata ?? {},
+        metadata: (params.metadata ?? {}) as Prisma.InputJsonValue,
       },
     })
   })

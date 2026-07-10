@@ -87,7 +87,19 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
-      include: { agent: true },
+      select: {
+        agent: {
+          select: {
+            organizationId: true,
+            model: true,
+            systemPrompt: true,
+            temperature: true,
+            maxTokens: true,
+            providerKeyId: true,
+            knowledgeBaseId: true,
+          },
+        },
+      },
     })
 
     if (!conversation) throw new AppError(404, 'Conversation not found')
@@ -105,24 +117,35 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       throw new AppError(400, 'Agent has no model configured')
     }
 
-    const history = await prisma.message.findMany({
+    const historyPromise = prisma.message.findMany({
       where: { conversationId: id },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
       select: { role: true, content: true },
     })
 
-    let systemContext = agent.systemPrompt
+    const contextPromise = agent.knowledgeBaseId
+      ? retrieveContext(content, agent.knowledgeBaseId).catch((err: unknown) => {
+          request.log.warn({ err }, 'RAG retrieval failed, falling back to base prompt')
+          return null
+        })
+      : Promise.resolve(null)
+    const providerKeyPromise = agent.providerKeyId
+      ? prisma.providerKey.findFirst({
+          where: { id: agent.providerKeyId, organizationId: agent.organizationId },
+          select: { apiKey: true },
+        })
+      : Promise.resolve(null)
 
-    if (agent.knowledgeBaseId) {
-      try {
-        const context = await retrieveContext(content, agent.knowledgeBaseId)
-        if (context) {
-          systemContext += '\n\nUse the following context to answer the user:\n\n' + context
-        }
-      } catch (err) {
-        request.log.warn({ err }, 'RAG retrieval failed, falling back to base prompt')
-      }
-    }
+    const [historyDesc, context, providerKey] = await Promise.all([
+      historyPromise,
+      contextPromise,
+      providerKeyPromise,
+    ])
+    const history = historyDesc.reverse()
+    const systemContext = context
+      ? `${agent.systemPrompt}\n\nUse the following context to answer the user:\n\n${context}`
+      : agent.systemPrompt
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
@@ -136,15 +159,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       throw new AppError(400, `No provider configured for model: ${agent.model}`)
     }
 
-    let apiKey: string | undefined
-    if (agent.providerKeyId) {
-      const providerKey = await prisma.providerKey.findUnique({
-        where: { id: agent.providerKeyId },
-      })
-      if (providerKey && providerKey.organizationId === conversation.agent.organizationId) {
-        apiKey = providerKey.apiKey
-      }
-    }
+    const apiKey = providerKey?.apiKey
+
+    reply.hijack()
 
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -152,6 +169,12 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
       ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
+    })
+    reply.raw.flushHeaders()
+
+    let clientDisconnected = false
+    request.raw.once('close', () => {
+      clientDisconnected = true
     })
 
     let fullResponse = ''
@@ -166,6 +189,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       })
 
       for await (const chunk of stream) {
+        if (clientDisconnected) break
         if (chunk.content) {
           fullResponse += chunk.content
           reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
@@ -174,9 +198,11 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'AI generation failed'
-      reply.raw.write(`data: ${JSON.stringify({ error: msg })}\n\n`)
-      reply.raw.write('data: [DONE]\n\n')
-      reply.raw.end()
+      if (!clientDisconnected) {
+        reply.raw.write(`data: ${JSON.stringify({ error: msg })}\n\n`)
+        reply.raw.write('data: [DONE]\n\n')
+        reply.raw.end()
+      }
       return
     }
 
@@ -194,8 +220,10 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       } catch {}
     }
 
-    reply.raw.write('data: [DONE]\n\n')
-    reply.raw.end()
+    if (!clientDisconnected) {
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+    }
   })
 
   // GET /api/conversations/:id/messages — List messages (protected, member only, paginated, oldest-first)
@@ -289,20 +317,30 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
-      include: { agent: true },
+      select: {
+        agent: {
+          select: {
+            organizationId: true,
+            status: true,
+            model: true,
+            systemPrompt: true,
+            temperature: true,
+            maxTokens: true,
+            providerKeyId: true,
+            knowledgeBaseId: true,
+          },
+        },
+      },
     })
 
     if (!conversation || conversation.agent.status !== 'active') {
       throw new AppError(404, 'Conversation not found or agent is not active')
     }
 
-    await prisma.message.create({
-      data: { conversationId: id, role: 'user', content, status: 'sent' },
-    })
-    await prisma.conversation.update({
-      where: { id },
-      data: { status: 'active' },
-    })
+    await prisma.$transaction([
+      prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } }),
+      prisma.conversation.update({ where: { id }, data: { status: 'active' } }),
+    ])
 
     const agent = conversation.agent
     if (!agent || !agent.model) {
@@ -316,32 +354,31 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       return { data: { response: 'AI provider is not available.' } }
     }
 
-    let apiKey: string | undefined
-    if (agent.providerKeyId) {
-      const providerKey = await prisma.providerKey.findUnique({
-        where: { id: agent.providerKeyId },
-      })
-      if (providerKey && providerKey.organizationId === conversation.agent.organizationId) {
-        apiKey = providerKey.apiKey
-      }
-    }
-
-    const history = await prisma.message.findMany({
+    const historyPromise = prisma.message.findMany({
       where: { conversationId: id },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
       select: { role: true, content: true },
     })
-
-    let systemContext = agent.systemPrompt
-
-    if (agent.knowledgeBaseId) {
-      try {
-        const context = await retrieveContext(content, agent.knowledgeBaseId)
-        if (context) {
-          systemContext += '\n\nUse the following context to answer the user:\n\n' + context
-        }
-      } catch {}
-    }
+    const contextPromise = agent.knowledgeBaseId
+      ? retrieveContext(content, agent.knowledgeBaseId).catch(() => null)
+      : Promise.resolve(null)
+    const providerKeyPromise = agent.providerKeyId
+      ? prisma.providerKey.findFirst({
+          where: { id: agent.providerKeyId, organizationId: agent.organizationId },
+          select: { apiKey: true },
+        })
+      : Promise.resolve(null)
+    const [historyDesc, context, providerKey] = await Promise.all([
+      historyPromise,
+      contextPromise,
+      providerKeyPromise,
+    ])
+    const history = historyDesc.reverse()
+    const apiKey = providerKey?.apiKey
+    const systemContext = context
+      ? `${agent.systemPrompt}\n\nUse the following context to answer the user:\n\n${context}`
+      : agent.systemPrompt
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
