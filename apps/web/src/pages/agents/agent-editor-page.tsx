@@ -207,11 +207,12 @@ export default function AgentEditorPage() {
               agentConfig={{
                 name: formData.name,
                 model: formData.model,
-                systemPrompt: formData.systemPrompt,
-                temperature: formData.temperature,
-                maxTokens: formData.maxTokens,
-                providerKeyId: formData.providerKeyId,
-              }}
+              systemPrompt: formData.systemPrompt,
+              temperature: formData.temperature,
+              maxTokens: formData.maxTokens,
+              providerKeyId: formData.providerKeyId,
+              knowledgeBaseId: formData.knowledgeBaseId || null,
+            }}
             />
           </div>
         </div>

@@ -20,6 +20,7 @@ interface AgentChatPanelProps {
     temperature: number
     maxTokens: number
     providerKeyId?: string
+    knowledgeBaseId?: string | null
   }
   className?: string
 }
@@ -156,6 +157,21 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
           {agentConfig.model && (
             <Badge variant="secondary" className="text-[10px] font-normal">
               {agentConfig.model}
+            </Badge>
+          )}
+          {agentConfig.knowledgeBaseId ? (
+            <Badge
+              variant="secondary"
+              className="border-success/20 bg-success/10 text-success text-[10px] font-normal"
+            >
+              Knowledge
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="border-border text-[10px] font-normal text-muted-foreground"
+            >
+              No Knowledge
             </Badge>
           )}
           {!canSend && (
