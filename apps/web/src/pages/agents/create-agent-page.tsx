@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Sparkles, Globe, Link, Code, MessageCircle } from 'lucide-react'
+import { z } from 'zod'
 import { PageContainer } from '@/components/shared/page-container'
 import { Button } from '@/components/ui/button'
 import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
@@ -12,6 +13,12 @@ import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settin
 import { agents as agentsApi, chat as chatApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
+const createSchema = z.object({
+  name: z.string().min(1, 'Agent name is required').max(50, 'Name must be 50 characters or less'),
+  model: z.string().min(1, 'Please select a model'),
+  systemPrompt: z.string().optional(),
+})
+
 export default function CreateAgentPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -19,6 +26,7 @@ export default function CreateAgentPage() {
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [deploymentOptions, setDeploymentOptions] = useState([
     { id: 'web-chat-widget', enabled: true },
@@ -31,13 +39,13 @@ export default function CreateAgentPage() {
   const [model, setModel] = useState('')
   const [temperature, setTemperature] = useState(0.7)
   const [systemPrompt, setSystemPrompt] = useState('')
-  const [errors, setErrors] = useState<{ name?: string }>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const { data: models = [] } = useQuery({
     queryKey: ['models'],
     queryFn: async () => {
       const res = await chatApi.models()
-      return (res.data.data || []) as Array<{ id: string; name: string }>
+      return (res.data.data || []) as Array<{ id: string; name: string; provider?: string }>
     },
   })
 
@@ -64,8 +72,16 @@ export default function CreateAgentPage() {
   }
 
   const handleCreate = () => {
-    if (!name.trim()) {
-      setErrors({ name: 'Name is required' })
+    const result = createSchema.safeParse({ name, model: model || models[0]?.id || '', systemPrompt })
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {}
+      result.error.errors.forEach((e) => {
+        const field = e.path[0] as string
+        if (!fieldErrors[field]) {
+          fieldErrors[field] = e.message
+        }
+      })
+      setErrors(fieldErrors)
       return
     }
     setErrors({})
@@ -73,6 +89,7 @@ export default function CreateAgentPage() {
     createMutation.mutate({
       name,
       description,
+      avatar: avatarUrl || undefined,
       model: selectedModel,
       systemPrompt: systemPrompt || `You are ${name}, a helpful AI assistant.`,
       temperature,
@@ -118,11 +135,19 @@ export default function CreateAgentPage() {
           <AgentBasicInfo
             name={name}
             description={description}
+            avatarUrl={avatarUrl}
             onNameChange={setName}
             onDescriptionChange={setDescription}
-            errors={errors}
+            onAvatarUrlChange={setAvatarUrl}
+            errors={{ name: errors.name }}
             disabled={saving}
           />
+
+          {errors.model && (
+            <p className="text-xs text-destructive flex items-center gap-1.5 bg-destructive/5 rounded-lg px-3 py-2">
+              {errors.model}
+            </p>
+          )}
 
           <AgentKnowledgeSources />
 

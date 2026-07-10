@@ -58,6 +58,7 @@ export default function AgentEditorPage() {
 
   const [formData, setFormData] = useState<AgentFormData>(defaultFormData)
   const [errors, setErrors] = useState<Partial<Record<keyof AgentFormData, string>>>({})
+  const [showErrors, setShowErrors] = useState(false)
 
   const { data: existingAgent, isLoading } = useQuery({
     queryKey: ['agent', id],
@@ -113,10 +114,12 @@ export default function AgentEditorPage() {
         }
       })
       setErrors(fieldErrors)
+      setShowErrors(true)
       return
     }
 
     setErrors({})
+    setShowErrors(false)
     if (isEdit) {
       updateMutation.mutate(result.data)
     } else {
@@ -164,6 +167,19 @@ export default function AgentEditorPage() {
         }
       />
 
+      {showErrors && Object.keys(errors).length > 0 && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Please fix the following errors before saving:
+          <ul className="mt-1 list-disc list-inside space-y-0.5 text-xs text-destructive/80">
+            {Object.entries(errors).map(([field, message]) => (
+              <li key={field}>
+                <span className="capitalize font-medium">{field}</span>: {message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <Card>
@@ -171,10 +187,13 @@ export default function AgentEditorPage() {
               <CardTitle>Configuration</CardTitle>
               <CardDescription>Configure your agent&apos;s behavior and model</CardDescription>
             </CardHeader>
-            <CardContent>
+                <CardContent>
               <AgentForm
                 data={formData}
-                onChange={setFormData}
+                onChange={(data) => {
+                  setFormData(data)
+                  if (showErrors) setErrors({})
+                }}
                 errors={errors}
                 disabled={saving}
               />
