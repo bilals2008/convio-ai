@@ -3,6 +3,7 @@ import { Outlet, useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { ArrowLeft, MessageSquare, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SearchInput } from '@/components/shared/search-input'
 import { Skeleton } from '@/components/shared/loading'
 import { ConversationStatusBadge } from './conversation-status-badge'
@@ -58,6 +59,8 @@ export function ConversationsLayout() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedId, setSelectedId] = useState<string | null>(id || null)
+  const [showAgentPicker, setShowAgentPicker] = useState(false)
+  const [agentSearch, setAgentSearch] = useState('')
 
   const { data: agents = [] } = useQuery({
     queryKey: ['agents-for-conversations', orgId],
@@ -103,6 +106,10 @@ export function ConversationsLayout() {
       )
     : conversations
 
+  const filteredAgents = agentSearch
+    ? agents.filter((a) => a.name.toLowerCase().includes(agentSearch.toLowerCase()))
+    : agents
+
   useEffect(() => {
     if (id) setSelectedId(id)
   }, [id])
@@ -117,6 +124,7 @@ export function ConversationsLayout() {
   const showChat = id
 
   return (
+    <>
     <div className="flex h-full overflow-hidden">
       {/* Left Panel - Conversation List */}
       <div
@@ -131,15 +139,11 @@ export function ConversationsLayout() {
           <h2 className="text-base font-semibold">Chats</h2>
           <Button
             size="sm"
-            onClick={() => {
-              if (agents.length > 0) {
-                createConvMutation.mutate(agents[0].id)
-              }
-            }}
-            disabled={createConvMutation.isPending || agents.length === 0}
+            onClick={() => setShowAgentPicker(true)}
+            disabled={agents.length === 0}
           >
             <Plus className="size-3.5" />
-            {createConvMutation.isPending ? 'Starting...' : 'New'}
+            New
           </Button>
         </div>
 
@@ -266,5 +270,62 @@ export function ConversationsLayout() {
       </div>
 
     </div>
+
+    <Dialog open={showAgentPicker} onOpenChange={setShowAgentPicker}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Start a conversation</DialogTitle>
+          <DialogDescription>Pick an agent to chat with</DialogDescription>
+        </DialogHeader>
+        <input
+          type="text"
+          placeholder="Search agents..."
+          value={agentSearch}
+          onChange={(e) => setAgentSearch(e.target.value)}
+          className="h-9 w-full rounded-lg border border-border bg-muted/40 px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          autoFocus
+        />
+        <div className="space-y-1 max-h-72 overflow-y-auto">
+          {filteredAgents.length === 0 && (
+            <p className="py-6 text-center text-xs text-muted-foreground">No agents found</p>
+          )}
+          {filteredAgents.map((agent) => (
+            <button
+              key={agent.id}
+              onClick={() => {
+                setShowAgentPicker(false)
+                setAgentSearch('')
+                createConvMutation.mutate(agent.id)
+              }}
+              disabled={createConvMutation.isPending}
+              className={cn(
+                'w-full flex items-start gap-3 px-3 py-3 rounded-lg text-left transition-colors',
+                'hover:bg-muted/70 active:bg-muted disabled:opacity-50'
+              )}
+            >
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 shrink-0 mt-0.5">
+                <span className="text-sm font-semibold text-primary">
+                  {getInitials(agent.name)}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground truncate">{agent.name}</span>
+                </div>
+                {agent.description && (
+                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{agent.description}</p>
+                )}
+                {agent.model && (
+                  <span className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {agent.model}
+                  </span>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
