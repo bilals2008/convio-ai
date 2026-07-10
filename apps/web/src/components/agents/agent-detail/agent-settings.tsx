@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { Globe, Link, Code, MessageCircle, Bot, Database, KeyRound, CalendarDays } from 'lucide-react'
+import { Globe, Link, Code, MessageCircle, Bot, Database, KeyRound, CalendarDays, Gauge } from 'lucide-react'
 import { AgentDeployment } from '@/components/agents/agent-deployment'
 import { ProviderLogo } from '@/components/agents/provider-logos'
+import { Slider } from '@/components/ui/slider'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
 function WhatsAppLogo({ className }: { className?: string }) {
@@ -54,6 +57,66 @@ interface AgentSettingsProps {
   deploymentOptions: Array<{ id: string; enabled: boolean }>
   onDeploymentToggle: (id: string, enabled: boolean) => void
   disabled?: boolean
+}
+
+function RateLimitsCard() {
+  const [perMinute, setPerMinute] = useState(20)
+  const [dailyCap, setDailyCap] = useState(500)
+  const [maxTokens, setMaxTokens] = useState(2048)
+
+  return (
+    <div className="rounded-xl border bg-card p-5 lg:col-span-2">
+      <div className="mb-4 flex items-center gap-2">
+        <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Gauge className="size-4" />
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold">Rate Limits</h3>
+          <p className="text-xs text-muted-foreground">Protect your agent from spam and overuse</p>
+        </div>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-3">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium">Messages / minute</Label>
+            <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-semibold tabular-nums">
+              {perMinute}
+            </span>
+          </div>
+          <Slider
+            value={[perMinute]}
+            onValueChange={(v) => setPerMinute(Array.isArray(v) ? v[0] : v)}
+            min={1}
+            max={100}
+            step={1}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Daily conversation cap</Label>
+          <Input
+            type="number"
+            value={dailyCap}
+            min={0}
+            onChange={(e) => setDailyCap(Number(e.target.value))}
+            className="h-9"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Max tokens / response</Label>
+          <Input
+            type="number"
+            value={maxTokens}
+            min={1}
+            onChange={(e) => setMaxTokens(Number(e.target.value))}
+            className="h-9"
+          />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function AgentSettings({
@@ -139,6 +202,8 @@ export function AgentSettings({
       </div>
 
       <AgentDeployment options={options} onToggle={onDeploymentToggle} disabled={disabled} />
+
+      <RateLimitsCard />
     </div>
   )
 }
