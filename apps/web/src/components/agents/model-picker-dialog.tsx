@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import {
   Command,
   CommandEmpty,
@@ -35,21 +35,21 @@ export function ModelPicker({ value, models, onSelect, disabled }: ModelPickerPr
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className="w-full justify-between h-9 font-normal"
-        >
-          {selectedModel ? (
-            <span className="truncate">{selectedModel.name}</span>
-          ) : (
-            <span className="text-muted-foreground">Select a model</span>
-          )}
-          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
+      <PopoverTrigger
+        role="combobox"
+        aria-expanded={open}
+        disabled={disabled}
+        className={cn(
+          buttonVariants({ variant: "outline" }),
+          "w-full justify-between h-9 font-normal"
+        )}
+      >
+        {selectedModel ? (
+          <span className="truncate">{selectedModel.name}</span>
+        ) : (
+          <span className="text-muted-foreground">Select a model</span>
+        )}
+        <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
