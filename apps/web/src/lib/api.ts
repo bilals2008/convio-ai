@@ -55,7 +55,9 @@ export const agents = {
     maxTokens: number
     providerKeyId?: string
     history?: Array<{ role: 'user' | 'assistant'; content: string }>
+    signal?: AbortSignal
   }) => {
+    const { signal, ...body } = config
     const { data: { session } } = await supabase.auth.getSession()
     const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
     const response = await fetch(`${baseURL}/agents/test-stream`, {
@@ -64,7 +66,8 @@ export const agents = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session?.access_token}`,
       },
-      body: JSON.stringify(config),
+      body: JSON.stringify(body),
+      signal,
     })
     return response
   },
@@ -117,6 +120,8 @@ export const knowledge = {
 export const widgets = {
   list: (orgId: string) => api.get(`/organizations/${orgId}/widgets`),
   get: (id: string) => api.get(`/widgets/${id}`),
+  create: (orgId: string, data: { name: string; agentId: string; config?: Record<string, unknown> }) => api.post(`/organizations/${orgId}/widgets`, data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/widgets/${id}`, data),
   delete: (id: string) => api.delete(`/widgets/${id}`),
   getEmbed: (id: string) => api.get(`/widgets/${id}/embed`),
 }
