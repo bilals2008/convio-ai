@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, useWatch } from 'react-hook-form'
-import { CheckCircle2, Code, Globe, Link, Loader2, MessageCircle, Sparkles } from 'lucide-react'
+import { CheckCircle2, Code, Globe, Link, Loader2, MessageCircle, Plus } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageContainer } from '@/components/shared/page-container'
@@ -105,17 +105,13 @@ export default function CreateAgentPage() {
       <form onSubmit={handleCreate} className="mx-auto max-w-7xl space-y-6 pb-24">
         <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Sparkles className="size-4 text-primary" />
-              New agent
-            </div>
             <h1 className="text-2xl font-semibold tracking-tight">Create an agent</h1>
             <p className="max-w-2xl text-sm text-muted-foreground">Set the essentials now. You can refine knowledge, tools, and deployments whenever you are ready.</p>
           </div>
           <div className="flex items-center gap-2">
             <Button type="button" variant="outline" onClick={() => navigate('/agents')} disabled={saving}>Cancel</Button>
             <Button type="submit" disabled={saving || modelsLoading}>
-              {saving ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
               {saving ? 'Creating agent…' : 'Create agent'}
             </Button>
           </div>
