@@ -15,9 +15,12 @@ export class GroqProvider implements AIProvider {
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
+    const sysMsg = params.messages.find(m => m.role === 'system')
+    const chatMessages = params.messages.filter(m => m.role !== 'system')
     const result = await generateText({
       model: this.getClient(params.apiKey).chatModel(params.model),
-      messages: params.messages,
+      messages: chatMessages,
+      ...(sysMsg && { instructions: sysMsg.content }),
       temperature: params.temperature,
       maxOutputTokens: params.maxTokens,
     })
@@ -33,9 +36,12 @@ export class GroqProvider implements AIProvider {
   }
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
+    const sysMsg = params.messages.find(m => m.role === 'system')
+    const chatMessages = params.messages.filter(m => m.role !== 'system')
     const result = streamText({
       model: this.getClient(params.apiKey).chatModel(params.model),
-      messages: params.messages,
+      messages: chatMessages,
+      ...(sysMsg && { instructions: sysMsg.content }),
       temperature: params.temperature,
       maxOutputTokens: params.maxTokens,
     })
