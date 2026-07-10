@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
   SelectContent,
@@ -32,6 +33,18 @@ import {
   Key,
   Globe,
   Loader2,
+  BookTemplate,
+  History,
+  TestTube,
+  Search,
+  Sparkles,
+  MessageSquare,
+  Brain,
+  Code,
+  FileText,
+  Lightbulb,
+  Puzzle,
+  List,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -49,22 +62,33 @@ interface LogEntry {
   usage?: any
 }
 
+interface PromptTemplate {
+  id: string
+  name: string
+  description: string
+  icon: typeof MessageSquare
+  message: string
+  category: string
+}
+
 const PROVIDERS = [
-  { id: 'openai', name: 'OpenAI', color: '#10a37f' },
-  { id: 'anthropic', name: 'Anthropic', color: '#d4a574' },
-  { id: 'google', name: 'Google AI', color: '#4285f4' },
-  { id: 'groq', name: 'Groq', color: '#f55036' },
-  { id: 'kie', name: 'KIE AI', color: '#8b5cf6' },
-  { id: 'openrouter', name: 'OpenRouter', color: '#71717a' },
-  { id: 'opencode', name: 'OpenCode Zen', color: '#a855f7' },
-  { id: 'mistral', name: 'Mistral', color: '#f59e0b' },
-  { id: 'together', name: 'Together', color: '#0ea5e9' },
-  { id: 'deepseek', name: 'DeepSeek', color: '#3b82f6' },
-  { id: 'perplexity', name: 'Perplexity', color: '#06b6d4' },
-  { id: 'local', name: 'Local API', color: '#22c55e' },
+  { id: 'openai', name: 'OpenAI', slug: 'openai', variant: 'light' },
+  { id: 'anthropic', name: 'Anthropic', slug: 'anthropic', variant: 'light' },
+  { id: 'google', name: 'Google AI', slug: 'google', variant: 'default' },
+  { id: 'groq', name: 'Groq', slug: 'groq', variant: 'default' },
+  { id: 'kie', name: 'KIE AI', slug: '', variant: 'default' },
+  { id: 'openrouter', name: 'OpenRouter', slug: 'openrouter', variant: 'light' },
+  { id: 'opencode', name: 'OpenCode Zen', slug: 'opencode', variant: 'mono' },
+  { id: 'mistral', name: 'Mistral', slug: 'mistral', variant: 'color' },
+  { id: 'together', name: 'Together', slug: 'together-ai', variant: 'light' },
+  { id: 'deepseek', name: 'DeepSeek', slug: 'deepseek', variant: 'default' },
+  { id: 'perplexity', name: 'Perplexity', slug: 'perplexity', variant: 'default' },
+  { id: 'local', name: 'Local API', slug: '', variant: 'default' },
 ] as const
 
 type ProviderId = (typeof PROVIDERS)[number]['id']
+
+const SVG_BASE = 'https://thesvg.org/icons'
 
 const ENV_KEY_MAP: Record<ProviderId, string> = {
   openai: 'OPENAI_API_KEY',
@@ -81,16 +105,109 @@ const ENV_KEY_MAP: Record<ProviderId, string> = {
   local: 'LOCAL_API_URL',
 }
 
+const PROMPT_TEMPLATES: PromptTemplate[] = [
+  {
+    id: 'hello',
+    name: 'Basic Hello',
+    description: 'Simple greeting test',
+    icon: MessageSquare,
+    message: 'Hello! Reply with a short greeting.',
+    category: 'basic',
+  },
+  {
+    id: 'math',
+    name: 'Math Problem',
+    description: 'Test reasoning & calculation',
+    icon: Brain,
+    message: 'What is 2+2? Reply with just the number.',
+    category: 'reasoning',
+  },
+  {
+    id: 'code',
+    name: 'Write Code',
+    description: 'Generate a function',
+    icon: Code,
+    message: 'Write a JavaScript function that reverses a string. Return only the code.',
+    category: 'code',
+  },
+  {
+    id: 'explain',
+    name: 'Explain Concept',
+    description: 'Test explanation quality',
+    icon: Lightbulb,
+    message: 'Explain what a REST API is in one paragraph.',
+    category: 'reasoning',
+  },
+  {
+    id: 'summarize',
+    name: 'Summarize Text',
+    description: 'Test summarization',
+    icon: FileText,
+    message: 'Summarize this in one sentence: Artificial intelligence is transforming industries by automating repetitive tasks, enhancing decision-making through data analysis, and creating new opportunities for innovation across healthcare, finance, transportation, and education sectors.',
+    category: 'reasoning',
+  },
+  {
+    id: 'creative',
+    name: 'Creative Writing',
+    description: 'Test creative output',
+    icon: Sparkles,
+    message: 'Write a haiku about artificial intelligence.',
+    category: 'creative',
+  },
+  {
+    id: 'logic',
+    name: 'Logic Puzzle',
+    description: 'Test logical reasoning',
+    icon: Puzzle,
+    message: 'If all humans are mortal and Socrates is human, is Socrates mortal? Explain briefly.',
+    category: 'reasoning',
+  },
+  {
+    id: 'list',
+    name: 'List Generation',
+    description: 'Test structured output',
+    icon: List,
+    message: 'List 5 programming languages and their primary use cases. Format as a bullet list.',
+    category: 'code',
+  },
+  {
+    id: 'search',
+    name: 'Search Query',
+    description: 'Simulate a search',
+    icon: Search,
+    message: 'What are the best practices for writing clean React components? Give 3 tips.',
+    category: 'code',
+  },
+  {
+    id: 'translate',
+    name: 'Translation',
+    description: 'Test multilingual',
+    icon: Globe,
+    message: 'Translate "Hello, how are you?" to French, Spanish, and German.',
+    category: 'creative',
+  },
+]
+
+const CATEGORIES = [
+  { id: 'all', label: 'All', icon: BookTemplate },
+  { id: 'basic', label: 'Basic', icon: MessageSquare },
+  { id: 'reasoning', label: 'Reasoning', icon: Brain },
+  { id: 'code', label: 'Code', icon: Code },
+  { id: 'creative', label: 'Creative', icon: Sparkles },
+] as const
+
 export default function PlaygroundPage() {
   const [provider, setProvider] = useState<ProviderId>('groq')
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState('')
-  const [message, setMessage] = useState('Hello! What is 2+2? Reply with just the number.')
+  const [message, setMessage] = useState(PROMPT_TEMPLATES[0].message)
   const [showKey, setShowKey] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [copied, setCopied] = useState(false)
   const [models, setModels] = useState<string[]>([])
   const [modelsLoading, setModelsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('test')
+  const [templateCategory, setTemplateCategory] = useState('all')
   const logsEndRef = useRef<HTMLDivElement>(null)
   const modelsFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -101,7 +218,6 @@ export default function PlaygroundPage() {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
 
-  // Fetch models from backend when API key or provider changes (debounced)
   useEffect(() => {
     if (modelsFetchRef.current) {
       clearTimeout(modelsFetchRef.current)
@@ -196,291 +312,525 @@ export default function PlaygroundPage() {
 
   const handleClearLogs = useCallback(() => setLogs([]), [])
 
+  const filteredTemplates = templateCategory === 'all'
+    ? PROMPT_TEMPLATES
+    : PROMPT_TEMPLATES.filter((t) => t.category === templateCategory)
+
+  const providerSvgUrl = selectedProvider.slug
+    ? `${SVG_BASE}/${selectedProvider.slug}/${selectedProvider.variant}.svg`
+    : null
+
   return (
     <PageContainer>
       <PageHeader
         title="AI Playground"
-        description="Test API keys and models from all providers"
+        description="Test API keys, models, and prompts across providers"
       />
 
-      <div className="grid lg:grid-cols-[400px_1fr] gap-6">
-        {/* Left: Config */}
-        <div className="space-y-4">
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-                <Globe className="size-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold">Provider</h2>
-            </div>
-
-            <div className="grid grid-cols-5 gap-1.5">
-              {PROVIDERS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => {
-                    setProvider(p.id)
-                    setModel('')
-                    setApiKey('')
-                    setModels([])
-                  }}
-                  className={cn(
-                    'flex flex-col items-center gap-1 rounded-lg p-2 text-[10px] font-medium transition-all',
-                    provider === p.id
-                      ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <span
-                    className="size-3 rounded-full"
-                    style={{ backgroundColor: p.color }}
-                  />
-                  {p.name.split(' ')[0]}
-                </button>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-                <Key className="size-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold">API Key</h2>
-              <Badge variant="secondary" className="text-[10px] ml-auto">
-                {ENV_KEY_MAP[provider]}
-              </Badge>
-            </div>
-
-            {provider === 'local' ? (
-              <div className="flex items-center justify-center h-9 rounded-md border border-dashed text-xs text-emerald-500 bg-emerald-500/5">
-                No API key required — local server
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <Input
-                      type={showKey ? 'text' : 'password'}
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder={`Enter ${selectedProvider.name} API key`}
-                      className="h-10 text-sm font-mono pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowKey(!showKey)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showKey ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                    </button>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={handleCopyEnv}
-                    disabled={!apiKey}
-                    title="Copy env variable"
-                  >
-                    {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
-                  </Button>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Key is sent to backend only for this test. Not stored anywhere.
-                </p>
-              </div>
-            )}
-          </Card>
-
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-                <Zap className="size-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold">Model</h2>
-              {modelsLoading && (
-                <Loader2 className="size-3.5 animate-spin text-muted-foreground ml-auto" />
-              )}
-              {!modelsLoading && models.length > 0 && (
-                <Badge variant="secondary" className="text-[10px] ml-auto">
-                  {models.length} models
-                </Badge>
-              )}
-            </div>
-
-            {provider !== 'local' && !apiKey.trim() ? (
-              <div className="flex items-center justify-center h-9 rounded-md border border-dashed text-xs text-muted-foreground">
-                Enter API key to load models
-              </div>
-            ) : (
-              <Select value={currentModel} onValueChange={setModel} disabled={modelsLoading}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder={modelsLoading ? 'Loading models...' : 'Select model'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((m) => (
-                    <SelectItem key={m} value={m} className="text-sm">
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </Card>
-
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-                  <Send className="size-4 text-primary" />
-                </div>
-                <h2 className="text-sm font-semibold">Test Message</h2>
-              </div>
-              <Button
-                size="default"
-                onClick={handleTest}
-                disabled={(provider !== 'local' && !apiKey.trim()) || !message.trim() || !currentModel || testMutation.isPending}
-                className="gap-1.5 text-xs"
-              >
-                {testMutation.isPending ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Testing...
-                  </>
-                ) : (
-                  <>
-                    <ArrowRight className="size-3.5" />
-                    Send Test
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <Textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={3}
-              placeholder="Enter a test message..."
-              className="text-sm resize-none"
-            />
-
-            {currentModel && (
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-emerald-500" />
-                <span>
-                  Using <strong>{currentModel}</strong> via <strong>{selectedProvider.name}</strong>
-                </span>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* Right: Logs */}
-        <Card className="flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
-            <div className="flex items-center gap-2">
-              <Terminal className="size-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold">Logs</h2>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="test">
+              <TestTube className="size-4" />
+              Test
+            </TabsTrigger>
+            <TabsTrigger value="templates">
+              <BookTemplate className="size-4" />
+              Templates
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="size-4" />
+              History
               {logs.length > 0 && (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="ml-1.5 text-[9px]">
                   {logs.length}
                 </Badge>
               )}
-            </div>
-            {logs.length > 0 && (
-              <Button
-                size="default"
-                variant="ghost"
-                onClick={handleClearLogs}
-                className="gap-1.5 text-xs text-muted-foreground"
-              >
-                <Trash2 className="size-3.5" />
-                Clear
-              </Button>
-            )}
-          </div>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-          <ScrollArea className="flex-1 h-[calc(100vh-300px)]">
-            <div className="p-4 space-y-3">
-              {logs.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-muted mb-3">
-                    <Terminal className="size-6 text-muted-foreground" />
+        <TabsContent value="test" className="mt-0">
+          <div className="grid lg:grid-cols-[400px_1fr] gap-6">
+            <div className="space-y-4">
+              <Card className="p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                    <Globe className="size-4 text-primary" />
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    No logs yet. Send a test message to see results.
-                  </p>
+                  <h2 className="text-sm font-semibold">Provider</h2>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5">
+                  {PROVIDERS.map((p) => {
+                    const isActive = provider === p.id
+                    const imgUrl = p.slug ? `${SVG_BASE}/${p.slug}/${p.variant}.svg` : null
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setProvider(p.id)
+                          setModel('')
+                          setApiKey('')
+                          setModels([])
+                        }}
+                        className={cn(
+                          'flex flex-col items-center gap-1.5 rounded-lg p-2 transition-all',
+                          isActive
+                            ? 'bg-primary/10 ring-1 ring-primary/20'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        {imgUrl ? (
+                          <img
+                            src={imgUrl}
+                            alt={p.name}
+                            className="size-5"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="size-5 rounded bg-muted flex items-center justify-center text-[8px] font-bold">
+                            {p.name.charAt(0)}
+                          </div>
+                        )}
+                        <span className="text-[9px] font-medium leading-tight text-center">
+                          {p.name}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </Card>
+
+              <Card className="p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                    <Key className="size-4 text-primary" />
+                  </div>
+                  <h2 className="text-sm font-semibold">API Key</h2>
+                  <Badge variant="secondary" className="text-[10px] ml-auto font-mono">
+                    {ENV_KEY_MAP[provider]}
+                  </Badge>
+                </div>
+
+                {provider === 'local' ? (
+                  <div className="flex items-center justify-center h-9 rounded-md border border-dashed text-xs text-emerald-500 bg-emerald-500/5">
+                    No API key required — local server
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <Input
+                          type={showKey ? 'text' : 'password'}
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          placeholder={`Enter ${selectedProvider.name} API key`}
+                          className="h-10 text-sm font-mono pr-9"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowKey(!showKey)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showKey ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                        </button>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={handleCopyEnv}
+                        disabled={!apiKey}
+                        title="Copy env variable"
+                      >
+                        {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Key is sent to backend only for this test. Not stored anywhere.
+                    </p>
+                  </div>
+                )}
+              </Card>
+
+              <Card className="p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                    <Zap className="size-4 text-primary" />
+                  </div>
+                  <h2 className="text-sm font-semibold">Model</h2>
+                  {modelsLoading && (
+                    <Loader2 className="size-3.5 animate-spin text-muted-foreground ml-auto" />
+                  )}
+                  {!modelsLoading && models.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] ml-auto">
+                      {models.length} models
+                    </Badge>
+                  )}
+                </div>
+
+                {provider !== 'local' && !apiKey.trim() ? (
+                  <div className="flex items-center justify-center h-9 rounded-md border border-dashed text-xs text-muted-foreground">
+                    Enter API key to load models
+                  </div>
+                ) : (
+                  <Select value={currentModel} onValueChange={setModel} disabled={modelsLoading}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder={modelsLoading ? 'Loading models...' : 'Select model'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {models.map((m) => (
+                        <SelectItem key={m} value={m} className="text-sm font-mono">
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </Card>
+            </div>
+
+            <div className="space-y-4">
+              <Card className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                      <Send className="size-4 text-primary" />
+                    </div>
+                    <h2 className="text-sm font-semibold">Test Message</h2>
+                  </div>
+                  <Button
+                    size="default"
+                    onClick={handleTest}
+                    disabled={(provider !== 'local' && !apiKey.trim()) || !message.trim() || !currentModel || testMutation.isPending}
+                    className="gap-1.5 text-xs"
+                  >
+                    {testMutation.isPending ? (
+                      <>
+                        <Loader2 className="size-3.5 animate-spin" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRight className="size-3.5" />
+                        Send Test
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={4}
+                  placeholder="Enter a test message..."
+                  className="text-sm resize-none"
+                />
+
+                {currentModel && (
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                    <span>
+                      Using <strong className="font-mono">{currentModel}</strong> via {selectedProvider.name}
+                    </span>
+                  </div>
+                )}
+              </Card>
+
+              <Card className="flex flex-col overflow-hidden flex-1">
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
+                  <div className="flex items-center gap-2">
+                    <Terminal className="size-4 text-muted-foreground" />
+                    <h2 className="text-sm font-semibold">Response</h2>
+                    {logs.length > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {logs.length}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <ScrollArea className="flex-1 h-[300px]">
+                  <div className="p-4 space-y-3">
+                    {logs.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="flex size-12 items-center justify-center rounded-full bg-muted mb-3">
+                          <Terminal className="size-6 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          No logs yet. Send a test message to see results.
+                        </p>
+                        <p className="text-xs text-muted-foreground/60 mt-1">
+                          You can also use a template from the Templates tab.
+                        </p>
+                      </div>
+                    )}
+
+                    {logs.map((log) => (
+                      <div
+                        key={log.id}
+                        className={cn(
+                          'rounded-lg border p-3 space-y-2 text-xs',
+                          log.success
+                            ? 'border-emerald-500/20 bg-emerald-500/5'
+                            : 'border-destructive/20 bg-destructive/5'
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {log.success ? (
+                              <CheckCircle2 className="size-3.5 text-emerald-500" />
+                            ) : (
+                              <XCircle className="size-3.5 text-destructive" />
+                            )}
+                            <Badge variant="outline" className="text-[9px] font-mono">
+                              {log.provider}
+                            </Badge>
+                            <span className="text-muted-foreground font-mono">{log.model}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Clock className="size-3" />
+                            <span>{log.latencyMs}ms</span>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        <div>
+                          <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">You</p>
+                          <p className="text-foreground">{log.message}</p>
+                        </div>
+
+                        {log.response && (
+                          <div>
+                            <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Response</p>
+                            <p className="text-foreground whitespace-pre-wrap">{log.response}</p>
+                          </div>
+                        )}
+
+                        {log.error && (
+                          <div>
+                            <p className="text-[10px] text-destructive mb-1 font-medium uppercase tracking-wide">Error</p>
+                            <p className="text-destructive whitespace-pre-wrap">{log.error}</p>
+                          </div>
+                        )}
+
+                        {log.usage && (
+                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1">
+                            {log.usage.prompt_tokens && <span>Prompt: {log.usage.prompt_tokens}</span>}
+                            {log.usage.completion_tokens && <span>Completion: {log.usage.completion_tokens}</span>}
+                            {log.usage.total_tokens && <span>Total: {log.usage.total_tokens}</span>}
+                          </div>
+                        )}
+
+                        <p className="text-[9px] text-muted-foreground/60">
+                          {log.timestamp.toLocaleTimeString()}
+                        </p>
+                      </div>
+                    ))}
+                    <div ref={logsEndRef} />
+                  </div>
+                </ScrollArea>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="templates" className="mt-0">
+          <div className="grid lg:grid-cols-[280px_1fr] gap-6">
+            <Card className="p-4 h-fit">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                  <BookTemplate className="size-4 text-primary" />
+                </div>
+                <h2 className="text-sm font-semibold">Categories</h2>
+              </div>
+              <div className="space-y-1">
+                {CATEGORIES.map((cat) => {
+                  const Icon = cat.icon
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setTemplateCategory(cat.id)}
+                      className={cn(
+                        'flex items-center gap-2 w-full rounded-lg px-3 py-2 text-xs font-medium transition-all',
+                        templateCategory === cat.id
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="size-3.5" />
+                      {cat.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </Card>
+
+            <div className="space-y-3">
+              {filteredTemplates.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <p className="text-sm text-muted-foreground">No templates found.</p>
                 </div>
               )}
-
-              {logs.map((log) => (
-                <div
-                  key={log.id}
-                  className={cn(
-                    'rounded-lg border p-3 space-y-2 text-xs',
-                    log.success
-                      ? 'border-emerald-500/20 bg-emerald-500/5'
-                      : 'border-destructive/20 bg-destructive/5'
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {log.success ? (
-                        <CheckCircle2 className="size-3.5 text-emerald-500" />
-                      ) : (
-                        <XCircle className="size-3.5 text-destructive" />
-                      )}
-                      <Badge variant="outline" className="text-[9px] font-mono">
-                        {log.provider}
-                      </Badge>
-                      <span className="text-muted-foreground font-mono">{log.model}</span>
+              {filteredTemplates.map((template) => {
+                const Icon = template.icon
+                return (
+                  <Card
+                    key={template.id}
+                    className="p-4 cursor-pointer transition-all hover:border-primary/30 hover:bg-muted/30"
+                    onClick={() => {
+                      setMessage(template.message)
+                      setActiveTab('test')
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 shrink-0 mt-0.5">
+                        <Icon className="size-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-medium">{template.name}</h3>
+                          <Badge variant="outline" className="text-[9px] capitalize">
+                            {template.category}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{template.description}</p>
+                        <p className="text-[11px] text-muted-foreground/70 mt-2 line-clamp-2 font-mono bg-muted/50 rounded p-2">
+                          {template.message}
+                        </p>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setMessage(template.message)
+                          setActiveTab('test')
+                        }}
+                      >
+                        <ArrowRight className="size-3.5" />
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Clock className="size-3" />
-                      <span>{log.latencyMs}ms</span>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">You</p>
-                    <p className="text-foreground">{log.message}</p>
-                  </div>
-
-                  {log.response && (
-                    <div>
-                      <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Response</p>
-                      <p className="text-foreground whitespace-pre-wrap">{log.response}</p>
-                    </div>
-                  )}
-
-                  {log.error && (
-                    <div>
-                      <p className="text-[10px] text-destructive mb-1 font-medium uppercase tracking-wide">Error</p>
-                      <p className="text-destructive whitespace-pre-wrap">{log.error}</p>
-                    </div>
-                  )}
-
-                  {log.usage && (
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1">
-                      {log.usage.prompt_tokens && <span>Prompt: {log.usage.prompt_tokens}</span>}
-                      {log.usage.completion_tokens && <span>Completion: {log.usage.completion_tokens}</span>}
-                      {log.usage.total_tokens && <span>Total: {log.usage.total_tokens}</span>}
-                    </div>
-                  )}
-
-                  <p className="text-[9px] text-muted-foreground/60">
-                    {log.timestamp.toLocaleTimeString()}
-                  </p>
-                </div>
-              ))}
-              <div ref={logsEndRef} />
+                  </Card>
+                )
+              })}
             </div>
-          </ScrollArea>
-        </Card>
-      </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-0">
+          <Card className="flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
+              <div className="flex items-center gap-2">
+                <History className="size-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold">Test History</h2>
+                {logs.length > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {logs.length} entries
+                  </Badge>
+                )}
+              </div>
+              {logs.length > 0 && (
+                <Button
+                  size="default"
+                  variant="ghost"
+                  onClick={handleClearLogs}
+                  className="gap-1.5 text-xs text-muted-foreground"
+                >
+                  <Trash2 className="size-3.5" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            <ScrollArea className="flex-1 h-[calc(100vh-360px)]">
+              <div className="p-4 space-y-3">
+                {logs.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="flex size-12 items-center justify-center rounded-full bg-muted mb-3">
+                      <History className="size-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      No test history yet.
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">
+                      Results appear here after you send a test message.
+                    </p>
+                  </div>
+                )}
+
+                {logs.map((log) => (
+                  <div
+                    key={log.id}
+                    className={cn(
+                      'rounded-lg border p-3 space-y-2 text-xs',
+                      log.success
+                        ? 'border-emerald-500/20 bg-emerald-500/5'
+                        : 'border-destructive/20 bg-destructive/5'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {log.success ? (
+                          <CheckCircle2 className="size-3.5 text-emerald-500" />
+                        ) : (
+                          <XCircle className="size-3.5 text-destructive" />
+                        )}
+                        <Badge variant="outline" className="text-[9px] font-mono">
+                          {log.provider}
+                        </Badge>
+                        <span className="text-muted-foreground font-mono">{log.model}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Clock className="size-3" />
+                        <span>{log.latencyMs}ms</span>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">You</p>
+                      <p className="text-foreground">{log.message}</p>
+                    </div>
+
+                    {log.response && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Response</p>
+                        <p className="text-foreground whitespace-pre-wrap">{log.response}</p>
+                      </div>
+                    )}
+
+                    {log.error && (
+                      <div>
+                        <p className="text-[10px] text-destructive mb-1 font-medium uppercase tracking-wide">Error</p>
+                        <p className="text-destructive whitespace-pre-wrap">{log.error}</p>
+                      </div>
+                    )}
+
+                    {log.usage && (
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1">
+                        {log.usage.prompt_tokens && <span>Prompt: {log.usage.prompt_tokens}</span>}
+                        {log.usage.completion_tokens && <span>Completion: {log.usage.completion_tokens}</span>}
+                        {log.usage.total_tokens && <span>Total: {log.usage.total_tokens}</span>}
+                      </div>
+                    )}
+
+                    <p className="text-[9px] text-muted-foreground/60">
+                      {log.timestamp.toLocaleTimeString()}
+                    </p>
+                  </div>
+                ))}
+                <div ref={logsEndRef} />
+              </div>
+            </ScrollArea>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </PageContainer>
   )
 }
