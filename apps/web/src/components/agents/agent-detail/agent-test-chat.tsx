@@ -552,7 +552,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                             <summary className="cursor-pointer select-none font-medium text-foreground/60 hover:text-foreground transition-colors">
                               Show reasoning
                             </summary>
-                            <div className="mt-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                            <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
                                {msg.reasoning}
                              </div>
                           </details>
@@ -589,7 +589,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                             <Loader2 className="size-3 animate-spin" />
                             Reasoning…
                           </summary>
-                           <div className="mt-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                           <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
                              {streamingReasoning}
                            </div>
                         </details>
