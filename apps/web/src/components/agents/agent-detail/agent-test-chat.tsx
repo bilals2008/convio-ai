@@ -41,6 +41,7 @@ interface AgentTestChatProps {
     maxTokens: number
     reasoningEffort?: string
     providerKeyId?: string
+    knowledgeBaseId?: string | null
   }
 }
 
@@ -637,8 +638,15 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                     <Bot className="size-3 shrink-0 text-primary/70" />
                     <span className="truncate">{formatModelLabel(agentConfig.model)}</span>
                   </span>
-                  <span className="hidden items-center gap-1 rounded-md bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground sm:inline-flex">
-                    Knowledge: On
+                  <span
+                    className={cn(
+                      'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
+                      agentConfig.knowledgeBaseId
+                        ? 'border-success/20 bg-success/10 text-success'
+                        : 'border-border bg-muted/40 text-muted-foreground'
+                    )}
+                  >
+                    {agentConfig.knowledgeBaseId ? 'Knowledge: On' : 'Knowledge: Off'}
                   </span>
                 </div>
                 <Button

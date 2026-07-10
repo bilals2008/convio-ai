@@ -246,6 +246,7 @@ export default function AgentDetailPage() {
               maxTokens: agent.maxTokens,
               reasoningEffort: reasoningEffort,
               providerKeyId: agent.providerKeyId || undefined,
+              knowledgeBaseId: agent.knowledgeBaseId || null,
             }}
           />
         </TabsContent>
