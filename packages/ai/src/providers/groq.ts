@@ -1,109 +1,59 @@
+import { generateText, streamText } from 'ai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import type { LanguageModelV1 } from '@ai-sdk/provider'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 
 export class GroqProvider implements AIProvider {
   id = 'groq'
   name = 'Groq'
 
+  private getClient(apiKey?: string) {
+    return createOpenAICompatible({
+      baseURL: 'https://api.groq.com/openai/v1',
+      name: 'groq',
+      apiKey: apiKey || process.env.GROQ_API_KEY,
+    })
+  }
+
   async generate(params: GenerateParams): Promise<GenerateResult> {
-    const apiKey = params.apiKey || process.env.GROQ_API_KEY
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: params.model,
-        messages: params.messages,
-        temperature: params.temperature,
-        max_tokens: params.maxTokens,
-      }),
+    const result = await generateText({
+      model: this.getClient(params.apiKey).chatModel(params.model) as unknown as LanguageModelV1,
+      messages: params.messages,
+      temperature: params.temperature,
+      maxTokens: params.maxTokens,
     })
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => null)
-      throw new Error(err?.error?.message || `Groq API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    const choice = data.choices[0]
-
     return {
-      content: choice.message.content,
+      content: result.text,
       usage: {
-        promptTokens: data.usage.prompt_tokens,
-        completionTokens: data.usage.completion_tokens,
-        totalTokens: data.usage.total_tokens,
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        totalTokens: result.usage.totalTokens,
       },
     }
   }
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
-    const apiKey = params.apiKey || process.env.GROQ_API_KEY
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: params.model,
-        messages: params.messages,
-        temperature: params.temperature,
-        max_tokens: params.maxTokens,
-        stream: true,
-      }),
+    const result = streamText({
+      model: this.getClient(params.apiKey).chatModel(params.model) as unknown as LanguageModelV1,
+      messages: params.messages,
+      temperature: params.temperature,
+      maxTokens: params.maxTokens,
     })
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => null)
-      throw new Error(err?.error?.message || `Groq API error: ${response.status}`)
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) throw new Error('No response body')
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
-          if (data === '[DONE]') {
-            yield { type: 'done' }
-            return
-          }
-          try {
-            const parsed = JSON.parse(data)
-            const content = parsed.choices[0]?.delta?.content
-            if (content) {
-              yield { type: 'text', content }
-            }
-          } catch {}
-        }
-      }
+    for await (const chunk of result.textStream) {
+      yield { type: 'text', content: chunk }
     }
 
     yield { type: 'done' }
   }
 
-  async embed(text: string): Promise<number[]> {
+  async embed(_text: string): Promise<number[]> {
     throw new Error('Groq does not support embeddings')
   }
 
-  async moderate(text: string): Promise<ModerationResult> {
-    return {
-      flagged: false,
-      categories: {},
-    }
+  async moderate(_text: string): Promise<ModerationResult> {
+    return { flagged: false, categories: {} }
   }
 
   async listModels(): Promise<Model[]> {

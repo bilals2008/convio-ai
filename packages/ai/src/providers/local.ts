@@ -1,106 +1,56 @@
+import { generateText, streamText } from 'ai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import type { LanguageModelV1 } from '@ai-sdk/provider'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 
 const LOCAL_BASE = process.env.LOCAL_API_URL || 'http://localhost:20128/v1'
 
 export class LocalProvider implements AIProvider {
   id = 'local'
-  name = 'Local API'
+  name = 'OmniRoute'
 
-  private getHeaders() {
-    return {
-      'Content-Type': 'application/json',
-    }
+  private getClient() {
+    return createOpenAICompatible({
+      baseURL: LOCAL_BASE,
+      name: 'omniroute',
+    })
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
-    const response = await fetch(`${LOCAL_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify({
-        model: params.model,
-        messages: params.messages,
-        temperature: params.temperature,
-        max_tokens: params.maxTokens,
-      }),
+    const result = await generateText({
+      model: this.getClient().chatModel(params.model) as unknown as LanguageModelV1,
+      messages: params.messages,
+      temperature: params.temperature,
+      maxTokens: params.maxTokens,
     })
 
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Local API error (${response.status}): ${error}`)
-    }
-
-    const data = await response.json() as {
-      choices: Array<{ message: { content: string } }>
-      usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
-    }
-
     return {
-      content: data.choices[0]?.message?.content ?? '',
+      content: result.text,
       usage: {
-        promptTokens: data.usage?.prompt_tokens ?? 0,
-        completionTokens: data.usage?.completion_tokens ?? 0,
-        totalTokens: data.usage?.total_tokens ?? 0,
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        totalTokens: result.usage.totalTokens,
       },
     }
   }
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
-    const response = await fetch(`${LOCAL_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify({
-        model: params.model,
-        messages: params.messages,
-        temperature: params.temperature,
-        max_tokens: params.maxTokens,
-        stream: true,
-      }),
+    const result = streamText({
+      model: this.getClient().chatModel(params.model) as unknown as LanguageModelV1,
+      messages: params.messages,
+      temperature: params.temperature,
+      maxTokens: params.maxTokens,
     })
 
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Local API error (${response.status}): ${error}`)
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) throw new Error('No response body')
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
-          if (data === '[DONE]') {
-            yield { type: 'done' }
-            return
-          }
-          try {
-            const parsed = JSON.parse(data) as {
-              choices: Array<{ delta: { content?: string } }>
-            }
-            const content = parsed.choices[0]?.delta?.content
-            if (content) {
-              yield { type: 'text', content }
-            }
-          } catch { /* skip parse errors */ }
-        }
-      }
+    for await (const chunk of result.textStream) {
+      yield { type: 'text', content: chunk }
     }
 
     yield { type: 'done' }
   }
 
   async embed(_text: string): Promise<number[]> {
-    throw new Error('Local API does not support embeddings')
+    throw new Error('OmniRoute does not support embeddings')
   }
 
   async moderate(_text: string): Promise<ModerationResult> {
@@ -108,16 +58,10 @@ export class LocalProvider implements AIProvider {
   }
 
   async listModels(): Promise<Model[]> {
-    const response = await fetch(`${LOCAL_BASE}/models`, {
-      headers: this.getHeaders(),
-    })
-
+    const response = await fetch(`${LOCAL_BASE}/models`)
     if (!response.ok) return []
 
-    const data = await response.json() as {
-      data: Array<{ id: string }>
-    }
-
+    const data = await response.json() as { data: Array<{ id: string }> }
     return (data.data || []).map((m) => ({
       id: m.id,
       name: m.id,
