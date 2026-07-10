@@ -39,6 +39,7 @@ const testStreamSchema = z.object({
   message: z.string().min(1).max(12000),
   temperature: z.number().min(0).max(2).default(0.7),
   maxTokens: z.number().min(1).max(512000).default(2048),
+  reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
   providerKeyId: z.string().uuid().optional(),
   history: z.array(z.object({
     role: z.enum(['user', 'assistant']),
@@ -65,7 +66,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, orgId)
 
     const body = request.body as Record<string, unknown>
-    const { knowledgeBaseId, ...rest } = body
+    const { knowledgeBaseId, reasoningEffort, ...rest } = body
 
     const agent = await prisma.agent.create({
       data: {
@@ -148,7 +149,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, existing.organizationId)
 
     const body = request.body as Record<string, unknown>
-    const { knowledgeBaseId, ...rest } = body
+    const { knowledgeBaseId, reasoningEffort, ...rest } = body
 
     const agent = await prisma.agent.update({
       where: { id },
@@ -283,6 +284,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       ],
       temperature: agent.temperature ?? 0.7,
       maxTokens: agent.maxTokens ?? 2048,
+      reasoningEffort: (agent as any).reasoningEffort || undefined,
       apiKey,
     })
 
@@ -307,6 +309,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       message,
       temperature,
       maxTokens,
+      reasoningEffort,
       providerKeyId,
       history,
     } = request.body as z.infer<typeof testStreamSchema>
@@ -368,15 +371,26 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         messages,
         temperature,
         maxTokens,
+        reasoningEffort: reasoningEffort || undefined,
         apiKey,
       })
 
+      let finalUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined
+
       for await (const chunk of stream) {
         if (clientDisconnected) break
-        if (chunk.content) {
-          reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+        if (chunk.type === 'reasoning') {
+          reply.raw.write(`data: ${JSON.stringify({ type: 'reasoning', content: chunk.content })}\n\n`)
+        } else if (chunk.type === 'text' && chunk.content) {
+          reply.raw.write(`data: ${JSON.stringify({ type: 'text', content: chunk.content })}\n\n`)
+        } else if (chunk.type === 'done') {
+          finalUsage = chunk.usage
+          break
         }
-        if (chunk.type === 'done') break
+      }
+
+      if (finalUsage) {
+        reply.raw.write(`data: ${JSON.stringify({ type: 'usage', usage: finalUsage })}\n\n`)
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Stream generation failed'

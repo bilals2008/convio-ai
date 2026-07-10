@@ -63,11 +63,25 @@ export class OpenCodeProvider implements AIProvider {
       maxOutputTokens: params.maxTokens,
     })
 
-    for await (const chunk of result.textStream) {
-      yield { type: 'text', content: chunk }
+    for await (const chunk of result.fullStream) {
+      if (chunk.type === 'text-delta' && chunk.text) {
+        yield { type: 'text', content: chunk.text }
+      }
+      if (chunk.type === 'reasoning-delta' && chunk.text) {
+        yield { type: 'reasoning', content: chunk.text }
+      }
+      if (chunk.type === 'finish') {
+        const u = chunk.totalUsage
+        yield {
+          type: 'done',
+          usage: u ? {
+            promptTokens: u.inputTokens ?? 0,
+            completionTokens: u.outputTokens ?? 0,
+            totalTokens: u.totalTokens ?? 0,
+          } : undefined,
+        }
+      }
     }
-
-    yield { type: 'done' }
   }
 
   async embed(_text: string): Promise<number[]> {

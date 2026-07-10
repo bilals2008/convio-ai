@@ -79,6 +79,7 @@ export class LocalProvider implements AIProvider {
 
     const decoder = new TextDecoder()
     let buffer = ''
+    let finalUsage: StreamChunk['usage']
 
     while (true) {
       const { done, value } = await reader.read()
@@ -93,18 +94,25 @@ export class LocalProvider implements AIProvider {
         if (!trimmed.startsWith('data: ')) continue
 
         const payload = trimmed.slice(6)
-        if (payload === '[DONE]') break
+        if (payload === '[DONE]') continue
 
         try {
           const parsed = JSON.parse(payload)
           const delta = parsed.choices?.[0]?.delta
           if (delta?.content) yield { type: 'text', content: delta.content }
-          if (delta?.reasoning_content) yield { type: 'text', content: delta.reasoning_content }
+          if (delta?.reasoning_content) yield { type: 'reasoning', content: delta.reasoning_content }
+          if (parsed.usage) {
+            finalUsage = {
+              promptTokens: parsed.usage.prompt_tokens ?? 0,
+              completionTokens: parsed.usage.completion_tokens ?? 0,
+              totalTokens: parsed.usage.total_tokens ?? 0,
+            }
+          }
         } catch { /* skip malformed SSE */ }
       }
     }
 
-    yield { type: 'done' }
+    yield { type: 'done', usage: finalUsage }
   }
 
   async embed(_text: string): Promise<number[]> {

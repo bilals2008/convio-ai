@@ -39,9 +39,10 @@ export interface GenerateResult {
 }
 
 export interface StreamChunk {
-  type: 'text' | 'tool_call' | 'done'
+  type: 'text' | 'reasoning' | 'tool_call' | 'done'
   content?: string
   toolCall?: ToolCall
+  usage?: Usage
 }
 
 export interface ToolCall {

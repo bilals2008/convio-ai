@@ -70,6 +70,7 @@ export const agentSchema = z.object({
   systemPrompt: z.string().min(1).max(10000),
   temperature: z.number().min(0).max(2).default(0.7),
   maxTokens: z.number().positive().optional(),
+  reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional().default('medium'),
   providerKeyId: z.string().uuid().optional(),
   avatar: z.string().url().optional(),
   widgetColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#fb923c'),

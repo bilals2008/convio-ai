@@ -53,6 +53,7 @@ export const agents = {
     message: string
     temperature: number
     maxTokens: number
+    reasoningEffort?: string
     providerKeyId?: string
     history?: Array<{ role: 'user' | 'assistant'; content: string }>
     signal?: AbortSignal
