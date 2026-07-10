@@ -252,11 +252,15 @@ export default function AgentDetailPage() {
         </TabsContent>
 
         <TabsContent value="analytics">
-          <AgentAnalytics />
+          <AgentAnalytics agentId={id!} />
         </TabsContent>
 
         <TabsContent value="settings">
           <AgentSettings
+            agentModel={agent.model}
+            hasKnowledgeBase={!!agent.knowledgeBaseId}
+            hasProviderKey={!!agent.providerKeyId}
+            createdAt={agent.createdAt}
             deploymentOptions={deploymentOptions}
             onDeploymentToggle={handleDeploymentToggle}
             disabled={updateMutation.isPending}
