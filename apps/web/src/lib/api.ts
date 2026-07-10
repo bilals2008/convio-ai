@@ -87,6 +87,7 @@ export const conversations = {
     api.post(`/agents/${agentId}/conversations`, data || {}),
   listByAgent: (agentId: string, params?: { status?: string; cursor?: string; limit?: number }) =>
     api.get(`/agents/${agentId}/conversations`, { params }),
+  delete: (id: string) => api.delete(`/conversations/${id}`),
 }
 
 export const messages = {

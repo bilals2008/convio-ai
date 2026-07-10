@@ -261,6 +261,7 @@ export default function AgentDetailPage() {
 
         <TabsContent value="test-chat">
           <AgentTestChat
+            agentId={id!}
             agentConfig={{
               name: values.name,
               model: values.model,

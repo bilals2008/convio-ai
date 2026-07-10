@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search,
   Plus,
@@ -29,7 +30,7 @@ import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { cn } from '@/lib/utils'
 import { TypingIndicator } from '@/components/shared/typing-indicator'
 import { AiResponse } from '@/components/shared/ai-response'
-import { agents as agentsApi } from '@/lib/api'
+import { agents as agentsApi, conversations as conversationsApi, messages as messagesApi } from '@/lib/api'
 import { getReasoningEfforts } from '../reasoning'
 
 interface AgentTestChatProps {
@@ -43,6 +44,7 @@ interface AgentTestChatProps {
     providerKeyId?: string
     knowledgeBaseId?: string | null
   }
+  agentId: string
 }
 
 interface MessageItem {
@@ -62,14 +64,35 @@ interface Conversation {
   messages: MessageItem[]
 }
 
-function newConversation(): Conversation {
+function mapDbConv(conv: Record<string, unknown>): Conversation {
+  const lastMsg = ((conv.messages as Record<string, unknown>[]) || [])[0]
   return {
-    id: crypto.randomUUID(),
-    title: 'New Conversation',
-    preview: 'Start a new chat...',
-    timestamp: 'Just now',
+    id: conv.id as string,
+    title: 'Conversation',
+    preview: lastMsg ? String(lastMsg.content).slice(0, 100) : 'Start a new chat...',
+    timestamp: formatTimestamp((conv.updatedAt || conv.createdAt) as string),
     messages: [],
   }
+}
+
+function mapDbMsg(msg: Record<string, unknown>): MessageItem {
+  return {
+    id: msg.id as string,
+    role: msg.role as 'user' | 'assistant',
+    content: msg.content as string,
+    createdAt: msg.createdAt as string,
+  }
+}
+
+function formatTimestamp(date: string): string {
+  const d = new Date(date)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days}d ago`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function ConversationItem({
@@ -121,9 +144,9 @@ function formatModelLabel(id: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
-  const [conversations, setConversations] = useState<Conversation[]>([newConversation()])
-  const [activeConvId, setActiveConvId] = useState(conversations[0]?.id || '')
+export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [activeConvId, setActiveConvId] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
@@ -138,6 +161,40 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
   const configRef = useRef(agentConfig)
   const streamFrameRef = useRef<number | null>(null)
   const streamBufferRef = useRef('')
+  const queryClient = useQueryClient()
+
+  const { data: convsData, isLoading: convsLoading } = useQuery({
+    queryKey: ['conversations', agentId],
+    queryFn: async () => {
+      const res = await conversationsApi.listByAgent(agentId!, { limit: 50 })
+      return (res.data.data || []) as Record<string, unknown>[]
+    },
+    enabled: !!agentId,
+  })
+
+  const { data: convDetail } = useQuery({
+    queryKey: ['conversation', activeConvId],
+    queryFn: async () => {
+      const res = await conversationsApi.get(activeConvId!)
+      return res.data.data as Record<string, unknown>
+    },
+    enabled: !!activeConvId,
+  })
+
+  const createConv = useMutation({
+    mutationFn: () => conversationsApi.create(agentId!, { channel: 'api' }),
+    onSuccess: (res) => {
+      const newConv = res.data.data as Record<string, unknown>
+      const mapped = mapDbConv(newConv)
+      setConversations((prev) => [mapped, ...prev])
+      setActiveConvId(mapped.id)
+      queryClient.invalidateQueries({ queryKey: ['conversations', agentId] })
+    },
+  })
+
+  const deleteConv = useMutation({
+    mutationFn: (id: string) => conversationsApi.delete(id),
+  })
 
   useEffect(() => {
     configRef.current = agentConfig
@@ -163,19 +220,39 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth' })
   }, [messages, streaming, streamingContent])
 
-  useEffect(() => () => {
-    if (streamFrameRef.current) cancelAnimationFrame(streamFrameRef.current)
-  }, [])
-
   useEffect(() => {
     if (!streaming) {
       textareaRef.current?.focus()
     }
   }, [streaming])
 
+  const initRef = useRef<string | null>(null)
   useEffect(() => {
+    if (!convsData) return
+    if (initRef.current === agentId) return
+    initRef.current = agentId
+
+    if (convsData.length === 0) {
+      createConv.mutate()
+    } else {
+      const mapped = convsData.map(mapDbConv)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setConversations(mapped)
+      setActiveConvId(mapped[0].id)
+    }
+
     textareaRef.current?.focus()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convsData])
+
+  useEffect(() => {
+    if (!convDetail) return
+    const msgs = ((convDetail as Record<string, unknown>)?.messages || []) as Record<string, unknown>[]
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setConversations((prev) =>
+      prev.map((c) => (c.id === activeConvId ? { ...c, messages: msgs.map(mapDbMsg) } : c))
+    )
+  }, [convDetail, activeConvId])
 
   const updateActiveConversation = useCallback(
     (updater: (conv: Conversation) => Conversation) => {
@@ -222,6 +299,13 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
       preview: trimmed,
       timestamp: 'Just now',
     }))
+
+    const convId = activeConvId
+    if (convId) {
+      try {
+        await messagesApi.send(convId, trimmed, 'user')
+      } catch { /* non-blocking */ }
+    }
 
     const history = messages.map((m) => ({
       role: m.role,
@@ -293,7 +377,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
         }
       }
 
-      if (assistantContent || assistantReasoning) {
+      if (assistantContent) {
         const assistantMessage: MessageItem = {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -306,6 +390,12 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
           ...conv,
           messages: [...conv.messages, assistantMessage],
         }))
+
+        if (convId) {
+          try {
+            await messagesApi.send(convId, assistantContent, 'assistant')
+          } catch { /* non-blocking */ }
+        }
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
@@ -316,7 +406,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
       setStreamingContent('')
       abortRef.current = null
     }
-  }, [inputValue, streaming, messages, queueStreamingContent, updateActiveConversation, reasoningOverride])
+  }, [inputValue, streaming, messages, queueStreamingContent, updateActiveConversation, reasoningOverride, activeConvId])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -326,22 +416,23 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
   }
 
   const handleNewConversation = useCallback(() => {
-    const conv = newConversation()
-    setConversations((prev) => [conv, ...prev])
-    setActiveConvId(conv.id)
+    createConv.mutate()
     setError('')
-  }, [])
+  }, [createConv])
 
   const handleClearConversations = useCallback(() => {
     if (abortRef.current) abortRef.current.abort()
-    const conv = newConversation()
-    setConversations([conv])
-    setActiveConvId(conv.id)
     setStreaming(false)
     setStreamingContent('')
     setStreamingReasoning('')
     setError('')
-  }, [])
+
+    for (const conv of conversations) {
+      deleteConv.mutate(conv.id)
+    }
+
+    createConv.mutate()
+  }, [conversations, createConv, deleteConv])
 
   const handleResetChat = useCallback(() => {
     if (abortRef.current) abortRef.current.abort()
@@ -357,7 +448,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
     setError('')
   }, [updateActiveConversation])
 
-  const canSend = !!(agentConfig.systemPrompt && agentConfig.model)
+  const canSend = !!(agentConfig.systemPrompt && agentConfig.model && !convsLoading && activeConvId)
 
   const reasoningOptions = useMemo(
     () => getReasoningEfforts({ id: agentConfig.model || '' }),
@@ -401,7 +492,11 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
 
           <div className="flex-1 min-h-0 overflow-y-auto px-2">
             <div className="space-y-0.5 py-1">
-              {filteredConversations.length === 0 ? (
+              {convsLoading ? (
+                <div className="flex items-center justify-center py-8 text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                </div>
+              ) : filteredConversations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
                   <MessageSquare className="size-7 mb-2 opacity-30" />
                   <p className="text-xs">No conversations</p>
