@@ -1,15 +1,15 @@
-import { Upload, User } from 'lucide-react'
+import { useState } from 'react'
+import { User, Image } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 
 interface AgentBasicInfoProps {
   name: string
   description: string
-  avatar?: string
+  avatarUrl?: string
   onNameChange: (value: string) => void
   onDescriptionChange: (value: string) => void
-  onAvatarChange?: (file: File) => void
+  onAvatarUrlChange?: (value: string) => void
   errors?: {
     name?: string
     description?: string
@@ -20,12 +20,15 @@ interface AgentBasicInfoProps {
 export function AgentBasicInfo({
   name,
   description,
+  avatarUrl,
   onNameChange,
   onDescriptionChange,
-  onAvatarChange,
+  onAvatarUrlChange,
   errors,
   disabled,
 }: AgentBasicInfoProps) {
+  const [previewError, setPreviewError] = useState(false)
+
   return (
     <section className="rounded-xl border bg-card p-6">
       <div className="mb-5">
@@ -39,14 +42,34 @@ export function AgentBasicInfo({
 
       <div className="space-y-5">
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Agent Avatar</Label>
-          <div className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer bg-muted/20">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-xl bg-muted">
-              <Upload className="size-6 text-muted-foreground" />
+          <Label className="text-xs font-medium">Avatar URL</Label>
+          <div className="flex items-center gap-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-xl bg-muted overflow-hidden">
+              {avatarUrl && !previewError ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar preview"
+                  className="size-full object-cover"
+                  onError={() => setPreviewError(true)}
+                />
+              ) : (
+                <Image className="size-6 text-muted-foreground" />
+              )}
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Upload Avatar</p>
-              <p className="text-xs text-muted-foreground">PNG, JPG or SVG (max. 2MB)</p>
+            <div className="flex-1 space-y-1.5">
+              <Input
+                placeholder="https://example.com/avatar.png"
+                value={avatarUrl || ''}
+                onChange={(e) => {
+                  setPreviewError(false)
+                  onAvatarUrlChange?.(e.target.value)
+                }}
+                disabled={disabled}
+                className="h-9 font-mono text-xs"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Paste a URL to an image (PNG, JPG, or SVG)
+              </p>
             </div>
           </div>
         </div>
