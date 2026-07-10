@@ -17,6 +17,8 @@ export interface GenerateParams {
   temperature?: number
   maxTokens?: number
   apiKey?: string
+  reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | 'xhigh'
+  thinking?: boolean | { budget_tokens?: number }
 }
 
 export interface Message {

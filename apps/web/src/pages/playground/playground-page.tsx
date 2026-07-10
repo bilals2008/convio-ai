@@ -305,7 +305,7 @@ export default function PlaygroundPage() {
 
   const handleCopyEnv = useCallback(() => {
     const envVar = ENV_KEY_MAP[provider]
-    navigator.clipboard.writeText(`${envVar}=${apiKey || 'http://localhost:20128'}`)
+    navigator.clipboard.writeText(`${envVar}=${apiKey || 'http://localhost:20128/v1'}`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }, [provider, apiKey])

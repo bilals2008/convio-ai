@@ -24,9 +24,10 @@ export default async function aiRoutes(fastify: FastifyInstance) {
   fastify.post('/chat/stream', {
     preHandler: [fastify.authenticate],
   }, async (request, reply) => {
-    const { agentId, messages } = request.body as {
+    const { agentId, messages, reasoningEffort } = request.body as {
       agentId: string
       messages: { role: 'user' | 'assistant' | 'system'; content: string }[]
+      reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | 'xhigh'
     }
 
     const agent = await prisma.agent.findUnique({
@@ -82,6 +83,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
         temperature: agent.temperature ?? 0.7,
         maxTokens: agent.maxTokens ?? 2048,
         apiKey,
+        reasoningEffort: reasoningEffort || undefined,
       })
 
       for await (const chunk of stream) {
