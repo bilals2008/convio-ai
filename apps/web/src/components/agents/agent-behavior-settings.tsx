@@ -1,8 +1,11 @@
-import { Settings } from 'lucide-react'
+import { useState } from 'react'
+import { Settings, Sparkles } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Slider } from '@/components/ui/slider'
+import { Button } from '@/components/ui/button'
 import { ModelPicker } from './model-picker-dialog'
+import { PromptTemplatesModal } from './prompt-templates-modal'
 import {
   Select,
   SelectContent,
@@ -14,6 +17,7 @@ import {
 interface ModelOption {
   id: string
   name: string
+  provider?: string
 }
 
 interface AgentBehaviorSettingsProps {
@@ -46,6 +50,7 @@ export function AgentBehaviorSettings({
   disabled,
 }: AgentBehaviorSettingsProps) {
   const safeTemperature = temperature ?? 0.7
+  const [showTemplates, setShowTemplates] = useState(false)
 
   return (
     <div className="rounded-xl border bg-card p-6">
@@ -128,18 +133,46 @@ export function AgentBehaviorSettings({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="system-prompt" className="text-xs font-medium">System Prompt (Optional)</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="system-prompt" className="text-xs font-medium">System Prompt (Optional)</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowTemplates(true)}
+            className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <Sparkles className="size-3" />
+            Templates
+          </Button>
+        </div>
         <Textarea
           id="system-prompt"
           placeholder="Enter instructions for your agent behavior..."
           value={systemPrompt}
           onChange={(e) => onSystemPromptChange(e.target.value)}
           disabled={disabled}
-          maxLength={1000}
+          maxLength={2000}
           rows={5}
         />
-        <p className="text-xs text-muted-foreground text-right">{systemPrompt.length}/1000</p>
+        <div className="flex justify-between">
+          {systemPrompt.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {systemPrompt.length} characters
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground ml-auto">{systemPrompt.length}/2000</span>
+        </div>
       </div>
+
+      <PromptTemplatesModal
+        open={showTemplates}
+        onOpenChange={setShowTemplates}
+        onSelect={(prompt) => {
+          onSystemPromptChange(prompt)
+          setShowTemplates(false)
+        }}
+      />
     </div>
   )
 }

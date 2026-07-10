@@ -62,7 +62,12 @@ export function AgentModelPicker({ value, onChange, disabled }: AgentModelPicker
             <SelectLabel className="capitalize">{provider}</SelectLabel>
             {providerModels.map((model) => (
               <SelectItem key={model.id} value={model.id}>
-                {model.name}
+                <span className="flex items-center justify-between w-full gap-3">
+                  <span className="truncate">{model.name}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                    {model.id}
+                  </span>
+                </span>
               </SelectItem>
             ))}
             <SelectSeparator />
