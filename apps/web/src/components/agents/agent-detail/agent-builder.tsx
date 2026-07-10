@@ -2,6 +2,12 @@ import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
 import { AgentCapabilities, type Capability } from '@/components/agents/agent-capabilities'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
 
+interface ModelOption {
+  id: string
+  name: string
+  provider?: string
+}
+
 interface AgentBuilderProps {
   name: string
   description: string
@@ -11,6 +17,7 @@ interface AgentBuilderProps {
   toneOfVoice: string
   language: string
   capabilities: Capability[]
+  models?: ModelOption[]
   onNameChange: (value: string) => void
   onDescriptionChange: (value: string) => void
   onModelChange: (value: string) => void
@@ -31,6 +38,7 @@ export function AgentBuilder({
   toneOfVoice,
   language,
   capabilities,
+  models,
   onNameChange,
   onDescriptionChange,
   onModelChange,
@@ -58,6 +66,7 @@ export function AgentBuilder({
           model={model}
           temperature={temperature}
           systemPrompt={systemPrompt}
+          models={models}
           onToneChange={onToneChange}
           onLanguageChange={onLanguageChange}
           onModelChange={onModelChange}

@@ -22,7 +22,7 @@ import {
   AgentAnalytics,
   AgentSettings,
 } from '@/components/agents/agent-detail'
-import { agents as agentsApi } from '@/lib/api'
+import { agents as agentsApi, chat as chatApi } from '@/lib/api'
 
 interface Agent {
   id: string
@@ -56,6 +56,14 @@ export default function AgentDetailPage() {
   const [language, setLanguage] = useState('english')
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [selectedKnowledgeSources, setSelectedKnowledgeSources] = useState<string[]>([])
+
+  const { data: models = [] } = useQuery({
+    queryKey: ['models'],
+    queryFn: async () => {
+      const res = await chatApi.models()
+      return (res.data.data || []) as Array<{ id: string; name: string; provider?: string }>
+    },
+  })
   const [deploymentOptions, setDeploymentOptions] = useState([
     { id: 'web-chat-widget', enabled: true },
     { id: 'shareable-link', enabled: false },
@@ -215,6 +223,7 @@ export default function AgentDetailPage() {
             toneOfVoice={toneOfVoice}
             language={language}
             capabilities={capabilities}
+            models={models}
             onNameChange={setName}
             onDescriptionChange={setDescription}
             onModelChange={setModel}

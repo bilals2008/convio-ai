@@ -47,70 +47,15 @@ interface Conversation {
   messages: MessageItem[]
 }
 
-const initialConversations: Conversation[] = [
-  {
-    id: '1',
-    title: 'Pricing Plans',
-    preview: 'Tell me about your pricing...',
-    timestamp: '2 min ago',
-    messages: [
-      {
-        id: 'm1',
-        role: 'user',
-        content: 'Tell me about your pricing plans.',
-        createdAt: new Date(Date.now() - 120000).toISOString(),
-      },
-      {
-        id: 'm2',
-        role: 'assistant',
-        content:
-          'We offer three simple pricing plans to fit your needs:\n\n• Free – $0/month\n• Pro – $29/month\n• Business – $79/month\n\nYou can view full details on our pricing page.',
-        createdAt: new Date(Date.now() - 115000).toISOString(),
-      },
-      {
-        id: 'm3',
-        role: 'user',
-        content: 'Do you offer a free trial?',
-        createdAt: new Date(Date.now() - 100000).toISOString(),
-      },
-      {
-        id: 'm4',
-        role: 'assistant',
-        content:
-          'Yes! All paid plans include a 14-day free trial. No credit card required.',
-        createdAt: new Date(Date.now() - 95000).toISOString(),
-      },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Integrations',
-    preview: 'What platforms do you support?',
-    timestamp: '1 hour ago',
+function newConversation(): Conversation {
+  return {
+    id: crypto.randomUUID(),
+    title: 'New Conversation',
+    preview: 'Start a new chat...',
+    timestamp: 'Just now',
     messages: [],
-  },
-  {
-    id: '3',
-    title: 'Refund Policy',
-    preview: 'How does the refund process work?',
-    timestamp: '3 hours ago',
-    messages: [],
-  },
-  {
-    id: '4',
-    title: 'Feature Request',
-    preview: 'Can you add dark mode support?',
-    timestamp: '1 day ago',
-    messages: [],
-  },
-  {
-    id: '5',
-    title: 'API Access',
-    preview: 'How can I access the API?',
-    timestamp: '2 days ago',
-    messages: [],
-  },
-]
+  }
+}
 
 function ConversationItem({
   conversation,
@@ -171,22 +116,17 @@ function MessageActions({ content }: { content: string }) {
         </TooltipTrigger>
         <TooltipContent side="top">Copy</TooltipContent>
       </Tooltip>
-      <Tooltip>
-        <TooltipTrigger className="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-          <RotateCcw className="size-3" />
-        </TooltipTrigger>
-        <TooltipContent side="top">Regenerate</TooltipContent>
-      </Tooltip>
     </div>
   )
 }
 
 export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
-  const [conversations, setConversations] = useState<Conversation[]>(initialConversations)
-  const [activeConvId, setActiveConvId] = useState('1')
+  const [conversations, setConversations] = useState<Conversation[]>([newConversation()])
+  const [activeConvId, setActiveConvId] = useState(conversations[0]?.id || '')
   const [searchQuery, setSearchQuery] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [error, setError] = useState('')
   const [inputValue, setInputValue] = useState('')
   const abortRef = useRef<AbortController | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -238,6 +178,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
     const cfg = configRef.current
     if (!cfg.systemPrompt || !cfg.model) return
 
+    setError('')
     setInputValue('')
     setStreaming(true)
     setStreamingContent('')
@@ -329,7 +270,8 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
-      console.error('Agent chat error:', err)
+      const msg = err instanceof Error ? err.message : 'An unexpected error occurred'
+      setError(msg)
     } finally {
       setStreaming(false)
       setStreamingContent('')
@@ -345,30 +287,20 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
   }
 
   const handleNewConversation = useCallback(() => {
-    const newConv: Conversation = {
-      id: crypto.randomUUID(),
-      title: 'New Conversation',
-      preview: 'Start a new chat...',
-      timestamp: 'Just now',
-      messages: [],
-    }
-    setConversations((prev) => [newConv, ...prev])
-    setActiveConvId(newConv.id)
+    const conv = newConversation()
+    setConversations((prev) => [conv, ...prev])
+    setActiveConvId(conv.id)
+    setError('')
   }, [])
 
   const handleClearConversations = useCallback(() => {
     if (abortRef.current) abortRef.current.abort()
-    const newConv: Conversation = {
-      id: crypto.randomUUID(),
-      title: 'New Conversation',
-      preview: 'Start a new chat...',
-      timestamp: 'Just now',
-      messages: [],
-    }
-    setConversations([newConv])
-    setActiveConvId(newConv.id)
+    const conv = newConversation()
+    setConversations([conv])
+    setActiveConvId(conv.id)
     setStreaming(false)
     setStreamingContent('')
+    setError('')
   }, [])
 
   const handleResetChat = useCallback(() => {
@@ -381,6 +313,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
     }))
     setStreaming(false)
     setStreamingContent('')
+    setError('')
   }, [updateActiveConversation])
 
   const canSend = !!(agentConfig.systemPrompt && agentConfig.model)
@@ -551,6 +484,11 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                   </MessageContent>
                 </Message>
               )}
+              {error && (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
+                  {error}
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
@@ -598,7 +536,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                 </span>
               </span>
               <span className="text-[11px] text-muted-foreground">
-                Text that uses live agent settings and knowledge
+                Uses live agent settings and knowledge
               </span>
             </div>
           </div>
