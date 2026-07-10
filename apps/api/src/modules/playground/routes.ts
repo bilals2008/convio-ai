@@ -14,6 +14,7 @@ const PROVIDER_BASE_URLS: Record<string, string> = {
   groq: 'https://api.groq.com/openai/v1',
   kie: 'https://api.kie.ai/v1',
   openrouter: 'https://openrouter.ai/api/v1',
+  opencode: 'https://opencode.ai/zen/v1',
   mistral: 'https://api.mistral.ai/v1',
   together: 'https://api.together.xyz/v1',
   deepseek: 'https://api.deepseek.com/v1',
@@ -29,6 +30,7 @@ const FALLBACK_MODELS: Record<string, string[]> = {
   groq: ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
   kie: ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro'],
   openrouter: ['openai/gpt-4o', 'anthropic/claude-3-5-sonnet', 'google/gemini-2.0-flash', 'meta-llama/llama-3.3-70b-instruct'],
+  opencode: ['deepseek-v4-flash-free', 'mimo-v2.5-free', 'qwen3.6-plus-free', 'minimax-m3-free', 'nemotron-3-ultra-free', 'north-mini-code-free', 'big-pickle'],
   mistral: ['mistral-large-latest', 'mistral-small-latest', 'pixtral-large-latest'],
   together: ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct-Turbo'],
   deepseek: ['deepseek-chat', 'deepseek-reasoner'],
@@ -137,6 +139,18 @@ async function fetchDeepSeekModels(apiKey: string): Promise<string[]> {
 
 async function fetchPerplexityModels(_apiKey: string): Promise<string[]> {
   return FALLBACK_MODELS.perplexity
+}
+
+async function fetchOpenCodeModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(`${PROVIDER_BASE_URLS.opencode}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+  if (!res.ok) return FALLBACK_MODELS.opencode
+  const data = await res.json()
+  return (data.data || [])
+    .map((m: any) => m.id)
+    .filter((id: string) => id.includes('free') || id === 'big-pickle')
+    .sort()
 }
 
 async function fetchLocalModels(): Promise<string[]> {
@@ -362,6 +376,9 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
         case 'perplexity':
           models = await fetchPerplexityModels(apiKey)
           break
+        case 'opencode':
+          models = await fetchOpenCodeModels(apiKey)
+          break
         case 'local':
           models = await fetchLocalModels()
           break
@@ -423,6 +440,9 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
           break
         case 'perplexity':
           result = await testOpenAICompat(PROVIDER_BASE_URLS.perplexity, apiKey, testModel, message)
+          break
+        case 'opencode':
+          result = await testOpenAICompat(PROVIDER_BASE_URLS.opencode, apiKey, testModel, message)
           break
         case 'local':
           result = await testOpenAICompat(PROVIDER_BASE_URLS.local, apiKey, testModel, message)
