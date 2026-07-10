@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -57,6 +57,15 @@ export default function AgentDetailPage() {
   const [toneOfVoice, setToneOfVoice] = useState('friendly')
   const [language, setLanguage] = useState('english')
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
+
+  const tabsRootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const root = tabsRootRef.current
+    if (!root) return
+    const active = root.querySelector('[data-active]')
+    active?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }, [activeTab])
 
   const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
   const [deploymentOptions, setDeploymentOptions] = useState([
@@ -147,7 +156,7 @@ export default function AgentDetailPage() {
   }
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
+    <Tabs ref={tabsRootRef} value={activeTab} onValueChange={setActiveTab}>
       <AgentDetailLayout
         agentName={agent.name}
         agentAvatar={agent.avatar}
@@ -161,7 +170,7 @@ export default function AgentDetailPage() {
           }
         }}
         tabs={
-          <TabsList variant="line">
+          <TabsList variant="line" className="!h-11 flex-nowrap whitespace-nowrap md:!h-10 w-max">
             <TabsTrigger value="overview">
               <LayoutDashboard className="size-4" />
               Overview

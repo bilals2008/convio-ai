@@ -1,15 +1,19 @@
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
 import { cva, type VariantProps } from "class-variance-authority"
+import { forwardRef } from "react"
 
 import { cn } from "@/lib/utils"
 
-function Tabs({
-  className,
-  orientation = "horizontal",
-  ...props
-}: TabsPrimitive.Root.Props) {
+const Tabs = forwardRef<
+  HTMLDivElement,
+  TabsPrimitive.Root.Props
+>(function Tabs(
+  { className, orientation = "horizontal", ...props },
+  ref
+) {
   return (
     <TabsPrimitive.Root
+      ref={ref}
       data-slot="tabs"
       data-orientation={orientation}
       className={cn(
@@ -19,7 +23,7 @@ function Tabs({
       {...props}
     />
   )
-}
+})
 
 const tabsListVariants = cva(
   "group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-1 text-muted-foreground group-data-horizontal/tabs:h-10 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none data-[variant=line]:bg-transparent",

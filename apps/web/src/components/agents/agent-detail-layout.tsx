@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Loader2,
@@ -25,6 +25,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+
+function ScrollableTabs({ children }: { children: ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [showStart, setShowStart] = useState(false)
+  const [showEnd, setShowEnd] = useState(false)
+
+  const updateFade = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setShowStart(el.scrollLeft > 1)
+    setShowEnd(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+  }, [])
+
+  useEffect(() => {
+    updateFade()
+    const el = scrollRef.current
+    if (!el) return
+    el.addEventListener('scroll', updateFade, { passive: true })
+    window.addEventListener('resize', updateFade)
+    return () => {
+      el.removeEventListener('scroll', updateFade)
+      window.removeEventListener('resize', updateFade)
+    }
+  }, [updateFade])
+
+  return (
+    <div className="relative">
+      <div
+        ref={scrollRef}
+        className="flex overflow-x-auto scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="px-6">{children}</div>
+      </div>
+      {showStart && (
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-background to-transparent" />
+      )}
+      {showEnd && (
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent" />
+      )}
+    </div>
+  )
+}
 
 interface AgentDetailLayoutProps {
   agentName: string
@@ -54,7 +96,7 @@ export function AgentDetailLayout({
   const navigate = useNavigate()
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-x-hidden">
       <div className="px-6 pt-6 pb-0">
         <Breadcrumb className="mb-5">
           <BreadcrumbList className="text-sm text-muted-foreground">
@@ -149,7 +191,7 @@ export function AgentDetailLayout({
 
       </div>
 
-      <div className="px-6 mt-4">{tabs}</div>
+      <ScrollableTabs>{tabs}</ScrollableTabs>
       <Separator />
 
       <div className="flex-1 min-h-0 overflow-auto px-6 py-5">{children}</div>
