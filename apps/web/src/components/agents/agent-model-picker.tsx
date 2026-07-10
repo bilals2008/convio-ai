@@ -1,15 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { chat as chatApi } from '@/lib/api'
+import { useQuery } from "@tanstack/react-query"
+import { chat as chatApi } from "@/lib/api"
+import { ModelPicker } from "./model-picker-dialog"
 
 interface Model {
   id: string
@@ -23,9 +14,11 @@ interface AgentModelPickerProps {
   disabled?: boolean
 }
 
+const EMPTY_MODELS: Model[] = []
+
 export function AgentModelPicker({ value, onChange, disabled }: AgentModelPickerProps) {
-  const { data: models, isLoading } = useQuery<Model[]>({
-    queryKey: ['models'],
+  const { data, isLoading, isError, error } = useQuery<Model[]>({
+    queryKey: ["models"],
     queryFn: async () => {
       const res = await chatApi.models()
       return (res.data.data || []) as Model[]
@@ -33,47 +26,17 @@ export function AgentModelPicker({ value, onChange, disabled }: AgentModelPicker
     staleTime: 5 * 60 * 1000,
   })
 
-  const groupedModels: Record<string, Model[]> = {}
-  if (models) {
-    for (const m of models) {
-      if (!groupedModels[m.provider]) groupedModels[m.provider] = []
-      groupedModels[m.provider].push(m)
-    }
-  }
+  const models = data ?? EMPTY_MODELS
 
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled || isLoading}>
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={isLoading ? 'Loading models...' : 'Select a model'} />
-      </SelectTrigger>
-      <SelectContent>
-        {isLoading && (
-          <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-            Loading models...
-          </div>
-        )}
-        {!isLoading && Object.keys(groupedModels).length === 0 && (
-          <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-            No models available. Configure API keys in Settings.
-          </div>
-        )}
-        {Object.entries(groupedModels).map(([provider, providerModels]) => (
-          <SelectGroup key={provider}>
-            <SelectLabel className="capitalize">{provider}</SelectLabel>
-            {providerModels.map((model) => (
-              <SelectItem key={model.id} value={model.id}>
-                <span className="flex items-center justify-between w-full gap-3">
-                  <span className="truncate">{model.name}</span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">
-                    {model.id}
-                  </span>
-                </span>
-              </SelectItem>
-            ))}
-            <SelectSeparator />
-          </SelectGroup>
-        ))}
-      </SelectContent>
-    </Select>
+    <ModelPicker
+      value={value}
+      models={models}
+      onSelect={onChange}
+      disabled={disabled}
+      loading={isLoading}
+      error={isError}
+      errorMessage={error instanceof Error ? error.message : undefined}
+    />
   )
 }
