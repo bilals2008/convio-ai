@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Sparkles, Globe, Link, Code, MessageCircle } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm, useWatch } from 'react-hook-form'
+import { CheckCircle2, Code, Globe, Link, Loader2, MessageCircle, Sparkles } from 'lucide-react'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { PageContainer } from '@/components/shared/page-container'
 import { Button } from '@/components/ui/button'
 import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
@@ -10,182 +13,181 @@ import { AgentCapabilities, defaultCapabilities } from '@/components/agents/agen
 import { AgentKnowledgeSources } from '@/components/agents/agent-knowledge-sources'
 import { AgentDeployment } from '@/components/agents/agent-deployment'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
-import { agents as agentsApi, chat as chatApi } from '@/lib/api'
+import { agents as agentsApi } from '@/lib/api'
+import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
 
 const createSchema = z.object({
-  name: z.string().min(1, 'Agent name is required').max(50, 'Name must be 50 characters or less'),
+  name: z.string().trim().min(1, 'Agent name is required').max(50, 'Name must be 50 characters or less'),
+  description: z.string(),
+  avatarUrl: z.string(),
   model: z.string().min(1, 'Please select a model'),
-  systemPrompt: z.string().optional(),
+  systemPrompt: z.string(),
+  temperature: z.number().min(0).max(2),
+  toneOfVoice: z.string(),
+  language: z.string(),
 })
+
+type CreateAgentValues = z.infer<typeof createSchema>
+
+const DEFAULT_DEPLOYMENTS = [
+  { id: 'web-chat-widget', enabled: true },
+  { id: 'shareable-link', enabled: false },
+  { id: 'api-access', enabled: false },
+  { id: 'whatsapp', enabled: false },
+]
+
+const DEFAULT_FORM_VALUES: CreateAgentValues = {
+  name: '',
+  description: '',
+  avatarUrl: '',
+  model: '',
+  systemPrompt: '',
+  temperature: 0.7,
+  toneOfVoice: 'friendly',
+  language: 'english',
+}
 
 export default function CreateAgentPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { orgId } = useOrg()
-
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState('')
+  const { data: models = [], isLoading: modelsLoading } = useAvailableModels()
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
-  const [deploymentOptions, setDeploymentOptions] = useState([
-    { id: 'web-chat-widget', enabled: true },
-    { id: 'shareable-link', enabled: false },
-    { id: 'api-access', enabled: false },
-    { id: 'whatsapp', enabled: false },
-  ])
-  const [toneOfVoice, setToneOfVoice] = useState('friendly')
-  const [language, setLanguage] = useState('english')
-  const [model, setModel] = useState('')
-  const [temperature, setTemperature] = useState(0.7)
-  const [systemPrompt, setSystemPrompt] = useState('')
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  const { data: models = [] } = useQuery({
-    queryKey: ['models'],
-    queryFn: async () => {
-      const res = await chatApi.models()
-      return (res.data.data || []) as Array<{ id: string; name: string; provider?: string }>
-    },
+  const [deploymentOptions, setDeploymentOptions] = useState(DEFAULT_DEPLOYMENTS)
+  const form = useForm<CreateAgentValues>({
+    resolver: zodResolver(createSchema),
+    defaultValues: DEFAULT_FORM_VALUES,
   })
 
-  const selectedModel = model || models[0]?.id || ''
+  const values: CreateAgentValues = { ...DEFAULT_FORM_VALUES, ...useWatch({ control: form.control }) }
+  const selectedModel = values.model || models[0]?.id || ''
 
   const createMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => agentsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
+      toast.success('Agent created')
       navigate('/agents')
     },
+    onError: (error: Error) => toast.error(error.message || 'Unable to create agent. Please try again.'),
   })
 
-  const handleCapabilityToggle = (id: string, enabled: boolean) => {
-    setCapabilities((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, enabled } : c))
-    )
-  }
-
-  const handleDeploymentToggle = (id: string, enabled: boolean) => {
-    setDeploymentOptions((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, enabled } : o))
-    )
-  }
-
-  const handleCreate = () => {
-    const result = createSchema.safeParse({ name, model: model || models[0]?.id || '', systemPrompt })
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {}
-      result.error.errors.forEach((e) => {
-        const field = e.path[0] as string
-        if (!fieldErrors[field]) {
-          fieldErrors[field] = e.message
-        }
-      })
-      setErrors(fieldErrors)
+  const handleCreate = form.handleSubmit((data) => {
+    const model = data.model || models[0]?.id || ''
+    if (!model) {
+      form.setError('model', { message: 'Please select a model' })
       return
     }
-    setErrors({})
 
     createMutation.mutate({
-      name,
-      description,
-      avatar: avatarUrl || undefined,
-      model: selectedModel,
-      systemPrompt: systemPrompt || `You are ${name}, a helpful AI assistant.`,
-      temperature,
+      name: data.name,
+      description: data.description || undefined,
+      avatar: data.avatarUrl || undefined,
+      model,
+      systemPrompt: data.systemPrompt || `You are ${data.name}, a helpful AI assistant.`,
+      temperature: data.temperature,
       maxTokens: 2048,
       organizationId: orgId,
-      capabilities: capabilities.filter((c) => c.enabled).map((c) => c.id),
-      deployment: deploymentOptions.filter((o) => o.enabled).map((o) => o.id),
-      settings: {
-        toneOfVoice,
-        language,
-      },
+      capabilities: capabilities.filter((capability) => capability.enabled).map((capability) => capability.id),
+      deployment: deploymentOptions.filter((option) => option.enabled).map((option) => option.id),
+      settings: { toneOfVoice: data.toneOfVoice, language: data.language },
     })
-  }
+  })
 
   const saving = createMutation.isPending
 
   return (
     <PageContainer>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Create New Agent</h1>
-          <p className="text-muted-foreground mt-1">
-            Build a powerful AI agent tailored to your business needs.
-          </p>
+      <form onSubmit={handleCreate} className="mx-auto max-w-7xl space-y-6 pb-24">
+        <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="size-4 text-primary" />
+              New agent
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight">Create an agent</h1>
+            <p className="max-w-2xl text-sm text-muted-foreground">Set the essentials now. You can refine knowledge, tools, and deployments whenever you are ready.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={() => navigate('/agents')} disabled={saving}>Cancel</Button>
+            <Button type="submit" disabled={saving || modelsLoading}>
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {saving ? 'Creating agent…' : 'Create agent'}
+            </Button>
+          </div>
+        </header>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <main className="space-y-6">
+            <section className="space-y-1">
+              <h2 className="text-base font-semibold">Identity</h2>
+              <p className="text-sm text-muted-foreground">Make it recognizable to your team and customers.</p>
+            </section>
+            <AgentBasicInfo
+              name={values.name}
+              description={values.description}
+              avatarUrl={values.avatarUrl}
+              onNameChange={(name) => form.setValue('name', name, { shouldValidate: true })}
+              onDescriptionChange={(description) => form.setValue('description', description)}
+              onAvatarUrlChange={(avatarUrl) => form.setValue('avatarUrl', avatarUrl)}
+              errors={{ name: form.formState.errors.name?.message }}
+              disabled={saving}
+            />
+
+            <section className="space-y-1 pt-2">
+              <h2 className="text-base font-semibold">How it responds</h2>
+              <p className="text-sm text-muted-foreground">Choose a model and define the assistant’s operating instructions.</p>
+            </section>
+            {form.formState.errors.model && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{form.formState.errors.model.message}</p>}
+            <AgentBehaviorSettings
+              toneOfVoice={values.toneOfVoice}
+              language={values.language}
+              model={selectedModel}
+              temperature={values.temperature}
+              systemPrompt={values.systemPrompt}
+              models={models}
+              onToneChange={(toneOfVoice) => form.setValue('toneOfVoice', toneOfVoice)}
+              onLanguageChange={(language) => form.setValue('language', language)}
+              onModelChange={(model) => form.setValue('model', model, { shouldValidate: true })}
+              onTemperatureChange={(temperature) => form.setValue('temperature', temperature)}
+              onSystemPromptChange={(systemPrompt) => form.setValue('systemPrompt', systemPrompt)}
+              disabled={saving || modelsLoading}
+            />
+
+            <section className="space-y-1 pt-2">
+              <h2 className="text-base font-semibold">Knowledge</h2>
+              <p className="text-sm text-muted-foreground">Add trusted sources to improve response quality.</p>
+            </section>
+            <AgentKnowledgeSources />
+          </main>
+
+          <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start">
+            <div className="rounded-md border border-border bg-card p-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="size-4 text-primary" />
+                <h2 className="text-sm font-semibold">Setup checklist</h2>
+              </div>
+              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-primary" /> Name your agent</li>
+                <li className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-primary" /> Select a model</li>
+                <li className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-muted-foreground" /> Add knowledge later</li>
+              </ul>
+            </div>
+            <AgentCapabilities capabilities={capabilities} onToggle={(id, enabled) => setCapabilities((current) => current.map((capability) => capability.id === id ? { ...capability, enabled } : capability))} disabled={saving} />
+            <AgentDeployment
+              options={[
+                { id: 'web-chat-widget', label: 'Web chat widget', description: 'Embed on your website', icon: <Globe className="size-4" />, enabled: deploymentOptions.find((option) => option.id === 'web-chat-widget')?.enabled ?? true },
+                { id: 'shareable-link', label: 'Shareable link', description: 'A public chat URL', icon: <Link className="size-4" />, enabled: deploymentOptions.find((option) => option.id === 'shareable-link')?.enabled ?? false },
+                { id: 'api-access', label: 'API access', description: 'Connect through the API', icon: <Code className="size-4" />, enabled: deploymentOptions.find((option) => option.id === 'api-access')?.enabled ?? false },
+                { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp Business', icon: <MessageCircle className="size-4" />, enabled: deploymentOptions.find((option) => option.id === 'whatsapp')?.enabled ?? false },
+              ]}
+              onToggle={(id, enabled) => setDeploymentOptions((current) => current.map((option) => option.id === id ? { ...option, enabled } : option))}
+              disabled={saving}
+            />
+          </aside>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate('/agents')}>
-            Cancel
-          </Button>
-          <Button onClick={handleCreate} disabled={saving}>
-            {saving ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Sparkles className="size-4" />
-            )}
-            {saving ? 'Creating...' : 'Create Agent'}
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          <AgentBasicInfo
-            name={name}
-            description={description}
-            avatarUrl={avatarUrl}
-            onNameChange={setName}
-            onDescriptionChange={setDescription}
-            onAvatarUrlChange={setAvatarUrl}
-            errors={{ name: errors.name }}
-            disabled={saving}
-          />
-
-          {errors.model && (
-            <p className="text-xs text-destructive flex items-center gap-1.5 bg-destructive/5 rounded-lg px-3 py-2">
-              {errors.model}
-            </p>
-          )}
-
-          <AgentKnowledgeSources />
-
-          <AgentBehaviorSettings
-            toneOfVoice={toneOfVoice}
-            language={language}
-            model={selectedModel}
-            temperature={temperature}
-            systemPrompt={systemPrompt}
-            models={models}
-            onToneChange={setToneOfVoice}
-            onLanguageChange={setLanguage}
-            onModelChange={setModel}
-            onTemperatureChange={setTemperature}
-            onSystemPromptChange={setSystemPrompt}
-            disabled={saving}
-          />
-        </div>
-
-        <div className="space-y-4">
-          <AgentCapabilities
-            capabilities={capabilities}
-            onToggle={handleCapabilityToggle}
-            disabled={saving}
-          />
-
-          <AgentDeployment
-            options={[
-              { id: 'web-chat-widget', label: 'Web Chat Widget', description: 'Embed on website', icon: <Globe className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'web-chat-widget')?.enabled ?? true },
-              { id: 'shareable-link', label: 'Shareable Link', description: 'Public chat URL', icon: <Link className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'shareable-link')?.enabled ?? false },
-              { id: 'api-access', label: 'API Access', description: 'REST API endpoint', icon: <Code className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'api-access')?.enabled ?? false },
-              { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp Business', icon: <MessageCircle className="size-4" />, enabled: deploymentOptions.find(o => o.id === 'whatsapp')?.enabled ?? false },
-            ]}
-            onToggle={handleDeploymentToggle}
-            disabled={saving}
-          />
-        </div>
-      </div>
+      </form>
     </PageContainer>
   )
 }
