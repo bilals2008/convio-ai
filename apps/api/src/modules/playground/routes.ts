@@ -147,10 +147,12 @@ async function fetchOpenCodeModels(apiKey: string): Promise<string[]> {
   })
   if (!res.ok) return FALLBACK_MODELS.opencode
   const data = await res.json()
-  return (data.data || [])
-    .map((m: any) => m.id)
-    .filter((id: string) => id.includes('free') || id === 'big-pickle')
-    .sort()
+  const allModels: string[] = (data.data || []).map((m: any) => m.id)
+  const freeModels = allModels.filter((id: string) => id.includes('free') || id === 'big-pickle')
+  if (freeModels.length === 0) {
+    return FALLBACK_MODELS.opencode
+  }
+  return freeModels.sort()
 }
 
 async function fetchLocalModels(): Promise<string[]> {
@@ -183,7 +185,7 @@ async function testOpenAI(apiKey: string, model: string, message: string) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
   return {
-    response: data.choices?.[0]?.message?.content || '',
+    response: extractContent(data.choices?.[0]) || '',
     model: data.model,
     usage: data.usage,
   }
@@ -249,7 +251,7 @@ async function testGroq(apiKey: string, model: string, message: string) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
   return {
-    response: data.choices?.[0]?.message?.content || '',
+    response: extractContent(data.choices?.[0]) || '',
     model: data.model,
     usage: data.usage,
   }
@@ -271,10 +273,22 @@ async function testKIE(apiKey: string, model: string, message: string) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
   return {
-    response: data.choices?.[0]?.message?.content || '',
+    response: extractContent(data.choices?.[0]) || '',
     model: data.model,
     usage: data.usage,
   }
+}
+
+function extractContent(choice: any): string {
+  const msg = choice?.message || choice?.delta || {}
+  if (msg.content) return msg.content
+  if (Array.isArray(msg.content)) {
+    return msg.content.map((p: any) => p.text || '').join('')
+  }
+  if (choice?.text) return choice.text
+  if (msg.reasoning_content) return msg.reasoning_content
+  if (msg.reasoning) return msg.reasoning
+  return ''
 }
 
 async function testOpenAICompat(baseUrl: string, apiKey: string, model: string, message: string) {
@@ -285,14 +299,16 @@ async function testOpenAICompat(baseUrl: string, apiKey: string, model: string, 
     headers['Authorization'] = `Bearer ${apiKey}`
   }
 
+  const body = {
+    model,
+    messages: [{ role: 'user', content: message }],
+    max_tokens: 1024,
+  }
+
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: message }],
-      max_tokens: 256,
-    }),
+    body: JSON.stringify(body),
   })
 
   const rawText = await res.text()
@@ -307,30 +323,65 @@ async function testOpenAICompat(baseUrl: string, apiKey: string, model: string, 
     }
   }
 
+  // Try JSON parse first
   try {
     const data = JSON.parse(rawText)
-    return {
-      response: data.choices?.[0]?.message?.content || '',
-      model: data.model,
-      usage: data.usage,
+    if (data.error) {
+      throw new Error(data.error.message || JSON.stringify(data.error))
     }
-  } catch {
-    // Response might be SSE format — extract content from stream chunks
-    const chunks: string[] = []
-    for (const line of rawText.split('\n')) {
-      if (line.startsWith('data: ') && line.slice(6) !== '[DONE]') {
-        try {
-          const parsed = JSON.parse(line.slice(6))
-          const content = parsed.choices?.[0]?.delta?.content
-          if (content) chunks.push(content)
-        } catch { /* skip */ }
+    const choice = data.choices?.[0]
+    const response = extractContent(choice)
+    if (response) {
+      return {
+        response,
+        model: data.model,
+        usage: data.usage,
       }
     }
-    if (chunks.length > 0) {
-      return { response: chunks.join(''), model, usage: undefined }
-    }
-    throw new Error(`Unexpected response format: ${rawText.slice(0, 200)}`)
+  } catch (e) {
+    if (e instanceof Error && e.message !== rawText.slice(0, 100)) throw e
   }
+
+  // SSE parsing — extract proper delta chunks
+  const chunks: string[] = []
+  let hasContent = false
+  for (const line of rawText.split('\n')) {
+    if (line.startsWith('data: ') && line.slice(6) !== '[DONE]') {
+      try {
+        const parsed = JSON.parse(line.slice(6))
+        const content = extractContent(parsed.choices?.[0])
+        if (content) {
+          chunks.push(content)
+          hasContent = true
+        }
+      } catch { /* skip malformed SSE lines */ }
+    }
+  }
+  if (hasContent) {
+    return { response: chunks.join(''), model, usage: undefined }
+  }
+
+  // Last resort: try all possible content fields
+  try {
+    const data = JSON.parse(rawText)
+    const msg = data.choices?.[0]?.message || {}
+    const text = msg.content
+      || msg.reasoning_content
+      || msg.reasoning
+      || data.choices?.[0]?.text
+      || data.response
+      || data.content
+      || data.candidates?.[0]?.content?.parts?.[0]?.text
+      || data.message?.content
+      || data.generated_text
+      || data.output
+      || data.result
+    if (text && text !== message) {
+      return { response: text, model: data.model || model, usage: data.usage }
+    }
+  } catch { /* ignore */ }
+
+  throw new Error(`Provider returned: ${rawText.slice(0, 500)}`)
 }
 
 export default async function playgroundRoutes(fastify: FastifyInstance) {

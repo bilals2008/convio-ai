@@ -47,6 +47,7 @@ const PROVIDERS = [
   { id: 'together', name: 'Together' },
   { id: 'deepseek', name: 'DeepSeek' },
   { id: 'perplexity', name: 'Perplexity' },
+  { id: 'opencode', name: 'OpenCode Zen' },
 ]
 
 export default function ProviderKeysPage() {

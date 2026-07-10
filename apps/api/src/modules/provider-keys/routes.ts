@@ -3,7 +3,7 @@ import { prisma } from '@convio/database'
 import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
 
-const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'kie', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity']
+const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'kie', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'opencode']
 
 const createKeySchema = z.object({
   provider: z.enum(SUPPORTED_PROVIDERS as [string, ...string[]]),

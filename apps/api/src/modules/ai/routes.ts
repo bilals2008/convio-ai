@@ -16,6 +16,7 @@ const keyMap: Record<string, string> = {
   together: 'TOGETHER_API_KEY',
   deepseek: 'DEEPSEEK_API_KEY',
   perplexity: 'PERPLEXITY_API_KEY',
+  opencode: 'OPENCODE_API_KEY',
   local: 'LOCAL_API_URL',
 }
 
@@ -110,7 +111,10 @@ export default async function aiRoutes(fastify: FastifyInstance) {
 
     const models = await Promise.all(
       allProviders
-        .filter((p) => p.id === 'local' || !!process.env[keyMap[p.id]] || userKeyMap.has(p.id))
+        .filter((p) => {
+          if (p.id === 'local' || p.id === 'opencode') return true
+          return !!process.env[keyMap[p.id]] || userKeyMap.has(p.id)
+        })
         .map(async (p) => {
           try {
             return await p.listModels()
