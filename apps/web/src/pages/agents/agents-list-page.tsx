@@ -123,7 +123,7 @@ function AgentCard({
           onOpen()
         }
       }}
-      className="group [--card-spacing:0px] cursor-pointer p-0 outline-none transition-all duration-200 hover:-translate-y-0.5 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
+      className="group [--card-spacing:0px] cursor-pointer rounded-xl border border-border bg-card p-0 outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
     >
       <CardContent className="flex h-full flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
@@ -190,7 +190,7 @@ function AgentCard({
 
 function AgentCardSkeleton() {
   return (
-    <Card className="[--card-spacing:0px] p-0">
+    <Card className="[--card-spacing:0px] rounded-xl border border-border p-0">
       <CardContent className="flex flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
           <Skeleton className="size-11 rounded-xl" />
