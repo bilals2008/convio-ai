@@ -1,5 +1,6 @@
 import { Bot, User, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AiResponse } from '@/components/shared/ai-response'
 
 type MessageRole = 'user' | 'assistant' | 'system'
 type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'error'
@@ -63,7 +64,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               : 'bg-muted rounded-tl-sm'
           )}
         >
-          {message.content}
+          {isUser ? (
+            <span className="whitespace-pre-wrap">{message.content}</span>
+          ) : (
+            <AiResponse content={message.content} />
+          )}
         </div>
         <div className={cn('flex items-center gap-1.5 text-xs text-muted-foreground', isUser && 'justify-end')}>
           <span title={formatFullDate(message.createdAt)}>{formatTime(message.createdAt)}</span>

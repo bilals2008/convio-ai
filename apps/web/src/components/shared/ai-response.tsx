@@ -73,11 +73,15 @@ export interface AiResponseProps {
 export function AiResponse({ content, isStreaming = false, className, showActions = true }: AiResponseProps) {
   return (
     <div className={cn('group/response min-w-0 text-sm text-foreground', className)}>
+      {showActions && content && !isStreaming && (
+        <div className="mb-1 flex justify-end opacity-0 transition-opacity group-hover/response:opacity-100 focus-within:opacity-100">
+          <CopyButton value={content} label="Copy response" />
+        </div>
+      )}
       <div className="overflow-x-auto">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content}</ReactMarkdown>
         {isStreaming && <span aria-label="Generating" className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-primary align-middle" />}
       </div>
-      {showActions && content && !isStreaming && <div className="mt-2 opacity-0 transition-opacity group-hover/response:opacity-100 focus-within:opacity-100"><CopyButton value={content} label="Copy response" /></div>}
     </div>
   )
 }

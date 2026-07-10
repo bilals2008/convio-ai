@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Bot, MessageCircle } from 'lucide-react'
 import { Skeleton } from '@/components/shared/loading'
 import { TypingIndicator } from '@/components/shared/typing-indicator'
+import { AiResponse } from '@/components/shared/ai-response'
 import { MessageBubble } from './message-bubble'
 
 type MessageRole = 'user' | 'assistant' | 'system'
@@ -52,14 +53,13 @@ export function MessageList({ messages, loading, streamingMessage }: MessageList
     )
   }
 
-  let lastDate = ''
-
-  const renderedMessages = messages.flatMap((msg) => {
+  const renderedMessages = messages.flatMap((msg, index) => {
     const msgDate = new Date(msg.createdAt).toLocaleDateString()
+    const prevDate = index > 0 ? new Date(messages[index - 1].createdAt).toLocaleDateString() : null
+    const showDateSeparator = msgDate !== prevDate
     const elements: React.ReactNode[] = []
 
-    if (msgDate !== lastDate) {
-      lastDate = msgDate
+    if (showDateSeparator) {
       elements.push(
         <div key={`date-${msg.id}`} className="flex justify-center py-2">
           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
@@ -85,10 +85,7 @@ export function MessageList({ messages, loading, streamingMessage }: MessageList
           <div className="max-w-[70%]">
             <div className="rounded-xl rounded-tl-sm px-3 py-2 text-sm bg-muted">
               {streamingMessage.content ? (
-                <>
-                  <span className="whitespace-pre-wrap">{streamingMessage.content}</span>
-                  <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-0.5 align-middle" />
-                </>
+                <AiResponse content={streamingMessage.content} isStreaming />
               ) : (
                 <TypingIndicator />
               )}
