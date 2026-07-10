@@ -33,6 +33,7 @@ import { SidebarGroup, SidebarItem } from './sidebar-nav'
 import { OrgSwitcher } from '@/components/shared/org-switcher'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
+import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
 export function Sidebar() {
@@ -40,10 +41,13 @@ export function Sidebar() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
+  const { org } = useOrg()
 
   const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : user?.email?.slice(0, 2).toUpperCase() || 'U'
+
+  const avatarSrc = user?.avatar || org?.logo || undefined
 
   const handleProfileMenuSelect = (value: string | null) => {
     if (!value) return
@@ -158,7 +162,7 @@ export function Sidebar() {
             collapsed && 'justify-center px-0'
           )}>
             <Avatar className="size-8 shrink-0">
-              <AvatarImage src={user?.avatar || undefined} />
+              <AvatarImage src={avatarSrc} />
               <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
             </Avatar>
             {!collapsed && (
@@ -268,7 +272,7 @@ export function Sidebar() {
                 <div className="border-t p-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="size-8">
-                      <AvatarImage src={user?.avatar || undefined} />
+                      <AvatarImage src={avatarSrc} />
                       <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 truncate text-sm">

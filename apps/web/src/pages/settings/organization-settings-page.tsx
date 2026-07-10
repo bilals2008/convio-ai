@@ -104,6 +104,7 @@ function CreateOrgForm() {
 export default function OrganizationSettingsPage() {
   const queryClient = useQueryClient()
   const { orgId, isLoading: orgLoading } = useOrg()
+  const [showCreateForm, setShowCreateForm] = useState(false)
 
   const { data: org, isLoading, isError } = useQuery({
     queryKey: ['organization', orgId],
@@ -161,6 +162,31 @@ export default function OrganizationSettingsPage() {
           onDelete={() => deleteMutation.mutate()}
           loading={deleteMutation.isPending}
         />
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="size-5" />
+              Create New Organization
+            </CardTitle>
+            <CardDescription>Set up a new workspace to start managing agents.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {showCreateForm ? (
+              <div className="space-y-4">
+                <CreateOrgForm />
+                <Button variant="ghost" onClick={() => setShowCreateForm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={() => setShowCreateForm(true)}>
+                <Plus className="size-4" />
+                Create New Organization
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       </div>
     )
   }
