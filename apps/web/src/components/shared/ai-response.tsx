@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 interface CopyButtonProps {
@@ -13,18 +14,55 @@ interface CopyButtonProps {
 
 function CopyButton({ value, label, className }: CopyButtonProps) {
   const [copied, setCopied] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(value)
+    try {
+      await navigator.clipboard.writeText(value)
+    } catch {
+      /* clipboard may be unavailable */
+    }
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 1800)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    timeoutRef.current = window.setTimeout(() => setCopied(false), 1600)
   }, [value])
 
+  useEffect(() => () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+  }, [])
+
   return (
-    <Button type="button" variant="ghost" size="xs" onClick={handleCopy} className={cn('gap-1.5 text-muted-foreground hover:text-foreground', className)} aria-label={label}>
-      {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-      <span>{copied ? 'Copied' : label}</span>
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          onClick={handleCopy}
+          aria-label={copied ? 'Copied' : label}
+          className={cn(
+            'text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95',
+            className
+          )}
+        >
+          <span className="relative flex size-3.5 items-center justify-center">
+            <Copy
+              className={cn(
+                'absolute size-3.5 transition-all duration-200 ease-out',
+                copied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
+              )}
+            />
+            <Check
+              className={cn(
+                'absolute size-3.5 text-success transition-all duration-200 ease-out',
+                copied ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+              )}
+            />
+          </span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{copied ? 'Copied' : label}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -71,10 +109,40 @@ export interface AiResponseProps {
 }
 
 export function AiResponse({ content, isStreaming = false, className, showActions = true }: AiResponseProps) {
+  const [revealed, setRevealed] = useState(false)
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearLongPress = useCallback(() => {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current)
+      longPressRef.current = null
+    }
+  }, [])
+
+  const handlePointerDown = useCallback(() => {
+    clearLongPress()
+    longPressRef.current = window.setTimeout(() => setRevealed(true), 450)
+  }, [clearLongPress])
+
+  useEffect(() => () => clearLongPress(), [clearLongPress])
+
   return (
-    <div className={cn('group/response min-w-0 text-sm text-foreground', className)}>
+    <div
+      className={cn('group/response min-w-0 text-sm text-foreground', className)}
+      onPointerDown={handlePointerDown}
+      onPointerUp={clearLongPress}
+      onPointerLeave={clearLongPress}
+      onPointerCancel={clearLongPress}
+    >
       {showActions && content && !isStreaming && (
-        <div className="mb-1 flex justify-end opacity-0 transition-opacity group-hover/response:opacity-100 focus-within:opacity-100">
+        <div
+          className={cn(
+            'mb-1 flex justify-end transition-opacity duration-200',
+            revealed
+              ? 'opacity-100'
+              : 'opacity-0 group-hover/response:opacity-100 focus-within:opacity-100'
+          )}
+        >
           <CopyButton value={content} label="Copy response" />
         </div>
       )}
