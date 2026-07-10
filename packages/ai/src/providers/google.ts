@@ -15,15 +15,15 @@ export class GoogleProvider implements AIProvider {
       model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
-      maxTokens: params.maxTokens,
+      maxOutputTokens: params.maxTokens,
     })
 
     return {
       content: result.text,
       usage: {
-        promptTokens: result.usage.promptTokens,
-        completionTokens: result.usage.completionTokens,
-        totalTokens: result.usage.totalTokens,
+        promptTokens: result.usage.inputTokens ?? 0,
+        completionTokens: result.usage.outputTokens ?? 0,
+        totalTokens: result.usage.totalTokens ?? 0,
       },
     }
   }
@@ -33,7 +33,7 @@ export class GoogleProvider implements AIProvider {
       model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
-      maxTokens: params.maxTokens,
+      maxOutputTokens: params.maxTokens,
     })
 
     for await (const chunk of result.textStream) {
@@ -51,11 +51,8 @@ export class GoogleProvider implements AIProvider {
     return result.embedding
   }
 
-  async moderate(text: string): Promise<ModerationResult> {
-    return {
-      flagged: false,
-      categories: {},
-    }
+  async moderate(_text: string): Promise<ModerationResult> {
+    return { flagged: false, categories: {} }
   }
 
   async listModels(): Promise<Model[]> {

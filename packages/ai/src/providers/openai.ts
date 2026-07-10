@@ -1,6 +1,5 @@
 import { generateText, streamText, embed } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import type { EmbeddingModelV1 } from '@ai-sdk/provider'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 
 export class OpenAIProvider implements AIProvider {
@@ -16,15 +15,15 @@ export class OpenAIProvider implements AIProvider {
       model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
-      maxTokens: params.maxTokens,
+      maxOutputTokens: params.maxTokens,
     })
 
     return {
       content: result.text,
       usage: {
-        promptTokens: result.usage.promptTokens,
-        completionTokens: result.usage.completionTokens,
-        totalTokens: result.usage.totalTokens,
+        promptTokens: result.usage.inputTokens ?? 0,
+        completionTokens: result.usage.outputTokens ?? 0,
+        totalTokens: result.usage.totalTokens ?? 0,
       },
     }
   }
@@ -34,7 +33,7 @@ export class OpenAIProvider implements AIProvider {
       model: this.getClient(params.apiKey)(params.model),
       messages: params.messages,
       temperature: params.temperature,
-      maxTokens: params.maxTokens,
+      maxOutputTokens: params.maxTokens,
     })
 
     for await (const chunk of result.textStream) {
@@ -46,7 +45,7 @@ export class OpenAIProvider implements AIProvider {
 
   async embed(text: string): Promise<number[]> {
     const result = await embed({
-      model: this.getClient().textEmbeddingModel('text-embedding-3-small') as EmbeddingModelV1<string>,
+      model: this.getClient().textEmbeddingModel('text-embedding-3-small'),
       value: text,
     })
     return result.embedding

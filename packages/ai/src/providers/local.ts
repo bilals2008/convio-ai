@@ -1,6 +1,5 @@
 import { generateText, streamText } from 'ai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import type { LanguageModelV1 } from '@ai-sdk/provider'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 
 const LOCAL_BASE = process.env.LOCAL_API_URL || 'http://localhost:20128/v1'
@@ -18,28 +17,28 @@ export class LocalProvider implements AIProvider {
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
     const result = await generateText({
-      model: this.getClient().chatModel(params.model) as unknown as LanguageModelV1,
+      model: this.getClient().chatModel(params.model),
       messages: params.messages,
       temperature: params.temperature,
-      maxTokens: params.maxTokens,
+      maxOutputTokens: params.maxTokens,
     })
 
     return {
       content: result.text,
       usage: {
-        promptTokens: result.usage.promptTokens,
-        completionTokens: result.usage.completionTokens,
-        totalTokens: result.usage.totalTokens,
+        promptTokens: result.usage.inputTokens ?? 0,
+        completionTokens: result.usage.outputTokens ?? 0,
+        totalTokens: result.usage.totalTokens ?? 0,
       },
     }
   }
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const result = streamText({
-      model: this.getClient().chatModel(params.model) as unknown as LanguageModelV1,
+      model: this.getClient().chatModel(params.model),
       messages: params.messages,
       temperature: params.temperature,
-      maxTokens: params.maxTokens,
+      maxOutputTokens: params.maxTokens,
     })
 
     for await (const chunk of result.textStream) {
