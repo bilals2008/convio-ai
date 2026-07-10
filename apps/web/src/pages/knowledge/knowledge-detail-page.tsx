@@ -15,6 +15,7 @@ import { DocumentCard } from '@/components/knowledge/document-card'
 import { DocumentUploadForm } from '@/components/knowledge/document-upload-form'
 import { knowledge as knowledgeApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
+import { toast } from 'sonner'
 
 type DocType = 'txt' | 'pdf' | 'csv' | 'md' | 'json' | 'url'
 type DocStatus = 'pending' | 'processing' | 'ready' | 'error' | 'archived'
@@ -94,12 +95,19 @@ export default function KnowledgeDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] })
       navigate('/knowledge')
     },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error || err?.message || 'Failed to create knowledge base')
+    },
   })
 
   const updateMutation = useMutation({
     mutationFn: (data: KnowledgeFormData) => knowledgeApi.update(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
+      toast.success('Knowledge base updated')
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error || err?.message || 'Failed to update knowledge base')
     },
   })
 
@@ -124,19 +132,22 @@ export default function KnowledgeDetailPage() {
 
   const saving = createMutation.isPending || updateMutation.isPending
 
-  const handleUploadDocument = (data: { name: string; type: DocType; content?: string; url?: string }) => {
+  const handleUploadDocument = async (data: { name: string; type: DocType; content?: string; url?: string }) => {
     if (!isEdit || !id) return
     if (data.type === 'pdf') {
-      knowledgeApi.getDocuments(id!).finally(() => {
-        queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
-      })
+      queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
       return
     }
     setUploadLoading(true)
-    knowledgeApi.uploadDocument(id, data).finally(() => {
-      setUploadLoading(false)
+    try {
+      await knowledgeApi.uploadDocument(id, data)
       queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
-    })
+      toast.success('Document uploaded')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || err?.message || 'Failed to upload document')
+    } finally {
+      setUploadLoading(false)
+    }
   }
 
   const handleDeleteDocument = async (docId: string) => {
