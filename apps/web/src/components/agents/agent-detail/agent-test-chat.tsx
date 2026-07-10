@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 import { TypingIndicator } from '@/components/shared/typing-indicator'
 import { AiResponse } from '@/components/shared/ai-response'
 import { agents as agentsApi } from '@/lib/api'
+import { getReasoningEfforts } from '../reasoning'
 
 interface AgentTestChatProps {
   agentConfig: {
@@ -109,6 +110,16 @@ function ConversationItem({
   )
 }
 
+function formatModelLabel(id: string): string {
+  if (!id) return "Not configured"
+  const part = id.includes("/") ? id.split("/").slice(1).join("/") : id
+  return part
+    .replace(/[-_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
   const [conversations, setConversations] = useState<Conversation[]>([newConversation()])
   const [activeConvId, setActiveConvId] = useState(conversations[0]?.id || '')
@@ -160,6 +171,10 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
       textareaRef.current?.focus()
     }
   }, [streaming])
+
+  useEffect(() => {
+    textareaRef.current?.focus()
+  }, [])
 
   const updateActiveConversation = useCallback(
     (updater: (conv: Conversation) => Conversation) => {
@@ -343,10 +358,10 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
 
   const canSend = !!(agentConfig.systemPrompt && agentConfig.model)
 
-  const supportsReasoning = useMemo(() => {
-    const m = agentConfig.model || ''
-    return m.startsWith('local/') || /(reasoning|o1|o3|o4|r1|qwq|deepseek-r1)/i.test(m)
-  }, [agentConfig.model])
+  const reasoningOptions = useMemo(
+    () => getReasoningEfforts({ id: agentConfig.model || '' }),
+    [agentConfig.model]
+  )
 
   const formatTime = (date: string) =>
     new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -462,7 +477,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                         onCheckedChange={setShowReasoning}
                       />
                     </div>
-                    {supportsReasoning && (
+                    {reasoningOptions && (
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium">Reasoning effort</Label>
                         <Select value={reasoningOverride} onValueChange={setReasoningOverride}>
@@ -471,11 +486,11 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="">Agent default</SelectItem>
-                            <SelectItem value="none">None</SelectItem>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="xhigh">Extra High</SelectItem>
+                            {reasoningOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -536,9 +551,9 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                             <summary className="cursor-pointer select-none font-medium text-foreground/60 hover:text-foreground transition-colors">
                               Show reasoning
                             </summary>
-                            <div className="mt-1.5 whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
-                              {msg.reasoning}
-                            </div>
+                            <div className="mt-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                               {msg.reasoning}
+                             </div>
                           </details>
                         )}
                         <BubbleContent>
@@ -573,9 +588,9 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                             <Loader2 className="size-3 animate-spin" />
                             Reasoning…
                           </summary>
-                          <div className="mt-1.5 whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
-                            {streamingReasoning}
-                          </div>
+                           <div className="mt-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                             {streamingReasoning}
+                           </div>
                         </details>
                       )}
                       <BubbleContent>
@@ -599,50 +614,47 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
           </ScrollArea>
 
           {/* Composer */}
-          <div className="shrink-0 px-5 pb-4 pt-2">
-            <div className="flex items-end gap-2">
-              <div className="flex-1 relative">
-                <textarea
-                  ref={textareaRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={
-                    canSend ? 'Type your message...' : 'Configure agent to start'
-                  }
-                  disabled={streaming || !canSend}
-                  rows={1}
-                  className={cn(
-                    'w-full resize-none rounded-xl border border-input bg-background px-4 py-2.5 pr-11 text-sm',
-                    'placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
-                    'disabled:cursor-not-allowed disabled:opacity-50 min-h-[40px] max-h-[160px] transition-colors'
-                  )}
-                  style={{ fieldSizing: 'content' } as React.CSSProperties}
-                />
+          <div className="shrink-0 px-5 pb-3 pt-2">
+            <div className="rounded-xl border border-border bg-card transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
+              <textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={canSend ? 'Message the agent…' : 'Configure agent to start'}
+                disabled={streaming || !canSend}
+                rows={1}
+                className={cn(
+                  'block w-full resize-none bg-transparent px-3 py-1.5 text-sm leading-6 text-foreground outline-none',
+                  'placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50',
+                  'min-h-[34px] max-h-[140px]'
+                )}
+                style={{ fieldSizing: 'content' } as React.CSSProperties}
+              />
+              <div className="flex items-center justify-between gap-2 px-2.5 pb-1.5">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-muted/70 px-2 py-0.5 text-[11px] font-medium text-foreground/80">
+                    <Bot className="size-3 shrink-0 text-primary/70" />
+                    <span className="truncate">{formatModelLabel(agentConfig.model)}</span>
+                  </span>
+                  <span className="hidden items-center gap-1 rounded-md bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground sm:inline-flex">
+                    Knowledge: On
+                  </span>
+                </div>
                 <Button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim() || streaming || !canSend}
-                  size="icon-sm"
-                  className="absolute right-1.5 bottom-1.5 rounded-lg"
+                  size="icon-xs"
+                  className="shrink-0 rounded-lg"
+                  aria-label="Send message"
                 >
                   {streaming ? (
-                    <Loader2 className="size-4 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin" />
                   ) : (
-                    <Send className="size-4" />
+                    <Send className="size-3.5" />
                   )}
                 </Button>
               </div>
-            </div>
-            <div className="flex items-center justify-between mt-2 px-1">
-              <span className="text-[11px] text-muted-foreground">
-                Model:{' '}
-                <span className="font-medium text-foreground">
-                  {agentConfig.model || 'Not configured'}
-                </span>
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Uses live agent settings and knowledge
-              </span>
             </div>
           </div>
         </div>

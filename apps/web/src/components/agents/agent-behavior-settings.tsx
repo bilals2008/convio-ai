@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Settings, Sparkles, SlidersHorizontal } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -8,6 +8,7 @@ import { ModelPicker } from "./model-picker-dialog"
 import { PromptTemplatesModal } from "./prompt-templates-modal"
 import { ModelBadges } from "./model-badges"
 import { getModelBadges, providerLabel } from "./model-meta"
+import { getReasoningEfforts } from "./reasoning"
 import {
   Select,
   SelectContent,
@@ -65,8 +66,18 @@ export function AgentBehaviorSettings({
   const [showTemplates, setShowTemplates] = useState(false)
 
   const selectedModel = models.find((m) => m.id === model)
-  const isLocalProvider = selectedModel?.provider === "local"
   const selectedBadges = selectedModel ? getModelBadges(selectedModel) : []
+  const reasoningOptions = selectedModel ? getReasoningEfforts(selectedModel) : null
+
+  useEffect(() => {
+    if (
+      reasoningOptions &&
+      onReasoningEffortChange &&
+      !reasoningOptions.some((o) => o.value === reasoningEffort)
+    ) {
+      onReasoningEffortChange(reasoningOptions[0].value)
+    }
+  }, [reasoningOptions, reasoningEffort, onReasoningEffortChange])
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
@@ -157,7 +168,7 @@ export function AgentBehaviorSettings({
             </div>
           </div>
 
-          {isLocalProvider && onReasoningEffortChange && (
+          {reasoningOptions && onReasoningEffortChange && (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Reasoning Effort</Label>
               <Select value={reasoningEffort} onValueChange={(value) => onReasoningEffortChange(value ?? "medium")} disabled={disabled}>
@@ -165,11 +176,11 @@ export function AgentBehaviorSettings({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="xhigh">Extra High</SelectItem>
+                  {reasoningOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
