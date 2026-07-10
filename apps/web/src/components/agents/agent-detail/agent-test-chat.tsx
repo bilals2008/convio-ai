@@ -5,20 +5,19 @@ import {
   Trash2,
   RotateCcw,
   Send,
-  Copy,
   Bot,
   User,
   Loader2,
-  Check,
   MessageSquare,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { cn } from '@/lib/utils'
 import { TypingIndicator } from '@/components/shared/typing-indicator'
+import { AiResponse } from '@/components/shared/ai-response'
 import { agents as agentsApi } from '@/lib/api'
 
 interface AgentTestChatProps {
@@ -96,30 +95,6 @@ function ConversationItem({
   )
 }
 
-function MessageActions({ content }: { content: string }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }, [content])
-
-  return (
-    <div className="flex items-center gap-0.5 opacity-0 group-hover/message:opacity-100 transition-opacity">
-      <Tooltip>
-        <TooltipTrigger
-          onClick={handleCopy}
-          className="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-        </TooltipTrigger>
-        <TooltipContent side="top">Copy</TooltipContent>
-      </Tooltip>
-    </div>
-  )
-}
-
 export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
   const [conversations, setConversations] = useState<Conversation[]>([newConversation()])
   const [activeConvId, setActiveConvId] = useState(conversations[0]?.id || '')
@@ -132,6 +107,8 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const configRef = useRef(agentConfig)
+  const streamFrameRef = useRef<number | null>(null)
+  const streamBufferRef = useRef('')
 
   useEffect(() => {
     configRef.current = agentConfig
@@ -154,8 +131,12 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
   )
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingContent])
+    messagesEndRef.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth' })
+  }, [messages, streaming, streamingContent])
+
+  useEffect(() => () => {
+    if (streamFrameRef.current) cancelAnimationFrame(streamFrameRef.current)
+  }, [])
 
   useEffect(() => {
     if (!streaming) {
@@ -172,6 +153,16 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
     [activeConvId]
   )
 
+  const queueStreamingContent = useCallback((content: string) => {
+    streamBufferRef.current = content
+    if (streamFrameRef.current) return
+
+    streamFrameRef.current = requestAnimationFrame(() => {
+      setStreamingContent(streamBufferRef.current)
+      streamFrameRef.current = null
+    })
+  }, [])
+
   const handleSendMessage = useCallback(async () => {
     const trimmed = inputValue.trim()
     if (!trimmed || streaming) return
@@ -182,6 +173,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
     setInputValue('')
     setStreaming(true)
     setStreamingContent('')
+    streamBufferRef.current = ''
 
     const userMessage: MessageItem = {
       id: crypto.randomUUID(),
@@ -214,6 +206,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
         maxTokens: cfg.maxTokens,
         providerKeyId: cfg.providerKeyId,
         history,
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -244,7 +237,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
               const parsed = JSON.parse(data)
               if (parsed.content) {
                 assistantContent += parsed.content
-                setStreamingContent(assistantContent)
+                queueStreamingContent(assistantContent)
               }
               if (parsed.error) {
                 throw new Error(parsed.error)
@@ -277,7 +270,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
       setStreamingContent('')
       abortRef.current = null
     }
-  }, [inputValue, streaming, messages, updateActiveConversation])
+  }, [inputValue, streaming, messages, queueStreamingContent, updateActiveConversation])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -449,12 +442,11 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                     <MessageContent>
                       <Bubble variant={isUser ? 'default' : 'muted'}>
                         <BubbleContent>
-                          <span className="whitespace-pre-wrap">{msg.content}</span>
+                          {isUser ? <span className="whitespace-pre-wrap">{msg.content}</span> : <AiResponse content={msg.content} />}
                         </BubbleContent>
                       </Bubble>
                       <MessageFooter className="gap-2">
                         <span>{formatTime(msg.createdAt)}</span>
-                        {!isUser && <MessageActions content={msg.content} />}
                       </MessageFooter>
                     </MessageContent>
                   </Message>
@@ -472,10 +464,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                     <Bubble variant="muted">
                       <BubbleContent>
                         {streamingContent ? (
-                          <>
-                            <span className="whitespace-pre-wrap">{streamingContent}</span>
-                            <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-0.5 align-middle rounded-full" />
-                          </>
+                          <AiResponse content={streamingContent} isStreaming showActions={false} />
                         ) : (
                           <TypingIndicator />
                         )}

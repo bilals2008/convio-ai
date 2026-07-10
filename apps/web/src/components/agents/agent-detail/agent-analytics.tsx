@@ -124,7 +124,6 @@ export function AgentAnalytics() {
                     fontSize: '11px',
                     color: 'hsl(28 30% 94%)',
                   }}
-                  formatter={(value: number) => [`${value}s`, 'Response Time']}
                 />
                 <Line
                   type="monotone"

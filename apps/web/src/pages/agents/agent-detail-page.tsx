@@ -22,7 +22,8 @@ import {
   AgentAnalytics,
   AgentSettings,
 } from '@/components/agents/agent-detail'
-import { agents as agentsApi, chat as chatApi } from '@/lib/api'
+import { agents as agentsApi } from '@/lib/api'
+import { useAvailableModels } from '@/lib/hooks/use-available-models'
 
 interface Agent {
   id: string
@@ -55,15 +56,8 @@ export default function AgentDetailPage() {
   const [toneOfVoice, setToneOfVoice] = useState('friendly')
   const [language, setLanguage] = useState('english')
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
-  const [selectedKnowledgeSources, setSelectedKnowledgeSources] = useState<string[]>([])
 
-  const { data: models = [] } = useQuery({
-    queryKey: ['models'],
-    queryFn: async () => {
-      const res = await chatApi.models()
-      return (res.data.data || []) as Array<{ id: string; name: string; provider?: string }>
-    },
-  })
+  const { data: models = [] } = useAvailableModels()
   const [deploymentOptions, setDeploymentOptions] = useState([
     { id: 'web-chat-widget', enabled: true },
     { id: 'shareable-link', enabled: false },
@@ -121,12 +115,6 @@ export default function AgentDetailPage() {
   const handleCapabilityToggle = (capabilityId: string, enabled: boolean) => {
     setCapabilities((prev) =>
       prev.map((c) => (c.id === capabilityId ? { ...c, enabled } : c))
-    )
-  }
-
-  const handleKnowledgeSourceSelect = (sourceId: string) => {
-    setSelectedKnowledgeSources((prev) =>
-      prev.includes(sourceId) ? prev.filter((s) => s !== sourceId) : [...prev, sourceId]
     )
   }
 
@@ -237,11 +225,7 @@ export default function AgentDetailPage() {
         </TabsContent>
 
         <TabsContent value="knowledge">
-          <AgentKnowledge
-            selected={selectedKnowledgeSources}
-            onSelect={handleKnowledgeSourceSelect}
-            disabled={updateMutation.isPending}
-          />
+          <AgentKnowledge />
         </TabsContent>
 
         <TabsContent value="test-chat">

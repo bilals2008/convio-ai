@@ -88,9 +88,9 @@ export function AgentDetailLayout({
                 </h1>
                 <Badge
                   variant="secondary"
-                  className="gap-1.5 text-xs font-medium bg-green-500/10 text-green-600 dark:text-green-400 border-0 px-2.5 py-1"
+                  className="gap-1.5 border-0 bg-success/10 px-2.5 py-1 text-xs font-medium text-success"
                 >
-                  <span className="size-1.5 rounded-full bg-green-500" />
+                  <span className="size-1.5 rounded-full bg-success" />
                   Live
                 </Badge>
               </div>
