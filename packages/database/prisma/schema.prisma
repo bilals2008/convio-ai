@@ -19,6 +19,7 @@ model Profile {
   createdAgents Agent[]       @relation("AgentCreator")
 
   @@map("profiles")
+  @@index([email])
 }
 
 model Organization {
@@ -104,6 +105,7 @@ model Agent {
   @@index([organizationId])
   @@index([knowledgeBaseId])
   @@index([status, createdAt])
+  @@index([organizationId, createdAt])
 }
 
 model ProviderKey {
@@ -151,6 +153,8 @@ model Conversation {
   messages Message[]
 
   @@index([agentId, createdAt])
+  @@index([agentId, updatedAt(sort: Desc)])
+  @@index([agentId, status, updatedAt(sort: Desc)])
   @@index([userId])
   @@index([status])
 }
@@ -201,6 +205,7 @@ model Document {
 
   @@index([knowledgeBaseId])
   @@index([status])
+  @@index([knowledgeBaseId, status, createdAt(sort: Desc)])
 }
 
 model DocumentChunk {
