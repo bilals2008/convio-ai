@@ -1,188 +1,25 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Copy, Globe2, MoreVertical, Pause, Play, Settings2, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { MoreVertical, Pencil, Trash2, ExternalLink, Eye, MessageCircle } from 'lucide-react'
-
-export interface Widget {
-  id: string
-  name: string
-  agentId: string
-  agentName?: string
-  primaryColor?: string
-  position?: 'bottom-right' | 'bottom-left'
-  greeting?: string
-  status: 'active' | 'inactive'
-  conversations?: number
-  updatedAt: string
-  createdAt: string
-}
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import type { WidgetSummary } from '@/lib/hooks/use-widgets'
 
 interface WidgetCardProps {
-  widget: Widget
-  onDelete: (widget: Widget) => void
+  widget: WidgetSummary
+  onCopyEmbed: (widget: WidgetSummary) => void
+  onStatusChange: (widget: WidgetSummary) => void
+  onArchive: (widget: WidgetSummary) => void
 }
 
-export function WidgetCard({ widget, onDelete }: WidgetCardProps) {
+export function WidgetCard({ widget, onCopyEmbed, onStatusChange, onArchive }: WidgetCardProps) {
   const navigate = useNavigate()
-  const [copied, setCopied] = useState(false)
-
-  const handleCopyEmbed = () => {
-    const code = `<script src="https://cdn.convio.com/widget.js" data-widget-id="${widget.id}"></script>`
-    navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <Card className="group relative p-5 transition-all hover:shadow-md hover:border-primary/20">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl shadow-sm"
-            style={{ backgroundColor: `${widget.primaryColor || '#fb923c'}15` }}
-          >
-            <MessageCircle
-              className="size-5"
-              style={{ color: widget.primaryColor || '#fb923c' }}
-            />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold truncate">{widget.name}</h3>
-            <p className="text-xs text-muted-foreground truncate">
-              {widget.agentName || 'No agent linked'}
-            </p>
-          </div>
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-            >
-              <MoreVertical className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={() => navigate(`/widgets/${widget.id}/edit`)}>
-              <Pencil className="mr-2 size-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.open(`/widget/demo?widget=${widget.id}`, '_blank')}>
-              <ExternalLink className="mr-2 size-4" />
-              Preview
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleCopyEmbed}>
-              {copied ? 'Copied!' : 'Copy Embed Code'}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => onDelete(widget)}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <span
-            className="size-2 rounded-full"
-            style={{ backgroundColor: widget.primaryColor || '#fb923c' }}
-          />
-          <span className="capitalize">{(widget.position || 'bottom-right').replace('-', ' ')}</span>
-        </div>
-        <Badge
-          variant={widget.status === 'active' ? 'default' : 'secondary'}
-          className="text-[10px] px-1.5 py-0"
-        >
-          {widget.status}
-        </Badge>
-        {widget.conversations != null && (
-          <span>{widget.conversations} conversations</span>
-        )}
-      </div>
-
-      <div className="mt-3 pt-3 border-t flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground">
-          Updated {new Date(widget.updatedAt).toLocaleDateString()}
-        </span>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              onClick={() => navigate(`/widgets/${widget.id}/edit`)}
-            >
-              <Eye className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            View details
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    </Card>
-  )
-}
-
-interface WidgetDeleteDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  widgetName: string
-  onConfirm: () => void
-}
-
-export function WidgetDeleteDialog({
-  open,
-  onOpenChange,
-  widgetName,
-  onConfirm,
-}: WidgetDeleteDialogProps) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Delete Widget</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete <strong>{widgetName}</strong>? This will remove the widget
-            from your website. This action cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={onConfirm}>
-            Delete
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+  const isLive = widget.status === 'active'
+  return <Card className="group"><CardContent className="p-5">
+    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2"><h2 className="truncate text-base font-semibold">{widget.name}</h2><Badge variant={isLive ? 'default' : 'secondary'} className="capitalize">{widget.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">Powered by {widget.agent.name}</p></div>
+      <DropdownMenu><DropdownMenuTrigger className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"><MoreVertical className="size-4" /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => navigate(`/widgets/${widget.id}`)}><Settings2 className="size-4" />Configure</DropdownMenuItem><DropdownMenuItem onClick={() => onCopyEmbed(widget)}><Copy className="size-4" />Copy embed</DropdownMenuItem><DropdownMenuItem onClick={() => onStatusChange(widget)}>{isLive ? <Pause className="size-4" /> : <Play className="size-4" />}{isLive ? 'Pause widget' : 'Publish widget'}</DropdownMenuItem><DropdownMenuItem className="text-destructive" onClick={() => onArchive(widget)}><Trash2 className="size-4" />Archive</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+    </div>
+    <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm text-muted-foreground"><span className="flex items-center gap-2"><Globe2 className="size-4" />{widget.allowedDomains.length ? `${widget.allowedDomains.length} domain${widget.allowedDomains.length > 1 ? 's' : ''}` : 'No domains added'}</span><Button variant="outline" size="sm" onClick={() => navigate(`/widgets/${widget.id}`)}>Configure</Button></div>
+  </CardContent></Card>
 }

@@ -7,7 +7,7 @@ import { SearchInput } from '@/components/shared/search-input'
 import { Skeleton } from '@/components/shared/loading'
 import { ConversationStatusBadge } from './conversation-status-badge'
 import type { ConvStatus } from './conversation-status-badge'
-import { conversations as conversationsApi } from '@/lib/api'
+import { conversations as conversationsApi, agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
@@ -58,6 +58,14 @@ export function ConversationsLayout() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedId, setSelectedId] = useState<string | null>(id || null)
+
+  const { data: agents = [] } = useQuery({
+    queryKey: ['agents-for-conversations', orgId],
+    queryFn: async () => (await agentsApi.list(orgId!)).data.data as Array<{ id: string; name: string }>,
+    enabled: Boolean(orgId),
+    staleTime: 5 * 60 * 1000,
+  })
+
   const { data: convsData, isLoading } = useQuery({
     queryKey: ['conversations', orgId, statusFilter],
     queryFn: async () => {
@@ -123,7 +131,12 @@ export function ConversationsLayout() {
           <h2 className="text-base font-semibold">Chats</h2>
           <Button
             size="sm"
-            disabled={createConvMutation.isPending}
+            onClick={() => {
+              if (agents.length > 0) {
+                createConvMutation.mutate(agents[0].id)
+              }
+            }}
+            disabled={createConvMutation.isPending || agents.length === 0}
           >
             <Plus className="size-3.5" />
             {createConvMutation.isPending ? 'Starting...' : 'New'}

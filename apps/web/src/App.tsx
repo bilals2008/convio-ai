@@ -21,6 +21,7 @@ import KnowledgeDetailPage from '@/pages/knowledge/knowledge-detail-page'
 
 import AnalyticsPage from '@/pages/analytics/analytics-page'
 import WidgetsListPage from '@/pages/widgets/widgets-list-page'
+import WidgetConfigPage from '@/pages/widgets/widget-config-page'
 import WidgetDemoPage from '@/pages/widget/WidgetDemo'
 import PlaygroundPage from '@/pages/playground/playground-page'
 import AuditLogsPage from '@/pages/settings/audit-logs-page'
@@ -64,6 +65,7 @@ export function App() {
               <Route path="/knowledge/new" element={<KnowledgeDetailPage />} />
               <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
               <Route path="/widgets" element={<WidgetsListPage />} />
+              <Route path="/widgets/:id" element={<WidgetConfigPage />} />
               <Route path="/conversations" element={<ConversationsLayout />}>
                 <Route index element={<ConversationsListPage />} />
                 <Route path=":id" element={<ChatView />} />

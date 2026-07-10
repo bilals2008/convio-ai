@@ -1,0 +1,32 @@
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Copy, Globe2, Loader2, Pause, Play, Save } from 'lucide-react'
+import { toast } from 'sonner'
+import { PageContainer } from '@/components/shared/page-container'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { widgets as widgetsApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
+
+interface WidgetDetail { id: string; name: string; status: 'draft' | 'active' | 'paused'; publicKey: string; allowedDomains: string[]; config: { greeting?: string; primaryColor?: string; position?: 'bottom-right' | 'bottom-left'; quickReplies?: string[]; agentName?: string }; agent: { name: string } }
+
+export default function WidgetConfigPage() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { orgId } = useOrg()
+  const { data: widget, isLoading } = useQuery({ queryKey: ['widget', id], queryFn: async () => (await widgetsApi.get(id!)).data.data as WidgetDetail, enabled: Boolean(id) })
+  const [name, setName] = useState(''); const [greeting, setGreeting] = useState(''); const [quickReplies, setQuickReplies] = useState(''); const [domains, setDomains] = useState(''); const [position, setPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right'); const [copied, setCopied] = useState(false)
+  // Form values are initialized once when the asynchronous widget record arrives.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (widget) { setName(widget.name); setGreeting(widget.config.greeting ?? ''); setQuickReplies((widget.config.quickReplies ?? []).join('\n')); setDomains(widget.allowedDomains.join('\n')); setPosition(widget.config.position ?? 'bottom-right') } }, [widget])
+  const save = useMutation({ mutationFn: (status?: string) => widgetsApi.update(id!, { name, status, allowedDomains: domains.split('\n').map((domain) => domain.trim()).filter(Boolean), config: { greeting, quickReplies: quickReplies.split('\n').map((reply) => reply.trim()).filter(Boolean), position } }), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['widget', id] }); queryClient.invalidateQueries({ queryKey: ['widgets', orgId] }); toast.success('Widget saved') }, onError: (error: Error) => toast.error(error.message || 'Could not save widget') })
+  const copyEmbed = async () => { const response = await widgetsApi.getEmbed(id!); await navigator.clipboard.writeText(response.data.data.snippet); setCopied(true); window.setTimeout(() => setCopied(false), 1800) }
+  if (isLoading || !widget) return <div className="flex h-64 items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+  const isLive = widget.status === 'active'
+  return <PageContainer><div className="mx-auto max-w-6xl space-y-6"><header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between"><div><Button variant="link" className="h-auto p-0 text-muted-foreground" onClick={() => navigate('/widgets')}>← Widgets</Button><h1 className="mt-2 text-2xl font-semibold tracking-tight">{widget.name}</h1><p className="mt-1 text-sm text-muted-foreground">Connected to {widget.agent.name}</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => save.mutate(isLive ? 'paused' : 'active')} disabled={save.isPending}>{isLive ? <Pause className="size-4" /> : <Play className="size-4" />}{isLive ? 'Pause' : 'Publish'}</Button><Button onClick={() => save.mutate()} disabled={save.isPending}><Save className="size-4" />Save changes</Button></div></header><div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]"><main className="space-y-6"><Card><CardHeader><CardTitle>Conversation</CardTitle><CardDescription>Set the first thing visitors see and the prompts they can choose.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label htmlFor="widget-name">Widget name</Label><Input id="widget-name" value={name} onChange={(event) => setName(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="greeting">Greeting</Label><Textarea id="greeting" value={greeting} onChange={(event) => setGreeting(event.target.value)} rows={3} /></div><div className="space-y-2"><Label htmlFor="quick-replies">Starter prompts</Label><Textarea id="quick-replies" value={quickReplies} onChange={(event) => setQuickReplies(event.target.value)} placeholder="One prompt per line" rows={4} /><p className="text-xs text-muted-foreground">Up to four prompts, one per line.</p></div></CardContent></Card><Card><CardHeader><CardTitle>Placement</CardTitle><CardDescription>Choose where the launcher appears on your site.</CardDescription></CardHeader><CardContent className="flex gap-2"><Button type="button" variant={position === 'bottom-right' ? 'default' : 'outline'} onClick={() => setPosition('bottom-right')}>Bottom right</Button><Button type="button" variant={position === 'bottom-left' ? 'default' : 'outline'} onClick={() => setPosition('bottom-left')}>Bottom left</Button></CardContent></Card></main><aside className="space-y-6"><Card><CardHeader><CardTitle className="flex items-center gap-2"><Globe2 className="size-4" />Publish</CardTitle><CardDescription>Only active widgets can be shown publicly.</CardDescription></CardHeader><CardContent className="space-y-3"><Label htmlFor="domains">Allowed domains</Label><Textarea id="domains" value={domains} onChange={(event) => setDomains(event.target.value)} placeholder={'example.com\nlocalhost:5173'} rows={4} /><p className="text-xs text-muted-foreground">One domain per line. Required before publishing.</p></CardContent></Card><Card><CardHeader><CardTitle>Install</CardTitle><CardDescription>Copy this after publishing.</CardDescription></CardHeader><CardContent><Button className="w-full" variant="outline" onClick={copyEmbed}>{copied ? <Check className="size-4" /> : <Copy className="size-4" />}{copied ? 'Copied' : 'Copy embed code'}</Button></CardContent></Card></aside></div></div></PageContainer>
+}
