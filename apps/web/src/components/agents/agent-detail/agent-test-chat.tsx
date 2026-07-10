@@ -9,8 +9,19 @@ import {
   User,
   Loader2,
   MessageSquare,
+  Settings2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message'
@@ -107,6 +118,8 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
   const [streamingReasoning, setStreamingReasoning] = useState('')
   const [error, setError] = useState('')
   const [inputValue, setInputValue] = useState('')
+  const [showReasoning, setShowReasoning] = useState(true)
+  const [reasoningOverride, setReasoningOverride] = useState('')
   const abortRef = useRef<AbortController | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -177,6 +190,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
     setInputValue('')
     setStreaming(true)
     setStreamingContent('')
+    setStreamingReasoning('')
     streamBufferRef.current = ''
 
     const userMessage: MessageItem = {
@@ -208,7 +222,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
         message: trimmed,
         temperature: cfg.temperature,
         maxTokens: cfg.maxTokens,
-        reasoningEffort: cfg.reasoningEffort,
+        reasoningEffort: reasoningOverride || cfg.reasoningEffort,
         providerKeyId: cfg.providerKeyId,
         history,
         signal: controller.signal,
@@ -244,6 +258,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
               const parsed = JSON.parse(data)
               if (parsed.type === 'reasoning') {
                 assistantReasoning += parsed.content
+                setStreamingReasoning(assistantReasoning)
                 queueStreamingContent(assistantContent)
               } else if (parsed.content) {
                 assistantContent += parsed.content
@@ -285,7 +300,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
       setStreamingContent('')
       abortRef.current = null
     }
-  }, [inputValue, streaming, messages, queueStreamingContent, updateActiveConversation])
+  }, [inputValue, streaming, messages, queueStreamingContent, updateActiveConversation, reasoningOverride])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -308,6 +323,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
     setActiveConvId(conv.id)
     setStreaming(false)
     setStreamingContent('')
+    setStreamingReasoning('')
     setError('')
   }, [])
 
@@ -321,10 +337,16 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
     }))
     setStreaming(false)
     setStreamingContent('')
+    setStreamingReasoning('')
     setError('')
   }, [updateActiveConversation])
 
   const canSend = !!(agentConfig.systemPrompt && agentConfig.model)
+
+  const supportsReasoning = useMemo(() => {
+    const m = agentConfig.model || ''
+    return m.startsWith('local/') || /(reasoning|o1|o3|o4|r1|qwq|deepseek-r1)/i.test(m)
+  }, [agentConfig.model])
 
   const formatTime = (date: string) =>
     new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -408,6 +430,59 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
               </span>
             </div>
             <div className="flex items-center gap-1">
+              <Popover>
+                <PopoverTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-foreground text-xs h-7 px-2 gap-1.5"
+                    />
+                  }
+                >
+                  <Settings2 className="size-3" />
+                  Settings
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 p-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Settings2 className="size-4 text-primary" />
+                      <h4 className="text-sm font-semibold">Test settings</h4>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium">Show reasoning</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Display model reasoning live
+                        </p>
+                      </div>
+                      <Switch
+                        size="sm"
+                        checked={showReasoning}
+                        onCheckedChange={setShowReasoning}
+                      />
+                    </div>
+                    {supportsReasoning && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">Reasoning effort</Label>
+                        <Select value={reasoningOverride} onValueChange={setReasoningOverride}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Agent default" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Agent default</SelectItem>
+                            <SelectItem value="none">None</SelectItem>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="xhigh">Extra High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button
                 variant="ghost"
                 size="sm"
@@ -456,7 +531,7 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                     </MessageAvatar>
                     <MessageContent>
                       <Bubble variant={isUser ? 'default' : 'muted'}>
-                        {!isUser && msg.reasoning && (
+                        {!isUser && showReasoning && msg.reasoning && (
                           <details className="px-3 pt-2 pb-1 text-xs text-muted-foreground border-b border-border/40 mb-2">
                             <summary className="cursor-pointer select-none font-medium text-foreground/60 hover:text-foreground transition-colors">
                               Show reasoning
@@ -492,6 +567,17 @@ export function AgentTestChat({ agentConfig }: AgentTestChatProps) {
                   </MessageAvatar>
                   <MessageContent>
                     <Bubble variant="muted">
+                      {showReasoning && streamingReasoning && (
+                        <details className="px-3 pt-2 pb-1 text-xs text-muted-foreground border-b border-border/40 mb-2" open>
+                          <summary className="flex cursor-pointer select-none items-center gap-1.5 font-medium text-foreground/60 hover:text-foreground transition-colors">
+                            <Loader2 className="size-3 animate-spin" />
+                            Reasoning…
+                          </summary>
+                          <div className="mt-1.5 whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                            {streamingReasoning}
+                          </div>
+                        </details>
+                      )}
                       <BubbleContent>
                         {streamingContent ? (
                           <AiResponse content={streamingContent} isStreaming showActions={false} />
