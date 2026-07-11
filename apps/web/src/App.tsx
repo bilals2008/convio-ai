@@ -64,7 +64,6 @@ export function App() {
               <Route path="/agents/new" element={<CreateAgentPage />} />
               <Route path="/agents/:id/edit" element={<AgentDetailPage />} />
               <Route path="/knowledge" element={<KnowledgeListPage />} />
-              <Route path="/knowledge/new" element={<KnowledgeDetailPage />} />
               <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
               <Route path="/widgets" element={<WidgetsListPage />} />
               <Route path="/widgets/:id" element={<WidgetConfigPage />} />

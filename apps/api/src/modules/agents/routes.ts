@@ -5,6 +5,7 @@ import { createAgentSchema, updateAgentSchema } from '@convio/validation'
 import { AppError } from '../../plugins/error.js'
 import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
+import { retrieveContext } from '../../services/processor.js'
 import { z } from 'zod'
 
 const orgParamsSchema = z.object({
@@ -41,6 +42,7 @@ const testStreamSchema = z.object({
   maxTokens: z.number().min(1).max(512000).default(2048),
   reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
   providerKeyId: z.string().uuid().optional(),
+  knowledgeBaseId: z.string().uuid().optional(),
   history: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string().min(1).max(12000),
@@ -48,10 +50,12 @@ const testStreamSchema = z.object({
 })
 
 const createAgentBodySchema = createAgentSchema.extend({
-  knowledgeBaseId: z.string().uuid().optional(),
+  knowledgeBaseId: z.string().uuid().optional().nullable(),
 })
 
-const updateAgentBodySchema = updateAgentSchema
+const updateAgentBodySchema = updateAgentSchema.extend({
+  knowledgeBaseId: z.string().uuid().optional().nullable(),
+})
 
 export default async function agentsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/agents — Create agent (member only)
@@ -311,6 +315,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       maxTokens,
       reasoningEffort,
       providerKeyId,
+      knowledgeBaseId,
       history,
     } = request.body as z.infer<typeof testStreamSchema>
 
@@ -345,8 +350,21 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       return
     }
 
+    let systemContext = systemPrompt
+
+    if (knowledgeBaseId) {
+      const context = await retrieveContext(message, knowledgeBaseId).catch(() => null)
+      if (context) {
+        systemContext +=
+          '\n\n## Retrieved knowledge (RAG)\n' +
+          'Use the following source excerpts to answer. Prefer this context over general knowledge when relevant. ' +
+          'If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n' +
+          context
+      }
+    }
+
     const messages = [
-      { role: 'system' as const, content: systemPrompt },
+      { role: 'system' as const, content: systemContext },
       ...history.map((h) => ({ role: h.role, content: h.content })),
       { role: 'user' as const, content: message },
     ]

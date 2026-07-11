@@ -48,6 +48,7 @@ import {
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface LogEntry {
   id: string
@@ -346,6 +347,10 @@ export default function PlaygroundPage() {
                   {logs.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="toasts">
+              <Sparkles className="size-4" />
+              Toast Test
             </TabsTrigger>
           </TabsList>
         </div>
@@ -720,6 +725,102 @@ export default function PlaygroundPage() {
               })}
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="toasts" className="mt-0">
+          <Card className="p-6 space-y-6">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                <Sparkles className="size-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold">Toast Test</h2>
+                <p className="text-xs text-muted-foreground">Click a button to test each toast type</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex-col gap-2 border-emerald-500/30 hover:bg-emerald-500/10"
+                onClick={() => toast.success('Success! The operation completed successfully.')}
+              >
+                <CheckCircle2 className="size-5 text-emerald-500" />
+                <span className="text-xs font-medium">Success</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex-col gap-2 border-destructive/30 hover:bg-destructive/10"
+                onClick={() => toast.error('Error! Something went wrong. Please try again.')}
+              >
+                <XCircle className="size-5 text-destructive" />
+                <span className="text-xs font-medium">Error</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex-col gap-2 border-amber-500/30 hover:bg-amber-500/10"
+                onClick={() => toast.warning('Warning! This action may have consequences.')}
+              >
+                <Clock className="size-5 text-amber-500" />
+                <span className="text-xs font-medium">Warning</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex-col gap-2 border-blue-500/30 hover:bg-blue-500/10"
+                onClick={() => toast.info('Info: Here is some useful information.')}
+              >
+                <Terminal className="size-5 text-blue-500" />
+                <span className="text-xs font-medium">Info</span>
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Advanced</h3>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => toast.promise(
+                    new Promise((resolve) => setTimeout(resolve, 2000)),
+                    {
+                      loading: 'Loading data...',
+                      success: 'Data loaded successfully!',
+                      error: 'Failed to load data.',
+                    }
+                  )}
+                >
+                  Promise Toast
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => toast.success('Copied to clipboard!', { duration: 2000 })}
+                >
+                  Custom Duration (2s)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => toast.success('With description', { description: 'This toast has a description below the title.' })}
+                >
+                  With Description
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    const id = toast.loading('Loading...')
+                    setTimeout(() => toast.success('Done!', { id }), 1500)
+                  }}
+                >
+                  Update Toast
+                </Button>
+              </div>
+            </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="history" className="mt-0">

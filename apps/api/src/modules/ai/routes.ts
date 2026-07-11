@@ -63,7 +63,11 @@ export default async function aiRoutes(fastify: FastifyInstance) {
         try {
           const context = await retrieveContext(lastUserMsg.content, agent.knowledgeBaseId)
           if (context) {
-            systemContext += '\n\nUse the following context to answer the user:\n\n' + context
+            systemContext +=
+              '\n\n## Retrieved knowledge (RAG)\n' +
+              'Use the following source excerpts to answer. Prefer this context over general knowledge when relevant. ' +
+              'If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n' +
+              context
           }
         } catch {
           request.log.warn('RAG retrieval failed')
