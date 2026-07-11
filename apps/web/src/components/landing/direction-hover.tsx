@@ -42,16 +42,16 @@ export function DirectionHover({
   }
   const onLeave = () => setDir('none')
 
-  const lineBox = fontSize * 0.72
+  const lineHeight = fontSize * 1.2
   const gapPx = gap * 3
-  const step = lineBox + gapPx
+  const step = lineHeight + gapPx
   const yByDir = { none: -step, top: 0, bottom: -2 * step }
 
   const labelStyle: React.CSSProperties = {
     margin: 0,
     whiteSpace: 'pre',
     lineHeight: 1,
-    height: lineBox,
+    height: lineHeight,
     display: 'flex',
     alignItems: 'center',
     overflow: 'hidden',
@@ -67,7 +67,7 @@ export function DirectionHover({
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       className={cn('relative inline-block overflow-hidden select-none', className)}
-      style={{ height: lineBox, cursor: 'pointer' }}
+      style={{ height: lineHeight, cursor: 'pointer' }}
     >
       <span
         style={{
