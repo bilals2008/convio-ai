@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { z } from 'zod'
-import { Loader2, Upload, FileText } from 'lucide-react'
+import { Loader2, Upload, FileText, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -21,8 +21,16 @@ const documentSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('csv'), name: z.string().min(1).max(200), content: z.string().min(1) }),
   z.object({ type: z.literal('md'), name: z.string().min(1).max(200), content: z.string().min(1) }),
   z.object({ type: z.literal('json'), name: z.string().min(1).max(200), content: z.string().min(1) }),
-  z.object({ type: z.literal('pdf'), name: z.string().min(1).max(200), file: z.instanceof(File).refine((f) => f.type === 'application/pdf', 'Must be a PDF file') }),
-  z.object({ type: z.literal('url'), name: z.string().min(1).max(200), url: z.string().url('Valid URL required') }),
+  z.object({
+    type: z.literal('pdf'),
+    name: z.string().min(1).max(200),
+    file: z.instanceof(File).refine((f) => f.type === 'application/pdf', 'Must be a PDF file'),
+  }),
+  z.object({
+    type: z.literal('url'),
+    name: z.string().min(1).max(200),
+    url: z.string().url('Valid URL required'),
+  }),
 ])
 
 interface DocumentUploadFormProps {
@@ -47,7 +55,7 @@ export function DocumentUploadForm({ onSubmit, knowledgeBaseId, loading }: Docum
     if (type === 'pdf') {
       const result = documentSchema.safeParse({ name, type, file })
       if (!result.success) {
-        setErrors(result.error.errors.map((e) => e.message))
+        setErrors(result.error.errors.map((err) => err.message))
         return
       }
       if (!file) return
@@ -58,21 +66,32 @@ export function DocumentUploadForm({ onSubmit, knowledgeBaseId, loading }: Docum
         formData.append('file', file)
         await knowledgeApi.uploadPdf(knowledgeBaseId, formData)
         onSubmit({ name, type: 'pdf' })
+        setName('')
+        setFile(null)
+      } catch (err: unknown) {
+        const message =
+          err && typeof err === 'object' && 'response' in err
+            ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+            : undefined
+        setErrors([message || 'Failed to upload PDF'])
       } finally {
         setUploading(false)
       }
-      setName('')
-      setFile(null)
       return
     }
 
     const result = documentSchema.safeParse({ name, type, content, url })
     if (!result.success) {
-      setErrors(result.error.errors.map((e) => e.message))
+      setErrors(result.error.errors.map((err) => err.message))
       return
     }
     setErrors([])
-    onSubmit({ name, type: result.data.type, content: 'content' in result.data ? result.data.content : undefined, url: 'url' in result.data ? result.data.url : undefined })
+    onSubmit({
+      name,
+      type: result.data.type,
+      content: 'content' in result.data ? result.data.content : undefined,
+      url: 'url' in result.data ? result.data.url : undefined,
+    })
     setName('')
     setContent('')
     setUrl('')
@@ -83,10 +102,20 @@ export function DocumentUploadForm({ onSubmit, knowledgeBaseId, loading }: Docum
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+        <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+        <p className="text-xs text-muted-foreground">
+          Documents are chunked and embedded for RAG. Agents linked to this knowledge base will
+          retrieve relevant passages when answering.
+        </p>
+      </div>
+
       {errors.length > 0 && (
-        <div className="rounded-lg bg-destructive/10 px-4 py-3 space-y-1">
-          {errors.map((e, i) => (
-            <p key={i} className="text-xs text-destructive">{e}</p>
+        <div className="space-y-1 rounded-lg bg-destructive/10 px-4 py-3">
+          {errors.map((err, i) => (
+            <p key={i} className="text-xs text-destructive">
+              {err}
+            </p>
           ))}
         </div>
       )}
@@ -104,7 +133,11 @@ export function DocumentUploadForm({ onSubmit, knowledgeBaseId, loading }: Docum
         </div>
         <div className="space-y-2">
           <Label>Type *</Label>
-          <Select value={type} onValueChange={(v) => setType(v as DocType)} disabled={isBusy}>
+          <Select
+            value={type}
+            onValueChange={(v) => setType(v as DocType)}
+            disabled={isBusy}
+          >
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -139,13 +172,15 @@ export function DocumentUploadForm({ onSubmit, knowledgeBaseId, loading }: Docum
           <Label>PDF File *</Label>
           <div
             onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+            className="cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:border-primary/50"
           >
             {file ? (
               <div className="flex items-center justify-center gap-2">
                 <FileText className="size-5 text-primary" />
                 <span className="text-sm font-medium">{file.name}</span>
-                <span className="text-xs text-muted-foreground">({(file.size / 1024).toFixed(0)} KB)</span>
+                <span className="text-xs text-muted-foreground">
+                  ({(file.size / 1024).toFixed(0)} KB)
+                </span>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-1">
@@ -181,12 +216,15 @@ export function DocumentUploadForm({ onSubmit, knowledgeBaseId, loading }: Docum
             onChange={(e) => setUrl(e.target.value)}
             disabled={isBusy}
           />
+          <p className="text-xs text-muted-foreground">
+            The page will be fetched, cleaned, and indexed for retrieval.
+          </p>
         </div>
       )}
 
       <Button type="submit" disabled={isBusy}>
         {isBusy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-        {isBusy ? 'Uploading...' : 'Add Document'}
+        {isBusy ? 'Indexing...' : 'Add & Index Document'}
       </Button>
     </form>
   )
