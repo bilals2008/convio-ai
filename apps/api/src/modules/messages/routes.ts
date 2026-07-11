@@ -144,7 +144,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     ])
     const history = historyDesc.reverse()
     const systemContext = context
-      ? `${agent.systemPrompt}\n\nUse the following context to answer the user:\n\n${context}`
+      ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
       : agent.systemPrompt
 
     const aiMessages = [
@@ -377,7 +377,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const history = historyDesc.reverse()
     const apiKey = providerKey?.apiKey
     const systemContext = context
-      ? `${agent.systemPrompt}\n\nUse the following context to answer the user:\n\n${context}`
+      ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
       : agent.systemPrompt
 
     const aiMessages = [

@@ -115,8 +115,29 @@ export class LocalProvider implements AIProvider {
     yield { type: 'done', usage: finalUsage }
   }
 
-  async embed(_text: string): Promise<number[]> {
-    throw new Error('OmniRoute does not support embeddings')
+  async embed(text: string): Promise<number[]> {
+    const apiKey = process.env.GITHUB_PAT || process.env.LOCAL_API_KEY
+    const baseUrl = process.env.EMBEDDING_BASE_URL || 'https://models.inference.ai.azure.com'
+
+    const res = await fetch(`${baseUrl}/embeddings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: text,
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => res.statusText)
+      throw new Error(`Embedding API error (${res.status}): ${err}`)
+    }
+
+    const data = await res.json() as { data: Array<{ embedding: number[] }> }
+    return data.data?.[0]?.embedding ?? []
   }
 
   async moderate(_text: string): Promise<ModerationResult> {

@@ -1,12 +1,16 @@
 import { convert } from '@opendataloader/pdf'
 import { prisma } from '@convio/database'
 import { getProviderById } from '@convio/ai/providers'
+import { downloadFile } from '../lib/storage.js'
 import { mkdtemp, rm, writeFile, readFile, readdir } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
 
 const CHUNK_SIZE = 1000
-const CHUNK_OVERLAP = 200
+const CHUNK_OVERLAP_WORDS = 40
+/** Cosine distance upper bound (similarity ≈ 1 - distance). 0.75 ≈ 0.25 similarity. */
+const MAX_DISTANCE = 0.75
+const DEFAULT_TOP_K = 5
 
 function chunkText(text: string): string[] {
   const paragraphs = text.split(/\n\s*\n/).filter(Boolean)
@@ -19,23 +23,81 @@ function chunkText(text: string): string[] {
 
     if (current.length + trimmed.length > CHUNK_SIZE && current.length > 0) {
       chunks.push(current.trim())
-      const overlapWords = current.split(' ').slice(-40).join(' ')
+      const overlapWords = current.split(/\s+/).slice(-CHUNK_OVERLAP_WORDS).join(' ')
       current = overlapWords + '\n\n' + trimmed
     } else {
       current += (current ? '\n\n' : '') + trimmed
     }
   }
 
+  // Fallback: long single blocks without blank lines
+  if (!chunks.length && text.trim()) {
+    const words = text.trim().split(/\s+/)
+    let buf: string[] = []
+    let len = 0
+    for (const w of words) {
+      if (len + w.length + 1 > CHUNK_SIZE && buf.length > 0) {
+        chunks.push(buf.join(' '))
+        const overlap = buf.slice(-CHUNK_OVERLAP_WORDS)
+        buf = [...overlap, w]
+        len = buf.join(' ').length
+      } else {
+        buf.push(w)
+        len += w.length + 1
+      }
+    }
+    if (buf.length) chunks.push(buf.join(' '))
+    return chunks
+  }
+
   if (current.trim()) chunks.push(current.trim())
   return chunks
 }
 
-export async function processPdf(
-  filePath: string,
-  documentId: string,
-): Promise<void> {
-  await prisma.document.update({ where: { id: documentId }, data: { status: 'processing' } })
+/** GitHub Models text-embedding-3-small via OmniRoute is 1536-d — matches DocumentChunk vector(1536). */
+async function embedText(text: string): Promise<number[] | null> {
+  const localProvider = getProviderById('local')
+  if (!localProvider) return null
 
+  try {
+    return await localProvider.embed(text)
+  } catch {
+    return null
+  }
+}
+
+async function deleteChunks(documentId: string): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM "DocumentChunk" WHERE "documentId" = $1`,
+    documentId,
+  )
+}
+
+async function storeChunks(documentId: string, chunks: string[]): Promise<number> {
+  let stored = 0
+
+  for (const chunk of chunks) {
+    if (!chunk.trim()) continue
+
+    const embedding = await embedText(chunk)
+    const vectorStr = embedding ? `[${embedding.join(',')}]` : null
+
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "DocumentChunk" ("id", "documentId", "content", "embedding", "createdAt")
+       VALUES ($1, $2, $3, $4::vector, $5)`,
+      crypto.randomUUID(),
+      documentId,
+      chunk,
+      vectorStr,
+      new Date(),
+    )
+    stored++
+  }
+
+  return stored
+}
+
+async function extractPdfMarkdown(filePath: string): Promise<string> {
   const tmpDir = await mkdtemp(join(tmpdir(), 'convio-pdf-'))
   try {
     await convert([filePath], {
@@ -47,88 +109,288 @@ export async function processPdf(
     const mdFile = files.find((f) => f.endsWith('.md'))
     if (!mdFile) throw new Error('No markdown output from PDF conversion')
 
-    const markdown = await readFile(join(tmpDir, mdFile), 'utf-8')
-    const chunks = chunkText(markdown)
-
-    const openaiProvider = getProviderById('openai')
-    const googleProvider = getProviderById('google')
-
-    for (let i = 0; i < chunks.length; i++) {
-      let embedding: number[] | null = null
-
-      if (openaiProvider) {
-        try {
-          embedding = await openaiProvider.embed(chunks[i])
-        } catch {
-          try {
-            if (googleProvider) embedding = await googleProvider.embed(chunks[i])
-          } catch {}
-        }
-      }
-
-      const vectorStr = embedding ? `[${embedding.join(',')}]` : null
-
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "DocumentChunk" ("id", "documentId", "content", "embedding", "createdAt")
-         VALUES ($1, $2, $3, $4::vector, $5)`,
-        crypto.randomUUID(),
-        documentId,
-        chunks[i],
-        vectorStr,
-        new Date(),
-      )
-    }
-
-    await prisma.document.update({
-      where: { id: documentId },
-      data: { content: markdown, status: 'ready' },
-    })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'PDF processing failed'
-    await prisma.document.update({
-      where: { id: documentId },
-      data: { status: 'error' },
-    })
-    throw new Error(msg)
+    return await readFile(join(tmpDir, mdFile), 'utf-8')
   } finally {
     await rm(tmpDir, { recursive: true, force: true })
   }
 }
 
+async function fetchUrlContent(url: string): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 20_000)
+
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Convio-RAG/1.0 (+https://convio.app)',
+        Accept: 'text/html,application/xhtml+xml,text/plain,application/json;q=0.9,*/*;q=0.8',
+      },
+    })
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch URL (${res.status})`)
+    }
+
+    const contentType = res.headers.get('content-type') || ''
+    const raw = await res.text()
+
+    if (contentType.includes('application/json') || url.endsWith('.json')) {
+      try {
+        return JSON.stringify(JSON.parse(raw), null, 2)
+      } catch {
+        return raw
+      }
+    }
+
+    if (contentType.includes('text/html') || raw.includes('<html') || raw.includes('<!DOCTYPE')) {
+      return htmlToText(raw)
+    }
+
+    return raw
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<\/(p|div|h[1-6]|li|tr|br|hr|section|article|header|footer)>/gi, '\n\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+async function resolveDocumentText(
+  doc: {
+    id: string
+    type: string
+    content: string | null
+    url: string | null
+    fileKey: string | null
+  },
+  pdfPath?: string,
+): Promise<string> {
+  switch (doc.type) {
+    case 'pdf': {
+      if (pdfPath) {
+        return extractPdfMarkdown(pdfPath)
+      }
+      if (doc.fileKey) {
+        const buffer = await downloadFile(doc.fileKey)
+        const tmpPath = join(tmpdir(), `convio-reprocess-${doc.id}.pdf`)
+        await writeFile(tmpPath, buffer)
+        try {
+          return await extractPdfMarkdown(tmpPath)
+        } finally {
+          await rm(tmpPath, { force: true }).catch(() => {})
+        }
+      }
+      if (doc.content?.trim()) return doc.content
+      throw new Error('PDF has no file or content to process')
+    }
+    case 'url': {
+      if (!doc.url) throw new Error('URL document is missing a URL')
+      return fetchUrlContent(doc.url)
+    }
+    case 'txt':
+    case 'csv':
+    case 'md':
+    case 'json': {
+      if (!doc.content?.trim()) throw new Error('Document has no content to index')
+      return doc.content
+    }
+    default:
+      throw new Error(`Unsupported document type: ${doc.type}`)
+  }
+}
+
+/**
+ * Index a document: extract text → chunk → embed → store in pgvector.
+ * Safe to call for create and reprocess.
+ */
+export async function processDocument(
+  documentId: string,
+  options?: { pdfPath?: string },
+): Promise<void> {
+  const doc = await prisma.document.findUnique({ where: { id: documentId } })
+  if (!doc) throw new Error('Document not found')
+
+  await prisma.document.update({
+    where: { id: documentId },
+    data: { status: 'processing' },
+  })
+
+  try {
+    const text = await resolveDocumentText(doc, options?.pdfPath)
+    if (!text.trim()) throw new Error('Extracted content is empty')
+
+    const chunks = chunkText(text)
+    if (!chunks.length) throw new Error('No chunks produced from document')
+
+    await deleteChunks(documentId)
+    const stored = await storeChunks(documentId, chunks)
+
+    if (stored === 0) throw new Error('Failed to store any chunks')
+
+    // Warn via status if embeddings are missing (no OpenAI key)
+    const withEmbeddings = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+      `SELECT COUNT(*)::bigint AS count FROM "DocumentChunk"
+       WHERE "documentId" = $1 AND "embedding" IS NOT NULL`,
+      documentId,
+    )
+    const embeddedCount = Number(withEmbeddings[0]?.count ?? 0)
+    if (embeddedCount === 0) {
+      throw new Error(
+        'Chunks stored but embeddings failed. Configure a GitHub PAT with models:read scope in OmniRoute for text-embedding-3-small.',
+      )
+    }
+
+    await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        content: text.slice(0, 200_000),
+        status: 'ready',
+      },
+    })
+  } catch (err) {
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { status: 'error' },
+    })
+    throw err instanceof Error ? err : new Error('Document processing failed')
+  }
+}
+
+/** @deprecated Prefer processDocument — kept for existing PDF upload call sites. */
+export async function processPdf(filePath: string, documentId: string): Promise<void> {
+  return processDocument(documentId, { pdfPath: filePath })
+}
+
+export type RetrievedChunk = {
+  content: string
+  documentName: string
+  documentId: string
+  distance: number
+}
+
+/**
+ * Semantic search over a knowledge base. Returns grounded context string for the system prompt.
+ */
 export async function retrieveContext(
   query: string,
   knowledgeBaseId: string,
-  limit = 5,
+  limit = DEFAULT_TOP_K,
 ): Promise<string> {
-  const openaiProvider = getProviderById('openai')
-  const googleProvider = getProviderById('google')
-
-  let embedding: number[] | null = null
-  if (openaiProvider) {
-    try {
-      embedding = await openaiProvider.embed(query)
-    } catch {
-      try {
-        if (googleProvider) embedding = await googleProvider.embed(query)
-      } catch {}
-    }
+  const embedding = await embedText(query)
+  if (!embedding) {
+    console.log('[RAG] embedText returned null for query:', query.slice(0, 80))
+    return ''
   }
 
-  if (!embedding) return ''
-
+  console.log('[RAG] embedding generated, dimensions:', embedding.length, 'query:', query.slice(0, 80))
   const vectorStr = `[${embedding.join(',')}]`
-  const rows = await prisma.$queryRawUnsafe<Array<{ content: string }>>(
-    `SELECT dc."content"
+
+  const debugCount = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+    `SELECT COUNT(*) as count FROM "DocumentChunk" dc
+     JOIN "Document" d ON d."id" = dc."documentId"
+     WHERE d."knowledgeBaseId" = $1 AND d."status" = 'ready' AND dc."embedding" IS NOT NULL`,
+    knowledgeBaseId,
+  )
+  console.log('[RAG] total chunks with embeddings in KB:', debugCount[0]?.count)
+
+  // Debug: get raw distances
+  const debugDistances = await prisma.$queryRawUnsafe<Array<{ distance: number }>>(
+    `SELECT (dc."embedding" <=> $2::vector) AS distance
      FROM "DocumentChunk" dc
      JOIN "Document" d ON d."id" = dc."documentId"
-     WHERE d."knowledgeBaseId" = $1 AND dc."embedding" IS NOT NULL
+     WHERE d."knowledgeBaseId" = $1 AND d."status" = 'ready' AND dc."embedding" IS NOT NULL
+     ORDER BY distance LIMIT 5`,
+    knowledgeBaseId,
+    vectorStr,
+  )
+  console.log('[RAG] raw distances:', debugDistances.map(r => r.distance.toFixed(4)))
+
+  const rows = await prisma.$queryRawUnsafe<
+    Array<{
+      content: string
+      documentName: string
+      documentId: string
+      distance: number
+    }>
+  >(
+    `SELECT
+       dc."content",
+       d."name" AS "documentName",
+       d."id" AS "documentId",
+       (dc."embedding" <=> $2::vector) AS distance
+     FROM "DocumentChunk" dc
+     JOIN "Document" d ON d."id" = dc."documentId"
+     WHERE d."knowledgeBaseId" = $1
+       AND d."status" = 'ready'
+       AND dc."embedding" IS NOT NULL
+       AND (dc."embedding" <=> $2::vector) <= $4
      ORDER BY dc."embedding" <=> $2::vector
      LIMIT $3`,
     knowledgeBaseId,
     vectorStr,
     limit,
+    MAX_DISTANCE,
   )
 
-  if (!rows?.length) return ''
-  return rows.map((r) => r.content).join('\n\n---\n\n')
+  if (!rows?.length) {
+    console.log('[RAG] no matching chunks found for knowledgeBaseId:', knowledgeBaseId)
+    return ''
+  }
+
+  console.log('[RAG] found', rows.length, 'matching chunks')
+  return rows
+    .map(
+      (r, i) =>
+        `[Source ${i + 1}: ${r.documentName}]\n${r.content}`,
+    )
+    .join('\n\n---\n\n')
+}
+
+export async function retrieveChunks(
+  query: string,
+  knowledgeBaseId: string,
+  limit = DEFAULT_TOP_K,
+): Promise<RetrievedChunk[]> {
+  const embedding = await embedText(query)
+  if (!embedding) return []
+
+  const vectorStr = `[${embedding.join(',')}]`
+  const rows = await prisma.$queryRawUnsafe<RetrievedChunk[]>(
+    `SELECT
+       dc."content",
+       d."name" AS "documentName",
+       d."id" AS "documentId",
+       (dc."embedding" <=> $2::vector)::float8 AS distance
+     FROM "DocumentChunk" dc
+     JOIN "Document" d ON d."id" = dc."documentId"
+     WHERE d."knowledgeBaseId" = $1
+       AND d."status" = 'ready'
+       AND dc."embedding" IS NOT NULL
+       AND (dc."embedding" <=> $2::vector) <= $4
+     ORDER BY dc."embedding" <=> $2::vector
+     LIMIT $3`,
+    knowledgeBaseId,
+    vectorStr,
+    limit,
+    MAX_DISTANCE,
+  )
+
+  return rows ?? []
 }

@@ -88,10 +88,12 @@ export const createAgentSchema = agentSchema.omit({
 })
 
 export const createAgentFullSchema = createAgentSchema.extend({
-  knowledgeBaseId: z.string().uuid().optional(),
+  knowledgeBaseId: z.string().uuid().optional().nullable(),
 })
 
-export const updateAgentSchema = createAgentSchema.partial()
+export const updateAgentSchema = createAgentSchema.partial().extend({
+  knowledgeBaseId: z.string().uuid().optional().nullable(),
+})
 
 // Conversation schemas
 export const channelSchema = z.enum(['web', 'api', 'whatsapp', 'telegram', 'discord', 'slack'])

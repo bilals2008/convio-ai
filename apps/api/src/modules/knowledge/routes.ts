@@ -3,8 +3,8 @@ import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
-import { uploadFile, deleteFile, downloadFile } from '../../lib/storage.js'
-import { processPdf } from '../../services/processor.js'
+import { uploadFile, deleteFile } from '../../lib/storage.js'
+import { processDocument, processPdf } from '../../services/processor.js'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
@@ -48,9 +48,17 @@ const updateKbBodySchema = z.object({
 })
 
 const createDocBodySchema = z.discriminatedUnion('type', [
-  z.object({ type: z.enum(['txt', 'csv', 'md', 'json']), name: z.string().min(1).max(200), content: z.string().min(1).max(50000) }),
+  z.object({
+    type: z.enum(['txt', 'csv', 'md', 'json']),
+    name: z.string().min(1).max(200),
+    content: z.string().min(1).max(50000),
+  }),
   z.object({ type: z.literal('pdf'), name: z.string().min(1).max(200) }),
-  z.object({ type: z.literal('url'), name: z.string().min(1).max(200), url: z.string().url() }),
+  z.object({
+    type: z.literal('url'),
+    name: z.string().min(1).max(200),
+    url: z.string().url(),
+  }),
 ])
 
 const updateDocBodySchema = z.object({
@@ -58,6 +66,33 @@ const updateDocBodySchema = z.object({
   content: z.string().max(50000).optional().nullable(),
   url: z.string().url().optional().nullable(),
 })
+
+function runIndexing(documentId: string, log: FastifyInstance['log'], pdfPath?: string) {
+  const work = pdfPath
+    ? processPdf(pdfPath, documentId)
+    : processDocument(documentId)
+
+  work.catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : 'Indexing failed'
+    log.error({ err, documentId }, `Document indexing failed: ${message}`)
+  })
+}
+
+async function withChunkCount<T extends { id: string }>(
+  docs: T[],
+): Promise<Array<T & { chunkCount: number }>> {
+  if (!docs.length) return []
+
+  const ids = docs.map((d) => d.id)
+  const counts = await prisma.documentChunk.groupBy({
+    by: ['documentId'],
+    where: { documentId: { in: ids } },
+    _count: { _all: true },
+  })
+
+  const map = new Map(counts.map((c) => [c.documentId, c._count._all]))
+  return docs.map((d) => ({ ...d, chunkCount: map.get(d.id) ?? 0 }))
+}
 
 export default async function knowledgeRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/knowledge-bases — Create knowledge base (member only)
@@ -93,7 +128,12 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     const kbs = await prisma.knowledgeBase.findMany({
       where: { organizationId: orgId },
-      include: { _count: { select: { documents: true } } },
+      include: {
+        _count: { select: { documents: true } },
+        documents: {
+          select: { status: true },
+        },
+      },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { createdAt: 'desc' },
@@ -103,15 +143,26 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     const items = hasNextPage ? kbs.slice(0, limit) : kbs
 
     return {
-      data: items.map((kb) => ({
-        id: kb.id,
-        name: kb.name,
-        description: kb.description,
-        documentCount: kb._count.documents,
-        organizationId: kb.organizationId,
-        createdAt: kb.createdAt,
-        updatedAt: kb.updatedAt,
-      })),
+      data: items.map((kb) => {
+        const readyCount = kb.documents.filter((d) => d.status === 'ready').length
+        const processingCount = kb.documents.filter(
+          (d) => d.status === 'processing' || d.status === 'pending',
+        ).length
+        const errorCount = kb.documents.filter((d) => d.status === 'error').length
+
+        return {
+          id: kb.id,
+          name: kb.name,
+          description: kb.description,
+          documentCount: kb._count.documents,
+          readyCount,
+          processingCount,
+          errorCount,
+          organizationId: kb.organizationId,
+          createdAt: kb.createdAt,
+          updatedAt: kb.updatedAt,
+        }
+      }),
       nextCursor: hasNextPage ? items[items.length - 1].id : null,
     }
   })
@@ -127,12 +178,21 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     const kb = await prisma.knowledgeBase.findUnique({
       where: { id },
-      include: { _count: { select: { documents: true } } },
+      include: {
+        _count: { select: { documents: true } },
+        documents: { select: { status: true } },
+      },
     })
 
     if (!kb) throw new AppError(404, 'Knowledge base not found')
 
     await fastify.getMembership(request.userId!, kb.organizationId)
+
+    const readyCount = kb.documents.filter((d) => d.status === 'ready').length
+    const processingCount = kb.documents.filter(
+      (d) => d.status === 'processing' || d.status === 'pending',
+    ).length
+    const errorCount = kb.documents.filter((d) => d.status === 'error').length
 
     return {
       data: {
@@ -140,6 +200,9 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
         name: kb.name,
         description: kb.description,
         documentCount: kb._count.documents,
+        readyCount,
+        processingCount,
+        errorCount,
         organizationId: kb.organizationId,
         createdAt: kb.createdAt,
         updatedAt: kb.updatedAt,
@@ -163,7 +226,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     const kb = await prisma.knowledgeBase.update({
       where: { id },
-      data: request.body as any,
+      data: request.body as { name?: string; description?: string | null },
     })
 
     return { data: kb }
@@ -187,7 +250,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     reply.code(204).send()
   })
 
-  // POST /api/knowledge-bases/:id/documents — Add document from text (member only)
+  // POST /api/knowledge-bases/:id/documents — Add document from text/url (member only)
   fastify.post('/knowledge-bases/:id/documents', {
     preHandler: [
       fastify.authenticate,
@@ -202,16 +265,29 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
       url?: string
     }
 
+    if (type === 'pdf') {
+      throw new AppError(400, 'Use the PDF upload endpoint for PDF files')
+    }
+
     const kb = await prisma.knowledgeBase.findUnique({ where: { id } })
     if (!kb) throw new AppError(404, 'Knowledge base not found')
 
     await fastify.getMembership(request.userId!, kb.organizationId)
 
     const doc = await prisma.document.create({
-      data: { knowledgeBaseId: id, name, type, content, url, status: 'ready' },
+      data: {
+        knowledgeBaseId: id,
+        name,
+        type,
+        content: content ?? null,
+        url: url ?? null,
+        status: 'pending',
+      },
     })
 
-    return { data: doc }
+    runIndexing(doc.id, request.log)
+
+    return { data: { ...doc, chunkCount: 0 } }
   })
 
   // POST /api/knowledge-bases/:id/documents/upload — Upload PDF file (member only)
@@ -245,15 +321,20 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
         name: fileName.replace(/\.pdf$/i, ''),
         type: 'pdf',
         fileKey,
-        status: 'processing',
+        status: 'pending',
       },
     })
 
     const tmpPath = join(tmpdir(), `convio-upload-${doc.id}.pdf`)
     await writeFile(tmpPath, buffer)
-    processPdf(tmpPath, doc.id).finally(() => unlink(tmpPath).catch(() => {}))
+    processPdf(tmpPath, doc.id)
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'PDF indexing failed'
+        request.log.error({ err, documentId: doc.id }, `PDF indexing failed: ${message}`)
+      })
+      .finally(() => unlink(tmpPath).catch(() => {}))
 
-    return { data: doc }
+    return { data: { ...doc, chunkCount: 0 } }
   })
 
   // GET /api/knowledge-bases/:id/documents — List documents (member only, paginated, optional status filter)
@@ -275,11 +356,11 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, kb.organizationId)
 
-    const where: Record<string, unknown> = { knowledgeBaseId: id }
+    const where: { knowledgeBaseId: string; status?: string } = { knowledgeBaseId: id }
     if (status) where.status = status
 
     const docs = await prisma.document.findMany({
-      where: where as any,
+      where,
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { createdAt: 'desc' },
@@ -287,9 +368,10 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     const hasNextPage = docs.length > limit
     const items = hasNextPage ? docs.slice(0, limit) : docs
+    const withCounts = await withChunkCount(items)
 
     return {
-      data: items,
+      data: withCounts,
       nextCursor: hasNextPage ? items[items.length - 1].id : null,
     }
   })
@@ -312,7 +394,93 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, doc.knowledgeBase.organizationId)
 
-    return { data: doc }
+    const [withCount] = await withChunkCount([doc])
+    const { knowledgeBase: _, ...rest } = withCount
+
+    return { data: rest }
+  })
+
+  // PATCH /api/documents/:id — Update document metadata/content (member only)
+  fastify.patch('/documents/:id', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: docParamsSchema, body: updateDocBodySchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const body = request.body as {
+      name?: string
+      content?: string | null
+      url?: string | null
+    }
+
+    const existing = await prisma.document.findUnique({
+      where: { id },
+      include: { knowledgeBase: { select: { organizationId: true } } },
+    })
+
+    if (!existing) throw new AppError(404, 'Document not found')
+
+    await fastify.getMembership(request.userId!, existing.knowledgeBase.organizationId)
+
+    const contentChanged =
+      (body.content !== undefined && body.content !== existing.content) ||
+      (body.url !== undefined && body.url !== existing.url)
+
+    const doc = await prisma.document.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.content !== undefined ? { content: body.content } : {}),
+        ...(body.url !== undefined ? { url: body.url } : {}),
+        ...(contentChanged ? { status: 'pending' } : {}),
+      },
+    })
+
+    if (contentChanged) {
+      runIndexing(doc.id, request.log)
+    }
+
+    const [withCount] = await withChunkCount([doc])
+    return { data: withCount }
+  })
+
+  // POST /api/documents/:id/reprocess — Re-index document chunks/embeddings (member only)
+  fastify.post('/documents/:id/reprocess', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: docParamsSchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+
+    const doc = await prisma.document.findUnique({
+      where: { id },
+      include: { knowledgeBase: { select: { organizationId: true } } },
+    })
+
+    if (!doc) throw new AppError(404, 'Document not found')
+
+    await fastify.getMembership(request.userId!, doc.knowledgeBase.organizationId)
+
+    if (doc.status === 'processing') {
+      throw new AppError(409, 'Document is already being processed')
+    }
+
+    await prisma.document.update({
+      where: { id },
+      data: { status: 'pending' },
+    })
+
+    runIndexing(id, request.log)
+
+    return {
+      data: {
+        id: doc.id,
+        status: 'pending',
+        message: 'Re-indexing started',
+      },
+    }
   })
 
   // DELETE /api/documents/:id — Delete document (member only)
