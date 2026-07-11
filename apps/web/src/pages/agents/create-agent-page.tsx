@@ -72,28 +72,31 @@ export default function CreateAgentPage() {
     onError: (error: Error) => toast.error(error.message || 'Unable to create agent. Please try again.'),
   })
 
-  const handleCreate = form.handleSubmit((data) => {
-    const model = data.model || models[0]?.id || ''
-    if (!model) {
-      form.setError('model', { message: 'Please select a model' })
-      return
-    }
+  const handleCreate = form.handleSubmit(
+    (data) => {
+      const model = data.model || models[0]?.id || ''
+      if (!model) {
+        form.setError('model', { message: 'Please select a model' })
+        return
+      }
 
-    createMutation.mutate({
-      name: data.name,
-      description: data.description || undefined,
-      avatar: data.avatarUrl || undefined,
-      model,
-      systemPrompt: data.systemPrompt || `You are ${data.name}, a helpful AI assistant.`,
-      temperature: data.temperature,
-      reasoningEffort: data.reasoningEffort,
-      maxTokens: 2048,
-      organizationId: orgId,
-      capabilities: capabilities.filter((capability) => capability.enabled).map((capability) => capability.id),
-      deployment: deploymentOptions.filter((option) => option.enabled).map((option) => option.id),
-      settings: { toneOfVoice: data.toneOfVoice, language: data.language },
-    })
-  })
+      createMutation.mutate({
+        name: data.name,
+        description: data.description || undefined,
+        avatar: data.avatarUrl || undefined,
+        model,
+        systemPrompt: data.systemPrompt || `You are ${data.name}, a helpful AI assistant.`,
+        temperature: data.temperature,
+        reasoningEffort: data.reasoningEffort,
+        maxTokens: 2048,
+        organizationId: orgId,
+        capabilities: capabilities.filter((capability) => capability.enabled).map((capability) => capability.id),
+        deployment: deploymentOptions.filter((option) => option.enabled).map((option) => option.id),
+        settings: { toneOfVoice: data.toneOfVoice, language: data.language },
+      })
+    },
+    () => toast.error('Please fix the form errors before submitting'),
+  )
 
   const saving = createMutation.isPending
 

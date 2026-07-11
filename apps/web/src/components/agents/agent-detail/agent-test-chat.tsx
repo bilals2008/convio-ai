@@ -11,7 +11,10 @@ import {
   Loader2,
   MessageSquare,
   Settings2,
+  Copy,
+  Check,
 } from 'lucide-react'
+import { toast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -155,6 +158,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const [inputValue, setInputValue] = useState('')
   const [showReasoning, setShowReasoning] = useState(true)
   const [reasoningOverride, setReasoningOverride] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -242,6 +246,10 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     }
 
     textareaRef.current?.focus()
+
+    return () => {
+      if (initRef.current === agentId) initRef.current = null
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convsData])
 
@@ -448,6 +456,14 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     setError('')
   }, [updateActiveConversation])
 
+  const handleCopy = useCallback(async (id: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+    } catch { /* ignore */ }
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 1600)
+  }, [])
+
   const canSend = !!(agentConfig.systemPrompt && agentConfig.model && !convsLoading && activeConvId)
 
   const reasoningOptions = useMemo(
@@ -609,7 +625,12 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
           {/* Messages */}
           <ScrollArea className="flex-1 min-h-0">
             <div className="px-5 py-4 space-y-6">
-              {messages.length === 0 && !streaming && (
+              {convsLoading && (
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="size-5 animate-spin" />
+                </div>
+              )}
+              {!convsLoading && messages.length === 0 && !streaming && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 mb-3">
                     <Bot className="size-6 text-primary" />
@@ -622,6 +643,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
               {messages.map((msg) => {
                 const isUser = msg.role === 'user'
+                const isCopied = copiedId === msg.id
                 return (
                   <Message key={msg.id} align={isUser ? 'end' : 'start'}>
                     <MessageAvatar>
@@ -653,7 +675,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                           </details>
                         )}
                         <BubbleContent>
-                          {isUser ? <span className="whitespace-pre-wrap">{msg.content}</span> : <AiResponse content={msg.content} />}
+                          {isUser ? <span className="whitespace-pre-wrap">{msg.content}</span> : <AiResponse content={msg.content} showActions={false} />}
                         </BubbleContent>
                       </Bubble>
                       <MessageFooter className="gap-2">
@@ -662,6 +684,29 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                           <span className="text-muted-foreground/60 text-[11px]" title={`Prompt: ${msg.usage.promptTokens}, Completion: ${msg.usage.completionTokens}`}>
                             {msg.usage.totalTokens} tokens
                           </span>
+                        )}
+                        {!isUser && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(msg.id, msg.content)}
+                            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            aria-label={isCopied ? 'Copied' : 'Copy response'}
+                          >
+                            <span className="relative flex size-3.5 items-center justify-center">
+                              <Copy
+                                className={cn(
+                                  'absolute size-3.5 transition-all duration-200 ease-out',
+                                  isCopied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
+                                )}
+                              />
+                              <Check
+                                className={cn(
+                                  'absolute size-3.5 text-success transition-all duration-200 ease-out',
+                                  isCopied ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+                                )}
+                              />
+                            </span>
+                          </button>
                         )}
                       </MessageFooter>
                     </MessageContent>
