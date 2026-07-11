@@ -256,7 +256,11 @@ export default function AgentDetailPage() {
         </TabsContent>
 
         <TabsContent value="knowledge">
-          <AgentKnowledge />
+          <AgentKnowledge
+            agentId={id!}
+            knowledgeBaseId={agent.knowledgeBaseId}
+            disabled={updateMutation.isPending}
+          />
         </TabsContent>
 
         <TabsContent value="test-chat">

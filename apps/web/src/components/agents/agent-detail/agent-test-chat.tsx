@@ -332,6 +332,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
         maxTokens: cfg.maxTokens,
         reasoningEffort: reasoningOverride || cfg.reasoningEffort,
         providerKeyId: cfg.providerKeyId,
+        knowledgeBaseId: cfg.knowledgeBaseId,
         history,
         signal: controller.signal,
       })

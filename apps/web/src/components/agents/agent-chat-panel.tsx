@@ -72,6 +72,7 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
         temperature: config.temperature,
         maxTokens: config.maxTokens,
         providerKeyId: config.providerKeyId,
+        knowledgeBaseId: config.knowledgeBaseId,
         history,
       })
 

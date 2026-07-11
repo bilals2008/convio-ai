@@ -57,6 +57,7 @@ export const agents = {
     maxTokens: number
     reasoningEffort?: string
     providerKeyId?: string
+    knowledgeBaseId?: string
     history?: Array<{ role: 'user' | 'assistant'; content: string }>
     signal?: AbortSignal
   }) => {
@@ -118,6 +119,10 @@ export const knowledge = {
     }),
   getDocuments: (knowledgeBaseId: string, params?: { cursor?: string; limit?: number; status?: string }) =>
     api.get(`/knowledge-bases/${knowledgeBaseId}/documents`, { params }),
+  getDocument: (docId: string) => api.get(`/documents/${docId}`),
+  updateDocument: (docId: string, data: Record<string, unknown>) =>
+    api.patch(`/documents/${docId}`, data),
+  reprocessDocument: (docId: string) => api.post(`/documents/${docId}/reprocess`),
   deleteDocument: (docId: string) => api.delete(`/documents/${docId}`),
 }
 
