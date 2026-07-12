@@ -16,11 +16,13 @@
     "@convio/validation": "workspace:*",
     "@fastify/cors": "^10.0.0",
     "@fastify/error": "^4.0.0",
+    "@fastify/formbody": "^8.0.2",
     "@fastify/multipart": "^10.1.0",
     "@fastify/rate-limit": "^10.0.0",
     "@fastify/swagger": "^9.0.0",
     "@fastify/swagger-ui": "^5.0.0",
     "@fastify/type-provider-typebox": "^5.0.0",
+    "@kapso/whatsapp-cloud-api": "^0.2.2",
     "@opendataloader/pdf": "^2.4.7",
     "@sinclair/typebox": "^0.34.0",
     "@supabase/supabase-js": "^2.0.0",
@@ -28,6 +30,7 @@
     "env-schema": "^6.0.0",
     "fastify": "^5.0.0",
     "fastify-plugin": "^5.0.0",
+    "twilio": "^6.0.2",
     "zod": "^3.22.0"
   },
   "devDependencies": {

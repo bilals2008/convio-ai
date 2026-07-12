@@ -20,6 +20,12 @@ const schema = Type.Object({
     Type.Literal('fatal'),
   ], { default: 'info' }),
   CORS_ORIGIN: Type.String({ default: 'http://localhost:5173' }),
+  KAPSO_API_BASE_URL: Type.Optional(Type.String()),
+  TWILIO_ACCOUNT_SID: Type.Optional(Type.String()),
+  TWILIO_AUTH_TOKEN: Type.Optional(Type.String()),
+  TWILIO_NUMBER: Type.Optional(Type.String()),
+  GITHUB_PAT: Type.Optional(Type.String()),
+  OPENCODE_API_KEY: Type.Optional(Type.String()),
 });
 
 export type Config = Static<typeof schema>;
