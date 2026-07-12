@@ -42,7 +42,7 @@ const testStreamSchema = z.object({
   maxTokens: z.number().min(1).max(512000).default(2048),
   reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
   providerKeyId: z.string().uuid().optional(),
-  knowledgeBaseId: z.string().uuid().optional(),
+  knowledgeBaseId: z.string().uuid().optional().nullable(),
   history: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string().min(1).max(12000),
