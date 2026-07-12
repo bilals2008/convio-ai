@@ -8,7 +8,7 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
+  Search,
 } from 'lucide-react'
 import { z } from 'zod'
 import { PageContainer } from '@/components/shared/page-container'
@@ -25,6 +25,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { KnowledgeForm } from '@/components/knowledge/knowledge-form'
 import type { KnowledgeFormData } from '@/components/knowledge/knowledge-form'
 import { DocumentCard } from '@/components/knowledge/document-card'
@@ -76,6 +77,17 @@ export default function KnowledgeDetailPage() {
   const [viewDocId, setViewDocId] = useState<string | null>(null)
   const [reprocessingId, setReprocessingId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<
+    Array<{
+      id: string
+      content: string
+      documentId: string
+      documentName: string
+      score: number
+    }>
+  >([])
+  const [searching, setSearching] = useState(false)
 
   const { data: kb, isLoading, error: kbError } = useQuery({
     queryKey: ['knowledge-base', id],
@@ -107,6 +119,20 @@ export default function KnowledgeDetailPage() {
     queryFn: async () => {
       const res = await knowledgeApi.getDocument(viewDocId!)
       return res.data.data as DocumentItem & { content?: string | null }
+    },
+    enabled: !!viewDocId,
+  })
+
+  const { data: viewDocChunks = [] } = useQuery({
+    queryKey: ['document-chunks', viewDocId],
+    queryFn: async () => {
+      const res = await knowledgeApi.getDocumentChunks(viewDocId!)
+      return (res.data.data || []) as Array<{
+        id: string
+        content: string
+        hasEmbedding: boolean
+        createdAt: string
+      }>
     },
     enabled: !!viewDocId,
   })
@@ -204,6 +230,20 @@ export default function KnowledgeDetailPage() {
   }
 
   const saving = createMutation.isPending || updateMutation.isPending
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim() || !id) return
+    setSearching(true)
+    try {
+      const res = await knowledgeApi.searchChunks(id, searchQuery.trim(), 10)
+      setSearchResults((res.data.data || []) as typeof searchResults)
+    } catch {
+      toast.error('Search failed')
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
+  }
 
   const handleUploadDocument = async (data: {
     name: string
@@ -396,7 +436,7 @@ export default function KnowledgeDetailPage() {
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="size-4 text-primary" />
+                  <Search className="size-4 text-primary" />
                   <CardTitle className="text-base">Add source</CardTitle>
                 </div>
                 <CardDescription>
@@ -439,6 +479,67 @@ export default function KnowledgeDetailPage() {
         </>
       )}
 
+      <Section
+        title="Search"
+        description="Semantic search across all indexed chunks in this knowledge base"
+      >
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <Search className="size-4 text-primary" />
+              <CardTitle className="text-base">Find content</CardTitle>
+            </div>
+            <CardDescription>
+              Ask a question or type keywords to find matching chunks
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="e.g. What is the technical stack?"
+                className="flex-1 rounded-lg border border-border/40 bg-muted/30 px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+              <Button onClick={handleSearch} disabled={searching || !searchQuery.trim()}>
+                {searching ? <Loader2 className="size-4 animate-spin" /> : 'Search'}
+              </Button>
+            </div>
+
+            {searchResults.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {searchResults.map((chunk) => (
+                  <div
+                    key={chunk.id}
+                    className="rounded-lg border border-border/40 bg-muted/20 p-3"
+                  >
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {chunk.documentName}
+                      </span>
+                      <span className="rounded bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success">
+                        {Math.round(chunk.score * 100)}% match
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap break-words text-xs text-foreground/90">
+                      {chunk.content}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {searchResults.length === 0 && searchQuery && !searching && (
+              <p className="mt-4 text-xs text-muted-foreground">
+                No matching chunks. Try different keywords.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </Section>
+
       <Dialog open={!!viewDocId} onOpenChange={(open) => !open && setViewDocId(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -458,19 +559,66 @@ export default function KnowledgeDetailPage() {
               {viewDoc?.url ? ` · ${viewDoc.url}` : ''}
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[50vh] rounded-lg border bg-muted/20 p-4">
-            {viewLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <pre className="whitespace-pre-wrap break-words font-mono text-xs text-foreground">
-                {viewDoc?.content?.trim()
-                  ? viewDoc.content
-                  : 'No extracted content yet. Wait for indexing or reprocess the document.'}
-              </pre>
-            )}
-          </ScrollArea>
+          <Tabs defaultValue="content" className="w-full">
+            <TabsList className="mb-3">
+              <TabsTrigger value="content">Content</TabsTrigger>
+              <TabsTrigger value="chunks">
+                Chunks ({viewDocChunks.length})
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="content">
+              <ScrollArea className="max-h-[40vh] rounded-lg border bg-muted/20 p-4">
+                {viewLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <pre className="whitespace-pre-wrap break-words font-mono text-xs text-foreground">
+                    {viewDoc?.content?.trim()
+                      ? viewDoc.content
+                      : 'No extracted content yet. Wait for indexing or reprocess the document.'}
+                  </pre>
+                )}
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="chunks">
+              <ScrollArea className="max-h-[40vh] rounded-lg border bg-muted/20 p-4">
+                {viewDocChunks.length === 0 ? (
+                  <p className="py-8 text-center text-xs text-muted-foreground">
+                    No chunks yet
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {viewDocChunks.map((chunk, i) => (
+                      <div
+                        key={chunk.id}
+                        className="rounded-lg border border-border/40 bg-background/50 p-3"
+                      >
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-medium text-muted-foreground">
+                            #{i + 1}
+                          </span>
+                          <span
+                            className={cn(
+                              'rounded px-1.5 py-0.5 text-[10px] font-medium',
+                              chunk.hasEmbedding
+                                ? 'bg-success/10 text-success'
+                                : 'bg-destructive/10 text-destructive',
+                            )}
+                          >
+                            {chunk.hasEmbedding ? 'embedded' : 'no embedding'}
+                          </span>
+                        </div>
+                        <p className="whitespace-pre-wrap break-words text-xs text-foreground/90">
+                          {chunk.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
           {viewDocId && (
             <div className="flex justify-end gap-2">
               <Button

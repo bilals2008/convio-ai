@@ -120,6 +120,12 @@ export const knowledge = {
   getDocuments: (knowledgeBaseId: string, params?: { cursor?: string; limit?: number; status?: string }) =>
     api.get(`/knowledge-bases/${knowledgeBaseId}/documents`, { params }),
   getDocument: (docId: string) => api.get(`/documents/${docId}`),
+  searchChunks: (knowledgeBaseId: string, query: string, limit = 10) =>
+    api.get(`/knowledge-bases/${knowledgeBaseId}/chunks`, {
+      params: { q: query, limit },
+    }),
+  getDocumentChunks: (docId: string) =>
+    api.get(`/documents/${docId}/chunks`),
   updateDocument: (docId: string, data: Record<string, unknown>) =>
     api.patch(`/documents/${docId}`, data),
   reprocessDocument: (docId: string) => api.post(`/documents/${docId}/reprocess`),

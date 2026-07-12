@@ -4,7 +4,7 @@ import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
 import { uploadFile, deleteFile } from '../../lib/storage.js'
-import { processDocument, processPdf } from '../../services/processor.js'
+import { processDocument, processPdf, embedText } from '../../services/processor.js'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
@@ -373,6 +373,106 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     return {
       data: withCounts,
       nextCursor: hasNextPage ? items[items.length - 1].id : null,
+    }
+  })
+
+  // GET /api/knowledge-bases/:id/chunks — Search chunks in a knowledge base (member only)
+  fastify.get('/knowledge-bases/:id/chunks', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: kbParamsSchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { q } = request.query as { q?: string }
+    const limit = (request.query as { limit?: string }).limit
+    const topK = limit ? Math.min(Math.max(Number(limit) || 10, 1), 50) : 10
+
+    const kb = await prisma.knowledgeBase.findUnique({ where: { id } })
+    if (!kb) throw new AppError(404, 'Knowledge base not found')
+
+    await fastify.getMembership(request.userId!, kb.organizationId)
+
+    if (!q || !q.trim()) {
+      return { data: [] }
+    }
+
+    const embedding = await embedText(q)
+    if (!embedding) return { data: [] }
+
+    const vectorStr = `[${embedding.join(',')}]`
+    const rows = await prisma.$queryRawUnsafe<
+      Array<{
+        id: string
+        content: string
+        documentId: string
+        documentName: string
+        distance: number
+      }>
+    >(
+      `SELECT
+        dc."id",
+        dc."content",
+        dc."documentId",
+        d."name" AS "documentName",
+        (dc."embedding" <=> $2::vector) AS distance
+      FROM "DocumentChunk" dc
+      JOIN "Document" d ON d."id" = dc."documentId"
+      WHERE d."knowledgeBaseId" = $1
+        AND d."status" = 'ready'
+        AND dc."embedding" IS NOT NULL
+        AND (dc."embedding" <=> $2::vector) <= $3
+      ORDER BY dc."embedding" <=> $2::vector
+      LIMIT $4`,
+      id,
+      vectorStr,
+      0.75,
+      topK,
+    )
+
+    return {
+      data: rows.map((r) => ({
+        id: r.id,
+        content: r.content,
+        documentId: r.documentId,
+        documentName: r.documentName,
+        score: 1 - r.distance,
+      })),
+    }
+  })
+
+  // GET /api/documents/:id/chunks — List chunks of a document (member only)
+  fastify.get('/documents/:id/chunks', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: docParamsSchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+
+    const doc = await prisma.document.findUnique({
+      where: { id },
+      include: { knowledgeBase: { select: { organizationId: true } } },
+    })
+
+    if (!doc) throw new AppError(404, 'Document not found')
+
+    await fastify.getMembership(request.userId!, doc.knowledgeBase.organizationId)
+
+    const chunks = await prisma.$queryRawUnsafe<
+      Array<{ id: string; content: string; embedding: unknown; createdAt: Date }>
+    >(
+      `SELECT "id", "content", "embedding", "createdAt" FROM "DocumentChunk" WHERE "documentId" = $1 ORDER BY "createdAt" ASC LIMIT 100`,
+      id,
+    )
+
+    return {
+      data: chunks.map((c) => ({
+        id: c.id,
+        content: c.content,
+        hasEmbedding: c.embedding != null,
+        createdAt: c.createdAt,
+      })),
     }
   })
 

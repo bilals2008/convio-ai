@@ -55,7 +55,7 @@ function chunkText(text: string): string[] {
 }
 
 /** GitHub Models text-embedding-3-small via OmniRoute is 1536-d — matches DocumentChunk vector(1536). */
-async function embedText(text: string): Promise<number[] | null> {
+export async function embedText(text: string): Promise<number[] | null> {
   const localProvider = getProviderById('local')
   if (!localProvider) return null
 
@@ -294,33 +294,9 @@ export async function retrieveContext(
   limit = DEFAULT_TOP_K,
 ): Promise<string> {
   const embedding = await embedText(query)
-  if (!embedding) {
-    console.log('[RAG] embedText returned null for query:', query.slice(0, 80))
-    return ''
-  }
+  if (!embedding) return ''
 
-  console.log('[RAG] embedding generated, dimensions:', embedding.length, 'query:', query.slice(0, 80))
   const vectorStr = `[${embedding.join(',')}]`
-
-  const debugCount = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-    `SELECT COUNT(*) as count FROM "DocumentChunk" dc
-     JOIN "Document" d ON d."id" = dc."documentId"
-     WHERE d."knowledgeBaseId" = $1 AND d."status" = 'ready' AND dc."embedding" IS NOT NULL`,
-    knowledgeBaseId,
-  )
-  console.log('[RAG] total chunks with embeddings in KB:', debugCount[0]?.count)
-
-  // Debug: get raw distances
-  const debugDistances = await prisma.$queryRawUnsafe<Array<{ distance: number }>>(
-    `SELECT (dc."embedding" <=> $2::vector) AS distance
-     FROM "DocumentChunk" dc
-     JOIN "Document" d ON d."id" = dc."documentId"
-     WHERE d."knowledgeBaseId" = $1 AND d."status" = 'ready' AND dc."embedding" IS NOT NULL
-     ORDER BY distance LIMIT 5`,
-    knowledgeBaseId,
-    vectorStr,
-  )
-  console.log('[RAG] raw distances:', debugDistances.map(r => r.distance.toFixed(4)))
 
   const rows = await prisma.$queryRawUnsafe<
     Array<{
@@ -349,12 +325,8 @@ export async function retrieveContext(
     MAX_DISTANCE,
   )
 
-  if (!rows?.length) {
-    console.log('[RAG] no matching chunks found for knowledgeBaseId:', knowledgeBaseId)
-    return ''
-  }
+  if (!rows?.length) return ''
 
-  console.log('[RAG] found', rows.length, 'matching chunks')
   return rows
     .map(
       (r, i) =>
