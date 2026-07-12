@@ -162,13 +162,16 @@ model Widget {
 }
 
 model Conversation {
-  id        String   @id @default(uuid())
-  agentId   String
-  userId    String?
-  channel   String   @default("web")
-  status    String   @default("active")
-  createdAt DateTime @default(now()) @db.Timestamptz()
-  updatedAt DateTime @updatedAt @db.Timestamptz()
+  id          String   @id @default(uuid())
+  agentId     String
+  userId      String?
+  channel     String   @default("web")
+  status      String   @default("active")
+  contactName String?
+  contactPhone String?
+  metadata    Json?
+  createdAt   DateTime @default(now()) @db.Timestamptz()
+  updatedAt   DateTime @updatedAt @db.Timestamptz()
 
   agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
