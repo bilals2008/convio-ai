@@ -77,6 +77,8 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     if (conversation.userId) {
       const profile = await prisma.profile.findUnique({ where: { id: conversation.userId }, select: { name: true } })
       userName = profile?.name || undefined
+    } else {
+      userName = conversation.contactName || undefined
     }
 
     return { data: { ...conversation, userName } }
@@ -127,7 +129,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     const enriched = items.map((c) => ({
       ...c,
-      userName: c.userId ? (profileMap.get(c.userId) || undefined) : undefined,
+      userName: c.userId ? (profileMap.get(c.userId) || undefined) : c.contactName || undefined,
     }))
 
     return {
@@ -179,7 +181,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     const enriched = items.map((c) => ({
       ...c,
-      userName: c.userId ? (profileMap.get(c.userId) || undefined) : undefined,
+      userName: c.userId ? (profileMap.get(c.userId) || undefined) : c.contactName || undefined,
     }))
 
     return {
@@ -213,6 +215,8 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     if (conversation.userId) {
       const profile = await prisma.profile.findUnique({ where: { id: conversation.userId }, select: { name: true } })
       userName = profile?.name || undefined
+    } else {
+      userName = conversation.contactName || undefined
     }
 
     return { data: { ...conversation, userName } }
