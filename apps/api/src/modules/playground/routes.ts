@@ -5,6 +5,26 @@ interface PlaygroundTestRequest {
   apiKey: string
   model?: string
   message: string
+  tools?: any[]
+}
+
+interface CompareProviderConfig {
+  provider: string
+  apiKey: string
+  model?: string
+}
+
+interface ToolDemoRequest {
+  provider: string
+  apiKey: string
+  model?: string
+  message: string
+}
+
+interface CompareRequest {
+  providers: CompareProviderConfig[]
+  message: string
+  tools?: any[]
 }
 
 const PROVIDER_BASE_URLS: Record<string, string> = {
@@ -169,29 +189,38 @@ async function fetchLocalModels(): Promise<string[]> {
   }
 }
 
-async function testOpenAI(apiKey: string, model: string, message: string) {
+async function testOpenAI(apiKey: string, model: string, message: string, tools?: any[]) {
+  const body: any = {
+    model,
+    messages: [{ role: 'user', content: message }],
+    max_tokens: 256,
+  }
+  if (tools && tools.length > 0) body.tools = tools
   const res = await fetch(`${PROVIDER_BASE_URLS.openai}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: message }],
-      max_tokens: 256,
-    }),
+    body: JSON.stringify(body),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
   return {
     response: extractContent(data.choices?.[0]) || '',
+    toolCalls: extractToolCalls(data.choices?.[0]),
     model: data.model,
     usage: data.usage,
   }
 }
 
-async function testAnthropic(apiKey: string, model: string, message: string) {
+async function testAnthropic(apiKey: string, model: string, message: string, tools?: any[]) {
+  const body: any = {
+    model,
+    max_tokens: 256,
+    messages: [{ role: 'user', content: message }],
+  }
+  if (tools && tools.length > 0) body.tools = tools
   const res = await fetch(`${PROVIDER_BASE_URLS.anthropic}/messages`, {
     method: 'POST',
     headers: {
@@ -199,81 +228,98 @@ async function testAnthropic(apiKey: string, model: string, message: string) {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({
-      model,
-      max_tokens: 256,
-      messages: [{ role: 'user', content: message }],
-    }),
+    body: JSON.stringify(body),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
+  const toolUseBlocks = data.content?.filter((c: any) => c.type === 'tool_use') || []
   return {
     response: data.content?.[0]?.text || '',
+    toolCalls: toolUseBlocks.map((t: any) => ({ name: t.name, args: t.input })),
     model: data.model,
     usage: data.usage,
   }
 }
 
-async function testGoogle(apiKey: string, model: string, message: string) {
+async function testGoogle(apiKey: string, model: string, message: string, tools?: any[]) {
+  const body: any = {
+    contents: [{ parts: [{ text: message }] }],
+    generationConfig: { maxOutputTokens: 256 },
+  }
+  if (tools && tools.length > 0) {
+    body.tools = tools.map((t) => ({
+      functionDeclarations: [{
+        name: t.function?.name || t.name,
+        description: t.function?.description || t.description,
+        parameters: t.function?.parameters || t.parameters,
+      }],
+    }))
+  }
   const res = await fetch(
     `${PROVIDER_BASE_URLS.google}/models/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: message }] }],
-        generationConfig: { maxOutputTokens: 256 },
-      }),
+      body: JSON.stringify(body),
     }
   )
   const data = await res.json()
   if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
   return {
     response: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
+    toolCalls: (data.candidates?.[0]?.content?.parts || [])
+      .filter((p: any) => p.functionCall)
+      .map((p: any) => ({ name: p.functionCall.name, args: p.functionCall.args })),
     model,
     usage: data.usageMetadata,
   }
 }
 
-async function testGroq(apiKey: string, model: string, message: string) {
+async function testGroq(apiKey: string, model: string, message: string, tools?: any[]) {
+  const body: any = {
+    model,
+    messages: [{ role: 'user', content: message }],
+    max_tokens: 256,
+  }
+  if (tools && tools.length > 0) body.tools = tools
   const res = await fetch(`${PROVIDER_BASE_URLS.groq}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: message }],
-      max_tokens: 256,
-    }),
+    body: JSON.stringify(body),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
   return {
     response: extractContent(data.choices?.[0]) || '',
+    toolCalls: extractToolCalls(data.choices?.[0]),
     model: data.model,
     usage: data.usage,
   }
 }
 
-async function testKIE(apiKey: string, model: string, message: string) {
+async function testKIE(apiKey: string, model: string, message: string, tools?: any[]) {
+  const body: any = {
+    model,
+    messages: [{ role: 'user', content: message }],
+    max_tokens: 256,
+  }
+  if (tools && tools.length > 0) body.tools = tools
   const res = await fetch(`${PROVIDER_BASE_URLS.kie}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: message }],
-      max_tokens: 256,
-    }),
+    body: JSON.stringify(body),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
   return {
     response: extractContent(data.choices?.[0]) || '',
+    toolCalls: extractToolCalls(data.choices?.[0]),
     model: data.model,
     usage: data.usage,
   }
@@ -291,7 +337,19 @@ function extractContent(choice: any): string {
   return ''
 }
 
-async function testOpenAICompat(baseUrl: string, apiKey: string, model: string, message: string) {
+function extractToolCalls(choice: any): Array<{ name: string; args: any }> | undefined {
+  const calls = choice?.message?.tool_calls
+  if (!calls || calls.length === 0) return undefined
+  return calls.map((tc: any) => ({
+    id: tc.id,
+    name: tc.function?.name || '',
+    args: (() => {
+      try { return JSON.parse(tc.function?.arguments || '{}') } catch { return tc.function?.arguments }
+    })(),
+  }))
+}
+
+async function testOpenAICompat(baseUrl: string, apiKey: string, model: string, message: string, tools?: any[]) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
@@ -299,11 +357,12 @@ async function testOpenAICompat(baseUrl: string, apiKey: string, model: string, 
     headers['Authorization'] = `Bearer ${apiKey}`
   }
 
-  const body = {
+  const body: any = {
     model,
     messages: [{ role: 'user', content: message }],
     max_tokens: 1024,
   }
+  if (tools && tools.length > 0) body.tools = tools
 
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -384,6 +443,134 @@ async function testOpenAICompat(baseUrl: string, apiKey: string, model: string, 
   throw new Error(`Provider returned: ${rawText.slice(0, 500)}`)
 }
 
+async function runSingleTest(
+  provider: string,
+  apiKey: string,
+  model: string | undefined,
+  message: string,
+  tools?: any[]
+): Promise<{
+  success: boolean
+  response?: string
+  toolCalls?: Array<{ name: string; args: any }>
+  model: string
+  usage?: any
+  latencyMs: number
+  error?: string
+}> {
+  const baseUrl = PROVIDER_BASE_URLS[provider]
+  const fallbackModels = FALLBACK_MODELS[provider] || []
+  const testModel = model || fallbackModels[0]
+  const startTime = Date.now()
+
+  try {
+    let result: { response: string; model: string; usage?: any; toolCalls?: Array<{ name: string; args: any }> }
+
+    switch (provider) {
+      case 'openai':
+        result = await testOpenAI(apiKey, testModel, message, tools)
+        break
+      case 'anthropic':
+        result = await testAnthropic(apiKey, testModel, message, tools)
+        break
+      case 'google':
+        result = await testGoogle(apiKey, testModel, message, tools)
+        break
+      case 'groq':
+        result = await testGroq(apiKey, testModel, message, tools)
+        break
+      case 'kie':
+        result = await testKIE(apiKey, testModel, message, tools)
+        break
+      case 'openrouter':
+      case 'mistral':
+      case 'together':
+      case 'deepseek':
+        result = await testOpenAICompat(PROVIDER_BASE_URLS[provider], apiKey, testModel, message, tools)
+        break
+      case 'perplexity':
+        result = await testOpenAICompat(PROVIDER_BASE_URLS.perplexity, apiKey, testModel, message, tools)
+        break
+      case 'opencode':
+        result = await testOpenAICompat(PROVIDER_BASE_URLS.opencode, apiKey, testModel, message, tools)
+        break
+      case 'local':
+        result = await testOpenAICompat(PROVIDER_BASE_URLS.local, apiKey, testModel, message, tools)
+        break
+      default:
+        return { success: false, error: `Unsupported provider: ${provider}`, model: testModel, latencyMs: 0 }
+    }
+
+    return { success: true, ...result, model: result.model || testModel, latencyMs: Date.now() - startTime }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Unknown error', model: testModel, latencyMs: Date.now() - startTime }
+  }
+}
+
+// In-memory stores for demonstration
+const DEMO_LEADS: Array<{ name: string; email: string; interest: string; savedAt: string }> = []
+const DEMO_EMAILS: Array<{ to: string; subject: string; body: string; sentAt: string }> = []
+
+const DEMO_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'saveLead',
+      description: 'Save a lead with name, email, and interest. Only use this when the user explicitly asks to save or create a lead.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Lead name' },
+          email: { type: 'string', description: 'Lead email' },
+          interest: { type: 'string', description: 'What they are interested in' },
+        },
+        required: ['name', 'email', 'interest'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'sendEmail',
+      description: 'Send an email to a recipient with a subject and body. Only use when the user explicitly asks to send an email.',
+      parameters: {
+        type: 'object',
+        properties: {
+          to: { type: 'string', description: 'Recipient email address' },
+          subject: { type: 'string', description: 'Email subject line' },
+          body: { type: 'string', description: 'Email body content' },
+        },
+        required: ['to', 'subject', 'body'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'getCurrentTime',
+      description: 'Get the current date and time',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+]
+
+async function executeDemoTool(name: string, args: any): Promise<string> {
+  if (name === 'saveLead') {
+    const { name: leadName, email, interest } = args as { name: string; email: string; interest: string }
+    DEMO_LEADS.push({ name: leadName, email, interest, savedAt: new Date().toISOString() })
+    return JSON.stringify({ success: true, message: `Lead "${leadName}" saved successfully. Total leads: ${DEMO_LEADS.length}` })
+  }
+  if (name === 'sendEmail') {
+    const { to, subject, body } = args as { to: string; subject: string; body: string }
+    DEMO_EMAILS.push({ to, subject, body, sentAt: new Date().toISOString() })
+    return JSON.stringify({ success: true, message: `Email sent to "${to}" with subject "${subject}". Total emails sent: ${DEMO_EMAILS.length}` })
+  }
+  if (name === 'getCurrentTime') {
+    return JSON.stringify({ time: new Date().toLocaleString() })
+  }
+  return JSON.stringify({ error: `Unknown tool: ${name}` })
+}
+
 export default async function playgroundRoutes(fastify: FastifyInstance) {
   // Fetch models dynamically from provider API using the user's key
   fastify.post('/playground/models', async (request, reply) => {
@@ -445,7 +632,7 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
 
   // Test an API key with a chat message
   fastify.post('/playground/test', async (request, reply) => {
-    const { provider, apiKey, model, message } = request.body as PlaygroundTestRequest
+    const { provider, apiKey, model, message, tools } = request.body as PlaygroundTestRequest
 
     if (!provider || !message) {
       return reply.status(400).send({ error: 'provider and message are required' })
@@ -455,70 +642,135 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'apiKey is required for this provider' })
     }
 
-    const baseUrl = PROVIDER_BASE_URLS[provider]
-    if (!baseUrl) {
-      return reply.status(400).send({ error: `Unknown provider: ${provider}` })
+    const result = await runSingleTest(provider, apiKey, model, message, tools)
+    return { provider, ...result }
+  })
+
+  // Compare multiple providers with the same message
+  fastify.post('/playground/compare', async (request, reply) => {
+    const { providers, message, tools } = request.body as CompareRequest
+
+    if (!providers || providers.length === 0 || !message) {
+      return reply.status(400).send({ error: 'providers (array) and message are required' })
     }
+
+    const results = await Promise.allSettled(
+      providers.map((p) => runSingleTest(p.provider, p.apiKey, p.model, message, tools))
+    )
+
+    return {
+      results: providers.map((p, i) => {
+        const r = results[i]
+        if (r.status === 'fulfilled') {
+          return {
+            provider: p.provider,
+            ...r.value,
+            model: p.model || r.value.model || FALLBACK_MODELS[p.provider]?.[0] || '',
+          }
+        }
+        return {
+          provider: p.provider,
+          success: false,
+          error: r.reason?.message || 'Unknown error',
+          latencyMs: 0,
+          model: p.model || FALLBACK_MODELS[p.provider]?.[0] || '',
+        }
+      }),
+    }
+  })
+
+  // Tool demo — full agentic loop with tool execution
+  fastify.post('/playground/tool-demo', async (request, reply) => {
+    const { provider, apiKey, model, message } = request.body as ToolDemoRequest
+
+    if (!provider || !message) {
+      return reply.status(400).send({ error: 'provider and message are required' })
+    }
+
+    const baseUrl = PROVIDER_BASE_URLS[provider]
+    if (!baseUrl) return reply.status(400).send({ error: `Unknown provider: ${provider}` })
 
     const fallbackModels = FALLBACK_MODELS[provider] || []
     const testModel = model || fallbackModels[0]
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (apiKey && apiKey !== 'no-key-needed') {
+      headers['Authorization'] = `Bearer ${apiKey}`
+    }
+
+    const trace: Array<{ role: string; content?: string; tool_calls?: any[]; tool_call_id?: string; name?: string }> = []
+    const messages: Array<{ role: string; content?: string; tool_calls?: any[]; tool_call_id?: string; name?: string }> = [
+      { role: 'user', content: message },
+    ]
+
     const startTime = Date.now()
+    let finalResponse = ''
+    let totalUsage: any
 
-    try {
-      let result: { response: string; model: string; usage?: any }
-
-      switch (provider) {
-        case 'openai':
-          result = await testOpenAI(apiKey, testModel, message)
-          break
-        case 'anthropic':
-          result = await testAnthropic(apiKey, testModel, message)
-          break
-        case 'google':
-          result = await testGoogle(apiKey, testModel, message)
-          break
-        case 'groq':
-          result = await testGroq(apiKey, testModel, message)
-          break
-        case 'kie':
-          result = await testKIE(apiKey, testModel, message)
-          break
-        case 'openrouter':
-        case 'mistral':
-        case 'together':
-        case 'deepseek':
-          result = await testOpenAICompat(PROVIDER_BASE_URLS[provider], apiKey, testModel, message)
-          break
-        case 'perplexity':
-          result = await testOpenAICompat(PROVIDER_BASE_URLS.perplexity, apiKey, testModel, message)
-          break
-        case 'opencode':
-          result = await testOpenAICompat(PROVIDER_BASE_URLS.opencode, apiKey, testModel, message)
-          break
-        case 'local':
-          result = await testOpenAICompat(PROVIDER_BASE_URLS.local, apiKey, testModel, message)
-          break
-        default:
-          return reply.status(400).send({ error: `Unsupported provider: ${provider}` })
-      }
-
-      const latencyMs = Date.now() - startTime
-
-      return {
-        success: true,
-        ...result,
-        latencyMs,
-        provider,
-      }
-    } catch (error: any) {
-      const latencyMs = Date.now() - startTime
-      return {
-        success: false,
-        error: error.message || 'Unknown error',
-        latencyMs,
-        provider,
+    async function callAI(): Promise<{ choice: any; model: string; usage: any }> {
+      const body: any = {
         model: testModel,
+        messages,
+        tools: DEMO_TOOLS,
+        max_tokens: 1024,
       }
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText)
+        throw new Error(`API error (${res.status}): ${errText}`)
+      }
+      const data = await res.json()
+      return { choice: data.choices?.[0], model: data.model || testModel, usage: data.usage }
+    }
+
+    // Round 1: AI decides whether to use tools or reply directly
+    const round1 = await callAI()
+    const msg1 = round1.choice?.message || {}
+    totalUsage = round1.usage
+    trace.push({ role: 'assistant', content: msg1.content, tool_calls: msg1.tool_calls })
+
+    if (msg1.tool_calls && msg1.tool_calls.length > 0) {
+      messages.push({ role: 'assistant', content: msg1.content || null, tool_calls: msg1.tool_calls })
+
+      for (const tc of msg1.tool_calls) {
+        const name = tc.function?.name || ''
+        const args = (() => { try { return JSON.parse(tc.function?.arguments || '{}') } catch { return {} } })()
+        const result = await executeDemoTool(name, args)
+        messages.push({ role: 'tool', tool_call_id: tc.id, name, content: result })
+        trace.push({ role: 'tool', tool_call_id: tc.id, name, content: result })
+      }
+
+      // Round 2: AI uses tool results to form final answer
+      const round2 = await callAI()
+      const msg2 = round2.choice?.message || {}
+      finalResponse = msg2.content || ''
+      totalUsage = round2.usage
+      if (msg2.tool_calls) {
+        trace.push({ role: 'assistant', content: msg2.content, tool_calls: msg2.tool_calls })
+      } else {
+        trace.push({ role: 'assistant', content: msg2.content })
+      }
+    } else {
+      finalResponse = msg1.content || ''
+    }
+
+    const latencyMs = Date.now() - startTime
+
+    return {
+      success: true,
+      response: finalResponse,
+      trace,
+      model: round1.model,
+      latencyMs,
+      usage: totalUsage,
+      totalLeads: DEMO_LEADS.length,
+      leads: DEMO_LEADS,
+      totalEmails: DEMO_EMAILS.length,
+      emails: DEMO_EMAILS,
     }
   })
 }

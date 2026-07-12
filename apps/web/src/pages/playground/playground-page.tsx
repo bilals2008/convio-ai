@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
@@ -9,6 +9,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
@@ -45,6 +53,9 @@ import {
   Lightbulb,
   Puzzle,
   List,
+  Table2,
+  GitCompare,
+  Network,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -57,9 +68,20 @@ interface LogEntry {
   model: string
   message: string
   response?: string
+  toolCalls?: Array<{ name: string; args: any }>
   latencyMs?: number
   success: boolean
   error?: string
+  usage?: any
+}
+
+interface CompareResult {
+  provider: string
+  model: string
+  success: boolean
+  response?: string
+  error?: string
+  latencyMs: number
   usage?: any
 }
 
@@ -90,6 +112,21 @@ const PROVIDERS = [
 type ProviderId = (typeof PROVIDERS)[number]['id']
 
 const SVG_BASE = 'https://thesvg.org/icons'
+
+const FALLBACK_MODELS: Record<string, string[]> = {
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'],
+  anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
+  google: ['gemini-1.5-pro', 'gemini-1.5-flash'],
+  groq: ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
+  kie: ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro'],
+  openrouter: ['openai/gpt-4o', 'anthropic/claude-3-5-sonnet', 'google/gemini-2.0-flash', 'meta-llama/llama-3.3-70b-instruct'],
+  opencode: ['deepseek-v4-flash-free', 'mimo-v2.5-free', 'qwen3.6-plus-free', 'minimax-m3-free', 'nemotron-3-ultra-free', 'north-mini-code-free', 'big-pickle'],
+  mistral: ['mistral-large-latest', 'mistral-small-latest', 'pixtral-large-latest'],
+  together: ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct-Turbo'],
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+  perplexity: ['sonar-pro', 'sonar', 'llama-3.1-sonar-large-128k-online'],
+  local: ['auto/best-coding', 'auto/best-reasoning', 'auto/best-fast', 'auto/best-vision', 'auto/best-chat', 'auto/pro-coding', 'auto/coding', 'auto/fast', 'auto/chat'],
+}
 
 const ENV_KEY_MAP: Record<ProviderId, string> = {
   openai: 'OPENAI_API_KEY',
@@ -197,6 +234,38 @@ const CATEGORIES = [
   { id: 'creative', label: 'Creative', icon: Sparkles },
 ] as const
 
+const DEMO_TOOLS_PRESET = [
+  {
+    type: 'function',
+    function: {
+      name: 'saveLead',
+      description: 'Save a lead with name, email, and interest. Only use when the user asks to save or create a lead.',
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'sendEmail',
+      description: 'Send an email to a recipient with a subject and body. Only use when the user asks to send an email.',
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'getCurrentTime',
+      description: 'Get the current date and time',
+    },
+  },
+]
+
+function extractSvg(text: string): string | null {
+  if (!text) return null
+  const fenceMatch = text.match(/```(?:svg|xml|html)?\s*([\s\S]*?)```/i)
+  const candidate = fenceMatch ? fenceMatch[1] : text
+  const svgMatch = candidate.match(/<svg[\s\S]*?<\/svg>/i)
+  return svgMatch ? svgMatch[0] : null
+}
+
 export default function PlaygroundPage() {
   const [provider, setProvider] = useState<ProviderId>('groq')
   const [apiKey, setApiKey] = useState('')
@@ -207,8 +276,20 @@ export default function PlaygroundPage() {
   const [copied, setCopied] = useState(false)
   const [models, setModels] = useState<string[]>([])
   const [modelsLoading, setModelsLoading] = useState(false)
+  const [toolsJson, setToolsJson] = useState('')
+  const [showTools, setShowTools] = useState(false)
+  const [toolDemoProvider, setToolDemoProvider] = useState<ProviderId>('opencode')
+  const [toolDemoApiKey, setToolDemoApiKey] = useState('')
+  const [toolDemoMessage, setToolDemoMessage] = useState('Save a lead named Bilal with email bilal@email.com who is interested in AI features. Also send a welcome email to bilal@email.com with subject "Welcome to Convio" and body "Hi Bilal, thanks for your interest in AI features!"')
+  const [toolDemoResult, setToolDemoResult] = useState<any>(null)
+  const [showToolKey, setShowToolKey] = useState(false)
   const [activeTab, setActiveTab] = useState('test')
   const [templateCategory, setTemplateCategory] = useState('all')
+  const [selectedProviders, setSelectedProviders] = useState<ProviderId[]>([])
+  const [compareApiKeys, setCompareApiKeys] = useState<Record<string, string>>({})
+  const [compareModels, setCompareModels] = useState<Record<string, string>>({})
+  const [compareResults, setCompareResults] = useState<CompareResult[]>([])
+  const [compareMessage, setCompareMessage] = useState(PROMPT_TEMPLATES[0].message)
   const logsEndRef = useRef<HTMLDivElement>(null)
   const modelsFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -258,14 +339,21 @@ export default function PlaygroundPage() {
     }
   }, [provider, apiKey])
 
+  const parsedTools = useMemo(() => {
+    if (!toolsJson.trim()) return undefined
+    try {
+      const parsed = JSON.parse(toolsJson)
+      return Array.isArray(parsed) ? parsed : [parsed]
+    } catch {
+      return undefined
+    }
+  }, [toolsJson])
+
   const testMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post('/playground/test', {
-        provider,
-        apiKey,
-        model: currentModel,
-        message,
-      })
+      const body: any = { provider, apiKey, model: currentModel, message }
+      if (parsedTools) body.tools = parsedTools
+      const res = await api.post('/playground/test', body)
       return res.data
     },
     onSuccess: (data) => {
@@ -276,6 +364,7 @@ export default function PlaygroundPage() {
         model: currentModel,
         message,
         response: data.response,
+        toolCalls: data.toolCalls,
         latencyMs: data.latencyMs,
         success: data.success,
         error: data.error,
@@ -298,6 +387,72 @@ export default function PlaygroundPage() {
     },
   })
 
+  const compareMutation = useMutation({
+    mutationFn: async () => {
+      const configs = selectedProviders.map((p) => ({
+        provider: p,
+        apiKey: compareApiKeys[p] || '',
+        model: compareModels[p] || '',
+      }))
+      const res = await api.post('/playground/compare', {
+        providers: configs,
+        message: compareMessage,
+      })
+      return res.data.results as CompareResult[]
+    },
+    onSuccess: (results) => {
+      setCompareResults(results)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || error.message || 'Compare request failed')
+    },
+  })
+
+  const toolDemoMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/playground/tool-demo', {
+        provider: toolDemoProvider,
+        apiKey: toolDemoApiKey,
+        message: toolDemoMessage,
+      })
+      return res.data
+    },
+    onSuccess: (data) => {
+      setToolDemoResult(data)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || error.message || 'Tool demo failed')
+    },
+  })
+
+  const handleCompare = useCallback(() => {
+    if (selectedProviders.length === 0 || !compareMessage.trim()) return
+    const missingKey = selectedProviders.find(
+      (p) => p !== 'local' && !compareApiKeys[p]?.trim()
+    )
+    if (missingKey) {
+      toast.error(`Enter API key for ${PROVIDERS.find((x) => x.id === missingKey)?.name}`)
+      return
+    }
+    compareMutation.mutate()
+  }, [selectedProviders, compareApiKeys, compareMessage, compareMutation])
+
+  const handleToolDemo = useCallback(() => {
+    if (!toolDemoMessage.trim()) return
+    const isLocal = toolDemoProvider === 'local'
+    if (!isLocal && !toolDemoApiKey.trim()) {
+      toast.error('Enter an API key for the selected provider')
+      return
+    }
+    toolDemoMutation.mutate()
+  }, [toolDemoProvider, toolDemoApiKey, toolDemoMessage, toolDemoMutation])
+
+  const toggleProvider = useCallback((id: ProviderId) => {
+    setSelectedProviders((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    )
+  }, [])
+
   const handleTest = useCallback(() => {
     const isLocal = provider === 'local'
     if ((!isLocal && !apiKey.trim()) || !message.trim() || !currentModel) return
@@ -316,10 +471,6 @@ export default function PlaygroundPage() {
   const filteredTemplates = templateCategory === 'all'
     ? PROMPT_TEMPLATES
     : PROMPT_TEMPLATES.filter((t) => t.category === templateCategory)
-
-  const providerSvgUrl = selectedProvider.slug
-    ? `${SVG_BASE}/${selectedProvider.slug}/${selectedProvider.variant}.svg`
-    : null
 
   return (
     <PageContainer>
@@ -347,6 +498,14 @@ export default function PlaygroundPage() {
                   {logs.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="compare">
+              <GitCompare className="size-4" />
+              Compare
+            </TabsTrigger>
+            <TabsTrigger value="tools">
+              <Puzzle className="size-4" />
+              Tools
             </TabsTrigger>
             <TabsTrigger value="toasts">
               <Sparkles className="size-4" />
@@ -533,6 +692,39 @@ export default function PlaygroundPage() {
                   className="text-sm resize-none"
                 />
 
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTools(!showTools)}
+                    className={cn(
+                      'flex items-center gap-1.5 text-[10px] font-medium transition-colors',
+                      showTools ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <Code className="size-3" />
+                    {showTools ? 'Hide' : 'Add'} Tool Definitions
+                    {toolsJson.trim() && !showTools && (
+                      <span className="size-1.5 rounded-full bg-primary" />
+                    )}
+                  </button>
+                  {toolsJson.trim() && !parsedTools && (
+                    <span className="text-[10px] text-destructive">Invalid JSON</span>
+                  )}
+                </div>
+
+                {showTools && (
+                  <Textarea
+                    value={toolsJson}
+                    onChange={(e) => setToolsJson(e.target.value)}
+                    rows={5}
+                    placeholder={`[\n  {\n    "type": "function",\n    "function": {\n      "name": "get_weather",\n      "description": "Get weather for a city",\n      "parameters": {\n        "type": "object",\n        "properties": {\n          "city": { "type": "string" }\n        },\n        "required": ["city"]\n      }\n    }\n  }\n]`}
+                    className={cn(
+                      'text-xs font-mono resize-none',
+                      toolsJson.trim() && !parsedTools && 'border-destructive'
+                    )}
+                  />
+                )}
+
                 {currentModel && (
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     <span className="size-1.5 rounded-full bg-emerald-500" />
@@ -610,7 +802,31 @@ export default function PlaygroundPage() {
                         {log.response && (
                           <div>
                             <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Response</p>
+                            {extractSvg(log.response || '') && (
+                              <div
+                                className="mb-2 rounded-lg border bg-background/80 p-4 flex items-center justify-center min-h-[120px] [&_svg]:max-w-full [&_svg]:max-h-[160px]"
+                                dangerouslySetInnerHTML={{ __html: extractSvg(log.response || '')! }}
+                              />
+                            )}
                             <p className="text-foreground whitespace-pre-wrap">{log.response}</p>
+                          </div>
+                        )}
+
+                        {log.toolCalls && log.toolCalls.length > 0 && (
+                          <div>
+                            <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Tool Calls</p>
+                            <div className="space-y-1.5">
+                              {log.toolCalls.map((tc, i) => (
+                                <div key={i} className="rounded border bg-muted/50 p-2">
+                                  <p className="text-[10px] font-mono text-primary font-medium mb-1">
+                                    {tc.name}
+                                  </p>
+                                  <pre className="text-[9px] text-muted-foreground whitespace-pre-wrap overflow-x-auto">
+                                    {JSON.stringify(tc.args, null, 2)}
+                                  </pre>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
 
@@ -725,6 +941,542 @@ export default function PlaygroundPage() {
               })}
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="compare" className="mt-0">
+          <div className="grid lg:grid-cols-[400px_1fr] gap-6">
+            <div className="space-y-4">
+              <Card className="p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                    <Network className="size-4 text-primary" />
+                  </div>
+                  <h2 className="text-sm font-semibold">Providers</h2>
+                  <Badge variant="secondary" className="text-[10px] ml-auto">
+                    {selectedProviders.length} selected
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5">
+                  {PROVIDERS.map((p) => {
+                    const isSelected = selectedProviders.includes(p.id)
+                    const imgUrl = p.slug ? `${SVG_BASE}/${p.slug}/${p.variant}.svg` : null
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => toggleProvider(p.id)}
+                        className={cn(
+                          'flex flex-col items-center gap-1.5 rounded-lg p-2 transition-all relative',
+                          isSelected
+                            ? 'bg-primary/10 ring-1 ring-primary/20'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        {imgUrl ? (
+                          <img
+                            src={imgUrl}
+                            alt={p.name}
+                            className="size-5"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="size-5 rounded bg-muted flex items-center justify-center text-[8px] font-bold">
+                            {p.name.charAt(0)}
+                          </div>
+                        )}
+                        <span className="text-[9px] font-medium leading-tight text-center">
+                          {p.name}
+                        </span>
+                        {isSelected && (
+                          <div className="absolute -top-1 -right-1 size-3.5 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="size-2.5 text-primary-foreground" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Card>
+
+              {selectedProviders.map((pid) => {
+                const p = PROVIDERS.find((x) => x.id === pid)!
+                return (
+                  <Card key={pid} className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex size-6 items-center justify-center rounded-md bg-primary/10">
+                        {p.slug ? (
+                          <img src={`${SVG_BASE}/${p.slug}/${p.variant}.svg`} alt={p.name} className="size-4" />
+                        ) : (
+                          <span className="text-[8px] font-bold">{p.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      <h3 className="text-xs font-semibold">{p.name}</h3>
+                      <Badge variant="outline" className="text-[9px] font-mono ml-auto">
+                        {ENV_KEY_MAP[pid]}
+                      </Badge>
+                    </div>
+
+                    {pid === 'local' ? (
+                      <div className="flex items-center justify-center h-8 rounded-md border border-dashed text-[10px] text-emerald-500 bg-emerald-500/5">
+                        No API key required
+                      </div>
+                    ) : (
+                      <Input
+                        type="password"
+                        value={compareApiKeys[pid] || ''}
+                        onChange={(e: any) =>
+                          setCompareApiKeys((prev) => ({ ...prev, [pid]: e?.target?.value ?? '' }))
+                        }
+                        placeholder={`${p.name} API key`}
+                        className="h-8 text-xs font-mono"
+                      />
+                    )}
+
+                    <Select
+                      value={compareModels[pid] || ''}
+                      onValueChange={(v: string | null) =>
+                        setCompareModels((prev) => ({ ...prev, [pid]: v ?? '' }))
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Default model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FALLBACK_MODELS[pid as ProviderId]?.map((m: string) => (
+                          <SelectItem key={m} value={m} className="text-xs font-mono">
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Card>
+                )
+              })}
+            </div>
+
+            <div className="space-y-4">
+              <Card className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                      <Send className="size-4 text-primary" />
+                    </div>
+                    <h2 className="text-sm font-semibold">Compare Message</h2>
+                  </div>
+                  <Button
+                    size="default"
+                    onClick={handleCompare}
+                    disabled={
+                      selectedProviders.length < 2 ||
+                      !compareMessage.trim() ||
+                      compareMutation.isPending
+                    }
+                    className="gap-1.5 text-xs"
+                  >
+                    {compareMutation.isPending ? (
+                      <>
+                        <Loader2 className="size-3.5 animate-spin" />
+                        Comparing...
+                      </>
+                    ) : (
+                      <>
+                        <GitCompare className="size-3.5" />
+                        Compare All
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <Textarea
+                  value={compareMessage}
+                  onChange={(e) => setCompareMessage(e.target.value)}
+                  rows={4}
+                  placeholder="Enter a message to compare across providers..."
+                  className="text-sm resize-none"
+                />
+              </Card>
+
+              <Card className="flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
+                  <div className="flex items-center gap-2">
+                    <Table2 className="size-4 text-muted-foreground" />
+                    <h2 className="text-sm font-semibold">Comparison Results</h2>
+                    {compareResults.length > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {compareResults.length} providers
+                      </Badge>
+                    )}
+                  </div>
+                  {compareResults.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setCompareResults([])}
+                      className="text-xs text-muted-foreground gap-1"
+                    >
+                      <Trash2 className="size-3" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+
+                <ScrollArea className="flex-1 max-h-[600px]">
+                  {compareResults.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="flex size-12 items-center justify-center rounded-full bg-muted mb-3">
+                        <GitCompare className="size-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Select at least 2 providers and run a comparison.
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        Results show side by side for easy comparison.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[100px]">Metric</TableHead>
+                            {compareResults.map((r) => {
+                              const p = PROVIDERS.find((x) => x.id === r.provider)
+                              return (
+                                <TableHead key={r.provider} className="min-w-[200px]">
+                                  <div className="flex items-center gap-1.5">
+                                    {p?.slug && (
+                                      <img
+                                        src={`${SVG_BASE}/${p.slug}/${p.variant}.svg`}
+                                        alt=""
+                                        className="size-3.5"
+                                      />
+                                    )}
+                                    <span>{p?.name || r.provider}</span>
+                                  </div>
+                                </TableHead>
+                              )
+                            })}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="text-xs font-medium text-muted-foreground">
+                              Status
+                            </TableCell>
+                            {compareResults.map((r) => (
+                              <TableCell key={r.provider}>
+                                {r.success ? (
+                                  <span className="inline-flex items-center gap-1 text-xs text-emerald-500">
+                                    <CheckCircle2 className="size-3" />
+                                    Success
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-xs text-destructive">
+                                    <XCircle className="size-3" />
+                                    Failed
+                                  </span>
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-xs font-medium text-muted-foreground">
+                              Model
+                            </TableCell>
+                            {compareResults.map((r) => (
+                              <TableCell key={r.provider} className="text-xs font-mono">
+                                {r.model}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-xs font-medium text-muted-foreground">
+                              Latency
+                            </TableCell>
+                            {compareResults.map((r) => (
+                              <TableCell key={r.provider}>
+                                <span className={cn(
+                                  'text-xs font-mono',
+                                  r.latencyMs < 1000 ? 'text-emerald-500' : r.latencyMs < 3000 ? 'text-amber-500' : 'text-destructive'
+                                )}>
+                                  {r.latencyMs}ms
+                                </span>
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-xs font-medium text-muted-foreground">
+                              Tokens
+                            </TableCell>
+                            {compareResults.map((r) => (
+                              <TableCell key={r.provider} className="text-xs font-mono">
+                                {r.usage?.total_tokens
+                                  ? `${r.usage.total_tokens} (${r.usage.prompt_tokens || '?'}↑ ${r.usage.completion_tokens || '?'}↓)`
+                                  : '—'}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-xs font-medium text-muted-foreground">
+                              Response
+                            </TableCell>
+                            {compareResults.map((r) => (
+                              <TableCell key={r.provider}>
+                                {r.success ? (
+                                  <div>
+                                    {extractSvg(r.response || '') && (
+                                      <div
+                                        className="mb-2 rounded-lg border bg-background/80 p-3 flex items-center justify-center min-h-[90px] [&_svg]:max-w-full [&_svg]:max-h-[120px]"
+                                        dangerouslySetInnerHTML={{ __html: extractSvg(r.response || '')! }}
+                                      />
+                                    )}
+                                    <p className="text-xs whitespace-pre-wrap line-clamp-6 max-w-[400px]">
+                                      {r.response}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-destructive">{r.error}</p>
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </ScrollArea>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="tools" className="mt-0 space-y-4">
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                <Globe className="size-4 text-primary" />
+              </div>
+              <h2 className="text-sm font-semibold">Provider</h2>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1.5">
+              {PROVIDERS.map((p) => {
+                const isActive = toolDemoProvider === p.id
+                const imgUrl = p.slug ? `${SVG_BASE}/${p.slug}/${p.variant}.svg` : null
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setToolDemoProvider(p.id)}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 rounded-lg p-2 transition-all',
+                      isActive
+                        ? 'bg-primary/10 ring-1 ring-primary/20'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    {imgUrl ? (
+                      <img src={imgUrl} alt={p.name} className="size-5" loading="lazy" />
+                    ) : (
+                      <div className="size-5 rounded bg-muted flex items-center justify-center text-[8px] font-bold">
+                        {p.name.charAt(0)}
+                      </div>
+                    )}
+                    <span className="text-[9px] font-medium leading-tight text-center">{p.name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </Card>
+
+          <div className="grid lg:grid-cols-[1fr_300px] gap-4">
+            <Card className="p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                  <Key className="size-4 text-primary" />
+                </div>
+                <h2 className="text-sm font-semibold">API Key</h2>
+                <Badge variant="secondary" className="text-[10px] ml-auto font-mono">
+                  {ENV_KEY_MAP[toolDemoProvider]}
+                </Badge>
+              </div>
+              {toolDemoProvider === 'local' ? (
+                <div className="flex items-center justify-center h-9 rounded-md border border-dashed text-xs text-emerald-500 bg-emerald-500/5">
+                  No API key required
+                </div>
+              ) : (
+                <Input
+                  type={showToolKey ? 'text' : 'password'}
+                  value={toolDemoApiKey}
+                  onChange={(e) => setToolDemoApiKey(e.target.value)}
+                  placeholder="Enter API key"
+                  className="h-10 text-sm font-mono"
+                />
+              )}
+            </Card>
+
+            <Card className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10">
+                  <Code className="size-4 text-amber-500" />
+                </div>
+                <h2 className="text-sm font-semibold">Available Tools</h2>
+              </div>
+              <div className="space-y-2">
+                {DEMO_TOOLS_PRESET.map((tool, i) => (
+                  <div key={i} className="rounded-lg border bg-muted/30 p-2.5 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-1.5 rounded-full bg-emerald-500" />
+                      <span className="text-[11px] font-mono font-medium">{tool.function.name}</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">{tool.function.description}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                  <Send className="size-4 text-primary" />
+                </div>
+                <h2 className="text-sm font-semibold">Message</h2>
+              </div>
+              <Button
+                size="default"
+                onClick={handleToolDemo}
+                disabled={toolDemoMutation.isPending}
+                className="gap-1.5 text-xs"
+              >
+                {toolDemoMutation.isPending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="size-3.5" />
+                    Run Demo
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <Textarea
+              value={toolDemoMessage}
+              onChange={(e) => setToolDemoMessage(e.target.value)}
+              rows={4}
+              placeholder='Try: "Save a lead named Bilal who is interested in AI features"'
+              className="text-sm resize-none"
+            />
+
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="size-1.5 rounded-full bg-amber-500" />
+              <span>
+                AI automatically decides when to call tools based on the message
+              </span>
+            </div>
+          </Card>
+
+          {toolDemoResult && (
+            <Card className="flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <Network className="size-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">Agentic Loop Trace</h2>
+                  {toolDemoResult.latencyMs && (
+                    <Badge variant="secondary" className="text-[10px] font-mono">
+                      {toolDemoResult.latencyMs}ms
+                    </Badge>
+                  )}
+                </div>
+                {toolDemoResult.totalLeads > 0 && (
+                  <Badge className="text-[10px] gap-1">
+                    <CheckCircle2 className="size-3" />
+                    {toolDemoResult.totalLeads} lead{toolDemoResult.totalLeads !== 1 ? 's' : ''} saved
+                  </Badge>
+                )}
+              </div>
+
+              <ScrollArea className="flex-1 max-h-[500px]">
+                <div className="p-4 space-y-3">
+                  {toolDemoResult.response && (
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
+                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Final Answer</p>
+                      <p className="text-sm">{toolDemoResult.response}</p>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Trace</p>
+
+                  {toolDemoResult.trace?.map((step: any, i: number) => (
+                    <div key={i} className="rounded-lg border p-3 space-y-2 text-xs">
+                      {step.role === 'assistant' && !step.tool_calls && (
+                        <div className="flex items-start gap-2">
+                          <div className="flex size-5 items-center justify-center rounded bg-primary/10 shrink-0 mt-0.5">
+                            <Brain className="size-3 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-muted-foreground mb-1 font-medium">AI Reply</p>
+                            <p className="text-foreground whitespace-pre-wrap">{step.content || '(no text)'}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {step.role === 'assistant' && step.tool_calls && step.tool_calls.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div className="flex size-5 items-center justify-center rounded bg-amber-500/10 shrink-0">
+                              <Zap className="size-3 text-amber-500" />
+                            </div>
+                            <p className="text-[10px] text-amber-600 font-medium">AI called {step.tool_calls.length} tool{step.tool_calls.length !== 1 ? 's' : ''}</p>
+                          </div>
+                          {step.tool_calls.map((tc: any, j: number) => (
+                            <div key={j} className="rounded border bg-muted/50 p-2 mb-1 space-y-1">
+                              <div className="flex items-center gap-1.5">
+                                <Code className="size-3 text-primary" />
+                                <span className="text-[11px] font-mono font-medium text-primary">{tc.function?.name}</span>
+                              </div>
+                              <pre className="text-[9px] text-muted-foreground whitespace-pre-wrap overflow-x-auto">
+                                {JSON.stringify((() => { try { return JSON.parse(tc.function?.arguments || '{}') } catch { return tc.function?.arguments } })(), null, 2)}
+                              </pre>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {step.role === 'tool' && (
+                        <div className="flex items-start gap-2">
+                          <div className="flex size-5 items-center justify-center rounded bg-emerald-500/10 shrink-0 mt-0.5">
+                            <CheckCircle2 className="size-3 text-emerald-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-emerald-600 mb-1 font-medium">Tool Result: {step.name}</p>
+                            <pre className="text-[10px] text-foreground font-mono whitespace-pre-wrap bg-muted/30 rounded p-1.5">
+                              {step.content}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {toolDemoResult.usage && (
+                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1">
+                      {toolDemoResult.usage.prompt_tokens && <span>Prompt: {toolDemoResult.usage.prompt_tokens}</span>}
+                      {toolDemoResult.usage.completion_tokens && <span>Completion: {toolDemoResult.usage.completion_tokens}</span>}
+                      {toolDemoResult.usage.total_tokens && <span>Total: {toolDemoResult.usage.total_tokens}</span>}
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="toasts" className="mt-0">
@@ -902,7 +1654,31 @@ export default function PlaygroundPage() {
                     {log.response && (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Response</p>
+                        {extractSvg(log.response) && (
+                          <div
+                            className="mb-2 rounded-lg border bg-background/80 p-4 flex items-center justify-center min-h-[120px] [&_svg]:max-w-full [&_svg]:max-h-[160px]"
+                            dangerouslySetInnerHTML={{ __html: extractSvg(log.response)! }}
+                          />
+                        )}
                         <p className="text-foreground whitespace-pre-wrap">{log.response}</p>
+                      </div>
+                    )}
+
+                    {log.toolCalls && log.toolCalls.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Tool Calls</p>
+                        <div className="space-y-1.5">
+                          {log.toolCalls.map((tc, i) => (
+                            <div key={i} className="rounded border bg-muted/50 p-2">
+                              <p className="text-[10px] font-mono text-primary font-medium mb-1">
+                                {tc.name}
+                              </p>
+                              <pre className="text-[9px] text-muted-foreground whitespace-pre-wrap overflow-x-auto">
+                                {JSON.stringify(tc.args, null, 2)}
+                              </pre>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
