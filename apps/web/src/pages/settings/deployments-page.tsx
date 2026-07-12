@@ -5,7 +5,7 @@ import { useOrg } from '@/lib/org-context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Loader2, Link } from 'lucide-react'
+import { Plus, Trash2, Loader2, Link, Copy, Check } from 'lucide-react'
 import { DeploymentForm } from '@/components/settings/deployment-form'
 
 interface DeploymentItem {
@@ -28,6 +28,11 @@ export default function DeploymentsPage() {
     queryFn: () => agentsApi.list(orgId!),
     enabled: !!orgId,
   })
+
+  const agentsData = (() => {
+    const raw = agentsQuery.data?.data?.data || agentsQuery.data?.data || []
+    return Array.isArray(raw) ? raw : []
+  })()
 
   const allDeploymentsQuery = useQuery({
     queryKey: ['all-deployments', orgId],
@@ -97,7 +102,7 @@ export default function DeploymentsPage() {
 
       {editing && (
         <DeploymentForm
-          agents={agentsQuery.data?.data || agentsQuery.data || []}
+          agents={agentsData}
           onSave={async (data) => {
             await createMutation.mutate(data)
             setEditing(null)
@@ -148,8 +153,31 @@ export default function DeploymentsPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="py-2 text-xs text-muted-foreground">
-              Agent: {deployment.agentName || deployment.agentId}
+            <CardContent className="py-2 space-y-1.5">
+              <div className="text-xs text-muted-foreground">
+                Agent: {deployment.agentName || deployment.agentId}
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="text-[11px] font-mono bg-muted/50 px-1.5 py-0.5 rounded select-all">
+                  {deployment.id}
+                </code>
+                <button
+                  className="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-foreground transition-colors shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(deployment.id)
+                    const el = document.getElementById(`copy-${deployment.id}`)
+                    if (el) {
+                      el.classList.remove('hidden')
+                      setTimeout(() => el.classList.add('hidden'), 1500)
+                    }
+                  }}
+                >
+                  <Copy className="size-3" />
+                  <span id={`copy-${deployment.id}`} className="hidden text-success items-center gap-1">
+                    <Check className="size-3" /> Copied
+                  </span>
+                </button>
+              </div>
             </CardContent>
           </Card>
         ))}

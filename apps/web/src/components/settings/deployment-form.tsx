@@ -20,6 +20,7 @@ import {
   SelectGroup,
   SelectLabel,
 } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 
 type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
 
@@ -59,16 +60,34 @@ const channelFields: Record<Channel, { label: string; key: string; placeholder: 
   ],
 }
 
+const twilioFields = [
+  { label: 'Account SID', key: 'twilioAccountSid', placeholder: 'AC...' },
+  { label: 'Auth Token', key: 'twilioAuthToken', placeholder: 'Auth token' },
+  { label: 'Twilio Number', key: 'twilioNumber', placeholder: '+14155238886' },
+]
+
+const kapsoFields = [
+  { label: 'API Key', key: 'kapsoApiKey', placeholder: 'Kapso API key' },
+  { label: 'Phone Number ID', key: 'phoneNumberId', placeholder: 'Phone number ID from Kapso' },
+]
+
 export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps) {
   const [agentId, setAgentId] = useState('')
   const [channel, setChannel] = useState<Channel>('web')
   const [config, setConfig] = useState<Record<string, string>>({})
+  const [whatsappProvider, setWhatsappProvider] = useState('meta')
 
   const fields = channelFields[channel]
+  const useTwilio = channel === 'whatsapp' && whatsappProvider === 'twilio'
+  const useKapso = channel === 'whatsapp' && whatsappProvider === 'kapso'
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave({ agentId, channel, config })
+    let finalConfig = { ...config }
+    if (useTwilio) finalConfig.provider = 'twilio'
+    else if (useKapso) finalConfig.provider = 'kapso'
+    else delete finalConfig.provider
+    onSave({ agentId, channel, config: finalConfig })
   }
 
   return (
@@ -100,7 +119,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
 
         <div className="space-y-2">
           <Label>Channel</Label>
-          <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}) }}>
+          <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}); setWhatsappProvider('meta') }}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -115,7 +134,58 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
           </Select>
         </div>
 
-        {fields.map((field) => (
+        {channel === 'whatsapp' && (
+          <div className="space-y-2">
+            <Label>Provider</Label>
+            <Select value={whatsappProvider} onValueChange={(v) => { setWhatsappProvider(v); setConfig({}) }}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="meta">
+                  <div className="flex items-center gap-2">
+                    Meta / WhatsApp Business
+                    <Badge variant="secondary" className="text-[9px]">Production</Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="twilio">
+                  <div className="flex items-center gap-2">
+                    Twilio Sandbox
+                    <Badge variant="secondary" className="text-[9px]">Demo</Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="kapso">
+                  <div className="flex items-center gap-2">
+                    Kapso
+                    <Badge variant="secondary" className="text-[9px]">Free</Badge>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {useKapso ? kapsoFields.map((field) => (
+          <div key={field.key} className="space-y-2">
+            <Label htmlFor={field.key}>{field.label}</Label>
+            <Input
+              id={field.key}
+              value={config[field.key] || ''}
+              onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
+              placeholder={field.placeholder}
+            />
+          </div>
+        )) : useTwilio ? twilioFields.map((field) => (
+          <div key={field.key} className="space-y-2">
+            <Label htmlFor={field.key}>{field.label}</Label>
+            <Input
+              id={field.key}
+              value={config[field.key] || ''}
+              onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
+              placeholder={field.placeholder}
+            />
+          </div>
+        )) : fields.map((field) => (
           <div key={field.key} className="space-y-2">
             <Label htmlFor={field.key}>{field.label}</Label>
             <Input
