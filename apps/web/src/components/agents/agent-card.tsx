@@ -11,7 +11,7 @@ const MODEL_BADGE_CLASSES: Record<string, string> = {
   'gpt-': 'bg-emerald-500/10 text-emerald-600',
   'claude-': 'bg-amber-500/10 text-amber-600',
   'gemini-': 'bg-sky-500/10 text-sky-600',
-  'llama-': 'bg-orange-500/10 text-orange-600',
+  'llama-': 'bg-emerald-500/10 text-emerald-600',
   'ddgw/': 'bg-rose-500/10 text-rose-600',
   'oc/': 'bg-teal-500/10 text-teal-600',
   'tllm/': 'bg-indigo-500/10 text-indigo-600',

@@ -13,7 +13,7 @@ const channelConfig: Record<Channel, { label: string; icon: typeof MessageSquare
   slack: { label: 'Slack', icon: Hash, color: 'text-purple-500' },
   discord: { label: 'Discord', icon: MessageCircle, color: 'text-indigo-500' },
   telegram: { label: 'Telegram', icon: Send, color: 'text-sky-500' },
-  api: { label: 'API', icon: Code, color: 'text-orange-500' },
+  api: { label: 'API', icon: Code, color: 'text-primary' },
 }
 
 function formatRelativeTime(date: string): string {

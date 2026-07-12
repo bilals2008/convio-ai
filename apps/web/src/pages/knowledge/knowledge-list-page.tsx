@@ -70,7 +70,7 @@ const implementedSources = new Set([
 ])
 
 const sourceTypes = [
-  { id: 'file-upload', label: 'File Upload', desc: 'PDF, DOCX, TXT', icon: Upload, color: 'text-orange-500 bg-orange-500/10', logo: null, comingSoon: false },
+  { id: 'file-upload', label: 'File Upload', desc: 'PDF, DOCX, TXT', icon: Upload, color: 'text-primary bg-primary/10', logo: null, comingSoon: false },
   { id: 'website', label: 'Website', desc: 'Crawl web pages', icon: null, color: 'text-blue-500 bg-blue-500/10', logo: `${SVG}/google-chrome/default.svg`, comingSoon: false },
   { id: 'sitemap', label: 'Sitemap', desc: 'XML sitemap crawl', icon: Link2, color: 'text-cyan-500 bg-cyan-500/10', logo: null, comingSoon: true },
   { id: 'notion', label: 'Notion', desc: 'Sync Notion pages', icon: null, color: 'text-foreground bg-white/10', logo: `${SVG}/notion/default.svg`, comingSoon: true },
