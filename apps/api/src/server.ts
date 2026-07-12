@@ -16,6 +16,7 @@ import auditLoggerPlugin from './plugins/audit-logger.js'
 import swaggerPlugin from './plugins/swagger.js'
 import rateLimitPlugin from './plugins/rate-limit.js'
 import multipart from '@fastify/multipart'
+import formbody from '@fastify/formbody'
 
 import authRoutes from './modules/auth/routes.js'
 import usersRoutes from './modules/users/routes.js'
@@ -51,6 +52,7 @@ async function buildServer() {
   await app.register(swaggerPlugin)
   await app.register(rateLimitPlugin)
   await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024 } })
+  await app.register(formbody)
 
   // Health
   app.get('/health', async () => ({ status: 'ok' }))

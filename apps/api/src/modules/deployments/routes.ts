@@ -4,6 +4,7 @@ import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
 import crypto from 'node:crypto'
+import { processIncomingMessage } from '../../services/whatsapp.js'
 
 const channels = ['web', 'whatsapp', 'slack', 'discord', 'telegram', 'api'] as const
 type Channel = (typeof channels)[number]
@@ -27,9 +28,14 @@ const webConfigSchema = z.object({
 }).passthrough()
 
 const whatsappConfigSchema = z.object({
-  phoneNumberId: z.string().min(1),
-  accessToken: z.string().min(1),
-  verifyToken: z.string().min(1),
+  phoneNumberId: z.string().optional(),
+  accessToken: z.string().optional(),
+  verifyToken: z.string().optional(),
+  provider: z.enum(['meta', 'twilio', 'kapso']).optional().default('meta'),
+  twilioAccountSid: z.string().optional(),
+  twilioAuthToken: z.string().optional(),
+  twilioNumber: z.string().optional(),
+  kapsoApiKey: z.string().optional(),
   webhookUrl: z.string().url().optional(),
 }).passthrough()
 
@@ -87,6 +93,7 @@ const sensitiveKeys = new Set([
   'appToken',
   'signingSecret',
   'apiKey',
+  'kapsoApiKey',
   'verifyToken',
   'password',
   'secret',
@@ -262,7 +269,9 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
 
     const requiredFields: Record<Channel, string[]> = {
       web: [],
-      whatsapp: ['phoneNumberId', 'accessToken'],
+      whatsapp: (config.provider === 'twilio') ? ['twilioAccountSid', 'twilioAuthToken', 'twilioNumber']
+        : (config.provider === 'kapso') ? ['kapsoApiKey', 'phoneNumberId']
+        : ['phoneNumberId', 'accessToken'],
       slack: ['botToken', 'signingSecret'],
       discord: ['botToken', 'applicationId'],
       telegram: ['botToken'],
@@ -288,5 +297,92 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
         message: `Deployment for ${channel} is properly configured`,
       },
     }
+  })
+
+  // POST /api/deployments/:id/whatsapp-webhook — Twilio incoming message webhook
+  fastify.post('/deployments/:id/whatsapp-webhook', {
+    config: { rawBody: true },
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const deployment = await prisma.deployment.findUnique({
+      where: { id },
+      include: { agent: true },
+    })
+    if (!deployment || deployment.channel !== 'whatsapp') {
+      reply.header('Content-Type', 'text/xml')
+      return reply.code(200).send('<Response></Response>')
+    }
+
+    const config = deployment.config as Record<string, unknown>
+    if (config.provider !== 'twilio') {
+      reply.header('Content-Type', 'text/xml')
+      return reply.code(200).send('<Response></Response>')
+    }
+
+    const body = request.body as any
+    const from = body.From || ''
+    const text = body.Body || ''
+
+    if (!from || !text) {
+      reply.header('Content-Type', 'text/xml')
+      return reply.code(200).send('<Response></Response>')
+    }
+
+    const result = await processIncomingMessage(id, from, text)
+
+    reply.header('Content-Type', 'text/xml')
+    if (result.error) {
+      return reply.code(200).send(`<Response><Message>Sorry, an error occurred: ${result.error}</Message></Response>`)
+    }
+
+    return reply.code(200).send('<Response></Response>')
+  })
+
+  // POST /api/deployments/:id/kapso-webhook — Kapso incoming message webhook
+  fastify.post('/deployments/:id/kapso-webhook', {
+    config: { rawBody: true },
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const body = request.body as any
+    const deployment = await prisma.deployment.findUnique({
+      where: { id },
+      include: { agent: true },
+    }).catch(() => null)
+
+    if (!deployment || deployment.channel !== 'whatsapp') {
+      request.log.warn({ deploymentId: id }, 'Kapso webhook: deployment not found or not whatsapp')
+      return reply.code(200).send('OK')
+    }
+
+    const config = deployment.config as Record<string, unknown>
+    if (config.provider !== 'kapso') {
+      return reply.code(200).send('OK')
+    }
+
+    const event = request.headers['x-webhook-event'] as string
+    if (event !== 'whatsapp.message.received') {
+      return reply.code(200).send('OK')
+    }
+
+    const message = body?.message
+    if (!message || !message.text?.body) {
+      return reply.code(200).send('OK')
+    }
+
+    const from = message.from || body.conversation?.phone_number || ''
+    const text = message.text.body
+    const contactName = message.kapso?.contact_name || body.conversation?.kapso?.contact_name || undefined
+
+    if (!from || !text) {
+      return reply.code(200).send('OK')
+    }
+
+    request.log.info({ from, deploymentId: id }, 'Kapso webhook: processing incoming message')
+
+    await processIncomingMessage(id, from, text, contactName)
+
+    return reply.code(200).send('OK')
   })
 }
