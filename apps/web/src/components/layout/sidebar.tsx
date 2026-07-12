@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -13,6 +13,10 @@ import {
   Terminal,
   Link as LinkIcon,
   ChevronLeft,
+  ChevronDown,
+  Shield,
+  ScrollText,
+  Building2,
   LogOut,
   User,
   X,
@@ -35,6 +39,86 @@ import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
+
+function SettingsGroup({ collapsed }: { collapsed: boolean }) {
+  const [open, setOpen] = useState(true)
+  const { pathname } = useLocation()
+  const isActive = pathname.startsWith('/settings')
+
+  const groups = [
+    {
+      label: 'General',
+      items: [
+        { icon: Settings, label: 'Organization', href: '/settings/organization' },
+        { icon: Users, label: 'Team', href: '/settings/team' },
+      ],
+    },
+    {
+      label: 'Security',
+      items: [
+        { icon: Building2, label: 'SSO', href: '/settings/sso' },
+        { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
+      ],
+    },
+    {
+      label: 'Integrations',
+      items: [
+        { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
+        { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
+        { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
+      ],
+    },
+    {
+      label: 'Tools',
+      items: [
+        { icon: Terminal, label: 'Playground', href: '/settings/playground' },
+      ],
+    },
+  ]
+
+  if (collapsed) {
+    return (
+      <div className="space-y-0.5 mt-4">
+        {groups.flatMap((g) =>
+          g.items.map((item) => (
+            <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+          ))
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-0.5 mt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          'flex w-full items-center justify-between px-3 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] transition-colors',
+          isActive ? 'text-primary/80' : 'text-muted-foreground/60 hover:text-muted-foreground'
+        )}
+      >
+        Settings
+        <ChevronDown
+          className={cn('size-3 transition-transform duration-200 shrink-0', !open && '-rotate-90')}
+        />
+      </button>
+      {open &&
+        groups.map((group) => (
+          <div key={group.label} className="mt-2">
+            <div className="px-3 py-1 text-[10px] font-medium text-muted-foreground/40">
+              {group.label}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {group.items.map((item) => (
+                <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+              ))}
+            </div>
+          </div>
+        ))}
+    </div>
+  )
+}
 
 export function Sidebar() {
   const { collapsed, setCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
@@ -123,7 +207,7 @@ export function Sidebar() {
         <OrgSwitcher collapsed={collapsed} />
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <nav className="flex flex-col px-2 py-2">
           <SidebarGroup label="Dashboard">
             <SidebarItem icon={LayoutDashboard} label="Overview" href="/dashboard" exact />
@@ -143,14 +227,7 @@ export function Sidebar() {
             <SidebarItem icon={MessageCircle} label="Widgets" href="/widgets" />
           </SidebarGroup>
 
-          <SidebarGroup label="Settings">
-            <SidebarItem icon={Settings} label="Organization" href="/settings/organization" />
-            <SidebarItem icon={Users} label="Team" href="/settings/team" />
-            <SidebarItem icon={LayoutDashboard} label="Audit Logs" href="/settings/audit-logs" />
-            <SidebarItem icon={LinkIcon} label="Deployments" href="/settings/deployments" />
-            <SidebarItem icon={Key} label="API Keys" href="/settings/api-keys" />
-            <SidebarItem icon={Terminal} label="Playground" href="/settings/playground" />
-          </SidebarGroup>
+          <SettingsGroup collapsed={collapsed} />
         </nav>
       </ScrollArea>
 
@@ -221,8 +298,8 @@ export function Sidebar() {
             onClick={() => setMobileOpen(false)}
             aria-hidden
           />
-          <div className="fixed inset-y-0 left-0 w-[280px] z-50 animate-in slide-in-from-left duration-200">
-            <div className="relative h-full">
+          <div className="fixed inset-y-0 left-0 w-[280px] z-50 animate-in slide-in-from-left duration-200 flex flex-col">
+            <div className="relative flex flex-col h-full">
               <Button
                 variant="ghost"
                 size="icon"
@@ -233,13 +310,13 @@ export function Sidebar() {
                 <X className="size-4" />
               </Button>
               {/* Mobile always expanded */}
-              <aside className="flex h-full flex-col bg-card border-r w-[280px]">
-                <div className="flex items-center h-14 px-4 border-b">
+              <aside className="flex flex-col h-full bg-card border-r w-[280px] overflow-hidden">
+                <div className="flex items-center h-14 px-4 border-b shrink-0">
             <img src="/logo.png" alt="Convio" className="h-9 w-auto" />
                   <span className="ml-2 text-lg font-semibold">Convio</span>
                 </div>
 
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 min-h-0">
                   <nav className="flex flex-col px-3 py-2">
                     {mobileNavGroups.map((group) => (
                       <div key={group.label} className="space-y-1">
@@ -266,10 +343,37 @@ export function Sidebar() {
                         </div>
                       </div>
                     ))}
+
+                    {/* Mobile settings with sub-groups */}
+                    <div className="space-y-1">
+                      <h4 className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Settings
+                      </h4>
+                      {mobileSettingsGroups.map((group) => (
+                        <div key={group.label}>
+                          <div className="px-3 py-1 text-[10px] font-medium text-muted-foreground/50">
+                            {group.label}
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            {group.items.map((item) => (
+                              <Link
+                                key={item.href}
+                                to={item.href}
+                                onClick={() => setMobileOpen(false)}
+                                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                              >
+                                <item.icon className="size-4 shrink-0" />
+                                <span className="flex-1 truncate">{item.label}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </nav>
                 </ScrollArea>
 
-                <div className="border-t p-4">
+                <div className="border-t p-4 shrink-0">
                   <div className="flex items-center gap-3">
                     <Avatar className="size-8">
                       <AvatarImage src={avatarSrc} />
@@ -319,16 +423,35 @@ const mobileNavGroups = [
       { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
     ],
   },
+]
+
+const mobileSettingsGroups = [
   {
-    label: 'Settings',
+    label: 'General',
     items: [
       { icon: Settings, label: 'Organization', href: '/settings/organization' },
       { icon: Users, label: 'Team', href: '/settings/team' },
-      { icon: LayoutDashboard, label: 'Audit Logs', href: '/settings/audit-logs' },
-      { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
+    ],
+  },
+  {
+    label: 'Security',
+    items: [
+      { icon: Building2, label: 'SSO', href: '/settings/sso' },
+      { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
+    ],
+  },
+  {
+    label: 'Integrations',
+    items: [
       { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
+      { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
+      { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
       { icon: Terminal, label: 'Playground', href: '/settings/playground' },
     ],
   },
 ]
-

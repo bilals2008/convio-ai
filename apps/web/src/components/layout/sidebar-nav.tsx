@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { type LucideIcon } from 'lucide-react'
+import { ChevronDown, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidebar } from '@/lib/sidebar-context'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -71,19 +72,37 @@ export function SidebarItem({ icon: Icon, label, href, badge, exact }: SidebarIt
 
 interface SidebarGroupProps extends ComponentProps<'div'> {
   label: string
+  defaultOpen?: boolean
 }
 
-export function SidebarGroup({ label, children, className, ...props }: SidebarGroupProps) {
+export function SidebarGroup({ label, children, className, defaultOpen = true, ...props }: SidebarGroupProps) {
   const { collapsed } = useSidebar()
+  const [open, setOpen] = useState(defaultOpen)
+
+  if (collapsed) {
+    return (
+      <div className={cn('space-y-0.5 first:mt-0 mt-4', className)} {...props}>
+        <div className="flex flex-col gap-0.5">{children}</div>
+      </div>
+    )
+  }
 
   return (
     <div className={cn('space-y-0.5 first:mt-0 mt-4', className)} {...props}>
-      {!collapsed && (
-        <h4 className="px-3 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
-          {label}
-        </h4>
-      )}
-      <div className="flex flex-col gap-0.5">{children}</div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between px-3 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+      >
+        {label}
+        <ChevronDown
+          className={cn(
+            'size-3 transition-transform duration-200 shrink-0',
+            !open && '-rotate-90'
+          )}
+        />
+      </button>
+      {open && <div className="flex flex-col gap-0.5">{children}</div>}
     </div>
   )
 }
