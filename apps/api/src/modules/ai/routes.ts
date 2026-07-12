@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
-import { getProviderForModel, getProviderById, allProviders } from '@convio/ai/providers'
+import { getProviderForModel, allProviders } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { z } from 'zod'
+import type { AIProvider, Message } from '@convio/ai'
 
 const keyMap: Record<string, string> = {
   openai: 'OPENAI_API_KEY',
@@ -18,6 +19,59 @@ const keyMap: Record<string, string> = {
   perplexity: 'PERPLEXITY_API_KEY',
   opencode: 'OPENCODE_API_KEY',
   local: 'LOCAL_API_URL',
+}
+
+export async function chatWithAgent(
+  agentId: string,
+  messages: { role: string; content: string }[],
+): Promise<string> {
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    include: { providerKey: true },
+  })
+  if (!agent) throw new Error('Agent not found')
+
+  let provider: AIProvider
+  try {
+    provider = getProviderForModel(agent.model)
+  } catch {
+    throw new Error(`No provider configured for model: ${agent.model}`)
+  }
+
+  const apiKey = agent.providerKey?.apiKey
+
+  let systemContext = agent.systemPrompt
+
+  if (agent.knowledgeBaseId) {
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
+    if (lastUserMsg) {
+      try {
+        const context = await retrieveContext(lastUserMsg.content, agent.knowledgeBaseId)
+        if (context) {
+          systemContext +=
+            '\n\n## Retrieved knowledge (RAG)\n' +
+            'Use the following source excerpts to answer. Prefer this context over general knowledge when relevant. ' +
+            'If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n' +
+            context
+        }
+      } catch {}
+    }
+  }
+
+  const systemMessages: Message[] = [
+    { role: 'system', content: systemContext },
+    ...messages.map((m) => ({ role: m.role as Message['role'], content: m.content })),
+  ]
+
+  const result = await provider.generate({
+    model: agent.model,
+    messages: systemMessages,
+    temperature: agent.temperature ?? 0.7,
+    maxTokens: agent.maxTokens ?? 2048,
+    apiKey,
+  })
+
+  return result.content
 }
 
 export default async function aiRoutes(fastify: FastifyInstance) {
