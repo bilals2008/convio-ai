@@ -1,6 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useMemo } from "react"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart"
+import { ChartTooltipContent, selectEvenlySpacedItems } from "@/components/application/charts/charts-base"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface ChartDataPoint {
   date: string
@@ -12,7 +15,16 @@ interface ConversationsChartProps {
   loading?: boolean
 }
 
+const chartConfig = {
+  conversations: {
+    label: "Conversations",
+    color: "var(--chart-1)",
+  },
+} satisfies ChartConfig
+
 export function ConversationsChart({ data, loading }: ConversationsChartProps) {
+  const ticks = useMemo(() => selectEvenlySpacedItems(data, 7).map((d) => d.date), [data])
+
   return (
     <Card>
       <CardHeader>
@@ -22,44 +34,59 @@ export function ConversationsChart({ data, loading }: ConversationsChartProps) {
         {loading ? (
           <Skeleton className="h-[300px] w-full" />
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+            <AreaChart data={data} margin={{ top: 12, right: 4, left: 0, bottom: 18 }}>
               <defs>
-                <linearGradient id="conversationsGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(26 80% 56%)" stopOpacity={0.6} />
-                  <stop offset="95%" stopColor="hsl(26 80% 56%)" stopOpacity={0.08} />
+                <linearGradient id="fillConversations" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-conversations)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="var(--color-conversations)" stopOpacity={0.1} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(28 22% 12%)" vertical={false} />
+              <CartesianGrid vertical={false} stroke="currentColor" className="text-border" />
               <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11, fill: 'hsl(28 12% 55%)' }}
+                fill="currentColor"
                 axisLine={false}
                 tickLine={false}
+                tickMargin={12}
+                interval="preserveStartEnd"
+                dataKey="date"
+                ticks={ticks}
+                tickFormatter={(value) =>
+                  new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                }
+                className="text-xs [&_.recharts-text]:fill-muted-foreground"
               />
               <YAxis
-                tick={{ fontSize: 11, fill: 'hsl(28 12% 55%)' }}
+                fill="currentColor"
                 axisLine={false}
                 tickLine={false}
+                interval="preserveStartEnd"
+                tickFormatter={(value) => Number(value).toLocaleString()}
+                className="text-xs [&_.recharts-text]:fill-muted-foreground"
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(24 20% 6%)',
-                  border: '1px solid hsl(28 22% 14%)',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  color: 'hsl(28 30% 94%)',
-                }}
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(label) =>
+                      new Date(label as string).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    }
+                    className="fill-card"
+                  />
+                }
+                cursor={{ className: "fill-muted/50" }}
               />
               <Area
                 type="monotone"
                 dataKey="conversations"
-                stroke="hsl(26 80% 56%)"
-                strokeWidth={2.5}
-                fill="url(#conversationsGradient)"
+                stroke="var(--color-conversations)"
+                strokeWidth={2}
+                fill="url(#fillConversations)"
               />
             </AreaChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         )}
       </CardContent>
     </Card>

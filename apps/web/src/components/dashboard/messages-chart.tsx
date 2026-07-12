@@ -1,6 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { useMemo } from "react"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart"
+import { ChartTooltipContent, ChartLegendContent, selectEvenlySpacedItems } from "@/components/application/charts/charts-base"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface ChartDataPoint {
   date: string
@@ -13,7 +16,20 @@ interface MessagesChartProps {
   loading?: boolean
 }
 
+const chartConfig = {
+  userMessages: {
+    label: "User",
+    color: "var(--chart-1)",
+  },
+  assistantMessages: {
+    label: "Assistant",
+    color: "var(--chart-2)",
+  },
+} satisfies ChartConfig
+
 export function MessagesChart({ data, loading }: MessagesChartProps) {
+  const ticks = useMemo(() => selectEvenlySpacedItems(data, 7).map((d) => d.date), [data])
+
   return (
     <Card>
       <CardHeader>
@@ -23,38 +39,60 @@ export function MessagesChart({ data, loading }: MessagesChartProps) {
         {loading ? (
           <Skeleton className="h-[300px] w-full" />
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(28 22% 12%)" vertical={false} />
+          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+            <BarChart data={data} margin={{ top: 12, right: 4, left: 0, bottom: 18 }}>
+              <CartesianGrid vertical={false} stroke="currentColor" className="text-border" />
               <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11, fill: 'hsl(28 12% 55%)' }}
+                fill="currentColor"
                 axisLine={false}
                 tickLine={false}
+                tickMargin={12}
+                interval="preserveStartEnd"
+                dataKey="date"
+                ticks={ticks}
+                tickFormatter={(value) =>
+                  new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                }
+                className="text-xs [&_.recharts-text]:fill-muted-foreground"
               />
               <YAxis
-                tick={{ fontSize: 11, fill: 'hsl(28 12% 55%)' }}
+                fill="currentColor"
                 axisLine={false}
                 tickLine={false}
+                interval="preserveStartEnd"
+                tickFormatter={(value) => Number(value).toLocaleString()}
+                className="text-xs [&_.recharts-text]:fill-muted-foreground"
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(24 20% 6%)',
-                  border: '1px solid hsl(28 22% 14%)',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  color: 'hsl(28 30% 94%)',
-                }}
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(label) =>
+                      new Date(label as string).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    }
+                    className="fill-card"
+                  />
+                }
+                cursor={{ className: "fill-muted/50" }}
               />
-              <Legend
-                wrapperStyle={{ fontSize: '12px' }}
-                iconType="circle"
-                iconSize={8}
+              <Bar
+                dataKey="userMessages"
+                name="User"
+                fill="var(--color-userMessages)"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={16}
               />
-              <Bar dataKey="userMessages" name="User" fill="hsl(217 91% 60%)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="assistantMessages" name="Assistant" fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="assistantMessages"
+                name="Assistant"
+                fill="var(--color-assistantMessages)"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={16}
+              />
             </BarChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         )}
       </CardContent>
     </Card>

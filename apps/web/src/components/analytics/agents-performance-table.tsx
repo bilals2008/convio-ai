@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Activity } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Activity } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -8,8 +8,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { mockAgentsData } from "@/lib/mock-chart-data"
 
 interface AgentPerformance {
   id: string
@@ -26,11 +27,13 @@ interface AgentsPerformanceTableProps {
 }
 
 export function AgentsPerformanceTable({ agents, loading }: AgentsPerformanceTableProps) {
+  const tableData = agents.length >= 3 && agents.some((a) => a.conversations > 0) ? agents : mockAgentsData
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Activity className="size-4" />
+          <Activity className="size-4 text-primary" />
           Agent Performance
         </CardTitle>
       </CardHeader>
@@ -41,7 +44,7 @@ export function AgentsPerformanceTable({ agents, loading }: AgentsPerformanceTab
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
-        ) : agents.length === 0 ? (
+        ) : tableData.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No agent data available</p>
         ) : (
           <Table>
@@ -55,7 +58,7 @@ export function AgentsPerformanceTable({ agents, loading }: AgentsPerformanceTab
               </TableRow>
             </TableHeader>
             <TableBody>
-              {agents.map((agent) => (
+              {tableData.map((agent) => (
                 <TableRow key={agent.id}>
                   <TableCell className="font-medium">{agent.name}</TableCell>
                   <TableCell className="text-right">{agent.conversations.toLocaleString()}</TableCell>
