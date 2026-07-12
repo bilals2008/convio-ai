@@ -1,15 +1,22 @@
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, FileText, Pencil, Trash2 } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+import { BookOpen, FileText, CheckCircle2, Loader2, AlertCircle, MoreHorizontal, Trash2 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { formatRelativeTime } from '@/lib/utils'
 
 interface KnowledgeBase {
   id: string
   name: string
   description?: string
   documentCount: number
+  readyCount?: number
+  processingCount?: number
+  errorCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -21,63 +28,97 @@ interface KnowledgeCardProps {
 
 export function KnowledgeCard({ kb, onDelete }: KnowledgeCardProps) {
   const navigate = useNavigate()
+  const readyCount = kb.readyCount ?? 0
+  const processingCount = kb.processingCount ?? 0
+  const errorCount = kb.errorCount ?? 0
+  const hasDocs = kb.documentCount > 0
 
   return (
-    <Card
-      className="cursor-pointer transition-colors hover:bg-muted/30"
+    <button
       onClick={() => navigate(`/knowledge/${kb.id}`)}
+      className="group w-full text-left rounded-xl border border-border/60 bg-card p-4 transition-all hover:border-border hover:shadow-sm"
     >
-      <CardContent className="flex flex-col gap-3 p-5">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
-              <BookOpen className="size-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold">{kb.name}</h3>
-              {kb.description && (
-                <p className="text-sm text-muted-foreground line-clamp-1">
-                  {kb.description}
-                </p>
-              )}
-            </div>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <BookOpen className="size-[18px]" />
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e: React.MouseEvent) => {
-                e.stopPropagation()
-                navigate(`/knowledge/${kb.id}`)
-              }}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">
+              {kb.name}
+            </p>
+            {kb.description && (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {kb.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
             >
-              <Pencil className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e: React.MouseEvent) => {
+              <MoreHorizontal className="size-4" />
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => navigate(`/knowledge/${kb.id}`)}>
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={(e) => {
                 e.stopPropagation()
                 onDelete(kb.id)
               }}
             >
               <Trash2 className="size-4" />
-            </Button>
-          </div>
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {hasDocs ? (
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <FileText className="size-3" />
+            {kb.documentCount} doc{kb.documentCount !== 1 ? 's' : ''}
+          </span>
+          {readyCount > 0 && (
+            <span className="flex items-center gap-1 text-success">
+              <CheckCircle2 className="size-3" />
+              {readyCount}
+            </span>
+          )}
+          {processingCount > 0 && (
+            <span className="flex items-center gap-1 text-info">
+              <Loader2 className="size-3 animate-spin" />
+              {processingCount}
+            </span>
+          )}
+          {errorCount > 0 && (
+            <span className="flex items-center gap-1 text-destructive">
+              <AlertCircle className="size-3" />
+              {errorCount}
+            </span>
+          )}
+          <span className="ml-auto text-muted-foreground/70">
+            {formatRelativeTime(kb.updatedAt)}
+          </span>
         </div>
-
-        <Badge variant="secondary" className="w-fit text-xs">
-          <FileText className="size-3" />
-          {kb.documentCount} document{kb.documentCount !== 1 ? 's' : ''}
-        </Badge>
-
-        <Separator />
-
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Created: {new Date(kb.createdAt).toLocaleDateString()}</span>
-          <span>Updated: {new Date(kb.updatedAt).toLocaleDateString()}</span>
-        </div>
-      </CardContent>
-    </Card>
+      ) : (
+        <p className="text-xs text-muted-foreground/70">
+          No documents · Created {formatRelativeTime(kb.createdAt)}
+        </p>
+      )}
+    </button>
   )
 }
