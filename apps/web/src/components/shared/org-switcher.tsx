@@ -19,12 +19,8 @@ export function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
   if (collapsed) {
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger className="mx-auto flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold overflow-hidden">
-          {org.logo ? (
-            <img src={org.logo} alt={org.name} className="size-full object-cover" />
-          ) : (
-            org.name.slice(0, 2).toUpperCase()
-          )}
+        <DropdownMenuTrigger className="mx-auto flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold">
+          {org.name.slice(0, 2).toUpperCase()}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" side="right" className="w-56">
           {orgs.map((o) => (
@@ -33,12 +29,8 @@ export function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
                 onClick={() => setOrgId(o.id)}
                 className="flex items-center gap-2"
               >
-                <div className="flex size-6 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-bold overflow-hidden">
-                  {o.logo ? (
-                    <img src={o.logo} alt={o.name} className="size-full object-cover" />
-                  ) : (
-                    o.name.slice(0, 2).toUpperCase()
-                  )}
+                <div className="flex size-6 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-bold">
+                  {o.name.slice(0, 2).toUpperCase()}
                 </div>
                 <span className="flex-1 truncate">{o.name}</span>
                 {o.id === org.id && <Check className="size-3.5 text-primary" />}
@@ -57,12 +49,8 @@ export function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-muted/60">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[11px] font-bold text-primary overflow-hidden">
-          {org.logo ? (
-            <img src={org.logo} alt={org.name} className="size-full object-cover" />
-          ) : (
-            org.name.slice(0, 2).toUpperCase()
-          )}
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[11px] font-bold text-primary">
+          {org.name.slice(0, 2).toUpperCase()}
         </div>
         <div className="flex-1 truncate text-left">
           <div className="text-sm font-medium truncate">{org.name}</div>
@@ -78,14 +66,10 @@ export function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
             className="flex items-center gap-2"
           >
             <div className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded text-[10px] font-bold overflow-hidden',
+              'flex size-6 shrink-0 items-center justify-center rounded text-[10px] font-bold',
               o.id === org.id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
             )}>
-              {o.logo ? (
-                <img src={o.logo} alt={o.name} className="size-full object-cover" />
-              ) : (
-                o.name.slice(0, 2).toUpperCase()
-              )}
+              {o.name.slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 truncate">
               <div className="text-sm font-medium truncate">{o.name}</div>

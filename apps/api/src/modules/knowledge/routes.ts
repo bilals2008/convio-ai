@@ -232,7 +232,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     return { data: kb }
   })
 
-  // DELETE /api/knowledge-bases/:id — Delete knowledge base and all its documents (admin only)
+  // DELETE /api/knowledge-bases/:id — Delete knowledge base and all its documents/chunks (admin only)
   fastify.delete('/knowledge-bases/:id', {
     preHandler: [
       fastify.authenticate,
@@ -246,6 +246,12 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
+    const docs = await prisma.document.findMany({ where: { knowledgeBaseId: id }, select: { id: true, fileKey: true } })
+    for (const doc of docs) {
+      if (doc.fileKey) deleteFile(doc.fileKey).catch(() => {})
+    }
+    await prisma.$executeRawUnsafe(`DELETE FROM "DocumentChunk" WHERE "documentId" IN (SELECT "id" FROM "Document" WHERE "knowledgeBaseId" = $1)`, id)
+    await prisma.$executeRawUnsafe(`DELETE FROM "Document" WHERE "knowledgeBaseId" = $1`, id)
     await prisma.knowledgeBase.delete({ where: { id } })
     reply.code(204).send()
   })
