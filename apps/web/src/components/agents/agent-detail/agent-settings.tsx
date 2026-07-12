@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Globe, Link, Code, MessageCircle, Bot, Database, KeyRound, CalendarDays, Gauge, Clock } from 'lucide-react'
+import { Globe, Link, Code, MessageCircle, Bot, Database, KeyRound, CalendarDays, Gauge, Clock, Settings as SettingsIcon, ExternalLink } from 'lucide-react'
 import { AgentDeployment } from '@/components/agents/agent-deployment'
 import { ProviderLogo } from '@/components/agents/provider-logos'
 import { Slider } from '@/components/ui/slider'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 function WhatsAppLogo({ className }: { className?: string }) {
   const [failed, setFailed] = useState(false)
@@ -161,7 +162,7 @@ export function AgentSettings({
       label: 'WhatsApp',
       description: 'Connect on WhatsApp',
       icon: <WhatsAppLogo className="size-4" />,
-      enabled: deploymentOptions.find((o) => o.id === 'whatsapp')?.enabled ?? false,
+      enabled: deploymentOptions.find((o) => o.id === 'whatsapp')?.enabled ?? true,
     },
   ]
 
@@ -205,7 +206,17 @@ export function AgentSettings({
         </div>
       </div>
 
-      <AgentDeployment options={options} onToggle={onDeploymentToggle} disabled={disabled} />
+      <div className="space-y-4">
+        <AgentDeployment options={options} onToggle={onDeploymentToggle} disabled={disabled} />
+        <a
+          href="/settings/deployments"
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors px-1"
+        >
+          <SettingsIcon className="size-3" />
+          Manage deployments & API config in Settings
+          <ExternalLink className="size-2.5" />
+        </a>
+      </div>
 
       <RateLimitsCard />
     </div>

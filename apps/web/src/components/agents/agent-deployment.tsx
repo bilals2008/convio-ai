@@ -19,7 +19,7 @@ const defaultOptions: DeploymentOption[] = [
   { id: 'web-chat-widget', label: 'Web Chat Widget', description: 'Embed on website', icon: <Globe className="size-4" />, enabled: true },
   { id: 'shareable-link', label: 'Shareable Link', description: 'Public chat URL', icon: <Link className="size-4" />, enabled: false },
   { id: 'api-access', label: 'API Access', description: 'REST API endpoint', icon: <Code className="size-4" />, enabled: false },
-  { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp Business', icon: <MessageCircle className="size-4" />, enabled: false },
+  { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp + Twilio sandbox', icon: <MessageCircle className="size-4" />, enabled: true },
 ]
 
 export function AgentDeployment({
@@ -47,7 +47,7 @@ export function AgentDeployment({
             key={option.id}
             type="button"
             onClick={() => {
-              if (!option.enabled && option.id !== 'web-chat-widget') return
+              if (!option.enabled && option.id !== 'web-chat-widget' && option.id !== 'whatsapp') return
               onToggle?.(option.id, !option.enabled)
             }}
             disabled={disabled}
@@ -56,7 +56,7 @@ export function AgentDeployment({
               option.enabled
                 ? 'bg-primary/5 border border-primary/20'
                 : 'border border-transparent hover:bg-muted/40',
-              (disabled || (!option.enabled && option.id !== 'web-chat-widget')) && 'opacity-50 cursor-not-allowed'
+              (disabled || (!option.enabled && option.id !== 'web-chat-widget' && option.id !== 'whatsapp')) && 'opacity-50 cursor-not-allowed'
             )}
           >
             <div
@@ -73,7 +73,7 @@ export function AgentDeployment({
               <p className="text-xs font-medium">{option.label}</p>
               <p className="text-[10px] text-muted-foreground">{option.description}</p>
             </div>
-            {!option.enabled && option.id !== 'web-chat-widget' && (
+            {!option.enabled && option.id !== 'web-chat-widget' && option.id !== 'whatsapp' && (
               <div className="flex items-center gap-1 rounded bg-muted/80 px-1.5 py-0.5">
                 <Clock className="size-2.5 text-muted-foreground" />
                 <span className="text-[9px] font-medium text-muted-foreground">Soon</span>

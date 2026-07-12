@@ -95,7 +95,7 @@ export default function AgentDetailPage() {
     { id: 'web-chat-widget', enabled: true },
     { id: 'shareable-link', enabled: false },
     { id: 'api-access', enabled: false },
-    { id: 'whatsapp', enabled: false },
+    { id: 'whatsapp', enabled: true },
   ])
 
   const { data: agent, isLoading } = useQuery({
