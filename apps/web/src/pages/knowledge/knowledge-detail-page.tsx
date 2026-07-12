@@ -1,22 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Loader2,
   Save,
-  FileText,
-  CheckCircle2,
-  AlertCircle,
   Search,
+  Plus,
+  MessageSquare,
 } from 'lucide-react'
 import { z } from 'zod'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { Skeleton } from '@/components/shared/loading'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Section } from '@/components/shared/page-container'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -32,13 +30,14 @@ import { DocumentCard } from '@/components/knowledge/document-card'
 import type { DocumentItem } from '@/components/knowledge/document-card'
 import { DocumentStatusBadge } from '@/components/knowledge/document-status-badge'
 import { DocumentTypeBadge } from '@/components/knowledge/document-type-badge'
-import { DocumentUploadForm } from '@/components/knowledge/document-upload-form'
+import { WorkflowSteps } from '@/components/knowledge/workflow-steps'
+import { KbSettingsPanel } from '@/components/knowledge/kb-settings-panel'
+import { NoDocuments, NoSearchResults } from '@/components/knowledge/kb-empty-states'
+import { SourcePickerModal } from '@/components/knowledge/source-picker-modal'
 import { knowledge as knowledgeApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-
-type DocType = 'txt' | 'pdf' | 'csv' | 'md' | 'json' | 'url'
 
 interface KnowledgeBase {
   id: string
@@ -63,6 +62,15 @@ const defaultFormData: KnowledgeFormData = {
   description: '',
 }
 
+function getWorkflowStep(docCount: number, readyCount: number, processingCount: number, hasSearch: boolean, agentCount: number): number {
+  if (docCount === 0) return 0
+  if (processingCount > 0) return 2
+  if (readyCount > 0 && !hasSearch) return 2
+  if (readyCount > 0 && hasSearch && agentCount === 0) return 3
+  if (readyCount > 0 && agentCount > 0) return 4
+  return 1
+}
+
 export default function KnowledgeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -73,7 +81,6 @@ export default function KnowledgeDetailPage() {
 
   const [formData, setFormData] = useState<KnowledgeFormData>(defaultFormData)
   const [errors, setErrors] = useState<Partial<Record<keyof KnowledgeFormData, string>>>({})
-  const [uploadLoading, setUploadLoading] = useState(false)
   const [viewDocId, setViewDocId] = useState<string | null>(null)
   const [reprocessingId, setReprocessingId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -88,6 +95,8 @@ export default function KnowledgeDetailPage() {
     }>
   >([])
   const [searching, setSearching] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
+  const [sourceModalOpen, setSourceModalOpen] = useState(false)
 
   const { data: kb, isLoading, error: kbError } = useQuery({
     queryKey: ['knowledge-base', id],
@@ -138,16 +147,17 @@ export default function KnowledgeDetailPage() {
   })
 
   const documentCount = kb?.documentCount ?? documents.length
-  const readyCount =
-    kb?.readyCount ?? documents.filter((d) => d.status === 'ready').length
-  const processingCount =
-    kb?.processingCount ??
-    documents.filter((d) => d.status === 'pending' || d.status === 'processing').length
-  const errorCount =
-    kb?.errorCount ?? documents.filter((d) => d.status === 'error').length
+  const readyCount = kb?.readyCount ?? documents.filter((d) => d.status === 'ready').length
+  const processingCount = kb?.processingCount ?? documents.filter((d) => d.status === 'pending' || d.status === 'processing').length
 
+  const workflowStep = isEdit
+    ? getWorkflowStep(documentCount, readyCount, processingCount, hasSearched, 0)
+    : 0
+
+  const kbInitialized = useRef(false)
   useEffect(() => {
-    if (kb) {
+    if (kb && !kbInitialized.current) {
+      kbInitialized.current = true
       setFormData({ name: kb.name, description: kb.description || '' })
     }
   }, [kb])
@@ -197,7 +207,6 @@ export default function KnowledgeDetailPage() {
 
   const handleSave = () => {
     setSaveError(null)
-
     const result = kbSchema.safeParse(formData)
     if (!result.success) {
       const msgs = result.error.errors.map((e) => e.message)
@@ -210,22 +219,17 @@ export default function KnowledgeDetailPage() {
       toast.error(msgs.join('. '))
       return
     }
-
     setErrors({})
-
     if (!orgId) {
       const msg = 'Organization not loaded. Please wait and try again.'
       setSaveError(msg)
       toast.error(msg)
       return
     }
-
     if (isCreate) {
       createMutation.mutate(result.data)
     } else if (isEdit) {
       updateMutation.mutate(result.data)
-    } else {
-      toast.error('Cannot save: unknown page state')
     }
   }
 
@@ -234,6 +238,7 @@ export default function KnowledgeDetailPage() {
   const handleSearch = async () => {
     if (!searchQuery.trim() || !id) return
     setSearching(true)
+    setHasSearched(true)
     try {
       const res = await knowledgeApi.searchChunks(id, searchQuery.trim(), 10)
       setSearchResults((res.data.data || []) as typeof searchResults)
@@ -242,36 +247,6 @@ export default function KnowledgeDetailPage() {
       setSearchResults([])
     } finally {
       setSearching(false)
-    }
-  }
-
-  const handleUploadDocument = async (data: {
-    name: string
-    type: DocType
-    content?: string
-    url?: string
-  }) => {
-    if (!isEdit || !id) return
-    if (data.type === 'pdf') {
-      queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
-      queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
-      toast.success('PDF uploaded — indexing for RAG…')
-      return
-    }
-    setUploadLoading(true)
-    try {
-      await knowledgeApi.uploadDocument(id, data)
-      queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
-      queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
-      toast.success('Document added — indexing for RAG…')
-    } catch (err: unknown) {
-      const message =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
-          : undefined
-      toast.error(message || 'Failed to upload document')
-    } finally {
-      setUploadLoading(false)
     }
   }
 
@@ -306,10 +281,14 @@ export default function KnowledgeDetailPage() {
   if (isEdit && isLoading) {
     return (
       <PageContainer>
-        <PageHeader title="Loading..." />
-        <div className="space-y-4">
+        <div className="space-y-6">
+          <Skeleton className="h-10 w-48" />
           <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
         </div>
       </PageContainer>
     )
@@ -322,13 +301,13 @@ export default function KnowledgeDetailPage() {
           title="Error"
           description="Failed to load knowledge base"
           action={
-            <Button variant="outline" onClick={() => navigate('/knowledge')}>
-              <ArrowLeft className="size-4" />
+            <Button variant="outline" size="sm" onClick={() => navigate('/knowledge')}>
+              <ArrowLeft className="size-3.5 mr-1.5" />
               Back
             </Button>
           }
         />
-        <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
           {kbError instanceof Error ? kbError.message : 'Something went wrong'}
         </div>
       </PageContainer>
@@ -337,183 +316,151 @@ export default function KnowledgeDetailPage() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title={isCreate ? 'Create Knowledge Base' : kb?.name || 'Knowledge Base'}
-        description={
-          isCreate
-            ? 'Create a knowledge base, then add documents for RAG'
-            : kb?.description || 'Manage documents and indexing status'
-        }
-        action={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigate('/knowledge')}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3 mb-1">
+            <button
+              onClick={() => navigate('/knowledge')}
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors -ml-1"
+            >
               <ArrowLeft className="size-4" />
-              Back
+            </button>
+            <h1 className="text-xl font-bold tracking-tight truncate">
+              {isCreate ? 'Create Knowledge Base' : kb?.name || 'Knowledge Base'}
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground ml-10">
+            {isCreate
+              ? 'Create a knowledge base, then add documents for RAG'
+              : kb?.description || `${documentCount} document${documentCount !== 1 ? 's' : ''} · ${readyCount} ready`}
+          </p>
+        </div>
+        {!isCreate && (
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSourceModalOpen(true)}
+              className="gap-1.5"
+            >
+              <Plus className="size-3.5" />
+              Add Source
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+              {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
               {saving ? 'Saving...' : 'Save'}
             </Button>
           </div>
-        }
-      />
+        )}
+        {isCreate && (
+          <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 shrink-0">
+            {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+            {saving ? 'Creating...' : 'Create'}
+          </Button>
+        )}
+      </div>
+
+      {isEdit && kb && (
+        <WorkflowSteps currentStep={workflowStep} />
+      )}
 
       {saveError && (
-        <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
           {saveError}
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Details</CardTitle>
-          <CardDescription>Name and description of your knowledge base</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <KnowledgeForm
-            data={formData}
-            onChange={setFormData}
-            errors={errors}
-            disabled={saving}
-          />
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border/60 bg-card p-5">
+        <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">Details</p>
+        <KnowledgeForm
+          data={formData}
+          onChange={setFormData}
+          errors={errors}
+          disabled={saving}
+        />
+      </div>
 
       {isEdit && kb && (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              {
-                label: 'Documents',
-                value: documentCount,
-                icon: FileText,
-                tone: 'text-foreground bg-muted/50',
-              },
-              {
-                label: 'Ready (RAG)',
-                value: readyCount,
-                icon: CheckCircle2,
-                tone: 'text-success bg-success/10',
-              },
-              {
-                label: 'Indexing',
-                value: processingCount,
-                icon: Loader2,
-                tone: 'text-info bg-info/10',
-                spin: processingCount > 0,
-              },
-              {
-                label: 'Errors',
-                value: errorCount,
-                icon: AlertCircle,
-                tone: 'text-destructive bg-destructive/10',
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/30 p-3.5"
-              >
-                <div
-                  className={cn(
-                    'flex size-10 shrink-0 items-center justify-center rounded-lg',
-                    stat.tone,
-                  )}
-                >
-                  <stat.icon className={cn('size-4', stat.spin && 'animate-spin')} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-muted-foreground">{stat.label}</p>
-                  <p className="text-base font-bold tabular-nums">{stat.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <Section
-            title="Documents"
-            description={`${documentCount} document${documentCount !== 1 ? 's' : ''} · indexed for retrieval-augmented generation`}
-          >
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Search className="size-4 text-primary" />
-                  <CardTitle className="text-base">Add source</CardTitle>
-                </div>
-                <CardDescription>
-                  Upload a PDF, paste text, or index a URL. Status moves Pending → Indexing → Ready.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DocumentUploadForm
-                  onSubmit={handleUploadDocument}
-                  knowledgeBaseId={id!}
-                  loading={uploadLoading}
-                />
-              </CardContent>
-            </Card>
-
-            {documents.length > 0 ? (
-              <div className="space-y-2">
-                {documents.map((doc) => (
-                  <DocumentCard
-                    key={doc.id}
-                    doc={doc}
-                    onView={setViewDocId}
-                    onDelete={handleDeleteDocument}
-                    onReprocess={handleReprocess}
-                    reprocessing={reprocessingId === doc.id}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 py-12 text-center">
-                <FileText className="mb-3 size-8 text-muted-foreground/40" />
-                <p className="text-sm font-medium">No documents yet</p>
-                <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                  Add text, PDFs, or URLs above. Once status is Ready, agents using this knowledge
-                  base will retrieve matching chunks in chat.
+          <div className="rounded-xl border border-border/60 bg-card">
+            <div className="flex items-center justify-between p-4 border-b border-border/60">
+              <div>
+                <p className="text-sm font-semibold">Sources</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {documentCount === 0
+                    ? 'Add your first source to get started'
+                    : `${documentCount} document${documentCount !== 1 ? 's' : ''} · ${readyCount} ready for RAG`}
                 </p>
               </div>
-            )}
-          </Section>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setSourceModalOpen(true)}
+              >
+                <Plus className="size-3.5" />
+                Add Source
+              </Button>
+            </div>
+
+            <div className="p-4">
+              {documents.length > 0 ? (
+                <div className="space-y-2">
+                  {documents.map((doc) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={doc}
+                      onView={setViewDocId}
+                      onDelete={handleDeleteDocument}
+                      onReprocess={handleReprocess}
+                      reprocessing={reprocessingId === doc.id}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <NoDocuments onAddSource={() => setSourceModalOpen(true)} />
+              )}
+            </div>
+          </div>
+
+          <KbSettingsPanel />
         </>
       )}
 
-      <Section
-        title="Search"
-        description="Semantic search across all indexed chunks in this knowledge base"
-      >
-        <Card>
-          <CardHeader className="pb-2">
+      {isEdit && (
+        <div className="rounded-xl border border-border/60 bg-card">
+          <div className="p-4 border-b border-border/60">
+            <p className="text-sm font-semibold">Test</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Search across your indexed content to verify retrieval quality
+            </p>
+          </div>
+          <div className="p-4">
             <div className="flex items-center gap-2">
-              <Search className="size-4 text-primary" />
-              <CardTitle className="text-base">Find content</CardTitle>
-            </div>
-            <CardDescription>
-              Ask a question or type keywords to find matching chunks
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
+              <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="e.g. What is the technical stack?"
-                className="flex-1 rounded-lg border border-border/40 bg-muted/30 px-3 py-2 text-sm outline-none focus:border-primary"
+                placeholder="Ask a question or type keywords..."
+                className="flex-1"
               />
-              <Button onClick={handleSearch} disabled={searching || !searchQuery.trim()}>
-                {searching ? <Loader2 className="size-4 animate-spin" /> : 'Search'}
+              <Button
+                onClick={handleSearch}
+                disabled={searching || !searchQuery.trim()}
+                size="sm"
+                className="gap-1.5 shrink-0"
+              >
+                {searching ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
+                Search
               </Button>
             </div>
 
             {searchResults.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div className="mt-3 space-y-2">
                 {searchResults.map((chunk) => (
                   <div
                     key={chunk.id}
-                    className="rounded-lg border border-border/40 bg-muted/20 p-3"
+                    className="rounded-lg border border-border/60 bg-muted/20 p-3"
                   >
                     <div className="mb-1.5 flex items-center justify-between gap-2">
                       <span className="text-xs font-medium text-muted-foreground">
@@ -531,18 +478,23 @@ export default function KnowledgeDetailPage() {
               </div>
             )}
 
-            {searchResults.length === 0 && searchQuery && !searching && (
-              <p className="mt-4 text-xs text-muted-foreground">
-                No matching chunks. Try different keywords.
-              </p>
+            {searchResults.length === 0 && searchQuery && !searching && hasSearched && (
+              <NoSearchResults query={searchQuery} />
             )}
-          </CardContent>
-        </Card>
-      </Section>
+
+            {searchResults.length === 0 && !searchQuery && (
+              <div className="flex items-center gap-2 pt-3 text-xs text-muted-foreground">
+                <MessageSquare className="size-3.5" />
+                Try searching for topics in your documents to verify retrieval works correctly.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <Dialog open={!!viewDocId} onOpenChange={(open) => !open && setViewDocId(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-none w-[90vw] max-h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="flex flex-wrap items-center gap-2">
               {viewDoc?.name || 'Document'}
               {viewDoc && (
@@ -559,85 +511,97 @@ export default function KnowledgeDetailPage() {
               {viewDoc?.url ? ` · ${viewDoc.url}` : ''}
             </DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="content" className="w-full">
-            <TabsList className="mb-3">
-              <TabsTrigger value="content">Content</TabsTrigger>
-              <TabsTrigger value="chunks">
-                Chunks ({viewDocChunks.length})
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="content">
-              <ScrollArea className="max-h-[40vh] rounded-lg border bg-muted/20 p-4">
-                {viewLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <pre className="whitespace-pre-wrap break-words font-mono text-xs text-foreground">
-                    {viewDoc?.content?.trim()
-                      ? viewDoc.content
-                      : 'No extracted content yet. Wait for indexing or reprocess the document.'}
-                  </pre>
-                )}
-              </ScrollArea>
-            </TabsContent>
-            <TabsContent value="chunks">
-              <ScrollArea className="max-h-[40vh] rounded-lg border bg-muted/20 p-4">
-                {viewDocChunks.length === 0 ? (
-                  <p className="py-8 text-center text-xs text-muted-foreground">
-                    No chunks yet
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {viewDocChunks.map((chunk, i) => (
-                      <div
-                        key={chunk.id}
-                        className="rounded-lg border border-border/40 bg-background/50 p-3"
-                      >
-                        <div className="mb-1.5 flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-medium text-muted-foreground">
-                            #{i + 1}
-                          </span>
-                          <span
-                            className={cn(
-                              'rounded px-1.5 py-0.5 text-[10px] font-medium',
-                              chunk.hasEmbedding
-                                ? 'bg-success/10 text-success'
-                                : 'bg-destructive/10 text-destructive',
-                            )}
-                          >
-                            {chunk.hasEmbedding ? 'embedded' : 'no embedding'}
-                          </span>
+          <div className="flex-1 overflow-hidden px-6">
+            <Tabs defaultValue="content" className="w-full h-full flex flex-col">
+              <TabsList className="mb-3">
+                <TabsTrigger value="content">Content</TabsTrigger>
+                <TabsTrigger value="chunks">
+                  Chunks ({viewDocChunks.length})
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="content" className="flex-1 overflow-auto">
+                <ScrollArea className="h-full rounded-lg border bg-muted/20 p-4">
+                  {viewLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-foreground">
+                      {viewDoc?.content?.trim()
+                        ? viewDoc.content
+                        : 'No extracted content yet. Wait for indexing or reprocess the document.'}
+                    </pre>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="chunks" className="flex-1 overflow-auto">
+                <ScrollArea className="h-full rounded-lg border bg-muted/20 p-4">
+                  {viewDocChunks.length === 0 ? (
+                    <p className="py-8 text-center text-xs text-muted-foreground">
+                      No chunks yet
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {viewDocChunks.map((chunk, i) => (
+                        <div
+                          key={chunk.id}
+                          className="rounded-lg border border-border/40 bg-background/50 p-3"
+                        >
+                          <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-medium text-muted-foreground">
+                              #{i + 1}
+                            </span>
+                            <span
+                              className={cn(
+                                'rounded px-1.5 py-0.5 text-[10px] font-medium',
+                                chunk.hasEmbedding
+                                  ? 'bg-success/10 text-success'
+                                  : 'bg-destructive/10 text-destructive',
+                              )}
+                            >
+                              {chunk.hasEmbedding ? 'embedded' : 'no embedding'}
+                            </span>
+                          </div>
+                          <p className="whitespace-pre-wrap break-words text-xs text-foreground/90">
+                            {chunk.content}
+                          </p>
                         </div>
-                        <p className="whitespace-pre-wrap break-words text-xs text-foreground/90">
-                          {chunk.content}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
-          {viewDocId && (
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={
-                  viewDoc?.status === 'processing' || viewDoc?.status === 'pending'
-                }
-                onClick={() => handleReprocess(viewDocId)}
-              >
-                Re-index
-              </Button>
-              <Button size="sm" onClick={() => setViewDocId(null)}>
-                Close
-              </Button>
-            </div>
-          )}
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
+          </div>
+          <div className="flex justify-end gap-2 px-6 pb-4 pt-2 border-t border-border/60">
+            {viewDocId && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    viewDoc?.status === 'processing' || viewDoc?.status === 'pending'
+                  }
+                  onClick={() => handleReprocess(viewDocId)}
+                >
+                  Re-index
+                </Button>
+                <Button size="sm" onClick={() => setViewDocId(null)}>
+                  Close
+                </Button>
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
+
+      <SourcePickerModal
+        open={sourceModalOpen}
+        onOpenChange={setSourceModalOpen}
+        onSelect={() => {
+          setSourceModalOpen(false)
+        }}
+      />
     </PageContainer>
   )
 }
