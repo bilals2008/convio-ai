@@ -1,4 +1,4 @@
-import { MessageSquare, Search, Users, Calendar, Zap, Sparkles } from 'lucide-react'
+import { MessageSquare, Search, Users, Calendar, Zap, Sparkles, Clock } from 'lucide-react'
 import { Switch as SwitchPrimitive } from '@base-ui/react/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -104,11 +104,19 @@ export function AgentCapabilities({
                 <p className="text-xs text-muted-foreground">{capability.description}</p>
               </div>
             </div>
-            <OrangeSwitch
-              checked={capability.enabled}
-              onCheckedChange={(checked) => onToggle(capability.id, checked)}
-              disabled={disabled}
-            />
+            <div className="flex items-center gap-2">
+              {!capability.enabled && capability.id !== 'answer-questions' && capability.id !== 'knowledge-search' && (
+                <div className="flex items-center gap-1 rounded bg-muted/80 px-1.5 py-0.5">
+                  <Clock className="size-2.5 text-muted-foreground" />
+                  <span className="text-[9px] font-medium text-muted-foreground">Soon</span>
+                </div>
+              )}
+              <OrangeSwitch
+                checked={capability.enabled}
+                onCheckedChange={(checked) => onToggle(capability.id, checked)}
+                disabled={disabled || (!capability.enabled && capability.id !== 'answer-questions' && capability.id !== 'knowledge-search')}
+              />
+            </div>
           </div>
         ))}
       </div>

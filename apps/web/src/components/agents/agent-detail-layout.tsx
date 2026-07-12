@@ -143,7 +143,7 @@ export function AgentDetailLayout({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1.5 opacity-60 cursor-not-allowed" title="Coming soon">
               <Share className="size-3.5" />
               Share
             </Button>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Globe, Link, Code, MessageCircle, Bot, Database, KeyRound, CalendarDays, Gauge } from 'lucide-react'
+import { Globe, Link, Code, MessageCircle, Bot, Database, KeyRound, CalendarDays, Gauge, Clock } from 'lucide-react'
 import { AgentDeployment } from '@/components/agents/agent-deployment'
 import { ProviderLogo } from '@/components/agents/provider-logos'
 import { Slider } from '@/components/ui/slider'
@@ -65,7 +65,11 @@ function RateLimitsCard() {
   const [maxTokens, setMaxTokens] = useState(2048)
 
   return (
-    <div className="rounded-xl border bg-card p-5 lg:col-span-2">
+    <div className="relative rounded-xl border bg-card p-5 lg:col-span-2">
+      <div className="absolute right-3 top-3 flex items-center gap-1 rounded bg-muted/80 px-1.5 py-0.5">
+        <Clock className="size-2.5 text-muted-foreground" />
+        <span className="text-[9px] font-medium text-muted-foreground">Coming soon</span>
+      </div>
       <div className="mb-4 flex items-center gap-2">
         <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
           <Gauge className="size-4" />

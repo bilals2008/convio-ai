@@ -1,4 +1,4 @@
-import { Globe, Link, Code, MessageCircle, Rocket, Check } from 'lucide-react'
+import { Globe, Link, Code, MessageCircle, Rocket, Check, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DeploymentOption {
@@ -46,14 +46,17 @@ export function AgentDeployment({
           <button
             key={option.id}
             type="button"
-            onClick={() => onToggle?.(option.id, !option.enabled)}
+            onClick={() => {
+              if (!option.enabled && option.id !== 'web-chat-widget') return
+              onToggle?.(option.id, !option.enabled)
+            }}
             disabled={disabled}
             className={cn(
               'flex items-center gap-3 w-full p-2.5 rounded-lg text-left transition-all',
               option.enabled
                 ? 'bg-primary/5 border border-primary/20'
                 : 'border border-transparent hover:bg-muted/40',
-              disabled && 'opacity-50 cursor-not-allowed'
+              (disabled || (!option.enabled && option.id !== 'web-chat-widget')) && 'opacity-50 cursor-not-allowed'
             )}
           >
             <div
@@ -70,6 +73,12 @@ export function AgentDeployment({
               <p className="text-xs font-medium">{option.label}</p>
               <p className="text-[10px] text-muted-foreground">{option.description}</p>
             </div>
+            {!option.enabled && option.id !== 'web-chat-widget' && (
+              <div className="flex items-center gap-1 rounded bg-muted/80 px-1.5 py-0.5">
+                <Clock className="size-2.5 text-muted-foreground" />
+                <span className="text-[9px] font-medium text-muted-foreground">Soon</span>
+              </div>
+            )}
             <div
               className={cn(
                 'flex size-4.5 items-center justify-center rounded border transition-colors',
