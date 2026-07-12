@@ -7,7 +7,7 @@ interface PageContainerProps {
 
 export function PageContainer({ children, className }: PageContainerProps) {
   return (
-    <div className={cn('space-y-6 overflow-hidden', className)}>
+    <div className={cn('space-y-5 overflow-hidden', className)}>
       {children}
     </div>
   )
@@ -23,12 +23,12 @@ interface SectionProps {
 
 export function Section({ title, description, action, children, className }: SectionProps) {
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn('space-y-3', className)}>
       {(title || description || action) && (
         <div className="flex items-start justify-between">
           <div>
-            {title && <h2 className="text-lg font-semibold">{title}</h2>}
-            {description && <p className="text-sm text-muted-foreground">{description}</p>}
+            {title && <h2 className="text-sm font-semibold">{title}</h2>}
+            {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
           </div>
           {action && <div>{action}</div>}
         </div>
