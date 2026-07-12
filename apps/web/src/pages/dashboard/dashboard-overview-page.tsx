@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Building2 } from 'lucide-react'
+import { Building2, MessageSquare, MessageCircle, Users, Clock, ArrowRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
-import { StatsGrid } from '@/components/dashboard/stats-grid'
+import { MetricGrid } from '@/components/shared/metric-grid'
 import { ConversationsChart } from '@/components/dashboard/conversations-chart'
-import { MessagesChart } from '@/components/dashboard/messages-chart'
-import { ChannelDistribution } from '@/components/dashboard/channel-distribution'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { TopAgents } from '@/components/dashboard/top-agents'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
@@ -115,39 +114,51 @@ export default function DashboardOverviewPage() {
     )
   }
 
-  const stats = {
-    totalConversations: overview?.totalConversations || 0,
-    totalMessages: overview?.totalMessages || 0,
-    activeUsers: overview?.uniqueUsers || 0,
-    avgResponseTime: overview?.avgResponseTime || 0,
-    conversationsChange: overview?.conversationsChange ?? 0,
-    messagesChange: overview?.messagesChange ?? 0,
-    usersChange: overview?.usersChange ?? 0,
-    responseTimeChange: overview?.responseTimeChange ?? 0,
+  function trendOf(val: number): { trend: 'up' | 'down' | 'flat'; change: string } {
+    if (val > 0) return { trend: 'up', change: `+${val}%` }
+    if (val < 0) return { trend: 'down', change: `${val}%` }
+    return { trend: 'flat', change: '0%' }
   }
+
+  const metrics = [
+    {
+      icon: MessageSquare,
+      label: 'Conversations',
+      value: (overview?.totalConversations || 0).toLocaleString(),
+      ...trendOf(overview?.conversationsChange ?? 0),
+      period: 'vs last period',
+      color: 'info' as const,
+    },
+    {
+      icon: MessageCircle,
+      label: 'Messages',
+      value: (overview?.totalMessages || 0).toLocaleString(),
+      ...trendOf(overview?.messagesChange ?? 0),
+      period: 'vs last period',
+      color: 'success' as const,
+    },
+    {
+      icon: Users,
+      label: 'Active Users',
+      value: (overview?.uniqueUsers || 0).toLocaleString(),
+      ...trendOf(overview?.usersChange ?? 0),
+      period: 'vs last period',
+      color: 'green' as const,
+    },
+    {
+      icon: Clock,
+      label: 'Avg Response Time',
+      value: `${overview?.avgResponseTime || 0}s`,
+      ...trendOf(overview?.responseTimeChange ?? 0),
+      period: 'vs last period',
+      color: 'amber' as const,
+    },
+  ]
 
   const conversationsChartData = (overview?.dailyBreakdown || []).map(
     (d: { date: string; totalConversations: number }) => ({
       date: formatShortDate(d.date),
       conversations: d.totalConversations,
-    }),
-  )
-
-  const messagesChartData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; totalMessages: number }) => {
-      const half = Math.round(d.totalMessages / 2)
-      return {
-        date: formatShortDate(d.date),
-        userMessages: half,
-        assistantMessages: d.totalMessages - half,
-      }
-    },
-  )
-
-  const channelData = (overview?.channelBreakdown || []).map(
-    (c: { channel: string; count: number }) => ({
-      channel: c.channel as 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api',
-      count: c.count,
     }),
   )
 
@@ -194,20 +205,26 @@ export default function DashboardOverviewPage() {
         }
       />
 
-      <StatsGrid data={stats} />
+      <MetricGrid columns={4} metrics={metrics} />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2">
           <ConversationsChart data={conversationsChartData} />
-          <MessagesChart data={messagesChartData} />
         </div>
-        <div className="space-y-6">
-          <ChannelDistribution data={channelData} />
+        <div>
           <TopAgents agents={topAgents} />
         </div>
       </div>
 
       <RecentActivity activities={activities} />
+
+      <Link
+        to="/dashboard/analytics"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        View detailed analytics
+        <ArrowRight className="size-4" />
+      </Link>
     </PageContainer>
   )
 }
