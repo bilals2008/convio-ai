@@ -21,7 +21,8 @@ function CopyButton({ text }: { text: string }) {
 
 export function CTA() {
   return (
-    <section className="max-w-[1160px] mx-auto px-5 md:px-10 py-16">
+    <section className="relative border-t border-border/60">
+      <div className="max-w-[1160px] mx-auto px-5 md:px-10 py-20 md:py-28">
       <ScrollReveal variant="scaleIn">
         <GlowCard>
           <div className="py-14 md:py-20 px-6 md:px-14 flex flex-col md:flex-row items-start md:items-center gap-10 md:gap-16">
@@ -71,6 +72,7 @@ export function CTA() {
           </div>
         </GlowCard>
       </ScrollReveal>
+      </div>
     </section>
   )
 }

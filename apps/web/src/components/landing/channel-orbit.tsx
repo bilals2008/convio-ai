@@ -1,4 +1,5 @@
 import { ScrollReveal } from './scroll-reveal'
+import { SectionHeading } from './section-heading'
 import {
   MessageCircle, Send, Bot, Boxes, Database, Code2, Mail, Phone,
   Webhook, Plug, Workflow, Cpu, Sparkles, Globe,
@@ -71,19 +72,15 @@ function OrbitRing({
 
 export function ChannelOrbit() {
   return (
-    <section className="max-w-[1160px] mx-auto px-5 md:px-10 py-16 overflow-hidden">
-      <ScrollReveal>
-        <div className="text-center mb-10 px-5">
-          <div className="text-[11px] font-semibold tracking-[0.1em] uppercase text-primary mb-2">One Platform</div>
-          <h2 className="font-heading text-[clamp(26px,3.6vw,46px)] text-foreground leading-[1.15] tracking-[-0.02em] mb-3">
-            Every channel. One brain.
-          </h2>
-          <p className="text-[15px] text-muted-foreground leading-[1.65] max-w-[490px] mx-auto">
-            From messaging apps to your own product — Convio keeps one agent in sync across
-            all of them.
-          </p>
-        </div>
-      </ScrollReveal>
+    <section className="relative border-t border-border/60 overflow-hidden">
+      <div className="max-w-[1160px] mx-auto px-5 md:px-10 py-20 md:py-28">
+        <ScrollReveal>
+          <SectionHeading
+            eyebrow="One platform"
+            title="Every channel. One brain."
+            description="From messaging apps to your own product — Convio keeps one agent in sync across all of them."
+          />
+        </ScrollReveal>
 
       <div className="relative w-full aspect-square max-w-[520px] mx-auto mask-radial">
         {/* Center logo */}
@@ -107,6 +104,7 @@ export function ChannelOrbit() {
         <OrbitRing items={INNER} size="38%" spin="animate-orbit-slow" counter="animate-orbit-counter-slow" />
         <OrbitRing items={MIDDLE} size="62%" spin="animate-orbit-mid" counter="animate-orbit-counter-mid" />
         <OrbitRing items={OUTER} size="88%" spin="animate-orbit-fast" counter="animate-orbit-counter-fast" />
+      </div>
       </div>
     </section>
   )
