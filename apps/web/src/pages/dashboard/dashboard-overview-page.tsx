@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { MetricGrid } from '@/components/shared/metric-grid'
-import { ConversationsChart } from '@/components/dashboard/conversations-chart'
+import { OverviewChart } from '@/components/dashboard/overview-chart'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { TopAgents } from '@/components/dashboard/top-agents'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
@@ -39,11 +39,6 @@ function getDateRange(range: string) {
   }
 
   return { from, to }
-}
-
-function formatShortDate(dateStr: string) {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export default function DashboardOverviewPage() {
@@ -155,10 +150,11 @@ export default function DashboardOverviewPage() {
     },
   ]
 
-  const conversationsChartData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; totalConversations: number }) => ({
-      date: formatShortDate(d.date),
+  const chartData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; totalConversations: number; totalMessages: number }) => ({
+      date: d.date,
       conversations: d.totalConversations,
+      messages: d.totalMessages,
     }),
   )
 
@@ -209,7 +205,7 @@ export default function DashboardOverviewPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <ConversationsChart data={conversationsChartData} />
+          <OverviewChart data={chartData} />
         </div>
         <div>
           <TopAgents agents={topAgents} />

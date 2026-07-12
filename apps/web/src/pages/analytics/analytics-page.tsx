@@ -5,10 +5,10 @@ import { PageContainer } from '@/components/shared/page-container'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
-import { ConversationsChart } from '@/components/dashboard/conversations-chart'
-import { MessagesChart } from '@/components/dashboard/messages-chart'
+import { OverviewChart } from '@/components/dashboard/overview-chart'
 import { ChannelDistribution } from '@/components/dashboard/channel-distribution'
-import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
+import { DailyConversationsChart } from '@/components/analytics/daily-conversations-chart'
+import { AgentBarChart } from '@/components/analytics/agent-bar-chart'
 import { AgentsPerformanceTable } from '@/components/analytics/agents-performance-table'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -41,11 +41,6 @@ function getDateRange(range: string) {
   }
 
   return { from, to }
-}
-
-function formatShortDate(dateStr: string) {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export default function AnalyticsPage() {
@@ -106,22 +101,12 @@ export default function AnalyticsPage() {
     )
   }
 
-  const conversationsChartData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; totalConversations: number }) => ({
-      date: formatShortDate(d.date),
+  const chartData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; totalConversations: number; totalMessages: number }) => ({
+      date: d.date,
       conversations: d.totalConversations,
+      messages: d.totalMessages,
     }),
-  )
-
-  const messagesChartData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; totalMessages: number }) => {
-      const half = Math.round(d.totalMessages / 2)
-      return {
-        date: formatShortDate(d.date),
-        userMessages: half,
-        assistantMessages: d.totalMessages - half,
-      }
-    },
   )
 
   const channelData = (overview?.channelBreakdown || []).map(
@@ -142,10 +127,10 @@ export default function AnalyticsPage() {
     }),
   )
 
-  const responseTimeData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; avgResponseTime: number }) => ({
-      date: formatShortDate(d.date),
-      avgTime: d.avgResponseTime,
+  const dailyConversationsData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; totalConversations: number }) => ({
+      date: d.date,
+      conversations: d.totalConversations,
     }),
   )
 
@@ -218,15 +203,15 @@ export default function AnalyticsPage() {
       </div>
 
       <div>
-        <ConversationsChart data={conversationsChartData} loading={isLoading} />
+        <OverviewChart data={chartData} loading={isLoading} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <MessagesChart data={messagesChartData} loading={isLoading} />
+          <ChannelDistribution data={channelData} loading={isLoading} />
         </div>
         <div>
-          <ChannelDistribution data={channelData} loading={isLoading} />
+          <DailyConversationsChart data={dailyConversationsData} loading={isLoading} />
         </div>
       </div>
 
@@ -235,7 +220,7 @@ export default function AnalyticsPage() {
           <AgentsPerformanceTable agents={agentsPerformance} loading={isLoading} />
         </div>
         <div>
-          <ResponseTimeChart data={responseTimeData} loading={isLoading} />
+          <AgentBarChart data={agentsPerformance} loading={isLoading} metric="conversations" />
         </div>
       </div>
     </PageContainer>
