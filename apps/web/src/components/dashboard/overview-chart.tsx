@@ -1,9 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from "@/components/ui/chart"
-import { ChartTooltipContent, ChartLegendContent } from "@/components/application/charts/charts-base"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { Skeleton } from "@/components/ui/skeleton"
-import { mockOverviewData } from "@/lib/mock-chart-data"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from '@/components/ui/chart'
+import { ChartTooltipContent, ChartLegendContent } from '@/components/application/charts/charts-base'
+import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
+import { Skeleton } from '@/components/ui/skeleton'
+import { mockOverviewData } from '@/lib/mock-chart-data'
 
 interface ChartDataPoint {
   date: string
@@ -18,12 +18,12 @@ interface OverviewChartProps {
 
 const chartConfig = {
   messages: {
-    label: "Messages",
-    color: "var(--chart-1)",
+    label: 'Messages',
+    color: 'var(--chart-1)',
   },
   conversations: {
-    label: "Conversations",
-    color: "var(--chart-2)",
+    label: 'Conversations',
+    color: 'var(--chart-2)',
   },
 } satisfies ChartConfig
 
@@ -31,42 +31,27 @@ export function OverviewChart({ data, loading }: OverviewChartProps) {
   const chartData = data.length >= 5 && data.some((d) => d.messages > 0) ? data : mockOverviewData
 
   return (
-    <Card className="pt-0">
+    <Card>
       <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
         <div className="grid flex-1 gap-1">
-          <CardTitle className="text-base">Overview</CardTitle>
+          <CardTitle className="text-base">Conversation Analytics</CardTitle>
         </div>
+        <div className="text-sm text-muted-foreground">Messages vs Conversations</div>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (
-          <Skeleton className="h-[250px] w-full" />
+          <Skeleton className="h-[280px] w-full" />
         ) : (
-          <ChartContainer config={chartConfig} className="h-[250px] w-full">
+          <ChartContainer config={chartConfig} className="h-[280px] w-full">
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="fillMessages" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--color-messages)"
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--color-messages)"
-                    stopOpacity={0.1}
-                  />
+                  <stop offset="5%" stopColor="var(--color-messages)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="var(--color-messages)" stopOpacity={0.1} />
                 </linearGradient>
                 <linearGradient id="fillConversations" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--color-conversations)"
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--color-conversations)"
-                    stopOpacity={0.1}
-                  />
+                  <stop offset="5%" stopColor="var(--color-conversations)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="var(--color-conversations)" stopOpacity={0.1} />
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} />
@@ -78,9 +63,9 @@ export function OverviewChart({ data, loading }: OverviewChartProps) {
                 minTickGap={32}
                 tickFormatter={(value) => {
                   const date = new Date(value)
-                  return date.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
+                  return date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
                   })
                 }}
               />
@@ -89,9 +74,9 @@ export function OverviewChart({ data, loading }: OverviewChartProps) {
                 content={
                   <ChartTooltipContent
                     labelFormatter={(value) => {
-                      return new Date(value as string).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
+                      return new Date(value as string).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
                       })
                     }}
                     indicator="dot"

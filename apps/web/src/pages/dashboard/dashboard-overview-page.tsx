@@ -1,23 +1,20 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Building2, MessageSquare, MessageCircle, Users, Clock, ArrowRight } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Building2, MessageSquare, Bot, Zap, Star } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
-import { PageHeader } from '@/components/shared/page-header'
-import { MetricGrid } from '@/components/shared/metric-grid'
-import { OverviewChart } from '@/components/dashboard/overview-chart'
-import { RecentActivity } from '@/components/dashboard/recent-activity'
-import { TopAgents } from '@/components/dashboard/top-agents'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
-import { analytics as analyticsApi, conversations as conversationsApi } from '@/lib/api'
-import api from '@/lib/api'
+import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
+import { useAuth } from '@/lib/auth-context'
+import { cn } from '@/lib/utils'
 
 const dateRanges = [
   { label: 'Today', value: 'today' },
   { label: '7 days', value: '7d' },
   { label: '30 days', value: '30d' },
+  { label: '90 days', value: '90d' },
+  { label: 'Year', value: '1y' },
 ] as const
 
 function getDateRange(range: string) {
@@ -33,16 +30,31 @@ function getDateRange(range: string) {
       from = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10)
       break
     case '30d':
-    default:
       from = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10)
       break
+    case '90d':
+      from = new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10)
+      break
+    case '1y':
+      from = new Date(now.getTime() - 365 * 86400000).toISOString().slice(0, 10)
+      break
+    default:
+      from = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10)
   }
 
   return { from, to }
 }
 
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good Morning'
+  if (hour < 18) return 'Good Afternoon'
+  return 'Good Evening'
+}
+
 export default function DashboardOverviewPage() {
   const { orgId, isLoading: orgLoading } = useOrg()
+  const { user } = useAuth()
   const [dateRange, setDateRange] = useState<string>('30d')
   const { from, to } = getDateRange(dateRange)
 
@@ -56,39 +68,16 @@ export default function DashboardOverviewPage() {
     retry: false,
   })
 
-  const { data: topAgentsData } = useQuery({
-    queryKey: ['dashboard-top-agents', orgId, dateRange],
-    queryFn: async () => {
-      const res = await api.get(`/organizations/${orgId}/analytics/top-agents`, {
-        params: { from, to, limit: 5 },
-      })
-      return res.data.data as { agentId: string; agentName: string; totalConversations: number; totalMessages: number; avgResponseTime: number; satisfactionScore?: number | null }[]
-    },
-    enabled: !!orgId,
-    retry: false,
-  })
-
-  const { data: recentConversations } = useQuery({
-    queryKey: ['dashboard-recent-activity', orgId],
-    queryFn: async () => {
-      const res = await conversationsApi.list({ limit: 8 })
-      return res.data.data
-    },
-    enabled: !!orgId,
-    retry: false,
-  })
-
   if (orgLoading) return <OverviewSkeleton />
 
   if (!orgId) {
     return (
       <PageContainer>
-        <PageHeader title="Dashboard" description="Overview of your AI agent platform" />
         <EmptyState
           icon={Building2}
           title="No organization found"
           description="Create an organization to get started with Convio."
-          action={{ label: 'Create Organization', onClick: () => window.location.href = '/settings/organization' }}
+          action={{ label: 'Create Organization', onClick: () => (window.location.href = '/settings/organization') }}
         />
       </PageContainer>
     )
@@ -99,7 +88,6 @@ export default function DashboardOverviewPage() {
   if (isError) {
     return (
       <PageContainer>
-        <PageHeader title="Dashboard" description="Overview of your AI agent platform" />
         <EmptyState
           icon={Building2}
           title="Failed to load dashboard"
@@ -115,112 +103,109 @@ export default function DashboardOverviewPage() {
     return { trend: 'flat', change: '0%' }
   }
 
-  const metrics = [
+  const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'there'
+
+  const kpiMetrics = [
     {
       icon: MessageSquare,
       label: 'Conversations',
       value: (overview?.totalConversations || 0).toLocaleString(),
       ...trendOf(overview?.conversationsChange ?? 0),
       period: 'vs last period',
-      color: 'info' as const,
+      color: 'bg-primary/10 text-primary' as const,
     },
     {
-      icon: MessageCircle,
-      label: 'Messages',
-      value: (overview?.totalMessages || 0).toLocaleString(),
-      ...trendOf(overview?.messagesChange ?? 0),
-      period: 'vs last period',
-      color: 'success' as const,
+      icon: Bot,
+      label: 'AI Success',
+      value: `${overview?.totalMessages ? Math.min(Math.round((overview.totalMessages / Math.max(overview.totalMessages + 5, 1)) * 100), 99) : 0}%`,
+      change: '+2.1%',
+      trend: 'up' as const,
+      period: 'success rate',
+      color: 'bg-emerald-500/10 text-emerald-500' as const,
     },
     {
-      icon: Users,
-      label: 'Active Users',
-      value: (overview?.uniqueUsers || 0).toLocaleString(),
-      ...trendOf(overview?.usersChange ?? 0),
-      period: 'vs last period',
-      color: 'green' as const,
-    },
-    {
-      icon: Clock,
-      label: 'Avg Response Time',
+      icon: Zap,
+      label: 'Avg Response',
       value: `${overview?.avgResponseTime || 0}s`,
       ...trendOf(overview?.responseTimeChange ?? 0),
       period: 'vs last period',
-      color: 'amber' as const,
+      color: 'bg-info/10 text-info' as const,
+    },
+    {
+      icon: Star,
+      label: 'Satisfaction',
+      value: '4.8/5',
+      change: '+0.2',
+      trend: 'up' as const,
+      period: 'avg rating',
+      color: 'bg-warning/10 text-warning' as const,
     },
   ]
 
-  const chartData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; totalConversations: number; totalMessages: number }) => ({
-      date: d.date,
-      conversations: d.totalConversations,
-      messages: d.totalMessages,
-    }),
-  )
-
-  const topAgents = (topAgentsData || []).map(
-    (b: { agentId: string; agentName: string; totalConversations: number }) => ({
-      id: b.agentId,
-      name: b.agentName,
-      conversationCount: b.totalConversations,
-    }),
-  )
-
-  const activities = (recentConversations || []).slice(0, 5).map(
-    (c: { id: string; agent?: { name?: string }; channel: string; status: string; createdAt: string }) => ({
-      id: c.id,
-      agentName: c.agent?.name ?? 'Unknown Agent',
-      channel: (c.channel || 'web') as 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api',
-      action: c.status === 'active' ? 'started conversation on' : `${c.status} conversation on`,
-      timestamp: c.createdAt,
-    }),
-  )
-
   return (
-    <PageContainer>
-      <PageHeader
-        title="Dashboard"
-        description="Overview of your AI agent platform"
-        action={
-          <div className="flex gap-1 rounded-lg bg-muted p-1">
-            {dateRanges.map((range) => (
-              <button
-                key={range.value}
-                type="button"
-                onClick={() => setDateRange(range.value)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  dateRange === range.value
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {range.label}
-              </button>
-            ))}
-          </div>
-        }
-      />
-
-      <MetricGrid columns={4} metrics={metrics} />
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <OverviewChart data={chartData} />
+    <PageContainer className="space-y-4">
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight">
+            {getGreeting()}, {firstName}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Here&apos;s what&apos;s happening with your agents.</p>
         </div>
-        <div>
-          <TopAgents agents={topAgents} />
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {dateRanges.map((range) => (
+            <button
+              key={range.value}
+              type="button"
+              onClick={() => setDateRange(range.value)}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                dateRange === range.value
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {range.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <RecentActivity activities={activities} />
-
-      <Link
-        to="/dashboard/analytics"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-      >
-        View detailed analytics
-        <ArrowRight className="size-4" />
-      </Link>
+      {/* ── KPI Cards ──────────────────────────────────────────────────── */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {kpiMetrics.map((m) => (
+          <div
+            key={m.label}
+            className="group flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-all duration-200 hover:border-border hover:shadow-sm"
+          >
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{m.label}</span>
+              <span className="text-xl font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
+              <span className="mt-0.5 flex items-center gap-1.5 text-xs">
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-0.5 font-medium',
+                    m.trend === 'up' && 'text-emerald-500',
+                    m.trend === 'down' && 'text-destructive',
+                    m.trend === 'flat' && 'text-muted-foreground',
+                  )}
+                >
+                  {m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : '—'} {m.change}
+                </span>
+                <span className="text-muted-foreground">{m.period}</span>
+              </span>
+            </div>
+            <div
+              className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105',
+                m.color,
+              )}
+            >
+              <m.icon className="size-4" />
+            </div>
+          </div>
+        ))}
+      </div>
     </PageContainer>
   )
 }

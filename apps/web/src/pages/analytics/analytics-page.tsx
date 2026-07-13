@@ -1,19 +1,13 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Download, MessagesSquare, Send, Timer, Cpu, Building2 } from 'lucide-react'
+import { MessagesSquare, Send, Timer, Cpu, Building2 } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { PageHeader } from '@/components/shared/page-header'
-import { Button } from '@/components/ui/button'
 import { OverviewChart } from '@/components/dashboard/overview-chart'
-import { ChannelDistribution } from '@/components/dashboard/channel-distribution'
-import { DailyConversationsChart } from '@/components/analytics/daily-conversations-chart'
-import { AgentBarChart } from '@/components/analytics/agent-bar-chart'
-import { AgentsPerformanceTable } from '@/components/analytics/agents-performance-table'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
 import { analytics as analyticsApi } from '@/lib/api'
-import api from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
 const dateRanges = [
@@ -58,18 +52,6 @@ export default function AnalyticsPage() {
     retry: false,
   })
 
-  const { data: topAgentsData } = useQuery({
-    queryKey: ['analytics-top-agents', orgId, dateRange],
-    queryFn: async () => {
-      const res = await api.get(`/organizations/${orgId}/analytics/top-agents`, {
-        params: { from, to, limit: 10 },
-      })
-      return res.data.data as { agentId: string; agentName: string; totalConversations: number; totalMessages: number; avgResponseTime: number; satisfactionScore?: number | null }[]
-    },
-    enabled: !!orgId,
-    retry: false,
-  })
-
   if (orgLoading) return <OverviewSkeleton />
 
   if (!orgId) {
@@ -109,68 +91,36 @@ export default function AnalyticsPage() {
     }),
   )
 
-  const channelData = (overview?.channelBreakdown || []).map(
-    (c: { channel: string; count: number }) => ({
-      channel: c.channel as 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api',
-      count: c.count,
-    }),
-  )
-
-  const agentsPerformance = (topAgentsData || []).map(
-    (b) => ({
-      id: b.agentId,
-      name: b.agentName,
-      conversations: b.totalConversations,
-      messages: b.totalMessages,
-      avgResponseTime: b.avgResponseTime,
-      satisfactionScore: b.satisfactionScore ?? undefined,
-    }),
-  )
-
-  const dailyConversationsData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; totalConversations: number }) => ({
-      date: d.date,
-      conversations: d.totalConversations,
-    }),
-  )
-
   const totalConversations = overview?.totalConversations || 0
   const totalMessages = overview?.totalMessages || 0
   const avgResponseTime = overview?.avgResponseTime || 0
-  const activeAgents = (topAgentsData || []).length
 
   return (
-    <PageContainer>
+    <PageContainer className="space-y-4">
       <PageHeader
         title="Analytics"
         description="Track performance across your agents and channels"
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1 rounded-lg bg-muted p-1">
-              {dateRanges.map((range) => (
-                <button
-                  key={range.value}
-                  type="button"
-                  onClick={() => setDateRange(range.value)}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                    dateRange === range.value
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {range.label}
-                </button>
-              ))}
-            </div>
-            <Button variant="outline" size="default">
-              <Download className="size-4" />
-              Export
-            </Button>
+          <div className="flex gap-1 rounded-lg bg-muted p-1">
+            {dateRanges.map((range) => (
+              <button
+                key={range.value}
+                type="button"
+                onClick={() => setDateRange(range.value)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  dateRange === range.value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {range.label}
+              </button>
+            ))}
           </div>
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatsCard
           icon={MessagesSquare}
           label="Conversations"
@@ -196,33 +146,13 @@ export default function AnalyticsPage() {
         <StatsCard
           icon={Cpu}
           label="Active Agents"
-          value={activeAgents.toString()}
+          value={overview ? String((overview as Record<string, unknown>).activeAgents ?? '—') : '—'}
           description="Across all channels"
           iconClassName="bg-violet-500/10 text-violet-500 dark:text-violet-400"
         />
       </div>
 
-      <div>
-        <OverviewChart data={chartData} loading={isLoading} />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <ChannelDistribution data={channelData} loading={isLoading} />
-        </div>
-        <div>
-          <DailyConversationsChart data={dailyConversationsData} loading={isLoading} />
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <AgentsPerformanceTable agents={agentsPerformance} loading={isLoading} />
-        </div>
-        <div>
-          <AgentBarChart data={agentsPerformance} loading={isLoading} metric="conversations" />
-        </div>
-      </div>
+      <OverviewChart data={chartData} loading={isLoading} />
     </PageContainer>
   )
 }
