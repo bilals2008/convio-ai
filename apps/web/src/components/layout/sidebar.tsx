@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -13,7 +13,6 @@ import {
   Terminal,
   Link as LinkIcon,
   ChevronLeft,
-  ChevronDown,
   Shield,
   ScrollText,
   Building2,
@@ -24,31 +23,18 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { SidebarGroup, SidebarItem } from './sidebar-nav'
-import { OrgSwitcher } from '@/components/shared/org-switcher'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
 function SettingsGroup({ collapsed }: { collapsed: boolean }) {
-  const [open, setOpen] = useState(true)
-  const { pathname } = useLocation()
-  const isActive = pathname.startsWith('/settings')
-
   const groups = [
     {
       label: 'General',
       items: [
+        { icon: User, label: 'Profile', href: '/settings/profile' },
         { icon: Settings, label: 'Organization', href: '/settings/organization' },
         { icon: Users, label: 'Team', href: '/settings/team' },
       ],
@@ -90,32 +76,21 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
 
   return (
     <div className="space-y-0.5 mt-4">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          'flex w-full items-center justify-between px-3 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] transition-colors',
-          isActive ? 'text-primary/80' : 'text-muted-foreground/60 hover:text-muted-foreground'
-        )}
-      >
+      <div className="px-3 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
         Settings
-        <ChevronDown
-          className={cn('size-3 transition-transform duration-200 shrink-0', !open && '-rotate-90')}
-        />
-      </button>
-      {open &&
-        groups.map((group) => (
-          <div key={group.label} className="mt-2">
-            <div className="px-3 py-1 text-[10px] font-medium text-muted-foreground/40">
-              {group.label}
-            </div>
-            <div className="flex flex-col gap-0.5">
-              {group.items.map((item) => (
-                <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
-              ))}
-            </div>
+      </div>
+      {groups.map((group) => (
+        <div key={group.label} className="mt-2">
+          <div className="px-3 py-1 text-[10px] font-medium text-muted-foreground/40">
+            {group.label}
           </div>
-        ))}
+          <div className="flex flex-col gap-0.5">
+            {group.items.map((item) => (
+              <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -132,17 +107,6 @@ export function Sidebar() {
     : user?.email?.slice(0, 2).toUpperCase() || 'U'
 
   const avatarSrc = user?.avatar || org?.logo || undefined
-
-  const handleProfileMenuSelect = (value: string | null) => {
-    if (!value) return
-    if (value === 'profile') navigate('/settings/profile')
-    else if (value === 'settings') navigate('/settings/organization')
-    else if (value === 'signout') {
-      logout.mutate(undefined, {
-        onSuccess: () => navigate('/login', { replace: true }),
-      })
-    }
-  }
 
   useEffect(() => {
     if (pathname.startsWith('/settings')) {
@@ -202,11 +166,6 @@ export function Sidebar() {
         </Button>
       </div>
 
-      {/* Org switcher */}
-      <div className={cn('px-3 pt-3 pb-1', collapsed && 'px-2')}>
-        <OrgSwitcher collapsed={collapsed} />
-      </div>
-
       <ScrollArea className="flex-1 min-h-0">
         <nav className="flex flex-col px-2 py-2">
           <SidebarGroup label="Dashboard">
@@ -233,54 +192,43 @@ export function Sidebar() {
 
       {/* User section */}
       <div className="border-t border-border/50 p-2 mt-auto">
-        <DropdownMenu>
-          <DropdownMenuTrigger className={cn(
-            'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted/60',
-            collapsed && 'justify-center px-0'
-          )}>
-            <Avatar className="size-8 shrink-0">
-              <AvatarImage src={avatarSrc} />
-              <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
-            </Avatar>
-            {!collapsed && (
-              <div className="flex-1 truncate text-left">
-                <div className="text-sm font-medium truncate">{user?.name || 'User'}</div>
-                <div className="text-[11px] text-muted-foreground truncate">{user?.email}</div>
-              </div>
-            )}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56" side={collapsed ? 'right' : 'top'}>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>
-                <div className="flex flex-col">
-                  <span>{user?.name || 'User'}</span>
-                  <span className="text-xs font-normal text-muted-foreground truncate">{user?.email}</span>
-                </div>
-              </DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
-              <User className="mr-2 size-4" />
+        <div className={cn(
+          'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm',
+          collapsed && 'justify-center px-0'
+        )}>
+          <Avatar className="size-8 shrink-0">
+            <AvatarImage src={avatarSrc} />
+            <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
+          </Avatar>
+          {!collapsed && (
+            <div className="flex-1 truncate text-left">
+              <div className="text-sm font-medium truncate">{user?.name || 'User'}</div>
+              <div className="text-[11px] text-muted-foreground truncate">{user?.email}</div>
+            </div>
+          )}
+        </div>
+        {!collapsed && (
+          <div className="flex gap-1 mt-2 px-1">
+            <button
+              onClick={() => navigate('/settings/profile')}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+            >
+              <User className="size-3" />
               Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/settings/organization')}>
-              <Settings className="mr-2 size-4" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive"
+            </button>
+            <button
               onClick={() => {
                 logout.mutate(undefined, {
                   onSuccess: () => navigate('/login', { replace: true }),
                 })
               }}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10 transition-colors"
             >
-              <LogOut className="mr-2 size-4" />
+              <LogOut className="size-3" />
               Sign Out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   )
@@ -429,6 +377,7 @@ const mobileSettingsGroups = [
   {
     label: 'General',
     items: [
+      { icon: User, label: 'Profile', href: '/settings/profile' },
       { icon: Settings, label: 'Organization', href: '/settings/organization' },
       { icon: Users, label: 'Team', href: '/settings/team' },
     ],
