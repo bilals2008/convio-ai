@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Building2, Plus, AlertCircle } from 'lucide-react'
+import { Loader2, Building2, Plus, AlertCircle, Users, Calendar, Shield } from 'lucide-react'
 import { z } from 'zod'
 import { PageHeader } from '@/components/shared/page-header'
 import { OrgInfoForm } from '@/components/settings/org-info-form'
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { useOrg } from '@/lib/org-context'
 import { organizations as orgsApi } from '@/lib/api'
 
@@ -19,6 +20,19 @@ interface Organization {
   slug: string
   logo?: string
   plan: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+interface OrgMember {
+  id: string
+  userId: string
+  role: string
+  user?: {
+    name?: string
+    email?: string
+    avatar?: string
+  }
 }
 
 const createOrgSchema = z.object({
@@ -101,12 +115,140 @@ function CreateOrgForm() {
   )
 }
 
+function OrgDetailsCard({ org }: { org: Organization }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="size-5" />
+          Organization Details
+        </CardTitle>
+        <CardDescription>View your organization information</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex items-start gap-4">
+            {org.logo ? (
+              <img src={org.logo} alt={org.name} className="size-16 rounded-lg object-cover" />
+            ) : (
+              <div className="flex size-16 items-center justify-center rounded-lg bg-primary/10 text-xl font-bold text-primary">
+                {org.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="flex-1 space-y-1">
+              <h3 className="text-lg font-semibold">{org.name}</h3>
+              <p className="text-sm text-muted-foreground">/{org.slug}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 pt-4 border-t sm:grid-cols-3">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                <Shield className="size-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Plan</p>
+                <p className="text-sm font-medium capitalize">{org.plan}</p>
+              </div>
+            </div>
+            {org.createdAt && (
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                  <Calendar className="size-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Created</p>
+                  <p className="text-sm font-medium">
+                    {new Date(org.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            )}
+            {org.updatedAt && (
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                  <Calendar className="size-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Last Updated</p>
+                  <p className="text-sm font-medium">
+                    {new Date(org.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function OrgMembersCard({ orgId }: { orgId: string }) {
+  const { data: members, isLoading } = useQuery({
+    queryKey: ['org-members', orgId],
+    queryFn: async () => {
+      const res = await orgsApi.members(orgId)
+      return res.data.data as OrgMember[]
+    },
+    enabled: !!orgId,
+  })
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="size-5" />
+          Members
+        </CardTitle>
+        <CardDescription>Manage your organization members</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="size-8 animate-pulse rounded-full bg-muted" />
+                <div className="flex-1 space-y-1">
+                  <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : members && members.length > 0 ? (
+          <div className="space-y-3">
+            {members.map((member) => (
+              <div key={member.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <div className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                  {member.user?.name
+                    ? member.user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+                    : member.user?.email?.slice(0, 2).toUpperCase() || 'U'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{member.user?.name || 'Unknown'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{member.user?.email}</p>
+                </div>
+                <Badge variant="secondary" className="capitalize">
+                  {member.role}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No members found.</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function OrganizationSettingsPage() {
   const queryClient = useQueryClient()
   const { orgId, isLoading: orgLoading } = useOrg()
   const [showCreateForm, setShowCreateForm] = useState(false)
 
-  const { data: org, isLoading, isError } = useQuery({
+  const { data: org, isLoading } = useQuery({
     queryKey: ['organization', orgId],
     queryFn: async () => {
       const res = await orgsApi.get(orgId!)
@@ -149,6 +291,9 @@ export default function OrganizationSettingsPage() {
           title="Organization Settings"
           description="Manage your organization details and preferences"
         />
+
+        <OrgDetailsCard org={org} />
+
         <OrgInfoForm
           name={org.name}
           slug={org.slug}
@@ -157,6 +302,9 @@ export default function OrganizationSettingsPage() {
           onSubmit={(data) => updateMutation.mutate(data)}
           loading={updateMutation.isPending}
         />
+
+        <OrgMembersCard orgId={orgId} />
+
         <OrgDangerZone
           orgName={org.name}
           onDelete={() => deleteMutation.mutate()}

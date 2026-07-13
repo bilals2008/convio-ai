@@ -33,6 +33,7 @@ import TeamMembersPage from '@/pages/settings/team-members-page'
 import DeploymentsPage from '@/pages/settings/deployments-page'
 import ApiKeysPage from '@/pages/settings/api-keys-page'
 import ProviderKeysPage from '@/pages/settings/provider-keys-page'
+import ProfileSettingsPage from '@/pages/settings/profile-settings-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +74,7 @@ export function App() {
               </Route>
               <Route path="/settings" element={<SettingsLayout />}>
                 <Route index element={<OrganizationSettingsPage />} />
+                <Route path="profile" element={<ProfileSettingsPage />} />
                 <Route path="organization" element={<OrganizationSettingsPage />} />
                 <Route path="team" element={<TeamMembersPage />} />
                 <Route path="deployments" element={<DeploymentsPage />} />
