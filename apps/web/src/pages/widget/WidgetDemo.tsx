@@ -163,11 +163,11 @@ export default function WidgetDemoPage() {
       <div className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-md">
         <div className="flex items-center justify-between h-14 px-4 max-w-[1400px] mx-auto">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
-              <Link to="/dashboard">
+            <Link to="/dashboard">
+              <Button variant="ghost" size="icon">
                 <ArrowLeft className="size-4" />
-              </Link>
-            </Button>
+              </Button>
+            </Link>
             <Separator orientation="vertical" className="h-5" />
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-semibold">Widget Builder</h1>
@@ -298,19 +298,17 @@ export default function WidgetDemoPage() {
                     <div className="flex flex-wrap gap-2">
                       {presets.map((p) => (
                         <Tooltip key={p.color}>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => update({ primaryColor: p.color })}
-                              className={cn(
-                                'size-8 rounded-lg border-2 transition-all hover:scale-110',
-                                config.primaryColor === p.color
-                                  ? 'border-foreground scale-110 shadow-md'
-                                  : 'border-transparent'
-                              )}
-                              style={{ backgroundColor: p.color }}
-                            />
-                          </TooltipTrigger>
+                          <TooltipTrigger
+                            type="button"
+                            onClick={() => update({ primaryColor: p.color })}
+                            className={cn(
+                              'size-8 rounded-lg border-2 transition-all hover:scale-110',
+                              config.primaryColor === p.color
+                                ? 'border-foreground scale-110 shadow-md'
+                                : 'border-transparent'
+                            )}
+                            style={{ backgroundColor: p.color }}
+                          />
                           <TooltipContent side="bottom" className="text-xs">
                             {p.label}
                           </TooltipContent>
@@ -329,19 +327,17 @@ export default function WidgetDemoPage() {
                     <div className="flex flex-wrap gap-2">
                       {bgPresets.map((p) => (
                         <Tooltip key={p.color}>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => update({ backgroundColor: p.color })}
-                              className={cn(
-                                'size-8 rounded-lg border-2 transition-all hover:scale-110',
-                                config.backgroundColor === p.color
-                                  ? 'border-foreground scale-110 shadow-md'
-                                  : 'border-muted'
-                              )}
-                              style={{ backgroundColor: p.color }}
-                            />
-                          </TooltipTrigger>
+                          <TooltipTrigger
+                            type="button"
+                            onClick={() => update({ backgroundColor: p.color })}
+                            className={cn(
+                              'size-8 rounded-lg border-2 transition-all hover:scale-110',
+                              config.backgroundColor === p.color
+                                ? 'border-foreground scale-110 shadow-md'
+                                : 'border-muted'
+                            )}
+                            style={{ backgroundColor: p.color }}
+                          />
                           <TooltipContent side="bottom" className="text-xs">
                             {p.label}
                           </TooltipContent>

@@ -1,5 +1,5 @@
 import { Eye, Trash2, RefreshCw, ExternalLink } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import {
   Tooltip,
   TooltipContent,
@@ -83,47 +83,35 @@ export function DocumentCard({
         <TooltipProvider>
           <div className="flex shrink-0 items-center gap-0.5">
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  onClick={() => onView(doc.id)}
-                >
-                  <Eye className="size-3.5" />
-                </Button>
+              <TooltipTrigger
+                onClick={() => onView(doc.id)}
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7")}
+              >
+                <Eye className="size-3.5" />
               </TooltipTrigger>
               <TooltipContent>View content</TooltipContent>
             </Tooltip>
 
             {onReprocess && (
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7"
-                    disabled={isBusy}
-                    onClick={() => onReprocess(doc.id)}
-                  >
-                    <RefreshCw className={cn('size-3.5', isBusy && 'animate-spin')} />
-                  </Button>
-                </TooltipTrigger>
+              <TooltipTrigger
+                disabled={isBusy}
+                onClick={() => onReprocess(doc.id)}
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7")}
+              >
+                <RefreshCw className={cn('size-3.5', isBusy && 'animate-spin')} />
+              </TooltipTrigger>
                 <TooltipContent>Re-index</TooltipContent>
               </Tooltip>
             )}
 
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  disabled={isBusy}
-                  onClick={() => onDelete(doc.id)}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
+              <TooltipTrigger
+                disabled={isBusy}
+                onClick={() => onDelete(doc.id)}
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7")}
+              >
+                <Trash2 className="size-3.5" />
               </TooltipTrigger>
               <TooltipContent>Delete</TooltipContent>
             </Tooltip>

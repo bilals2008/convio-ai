@@ -56,16 +56,12 @@ export function KnowledgeCard({ kb, onDelete }: KnowledgeCardProps) {
         </div>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-              className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
-            >
-              <MoreHorizontal className="size-4" />
-            </div>
+          <DropdownMenuTrigger
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+          >
+            <MoreHorizontal className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
             <DropdownMenuItem onClick={() => navigate(`/knowledge/${kb.id}`)}>

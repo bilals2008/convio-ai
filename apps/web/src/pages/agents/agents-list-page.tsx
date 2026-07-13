@@ -6,7 +6,7 @@ import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SearchInput } from '@/components/shared/search-input'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -158,15 +158,11 @@ function AgentCard({
             {formatDate(agent.updatedAt || agent.createdAt)}
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={(e) => e.stopPropagation()}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <MoreVertical className="size-4" />
-              </Button>
+            <DropdownMenuTrigger
+              onClick={(e) => e.stopPropagation()}
+              className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "text-muted-foreground hover:text-foreground")}
+            >
+              <MoreVertical className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit() }}>

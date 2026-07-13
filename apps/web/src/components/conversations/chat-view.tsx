@@ -5,7 +5,7 @@ import { ArrowLeft, MessageSquare, AlertCircle, MoreVertical, CheckCircle, Archi
 import { toast } from '@/lib/toast'
 import { Skeleton } from '@/components/shared/loading'
 import { TypingIndicator } from '@/components/shared/typing-indicator'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
@@ -290,10 +290,8 @@ export function ChatView() {
 
         <div className="flex items-center gap-1">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreVertical className="size-4" />
-              </Button>
+            <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8")}>
+              <MoreVertical className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               {conversation.status !== 'active' && (

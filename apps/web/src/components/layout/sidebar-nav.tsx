@@ -57,7 +57,7 @@ export function SidebarItem({ icon: Icon, label, href, badge, exact }: SidebarIt
   if (collapsed) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipTrigger render={link} />
         <TooltipContent side="right" className="text-xs">
           {label}
           {badge != null && <span className="ml-1 text-muted-foreground">({badge})</span>}

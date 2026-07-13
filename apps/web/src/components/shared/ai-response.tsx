@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -33,33 +33,30 @@ function CopyButton({ value, label, className }: CopyButtonProps) {
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          onClick={handleCopy}
-          aria-label={copied ? 'Copied' : label}
-          className={cn(
-            'text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95',
-            className
-          )}
-        >
-          <span className="relative flex size-3.5 items-center justify-center">
-            <Copy
-              className={cn(
-                'absolute size-3.5 transition-all duration-200 ease-out',
-                copied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
-              )}
-            />
-            <Check
-              className={cn(
-                'absolute size-3.5 text-success transition-all duration-200 ease-out',
-                copied ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
-              )}
-            />
-          </span>
-        </Button>
+      <TooltipTrigger
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? 'Copied' : label}
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "icon-xs" }),
+          'text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95',
+          className
+        )}
+      >
+        <span className="relative flex size-3.5 items-center justify-center">
+          <Copy
+            className={cn(
+              'absolute size-3.5 transition-all duration-200 ease-out',
+              copied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
+            )}
+          />
+          <Check
+            className={cn(
+              'absolute size-3.5 text-success transition-all duration-200 ease-out',
+              copied ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+            )}
+          />
+        </span>
       </TooltipTrigger>
       <TooltipContent>{copied ? 'Copied' : label}</TooltipContent>
     </Tooltip>
