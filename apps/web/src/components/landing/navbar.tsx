@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 const navLinks = [
-  { label: 'Features', href: '#features' },
+  { label: 'Channels', href: '#channels' },
   { label: 'Channels', href: '#channels' },
   { label: 'Pricing', href: '#pricing' },
 ]

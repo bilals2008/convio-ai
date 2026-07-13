@@ -5,7 +5,7 @@ import { DirectionHover } from './direction-hover'
 
 const footerLinks = {
   Product: [
-    { label: 'Features', href: '#features' },
+    { label: 'Channels', href: '#channels' },
     { label: 'Pricing', href: '#pricing' },
     { label: 'Deployments', href: '#' },
     { label: 'Changelog', href: '#' },

@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Sparkles, ArrowRight, MessageSquare, BarChart3, Brain } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Sparkles, Check } from 'lucide-react'
 import { WhatsAppIcon, TelegramIcon, DiscordIcon, SlackIcon, WebIcon } from './channel-icons'
 import { LogoMarquee } from './logo-marquee'
 
@@ -13,121 +12,191 @@ const channels = [
   { name: 'Slack', icon: SlackIcon },
 ]
 
-export function HeroSection() {
-  const cardRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const card = cardRef.current
-    if (!card) return
-    function tick() {
-      const sy = window.scrollY
-      const wh = window.innerHeight
-      const p = Math.min(sy / (wh * 0.55), 1)
-      card.style.transform = `scale(${1 - p * 0.1})`
-      card.style.opacity = String(1 - p * 0.12)
-    }
-    window.addEventListener('scroll', tick, { passive: true })
-    tick()
-    return () => window.removeEventListener('scroll', tick)
-  }, [])
-
+function ProductPreview() {
+  const ChatIcon = WebIcon
   return (
-    <div className="relative min-h-screen flex items-start justify-center pt-[10px]">
-      <div
-        ref={cardRef}
-        className="sticky top-[10px] w-[calc(100%-20px)] mx-[10px] h-[calc(100vh-20px)] rounded-[18px] overflow-hidden origin-top will-change-transform"
-      >
-        {/* Background */}
-        <div className="absolute inset-0 bg-background" />
-        <div className="absolute inset-0 bg-dot-pattern opacity-50" />
-        <div className="absolute -top-40 right-0 size-[600px] rounded-full bg-primary/15 blur-3xl" />
-        <div className="absolute -bottom-40 left-0 size-[600px] rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[420px] rounded-full bg-accent/10 blur-3xl" />
-
-        {/* Hero overlay */}
-        <div className="absolute inset-0 z-[2] flex flex-col justify-between p-[18px] md:p-[26px_40px]">
-          {/* Spacer for navbar */}
-          <div className="h-14" />
-
-          {/* Center content */}
-          <div className="text-center px-3">
-            <div className="flex items-center justify-center gap-2 mb-5 flex-wrap">
-              <div className="inline-flex items-center gap-[6px] bg-card/60 backdrop-blur-lg border border-border rounded-full px-[14px] py-[6px] text-[12px] text-foreground/90">
-                <Sparkles className="size-4 text-primary" />
-                AI-Powered Platform
-              </div>
-              <div className="inline-flex items-center gap-[6px] bg-card/60 backdrop-blur-lg border border-border rounded-full px-[14px] py-[6px] text-[12px] text-foreground/90">
-                <span className="w-[6px] h-[6px] bg-primary rounded-full shrink-0 animate-pulse" />
-                New: Knowledge Base (RAG)
-              </div>
-            </div>
-            <h1 className="font-heading text-[clamp(30px,6.2vw,76px)] font-semibold text-foreground leading-[1.08] tracking-[-0.02em] mb-4">
-              The chatbot platform<br />builders actually want.
-            </h1>
-            <p className="text-[clamp(13px,1.45vw,18px)] text-muted-foreground leading-[1.65] max-w-[520px] mx-auto mb-7">
-              Create intelligent agents, deploy to every channel, and manage everything
-              from one powerful dashboard. No coding required.
-            </p>
-            <div className="flex items-center justify-center gap-[10px] flex-wrap">
-              <Link to="/signup">
-                <Button size="lg" className="glow-primary-sm">
-                  Get Started
-                  <ArrowRight className="size-4" />
-                </Button>
-              </Link>
-              <a href="#features">
-                <Button size="lg" variant="outline" className="bg-card/60 backdrop-blur-lg">
-                  <MessageSquare className="size-4" />
-                  Explore Features
-                </Button>
-              </a>
-            </div>
-
-            {/* Channel integrations */}
-            <div className="mt-14 flex flex-col items-center justify-center gap-3.5 select-none">
-              <span className="text-[10px] tracking-[0.15em] text-muted-foreground/60 uppercase font-semibold">Deploy to</span>
-              <div className="flex items-center justify-center gap-4 sm:gap-7 flex-wrap max-w-[600px]">
-                {channels.map((c) => (
-                  <div
-                    key={c.name}
-                    title={c.name}
-                    className="flex items-center gap-1.5 text-muted-foreground/60 hover:text-foreground hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer text-[13px] font-medium"
-                  >
-                    <c.icon className="size-[18px]" />
-                    <span className="hidden sm:inline">{c.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+    <div className="relative mx-auto max-w-[940px]">
+      <div className="absolute -inset-x-12 -top-8 bottom-0 -z-10 rounded-[32px] bg-primary/10 blur-3xl" />
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_24px_60px_-20px_rgba(0,0,0,0.35)]">
+        {/* App chrome */}
+        <div className="flex items-center gap-2 border-b border-border bg-secondary/40 px-4 py-2.5">
+          <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+          <span className="size-2.5 rounded-full bg-[#febc2e]" />
+          <span className="size-2.5 rounded-full bg-[#28c840]" />
+          <div className="mx-auto flex w-fit items-center gap-2 rounded-md bg-background px-3 py-1 text-[11px] text-muted-foreground">
+            <ChatIcon className="size-3" />
+            app.convio.ai/inbox
           </div>
+        </div>
 
-          {/* Logo marquee */}
-          <div className="px-2">
-            <LogoMarquee label="Trusted by teams at" />
-          </div>
-
-          {/* Bottom bar — stats */}
-          <div className="flex items-end justify-center sm:justify-between">
-            <div className="flex gap-[26px]">
-              {[
-                { num: '2,500+', label: 'Teams' },
-                { num: '5', label: 'Channels' },
-                { num: '10+', label: 'AI Models' },
-              ].map((s) => (
-                <div key={s.label}>
-                  <div className="font-heading text-[19px] font-semibold text-foreground leading-[1.2]">{s.num}</div>
-                  <div className="text-[11px] text-muted-foreground/60">{s.label}</div>
+        {/* App body */}
+        <div className="grid grid-cols-1 md:grid-cols-[210px_1fr]">
+          {/* Sidebar */}
+          <aside className="hidden flex-col gap-1 border-r border-border p-3 md:flex">
+            <div className="flex items-center gap-2 px-2 py-1.5">
+              <div className="size-6 rounded-md bg-primary/15 grid place-items-center">
+                <Sparkles className="size-3.5 text-primary" />
+              </div>
+              <span className="text-[13px] font-semibold">Convio</span>
+            </div>
+            <div className="mt-2 space-y-0.5">
+              {['Inbox', 'Agents', 'Knowledge', 'Analytics'].map((item, i) => (
+                <div
+                  key={item}
+                  className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[12px] ${
+                    i === 1 ? 'bg-primary/10 text-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  <span className="size-1.5 rounded-full bg-current opacity-50" />
+                  {item}
                 </div>
               ))}
             </div>
-            <div className="hidden sm:flex items-center gap-3 text-[13px] text-muted-foreground/50">
-              <span className="flex items-center gap-1.5"><Brain className="size-4 text-primary" />RAG</span>
-              <span className="flex items-center gap-1.5"><MessageSquare className="size-4 text-primary" />Real-time</span>
-              <span className="flex items-center gap-1.5"><BarChart3 className="size-4 text-primary" />Analytics</span>
+            <div className="mt-3 px-2 text-[10px] uppercase tracking-wider text-muted-foreground/60">
+              Channels
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5 px-1">
+              {channels.map((c) => (
+                <div
+                  key={c.name}
+                  className="grid size-7 place-items-center rounded-md border border-border bg-background text-muted-foreground"
+                  title={c.name}
+                >
+                  <c.icon className="size-3.5" />
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          {/* Conversation */}
+          <div className="flex flex-col gap-4 p-5 md:p-6">
+            <div className="flex items-center justify-between">
+              <div className="text-[12px] font-medium text-foreground">Support Agent</div>
+              <div className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <span className="size-1.5 rounded-full bg-primary" />
+                Online
+              </div>
+            </div>
+
+            {/* User message */}
+            <div className="flex justify-end">
+              <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-[12px] leading-relaxed text-primary-foreground">
+                What's your refund policy for annual plans?
+              </div>
+            </div>
+
+            {/* AI message */}
+            <div className="flex justify-start">
+              <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-background px-3.5 py-2.5 text-[12px] leading-relaxed text-foreground">
+                Annual plans include a <span className="font-medium">30-day full refund</span> and
+                prorated credits after that. I pulled this from your{' '}
+                <span className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  📄 policy.pdf
+                </span>{' '}
+                knowledge base.
+                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <Check className="size-3 text-primary" />
+                  Answered from RAG · 0.4s
+                </div>
+              </div>
+            </div>
+
+            {/* typing */}
+            <div className="flex justify-start">
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-border bg-background px-3.5 py-3">
+                <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.3s]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.15s]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/50" />
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+export function HeroSection() {
+  return (
+    <section id="top" className="relative overflow-hidden">
+      {/* Restrained background: fine grid + single soft wash */}
+      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.5] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,black,transparent_75%)]" />
+      <div className="pointer-events-none absolute left-1/2 top-[-120px] h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+
+      <div className="relative mx-auto max-w-[1160px] px-5 md:px-10 pb-16 pt-28 md:pb-24 md:pt-36">
+        {/* Eyebrow */}
+        <div className="flex justify-center">
+          <a
+            href="#channels"
+            className="group inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[12px] text-foreground/80 backdrop-blur transition-colors hover:border-primary/30"
+          >
+            <span className="inline-flex items-center gap-1 text-primary">
+              <Sparkles className="size-3.5" />
+              New
+            </span>
+            <span className="text-muted-foreground">Knowledge base &amp; RAG</span>
+            <ArrowUpRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </a>
+        </div>
+
+        {/* Headline */}
+        <h1 className="mx-auto mt-6 max-w-[16ch] text-center font-heading text-[clamp(34px,5.6vw,66px)] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground">
+          One AI agent for{' '}
+          <span className="relative whitespace-nowrap text-primary">
+            every channel
+            <svg
+              className="absolute -bottom-1 left-0 w-full text-primary/40"
+              viewBox="0 0 300 12"
+              fill="none"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path d="M2 9C60 3 240 3 298 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+          </span>
+          .
+        </h1>
+
+        <p className="mx-auto mt-5 max-w-[520px] text-center text-[clamp(15px,1.5vw,18px)] leading-[1.6] text-muted-foreground">
+          Build a single brain for your business and deploy it to web, WhatsApp, Telegram,
+          Discord, and Slack — no code required.
+        </p>
+
+        {/* CTAs */}
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link to="/signup">
+            <Button size="lg" className="glow-primary-sm w-full sm:w-auto">
+              Start free
+              <ArrowRight className="size-4" />
+            </Button>
+          </Link>
+          <a href="#channels">
+            <Button size="lg" variant="outline" className="w-full bg-card/60 sm:w-auto">
+              See channels
+            </Button>
+          </a>
+        </div>
+
+        <div className="mt-5 flex items-center justify-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Check className="size-3.5 text-primary" /> Free forever plan
+          </span>
+          <span className="hidden opacity-40 sm:inline">·</span>
+          <span className="inline-flex items-center gap-1">
+            <Check className="size-3.5 text-primary" /> No credit card
+          </span>
+        </div>
+
+        {/* Product preview */}
+        <div className="mt-16 md:mt-20">
+          <ProductPreview />
+        </div>
+
+        {/* Social proof */}
+        <div className="mt-16 md:mt-20">
+          <LogoMarquee label="Powering support at teams like" />
+        </div>
+      </div>
+    </section>
   )
 }

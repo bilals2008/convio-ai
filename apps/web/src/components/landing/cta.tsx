@@ -27,11 +27,11 @@ export function CTA() {
         <GlowCard>
           <div className="py-14 md:py-20 px-6 md:px-14 flex flex-col md:flex-row items-start md:items-center gap-10 md:gap-16">
             <div className="flex-1 min-w-0">
-              <h2 className="font-heading text-[clamp(24px,3.2vw,42px)] text-foreground leading-[1.12] tracking-[-0.02em] mb-3">
-                Your next project deserves a better chatbot.
+              <h2 className="font-heading text-[clamp(24px,3.2vw,40px)] text-foreground leading-[1.12] tracking-[-0.02em] mb-3">
+                Ship your first agent today.
               </h2>
               <p className="text-[15px] text-muted-foreground leading-[1.65] max-w-[420px] mb-4">
-                Build, deploy, and manage AI chatbots across every channel. No coding required.
+                Connect a channel, add your knowledge, and go live in minutes — no infrastructure to manage.
               </p>
 
               <div className="text-[15px] font-medium mb-6 h-6">
@@ -57,7 +57,7 @@ export function CTA() {
                   <ArrowRight className="size-4" />
                 </Button>
               </Link>
-              <a href="#features">
+               <a href="#channels">
                 <Button size="lg" variant="outline" className="w-full justify-center bg-card/60">
                   Explore Features
                 </Button>

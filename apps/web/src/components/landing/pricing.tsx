@@ -73,7 +73,7 @@ export function Pricing() {
           <SectionHeading
             eyebrow="Pricing"
             title="Simple, transparent pricing"
-            description="Start free, upgrade when you need more. No hidden fees."
+            description="Start free and upgrade as you grow. Every plan includes all channels — you only pay for scale."
           />
         </ScrollReveal>
 
@@ -134,6 +134,10 @@ export function Pricing() {
             </ScrollReveal>
           ))}
         </div>
+
+        <p className="mt-8 text-center text-[12px] text-muted-foreground">
+          All plans include unlimited channels, RAG, and community access. Prices in USD, billed monthly.
+        </p>
       </div>
     </section>
   )

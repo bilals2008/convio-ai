@@ -70,15 +70,21 @@ function OrbitRing({
   )
 }
 
+const FEATURES = [
+  { label: 'One brain', desc: 'Train once, answer everywhere' },
+  { label: 'In sync', desc: 'Same context on every channel' },
+  { label: 'No code', desc: 'Connect in a single click' },
+]
+
 export function ChannelOrbit() {
   return (
-    <section className="relative border-t border-border/60 overflow-hidden">
+    <section id="channels" className="relative border-t border-border/60 overflow-hidden">
       <div className="max-w-[1160px] mx-auto px-5 md:px-10 py-20 md:py-28">
         <ScrollReveal>
           <SectionHeading
-            eyebrow="One platform"
+            eyebrow="Channels"
             title="Every channel. One brain."
-            description="From messaging apps to your own product — Convio keeps one agent in sync across all of them."
+            description="From messaging apps to your own product, Convio keeps a single agent in sync — so customers get the same answer whether they reach you on Slack or WhatsApp."
           />
         </ScrollReveal>
 
@@ -105,6 +111,20 @@ export function ChannelOrbit() {
         <OrbitRing items={MIDDLE} size="62%" spin="animate-orbit-mid" counter="animate-orbit-counter-mid" />
         <OrbitRing items={OUTER} size="88%" spin="animate-orbit-fast" counter="animate-orbit-counter-fast" />
       </div>
+
+      <ScrollReveal className="mt-16 md:mt-20">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {FEATURES.map((f) => (
+            <div
+              key={f.label}
+              className="rounded-xl border border-border bg-card/50 px-5 py-4"
+            >
+              <div className="text-[13px] font-semibold text-foreground">{f.label}</div>
+              <div className="mt-1 text-[12px] text-muted-foreground">{f.desc}</div>
+            </div>
+          ))}
+        </div>
+      </ScrollReveal>
       </div>
     </section>
   )
