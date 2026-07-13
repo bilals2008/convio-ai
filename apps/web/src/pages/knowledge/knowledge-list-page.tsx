@@ -16,6 +16,15 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +74,9 @@ export default function KnowledgeListPage() {
   const [search, setSearch] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [sourceModalOpen, setSourceModalOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createDesc, setCreateDesc] = useState('')
 
   const { data: knowledgeBases = [], isLoading } = useQuery({
     queryKey: ['knowledge-bases', orgId],
@@ -84,6 +96,21 @@ export default function KnowledgeListPage() {
     },
   })
 
+  const createMutation = useMutation({
+    mutationFn: () =>
+      knowledgeApi.create({ name: createName.trim() || 'Untitled', description: createDesc.trim(), organizationId: orgId! }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] })
+      const createdId = res.data?.data?.id as string | undefined
+      setCreateOpen(false)
+      setCreateName('')
+      setCreateDesc('')
+      toast.success('Knowledge base created')
+      if (createdId) navigate(`/knowledge/${createdId}`)
+    },
+    onError: (err: unknown) => toast.error(`Failed to create: ${err instanceof Error ? err.message : String(err)}`),
+  })
+
   const filtered = useMemo(() =>
     knowledgeBases.filter((kb) =>
       !search || kb.name.toLowerCase().includes(search.toLowerCase()) || kb.description?.toLowerCase().includes(search.toLowerCase())
@@ -93,7 +120,7 @@ export default function KnowledgeListPage() {
   const loading = orgLoading || isLoading
 
   const handleSourceSelect = (sourceId: SourceType) => {
-    navigate('/knowledge/new', { state: { sourceType: sourceId } })
+    setCreateOpen(true)
   }
 
   return (
@@ -105,7 +132,7 @@ export default function KnowledgeListPage() {
             Manage context for your AI agents
           </p>
         </div>
-        <Button size="sm" className="gap-1.5 shrink-0" onClick={() => navigate('/knowledge/new')}>
+        <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setCreateOpen(true)}>
           <Plus className="size-3.5" />
           Create Knowledge Base
         </Button>
@@ -198,6 +225,47 @@ export default function KnowledgeListPage() {
         onOpenChange={setSourceModalOpen}
         onSelect={handleSourceSelect}
       />
+
+      <Dialog open={createOpen} onOpenChange={(open) => {
+        setCreateOpen(open)
+        if (!open) { setCreateName(''); setCreateDesc('') }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Knowledge Base</DialogTitle>
+            <DialogDescription>Add a name and optional description.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Name <span className="text-destructive">*</span></label>
+              <Input
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                placeholder="e.g. Product Docs"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                value={createDesc}
+                onChange={(e) => setCreateDesc(e.target.value)}
+                placeholder="What is this knowledge base for?"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setCreateOpen(false); setCreateName(''); setCreateDesc('') }}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => createMutation.mutate()} disabled={!createName.trim() || createMutation.isPending}>
+              {createMutation.isPending && <Loader2 className="size-3.5 animate-spin mr-1.5" />}
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
