@@ -7,7 +7,6 @@ import {
   MessageSquare,
   MessageCircle,
   BookOpen,
-  Settings,
   Users,
   Key,
   Terminal,
@@ -30,46 +29,22 @@ import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
 function SettingsGroup({ collapsed }: { collapsed: boolean }) {
-  const groups = [
-    {
-      label: 'General',
-      items: [
-        { icon: User, label: 'Profile', href: '/settings/profile' },
-        { icon: Settings, label: 'Organization', href: '/settings/organization' },
-        { icon: Users, label: 'Team', href: '/settings/team' },
-      ],
-    },
-    {
-      label: 'Security',
-      items: [
-        { icon: Building2, label: 'SSO', href: '/settings/sso' },
-        { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
-      ],
-    },
-    {
-      label: 'Integrations',
-      items: [
-        { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
-        { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
-        { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
-      ],
-    },
-    {
-      label: 'Tools',
-      items: [
-        { icon: Terminal, label: 'Playground', href: '/settings/playground' },
-      ],
-    },
+  const items = [
+    { icon: User, label: 'Profile', href: '/settings/profile' },
+    { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
+    { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
+    { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
+    { icon: Building2, label: 'SSO', href: '/settings/sso' },
+    { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
+    { icon: Terminal, label: 'Playground', href: '/settings/playground' },
   ]
 
   if (collapsed) {
     return (
       <div className="space-y-0.5 mt-4">
-        {groups.flatMap((g) =>
-          g.items.map((item) => (
-            <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
-          ))
-        )}
+        {items.map((item) => (
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+        ))}
       </div>
     )
   }
@@ -79,18 +54,11 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
       <div className="px-3 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
         Settings
       </div>
-      {groups.map((group) => (
-        <div key={group.label} className="mt-2">
-          <div className="px-3 py-1 text-[10px] font-medium text-muted-foreground/40">
-            {group.label}
-          </div>
-          <div className="flex flex-col gap-0.5">
-            {group.items.map((item) => (
-              <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
-            ))}
-          </div>
-        </div>
-      ))}
+      <div className="flex flex-col gap-0.5">
+        {items.map((item) => (
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -107,12 +75,6 @@ export function Sidebar() {
     : user?.email?.slice(0, 2).toUpperCase() || 'U'
 
   const avatarSrc = user?.avatar || org?.logo || undefined
-
-  useEffect(() => {
-    if (pathname.startsWith('/settings')) {
-      setCollapsed(true)
-    }
-  }, [pathname, setCollapsed])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -184,6 +146,11 @@ export function Sidebar() {
           <SidebarGroup label="Conversations">
             <SidebarItem icon={MessageSquare} label="Conversations" href="/conversations" />
             <SidebarItem icon={MessageCircle} label="Widgets" href="/widgets" />
+          </SidebarGroup>
+
+          <SidebarGroup label="Workspace">
+            <SidebarItem icon={Building2} label="Organization" href="/settings/organization" />
+            <SidebarItem icon={Users} label="Team" href="/settings/team" />
           </SidebarGroup>
 
           <SettingsGroup collapsed={collapsed} />
@@ -371,35 +338,25 @@ const mobileNavGroups = [
       { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
     ],
   },
+  {
+    label: 'Workspace',
+    items: [
+      { icon: Building2, label: 'Organization', href: '/settings/organization' },
+      { icon: Users, label: 'Team', href: '/settings/team' },
+    ],
+  },
 ]
 
 const mobileSettingsGroups = [
   {
-    label: 'General',
+    label: 'Settings',
     items: [
       { icon: User, label: 'Profile', href: '/settings/profile' },
-      { icon: Settings, label: 'Organization', href: '/settings/organization' },
-      { icon: Users, label: 'Team', href: '/settings/team' },
-    ],
-  },
-  {
-    label: 'Security',
-    items: [
-      { icon: Building2, label: 'SSO', href: '/settings/sso' },
-      { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
-    ],
-  },
-  {
-    label: 'Integrations',
-    items: [
       { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
-    ],
-  },
-  {
-    label: 'Tools',
-    items: [
+      { icon: Building2, label: 'SSO', href: '/settings/sso' },
+      { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
       { icon: Terminal, label: 'Playground', href: '/settings/playground' },
     ],
   },
