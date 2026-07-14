@@ -12,6 +12,7 @@ interface MessageItem {
   id: string
   role: MessageRole
   content: string
+  reasoning?: string
   status?: MessageStatus
   createdAt: string
 }
@@ -20,9 +21,10 @@ interface MessageListProps {
   messages: MessageItem[]
   loading?: boolean
   streamingMessage?: MessageItem
+  streamingReasoning?: string
 }
 
-export function MessageList({ messages, loading, streamingMessage }: MessageListProps) {
+export function MessageList({ messages, loading, streamingMessage, streamingReasoning }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -84,6 +86,16 @@ export function MessageList({ messages, loading, streamingMessage }: MessageList
           </div>
           <div className="max-w-[70%]">
             <div className="rounded-xl rounded-tl-sm px-3 py-2 text-sm bg-muted">
+              {streamingReasoning && (
+                <details className="px-0 pt-0 pb-2 text-xs text-muted-foreground border-b border-border/40 mb-2" open>
+                  <summary className="flex cursor-pointer select-none items-center gap-1.5 font-medium text-foreground/60 hover:text-foreground transition-colors">
+                    Reasoning…
+                  </summary>
+                  <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                    {streamingReasoning}
+                  </div>
+                </details>
+              )}
               {streamingMessage.content ? (
                 <AiResponse content={streamingMessage.content} isStreaming />
               ) : (

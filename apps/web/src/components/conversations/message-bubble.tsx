@@ -9,6 +9,7 @@ interface MessageItem {
   id: string
   role: MessageRole
   content: string
+  reasoning?: string
   status?: MessageStatus
   createdAt: string
 }
@@ -67,7 +68,19 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           {isUser ? (
             <span className="whitespace-pre-wrap">{message.content}</span>
           ) : (
-            <AiResponse content={message.content} />
+            <>
+              {message.reasoning && (
+                <details className="px-0 pt-0 pb-2 text-xs text-muted-foreground border-b border-border/40 mb-2">
+                  <summary className="cursor-pointer select-none font-medium text-foreground/60 hover:text-foreground transition-colors">
+                    Show reasoning
+                  </summary>
+                  <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                    {message.reasoning}
+                  </div>
+                </details>
+              )}
+              <AiResponse content={message.content} />
+            </>
           )}
         </div>
         <div className={cn('flex items-center gap-1.5 text-xs text-muted-foreground', isUser && 'justify-end')}>

@@ -24,6 +24,7 @@ interface MessageItem {
   id: string
   role: MessageRole
   content: string
+  reasoning?: string
   status?: MessageStatus
   createdAt: string
 }
@@ -48,6 +49,7 @@ export default function ConversationDetailPage() {
   const queryClient = useQueryClient()
   const [sending, setSending] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [streamingReasoning, setStreamingReasoning] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [typingAgents, setTypingAgents] = useState<string[]>([])
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -130,6 +132,7 @@ export default function ConversationDetailPage() {
     setSending(true)
     setStreaming(true)
     setStreamingContent('')
+    setStreamingReasoning('')
     setError(null)
 
     try {
@@ -157,6 +160,7 @@ export default function ConversationDetailPage() {
       const decoder = new TextDecoder()
       let buffer = ''
       let fullContent = ''
+      let fullReasoning = ''
       let streamError: string | null = null
 
       while (true) {
@@ -175,6 +179,9 @@ export default function ConversationDetailPage() {
               const parsed = JSON.parse(data)
               if (parsed.error) {
                 streamError = parsed.error
+              } else if (parsed.type === 'reasoning') {
+                fullReasoning += parsed.content
+                setStreamingReasoning(fullReasoning)
               } else if (parsed.content) {
                 fullContent += parsed.content
                 setStreamingContent(fullContent)
@@ -199,6 +206,7 @@ export default function ConversationDetailPage() {
       setSending(false)
       setStreaming(false)
       setStreamingContent('')
+      setStreamingReasoning('')
     }
   }
 
@@ -260,6 +268,7 @@ export default function ConversationDetailPage() {
             messages={displayMessages}
             loading={isLoading}
             streamingMessage={streaming ? { role: 'assistant', content: streamingContent, id: 'streaming', createdAt: new Date().toISOString(), status: 'sending' } : undefined}
+            streamingReasoning={streamingReasoning}
           />
 
           {typingAgents.length > 0 && !streaming && (

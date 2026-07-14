@@ -190,7 +190,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
       for await (const chunk of stream) {
         if (clientDisconnected) break
-        if (chunk.content) {
+        if (chunk.type === 'reasoning' && chunk.content) {
+          reply.raw.write(`data: ${JSON.stringify({ type: 'reasoning', content: chunk.content })}\n\n`)
+        } else if (chunk.content) {
           fullResponse += chunk.content
           reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
         }
