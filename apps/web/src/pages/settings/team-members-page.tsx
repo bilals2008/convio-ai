@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, Download, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Skeleton } from '@/components/shared/loading'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { MemberTable } from '@/components/settings/member-table'
 import { MemberInviteForm } from '@/components/settings/member-invite-form'
 import { MemberRemoveDialog } from '@/components/settings/member-remove-dialog'
@@ -84,30 +84,35 @@ export default function TeamMembersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Team Members"
-        description="Manage who has access to your organization"
-        action={
-          <Button onClick={() => setInviteOpen(true)}>
-            <Plus className="size-4" />
-            Invite Member
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold tracking-tight">Team members</h1>
+          <Badge variant="secondary" className="text-xs">
+            {members.length} users
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <Download className="size-3.5" />
+            Download CSV
           </Button>
-        }
-      />
+          <Button size="sm" onClick={() => setInviteOpen(true)}>
+            <Plus className="size-3.5" />
+            Add user
+          </Button>
+        </div>
+      </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <MemberTable
-            members={members || []}
-            onRoleChange={(userId, role) => roleMutation.mutate({ userId, role })}
-            onRemove={(userId) => {
-              const member = members?.find((m) => m.userId === userId)
-              if (member) setRemoveMember(member)
-            }}
-            loading={roleMutation.isPending}
-          />
-        </CardContent>
-      </Card>
+      <MemberTable
+        members={members || []}
+        onRoleChange={(userId, role) => roleMutation.mutate({ userId, role })}
+        onRemove={(userId) => {
+          const member = members?.find((m) => m.userId === userId)
+          if (member) setRemoveMember(member)
+        }}
+        loading={roleMutation.isPending}
+        removingId={removeMutation.isPending ? removeMember?.userId : null}
+      />
 
       <MemberInviteForm
         open={inviteOpen}
