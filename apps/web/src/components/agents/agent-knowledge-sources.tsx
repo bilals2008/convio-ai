@@ -1,10 +1,11 @@
-import { BookOpen, FileText, Globe, Plug, Database } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
+import { FileIcon } from '@/components/shared/file-icon'
 
 const categories = [
-  { icon: FileText, label: 'Files', examples: 'PDF, DOCX, CSV, TXT' },
-  { icon: Globe, label: 'Web', examples: 'Website, Sitemap, URLs' },
-  { icon: Plug, label: 'Integrations', examples: 'Notion, Google Drive, GitHub' },
-  { icon: Database, label: 'Structured', examples: 'JSON, FAQ, Tables' },
+  { type: 'document', label: 'Files', examples: 'PDF, DOCX, CSV, TXT' },
+  { type: 'web', label: 'Web', examples: 'Website, Sitemap, URLs' },
+  { type: 'integration', label: 'Integrations', examples: 'Notion, Google Drive, GitHub' },
+  { type: 'structured', label: 'Structured', examples: 'JSON, FAQ, Tables' },
 ]
 
 export function AgentKnowledgeSources() {
@@ -28,7 +29,7 @@ export function AgentKnowledgeSources() {
             key={cat.label}
             className="flex items-center gap-2 rounded-lg border border-dashed border-border/60 px-3 py-2 opacity-60"
           >
-            <cat.icon className="size-3.5 shrink-0 text-muted-foreground" />
+            <FileIcon type={cat.type} size={16} className="shrink-0" />
             <div className="min-w-0">
               <p className="text-[11px] font-medium leading-tight">{cat.label}</p>
               <p className="text-[10px] text-muted-foreground truncate">{cat.examples}</p>
