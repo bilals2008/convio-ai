@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { useController, type Control } from "react-hook-form"
-import { Sparkles, SlidersHorizontal } from "lucide-react"
+import { SlidersHorizontal } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
   Combobox,
@@ -13,7 +12,6 @@ import {
   ComboboxItem,
 } from "@/components/ui/combobox"
 import { ModelPicker } from "./model-picker-dialog"
-import { PromptTemplatesModal } from "./prompt-templates-modal"
 import { ModelBadges } from "./model-badges"
 import { getModelBadges, providerLabel } from "./model-meta"
 import { getReasoningEfforts } from "./reasoning"
@@ -69,8 +67,6 @@ export function AgentBehaviorSettings({
   const { field: tempField } = useController({ name: 'temperature', control })
   const { field: promptField } = useController({ name: 'systemPrompt', control })
   const { field: reasoningField } = useController({ name: 'reasoningEffort', control })
-
-  const [showTemplates, setShowTemplates] = useState(false)
 
   const selectedModel = models.find((m) => m.id === modelField.value)
   const selectedBadges = selectedModel ? getModelBadges(selectedModel) : []
@@ -160,16 +156,6 @@ export function AgentBehaviorSettings({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="system-prompt" className="text-xs font-medium">System Prompt</Label>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowTemplates(true)}
-            className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <Sparkles className="size-3" />
-            Templates
-          </Button>
         </div>
         <Textarea
           id="system-prompt"
@@ -221,14 +207,6 @@ export function AgentBehaviorSettings({
         )}
       </div>
 
-      <PromptTemplatesModal
-        open={showTemplates}
-        onOpenChange={setShowTemplates}
-        onSelect={(prompt) => {
-          promptField.onChange(prompt)
-          setShowTemplates(false)
-        }}
-      />
     </div>
   )
 }
