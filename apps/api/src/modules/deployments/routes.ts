@@ -213,6 +213,18 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       // second setup link fails with "Phone number limit reached". If the
       // client picks an existing phoneNumberId, wire it up directly.
       if (config.phoneNumberId) {
+        const existing = await prisma.deployment.findFirst({
+          where: {
+            channel: 'whatsapp',
+            status: 'active',
+            config: { path: ['phoneNumberId'], equals: config.phoneNumberId as string },
+          },
+          select: { id: true, agentId: true },
+        })
+        if (existing) {
+          throw new AppError(409, `This WhatsApp number is already used by deployment ${existing.agentId}`, 'CONFLICT')
+        }
+
         const messageWebhookUrl = `${webhookBaseUrl}/api/deployments/PLACEHOLDER/kapso-webhook`
 
         const deployment = await prisma.deployment.create({
