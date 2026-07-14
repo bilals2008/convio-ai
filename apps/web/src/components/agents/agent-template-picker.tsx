@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, Check } from 'lucide-react'
+import { Loader2, ChevronDown, Check } from 'lucide-react'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
@@ -19,9 +20,12 @@ interface AgentTemplatePickerProps {
   disabled?: boolean
 }
 
-// Grid of ready-made prompt templates. Selecting one prefills the create form.
 export function AgentTemplatePicker({ selectedId, onSelect, disabled }: AgentTemplatePickerProps) {
   const { orgId } = useOrg()
+  const [open, setOpen] = useState(false)
+  const selectedName = selectedId
+    ? null
+    : null
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['agent-templates', orgId],
@@ -33,37 +37,63 @@ export function AgentTemplatePicker({ selectedId, onSelect, disabled }: AgentTem
     staleTime: 5 * 60 * 1000,
   })
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-6">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
+  const selected = templates.find((t) => t.id === selectedId)
 
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      {templates.map((template) => {
-        const selected = template.id === selectedId
-        return (
-          <button
-            key={template.id}
-            type="button"
-            disabled={disabled}
-            onClick={() => onSelect(template)}
-            className={cn(
-              'flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors disabled:opacity-50',
-              selected ? 'border-primary bg-primary/5' : 'hover:bg-muted/40',
-            )}
-          >
-            <div className="flex w-full items-center justify-between gap-2">
-              <span className="text-sm font-medium">{template.name}</span>
-              {selected && <Check className="size-4 shrink-0 text-primary" />}
+    <div className="rounded-lg border">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        disabled={disabled}
+        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted/40 disabled:opacity-50"
+      >
+        <span>{selected ? selected.name : 'Choose a template…'}</span>
+        <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="border-t">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
-            <span className="text-[11px] leading-tight text-muted-foreground">{template.description}</span>
-          </button>
-        )
-      })}
+          ) : templates.length === 0 ? (
+            <p className="px-4 py-6 text-center text-xs text-muted-foreground">No templates available.</p>
+          ) : (
+            <div className="divide-y">
+              {templates.map((template) => {
+                const isSelected = template.id === selectedId
+                return (
+                  <button
+                    key={template.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => {
+                      onSelect(template)
+                      setOpen(false)
+                    }}
+                    className={cn(
+                      'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors disabled:opacity-50',
+                      isSelected ? 'bg-primary/5' : 'hover:bg-muted/40',
+                    )}
+                  >
+                    <span className={cn(
+                      'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors',
+                      isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30',
+                    )}>
+                      {isSelected && <Check className="size-3" />}
+                    </span>
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium">{template.name}</span>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{template.description}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
