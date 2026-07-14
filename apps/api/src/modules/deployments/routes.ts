@@ -5,11 +5,20 @@ import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
 import crypto from 'node:crypto'
 import { processIncomingMessage } from '../../services/whatsapp.js'
+import { processTelegramUpdate, type TelegramUpdate } from '../../services/telegram.js'
+import {
+  processDiscordInteraction,
+  verifyDiscordSignature,
+  type DiscordInteraction,
+} from '../../services/discord.js'
+import { processSlackEvent } from '../../services/slack.js'
 import {
   createKapsoCustomer,
   generateSetupLink,
   registerMessageWebhook,
+  listPhoneNumbers,
 } from '../../services/kapso-platform.js'
+
 
 const channels = ['web', 'whatsapp', 'slack', 'discord', 'telegram', 'api'] as const
 type Channel = (typeof channels)[number]
@@ -57,8 +66,10 @@ const slackConfigSchema = z.object({
 const discordConfigSchema = z.object({
   botToken: z.string().min(1),
   applicationId: z.string().min(1),
+  publicKey: z.string().min(1),
   guildId: z.string().optional(),
 }).passthrough()
+
 
 const telegramConfigSchema = z.object({
   botToken: z.string().min(1),
@@ -105,6 +116,7 @@ const sensitiveKeys = new Set([
   'password',
   'secret',
   'token',
+  'kapsoWebhookSecret',
 ])
 
 function maskSensitive(config: unknown): unknown {
@@ -127,7 +139,45 @@ function maskSensitive(config: unknown): unknown {
 }
 
 export default async function deploymentsRoutes(fastify: FastifyInstance) {
+  // Preserve the raw request body (scoped to this plugin) so channel webhooks
+  // can verify signatures (Discord Ed25519, Slack HMAC) against the exact bytes.
+  fastify.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (req, body, done) => {
+      ;(req as unknown as { rawBody: string }).rawBody = body as string
+      if (!body || (body as string).length === 0) {
+        done(null, {})
+        return
+      }
+      try {
+        done(null, JSON.parse(body as string))
+      } catch (err) {
+        done(err as Error, undefined)
+      }
+    }
+  )
+
+  // GET /api/kapso/phone-numbers — List WhatsApp numbers already connected to Kapso
+  // Lets the client reuse an existing number instead of running the setup link
+  // flow again (Kapso free plan allows only one connected number).
+  fastify.get('/kapso/phone-numbers', {
+    preHandler: [fastify.authenticate],
+  }, async () => {
+    const numbers = await listPhoneNumbers()
+    const data = numbers
+      .filter((n) => n.kind !== 'sandbox')
+      .map((n) => ({
+        phoneNumberId: n.id,
+        displayName: n.display_name ?? null,
+        displayPhone: n.display_phone_number ?? null,
+        kind: n.kind ?? null,
+      }))
+    return { data }
+  })
+
   // POST /api/agents/:agentId/deployments — Create deployment (member only)
+
   fastify.post('/agents/:agentId/deployments', {
     preHandler: [
       fastify.authenticate,
@@ -157,6 +207,36 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
 
     if (channel === 'whatsapp' && config.provider === 'kapso') {
       const webhookBaseUrl = (config.webhookUrl as string) || fastify.config.PUBLIC_URL
+
+      // Reuse an already-connected number instead of running the setup link
+      // flow again. Kapso's free plan allows only one connected number, so a
+      // second setup link fails with "Phone number limit reached". If the
+      // client picks an existing phoneNumberId, wire it up directly.
+      if (config.phoneNumberId) {
+        const messageWebhookUrl = `${webhookBaseUrl}/api/deployments/PLACEHOLDER/kapso-webhook`
+
+        const deployment = await prisma.deployment.create({
+          data: { agentId, channel, config: finalConfig as any, status: 'pending' },
+        })
+
+        try {
+          const wh = await registerMessageWebhook(
+            config.phoneNumberId as string,
+            messageWebhookUrl.replace('PLACEHOLDER', deployment.id)
+          )
+          finalConfig.kapsoWebhookSecret = wh.secretKey
+        } catch (err) {
+          await prisma.deployment.delete({ where: { id: deployment.id } }).catch(() => {})
+          throw new AppError(502, `Failed to register Kapso webhook: ${(err as Error).message}`)
+        }
+
+        const updated = await prisma.deployment.update({
+          where: { id: deployment.id },
+          data: { config: finalConfig as any, status: 'active' },
+        })
+
+        return { data: maskSensitive(updated) }
+      }
 
       const customer = await createKapsoCustomer(
         agent.name,
@@ -308,7 +388,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const requiredFields: Record<Channel, string[]> = {
       web: [],
       whatsapp: (config.provider === 'twilio') ? ['twilioAccountSid', 'twilioAuthToken', 'twilioNumber']
-        : (config.provider === 'kapso') ? ['webhookUrl']
+        : (config.provider === 'kapso') ? ['phoneNumberId']
         : ['phoneNumberId', 'accessToken'],
       slack: ['botToken', 'signingSecret'],
       discord: ['botToken', 'applicationId'],
@@ -362,11 +442,14 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       const displayPhone = query.display_phone_number
 
       if (phoneNumberId) {
-        const webhookBaseUrl = config.webhookUrl as string
+        // Kapso deployments don't collect a webhookUrl in the UI, so fall back
+        // to the server's PUBLIC_URL — matching the create flow above.
+        const webhookBaseUrl = (config.webhookUrl as string) || fastify.config.PUBLIC_URL
         const messageWebhookUrl = `${webhookBaseUrl}/api/deployments/${id}/kapso-webhook`
 
         try {
-          await registerMessageWebhook(phoneNumberId, messageWebhookUrl)
+          const wh = await registerMessageWebhook(phoneNumberId, messageWebhookUrl)
+          config.kapsoWebhookSecret = wh.secretKey
           request.log.info({ deploymentId: id, phoneNumberId }, 'Kapso message webhook registered')
         } catch (err) {
           request.log.error({ deploymentId: id, error: (err as Error).message }, 'Failed to register Kapso webhook')
@@ -468,20 +551,130 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const from = message.from || body.conversation?.phone_number || ''
     const text = message.text.body
     const contactName = message.kapso?.contact_name || body.conversation?.kapso?.contact_name || undefined
+    const messageId = (message.id as string | undefined) || undefined
 
     if (!from || !text) {
       return reply.code(200).send('OK')
     }
 
-    request.log.info({ from, deploymentId: id }, 'Kapso webhook: processing incoming message')
+    request.log.info({ from, deploymentId: id, messageId }, 'Kapso webhook: received incoming message')
 
-    const result = await processIncomingMessage(id, from, text, contactName)
+    // Ack Kapso immediately. Generating the agent reply can take longer than
+    // Kapso's delivery timeout (~5s); if we wait for it, Kapso marks the
+    // delivery failed and retries up to 3 times, producing duplicate replies.
+    // Process the message after responding instead.
+    void processIncomingMessage(id, from, text, contactName, messageId)
+      .then((result) => {
+        if (result.error) {
+          request.log.error({ error: result.error, from, deploymentId: id }, 'Kapso webhook: processing failed')
+        } else {
+          request.log.info({ from, deploymentId: id }, 'Kapso webhook: processing succeeded')
+        }
+      })
+      .catch((err) => {
+        request.log.error({ err, from, deploymentId: id }, 'Kapso webhook: processing threw')
+      })
+
+    return reply.code(200).send('OK')
+  })
+
+  // POST /api/deployments/:id/telegram-webhook — Receive Telegram updates
+  fastify.post('/deployments/:id/telegram-webhook', async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const deployment = await prisma.deployment.findUnique({
+      where: { id },
+      include: { agent: true },
+    }).catch(() => null)
+
+    if (!deployment || deployment.channel !== 'telegram') {
+      request.log.warn({ deploymentId: id }, 'Telegram webhook: deployment not found or wrong channel')
+      return reply.code(200).send('OK')
+    }
+
+    const config = deployment.config as Record<string, unknown>
+    const botToken = config.botToken as string
+    if (!botToken) {
+      request.log.warn({ deploymentId: id }, 'Telegram webhook: missing bot token')
+      return reply.code(200).send('OK')
+    }
+
+    const update = request.body as TelegramUpdate
+
+    const result = await processTelegramUpdate(id, botToken, update)
     if (result.error) {
-      request.log.error({ error: result.error, from, deploymentId: id }, 'Kapso webhook: processing failed')
-    } else {
-      request.log.info({ from, deploymentId: id }, 'Kapso webhook: processing succeeded')
+      request.log.error({ error: result.error, deploymentId: id }, 'Telegram webhook: processing failed')
+    }
+
+    return reply.code(200).send('OK')
+  })
+
+  // POST /api/deployments/:id/discord-webhook — Receive Discord interactions
+  fastify.post('/deployments/:id/discord-webhook', async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const deployment = await prisma.deployment.findUnique({
+      where: { id },
+      include: { agent: true },
+    }).catch(() => null)
+
+    if (!deployment || deployment.channel !== 'discord') {
+      return reply.code(401).send({ error: 'Unknown deployment' })
+    }
+
+    const config = deployment.config as Record<string, unknown>
+    const publicKey = config.publicKey as string | undefined
+
+    const signature = request.headers['x-signature-ed25519'] as string | undefined
+    const timestamp = request.headers['x-signature-timestamp'] as string | undefined
+    const rawBody = (request as unknown as { rawBody?: string }).rawBody ?? ''
+
+    if (!publicKey || !signature || !timestamp) {
+      return reply.code(401).send({ error: 'Missing signature headers' })
+    }
+
+    if (!verifyDiscordSignature(publicKey, signature, timestamp, rawBody)) {
+      return reply.code(401).send({ error: 'Invalid request signature' })
+    }
+
+    const interaction = request.body as DiscordInteraction
+
+    const response = await processDiscordInteraction(id, interaction)
+    return reply.code(200).send(response)
+  })
+
+  // POST /api/deployments/:id/slack-webhook — Receive Slack events (URL verification + events)
+  fastify.post('/deployments/:id/slack-webhook', async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const deployment = await prisma.deployment.findUnique({
+      where: { id },
+      include: { agent: true },
+    }).catch(() => null)
+
+    if (!deployment || deployment.channel !== 'slack') {
+      return reply.code(404).send({ error: 'Unknown deployment' })
+    }
+
+    const config = deployment.config as Record<string, unknown>
+    const signingSecret = config.signingSecret as string
+    const rawBody = (request as unknown as { rawBody?: string }).rawBody ?? JSON.stringify(request.body ?? {})
+
+    const result = await processSlackEvent(id, signingSecret, rawBody, request.headers)
+
+    // URL verification handshake — echo the challenge back
+    if (result.challenge) {
+      return reply.code(200).send({ challenge: result.challenge })
+    }
+
+    if (result.error) {
+      if (result.error === 'Invalid signature') {
+        return reply.code(401).send({ error: result.error })
+      }
+      request.log.error({ error: result.error, deploymentId: id }, 'Slack webhook: processing failed')
     }
 
     return reply.code(200).send('OK')
   })
 }
+

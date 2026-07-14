@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Loader2, ExternalLink, Copy, Check } from 'lucide-react'
+import { deployments as deploymentsApi } from '@/lib/api'
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,13 @@ import {
 import { Badge } from '@/components/ui/badge'
 
 type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
+
+interface KapsoNumber {
+  phoneNumberId: string
+  displayName: string | null
+  displayPhone: string | null
+  kind: string | null
+}
 
 interface DeploymentFormProps {
   agents: { id: string; name: string }[]
@@ -85,18 +93,51 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
   const [saving, setSaving] = useState(false)
   const [setupLinkUrl, setSetupLinkUrl] = useState('')
   const [copied, setCopied] = useState(false)
+  const [kapsoNumbers, setKapsoNumbers] = useState<KapsoNumber[]>([])
+  const [kapsoNumbersLoading, setKapsoNumbersLoading] = useState(false)
+  // '' = connect a new number (setup link), otherwise an existing phoneNumberId
+  const [kapsoNumberChoice, setKapsoNumberChoice] = useState('')
 
   const fields = channelFields[channel]
   const useTwilio = channel === 'whatsapp' && whatsappProvider === 'twilio'
   const useKapso = channel === 'whatsapp' && whatsappProvider === 'kapso'
+
+  // Load already-connected Kapso numbers so the user can reuse one instead of
+  // hitting the free-plan "one number" limit with a second setup link.
+  useEffect(() => {
+    if (!useKapso) return
+    let cancelled = false
+    setKapsoNumbersLoading(true)
+    deploymentsApi
+      .kapsoNumbers()
+      .then((res) => {
+        if (cancelled) return
+        const raw = res.data?.data ?? res.data ?? []
+        setKapsoNumbers(Array.isArray(raw) ? raw : [])
+      })
+      .catch(() => {
+        if (!cancelled) setKapsoNumbers([])
+      })
+      .finally(() => {
+        if (!cancelled) setKapsoNumbersLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [useKapso])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     let finalConfig = { ...config }
     if (useTwilio) finalConfig.provider = 'twilio'
-    else if (useKapso) finalConfig.provider = 'kapso'
-    else delete finalConfig.provider
+    else if (useKapso) {
+      finalConfig.provider = 'kapso'
+      // Reuse an existing connected number when chosen; otherwise leave
+      // phoneNumberId unset so the backend runs the setup-link flow.
+      if (kapsoNumberChoice) finalConfig.phoneNumberId = kapsoNumberChoice
+      else delete finalConfig.phoneNumberId
+    } else delete finalConfig.provider
 
     const result = await onSave({ agentId, channel, config: finalConfig })
     if (result && result.setupLinkUrl) {
@@ -242,9 +283,30 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
               )}
 
               {useKapso ? (
-                <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="space-y-2">
+                  <Label>WhatsApp Number</Label>
+                  <Select value={kapsoNumberChoice} onValueChange={setKapsoNumberChoice}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={kapsoNumbersLoading ? 'Loading numbers…' : 'Connect a new number'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Connect a new number</SelectItem>
+                      {kapsoNumbers.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>Already connected</SelectLabel>
+                          {kapsoNumbers.map((n) => (
+                            <SelectItem key={n.phoneNumberId} value={n.phoneNumberId}>
+                              {n.displayPhone || n.displayName || n.phoneNumberId}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-muted-foreground">
-                    No configuration needed. After creating, you'll get a setup link to connect your WhatsApp via Facebook login.
+                    {kapsoNumberChoice
+                      ? 'This agent will use the selected connected number. No setup link needed.'
+                      : "You'll get a setup link to connect a new WhatsApp number via Facebook login."}
                   </p>
                 </div>
               ) : useTwilio ? twilioFields.map((field) => (

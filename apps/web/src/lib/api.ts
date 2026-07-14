@@ -77,6 +77,17 @@ export const agents = {
   },
   addTool: (id: string, toolId: string) => api.post(`/agents/${id}/tools`, { toolId }),
   removeTool: (id: string, toolId: string) => api.delete(`/agents/${id}/tools/${toolId}`),
+  templates: (orgId: string) => api.get(`/organizations/${orgId}/agent-templates`),
+  createFromTemplate: (orgId: string, template: string, overrides?: Record<string, unknown>) =>
+    api.post(`/agents/from-template`, { organizationId: orgId, template, ...(overrides || {}) }),
+}
+
+export const moderation = {
+  get: (orgId: string) => api.get(`/organizations/${orgId}/moderation`),
+  update: (orgId: string, data: Record<string, unknown>) =>
+    api.patch(`/organizations/${orgId}/moderation`, data),
+  test: (orgId: string, text: string) =>
+    api.post(`/organizations/${orgId}/moderation/test`, { text }),
 }
 
 export const conversations = {
@@ -149,6 +160,7 @@ export const deployments = {
   update: (id: string, data: Record<string, unknown>) => api.patch(`/deployments/${id}`, data),
   delete: (id: string) => api.delete(`/deployments/${id}`),
   test: (id: string) => api.post(`/deployments/${id}/test`),
+  kapsoNumbers: () => api.get('/kapso/phone-numbers'),
 }
 
 export const organizations = {

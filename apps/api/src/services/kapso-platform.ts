@@ -1,3 +1,5 @@
+import crypto from 'node:crypto'
+
 const PLATFORM_API = 'https://api.kapso.ai/platform/v1'
 
 function getApiKey(): string {
@@ -50,10 +52,30 @@ export async function generateSetupLink(
   return data.data as { id: string; url: string; expires_at: string }
 }
 
+export interface KapsoPhoneNumber {
+  id: string
+  display_name?: string
+  display_phone_number?: string
+  kind?: string
+  status?: string | null
+  customer_id?: string | null
+}
+
+export async function listPhoneNumbers(): Promise<KapsoPhoneNumber[]> {
+  const data = await platformFetch('/whatsapp/phone_numbers')
+  const arr = (data as { data?: KapsoPhoneNumber[] }).data ?? (data as KapsoPhoneNumber[])
+  return Array.isArray(arr) ? arr : []
+}
+
 export async function registerMessageWebhook(
   phoneNumberId: string,
-  webhookUrl: string
+  webhookUrl: string,
+  secretKey?: string
 ) {
+  // Kapso requires a non-blank secret_key when creating a webhook. Generate one
+  // if the caller didn't supply it. The returned secret should be persisted so
+  // incoming deliveries can be verified.
+  const secret = secretKey || crypto.randomUUID().replace(/-/g, '')
   const data = await platformFetch(
     `/whatsapp/phone_numbers/${phoneNumberId}/webhooks`,
     {
@@ -64,11 +86,12 @@ export async function registerMessageWebhook(
           url: webhookUrl,
           events: ['whatsapp.message.received'],
           active: true,
+          secret_key: secret,
         },
       }),
     }
   )
-  return data
+  return { ...(data as Record<string, unknown>), secretKey: secret }
 }
 
 export async function sendPlatformMessage(
