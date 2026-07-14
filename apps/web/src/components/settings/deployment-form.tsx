@@ -30,6 +30,17 @@ interface DeploymentFormProps {
   onCancel: () => void
 }
 
+const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
+
+const channelMeta: Record<Channel, { label: string; logo: string | null }> = {
+  web: { label: 'Web Widget', logo: null },
+  whatsapp: { label: 'WhatsApp', logo: `${CDN}/whatsapp/default.svg` },
+  slack: { label: 'Slack', logo: `${CDN}/slack/default.svg` },
+  discord: { label: 'Discord', logo: `${CDN}/discord/default.svg` },
+  telegram: { label: 'Telegram', logo: `${CDN}/telegram/default.svg` },
+  api: { label: 'API', logo: null },
+}
+
 const channelFields: Record<Channel, { label: string; key: string; placeholder: string }[]> = {
   web: [
     { label: 'Allowed Origins', key: 'allowedOrigins', placeholder: 'https://example.com' },
@@ -91,121 +102,134 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
   }
 
   return (
-    <div className="rounded-lg border bg-card p-6 space-y-4">
-      <div>
-        <h3 className="text-lg font-medium">Configure Deployment</h3>
-        <p className="text-sm text-muted-foreground">Set up your channel deployment</p>
-      </div>
+    <Dialog open onOpenChange={(open) => { if (!open) onCancel() }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>New Deployment</DialogTitle>
+          <DialogDescription>Set up your channel deployment</DialogDescription>
+        </DialogHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label>Agent</Label>
-          <Select value={agentId} onValueChange={setAgentId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select an agent" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Agents</SelectLabel>
-                {agents.map((agent) => (
-                  <SelectItem key={agent.id} value={agent.id}>
-                    {agent.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Channel</Label>
-          <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}); setWhatsappProvider('meta') }}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="web">Web Widget</SelectItem>
-              <SelectItem value="whatsapp">WhatsApp</SelectItem>
-              <SelectItem value="slack">Slack</SelectItem>
-              <SelectItem value="discord">Discord</SelectItem>
-              <SelectItem value="telegram">Telegram</SelectItem>
-              <SelectItem value="api">API</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {channel === 'whatsapp' && (
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Provider</Label>
-            <Select value={whatsappProvider} onValueChange={(v) => { setWhatsappProvider(v); setConfig({}) }}>
+            <Label>Agent</Label>
+            <Select value={agentId} onValueChange={setAgentId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select an agent" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Agents</SelectLabel>
+                  {agents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Channel</Label>
+            <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}); setWhatsappProvider('meta') }}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="meta">
-                  <div className="flex items-center gap-2">
-                    Meta / WhatsApp Business
-                    <Badge variant="secondary" className="text-[9px]">Production</Badge>
-                  </div>
-                </SelectItem>
-                <SelectItem value="twilio">
-                  <div className="flex items-center gap-2">
-                    Twilio Sandbox
-                    <Badge variant="secondary" className="text-[9px]">Demo</Badge>
-                  </div>
-                </SelectItem>
-                <SelectItem value="kapso">
-                  <div className="flex items-center gap-2">
-                    Kapso
-                    <Badge variant="secondary" className="text-[9px]">Free</Badge>
-                  </div>
-                </SelectItem>
+                {(Object.entries(channelMeta) as [Channel, { label: string; logo: string | null }][]).map(([key, { label, logo }]) => (
+                  <SelectItem key={key} value={key}>
+                    <div className="flex items-center gap-2.5">
+                      {logo ? (
+                        <img src={logo} alt={label} className="size-4 shrink-0" />
+                      ) : (
+                        <div className="size-4 shrink-0 rounded bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                          {key === 'web' ? 'W' : 'A'}
+                        </div>
+                      )}
+                      {label}
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-        )}
 
-        {useKapso ? kapsoFields.map((field) => (
-          <div key={field.key} className="space-y-2">
-            <Label htmlFor={field.key}>{field.label}</Label>
-            <Input
-              id={field.key}
-              value={config[field.key] || ''}
-              onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
-              placeholder={field.placeholder}
-            />
-          </div>
-        )) : useTwilio ? twilioFields.map((field) => (
-          <div key={field.key} className="space-y-2">
-            <Label htmlFor={field.key}>{field.label}</Label>
-            <Input
-              id={field.key}
-              value={config[field.key] || ''}
-              onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
-              placeholder={field.placeholder}
-            />
-          </div>
-        )) : fields.map((field) => (
-          <div key={field.key} className="space-y-2">
-            <Label htmlFor={field.key}>{field.label}</Label>
-            <Input
-              id={field.key}
-              value={config[field.key] || ''}
-              onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
-              placeholder={field.placeholder}
-            />
-          </div>
-        ))}
+          {channel === 'whatsapp' && (
+            <div className="space-y-2">
+              <Label>Provider</Label>
+              <Select value={whatsappProvider} onValueChange={(v) => { setWhatsappProvider(v); setConfig({}) }}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="meta">
+                    <div className="flex items-center gap-2.5">
+                      <img src={`${CDN}/meta/default.svg`} alt="Meta" className="size-4 shrink-0" />
+                      Meta / WhatsApp Business
+                      <Badge variant="secondary" className="text-[9px]">Production</Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="twilio">
+                    <div className="flex items-center gap-2.5">
+                      <img src={`${CDN}/twilio/default.svg`} alt="Twilio" className="size-4 shrink-0" />
+                      Twilio Sandbox
+                      <Badge variant="secondary" className="text-[9px]">Demo</Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="kapso">
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-4 shrink-0 rounded bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground">K</div>
+                      Kapso
+                      <Badge variant="secondary" className="text-[9px]">Free</Badge>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={!agentId}>
-            Save Deployment
-          </Button>
-        </DialogFooter>
-      </form>
-    </div>
+          {useKapso ? kapsoFields.map((field) => (
+            <div key={field.key} className="space-y-2">
+              <Label htmlFor={field.key}>{field.label}</Label>
+              <Input
+                id={field.key}
+                value={config[field.key] || ''}
+                onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
+                placeholder={field.placeholder}
+              />
+            </div>
+          )) : useTwilio ? twilioFields.map((field) => (
+            <div key={field.key} className="space-y-2">
+              <Label htmlFor={field.key}>{field.label}</Label>
+              <Input
+                id={field.key}
+                value={config[field.key] || ''}
+                onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
+                placeholder={field.placeholder}
+              />
+            </div>
+          )) : fields.map((field) => (
+            <div key={field.key} className="space-y-2">
+              <Label htmlFor={field.key}>{field.label}</Label>
+              <Input
+                id={field.key}
+                value={config[field.key] || ''}
+                onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
+                placeholder={field.placeholder}
+              />
+            </div>
+          ))}
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!agentId}>
+              Create Deployment
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

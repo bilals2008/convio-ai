@@ -3,10 +3,21 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { deployments as deploymentsApi, agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Loader2, Link, Copy, Check } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Plus, Trash2, Loader2, Copy, Check, Globe } from 'lucide-react'
 import { DeploymentForm } from '@/components/settings/deployment-form'
+
+const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
+
+const channelLogos: Record<string, { logo: string | null; fallback: string }> = {
+  web: { logo: null, fallback: 'W' },
+  whatsapp: { logo: `${CDN}/whatsapp/default.svg`, fallback: 'WA' },
+  slack: { logo: `${CDN}/slack/default.svg`, fallback: 'S' },
+  discord: { logo: `${CDN}/discord/default.svg`, fallback: 'D' },
+  telegram: { logo: `${CDN}/telegram/default.svg`, fallback: 'T' },
+  api: { logo: null, fallback: 'A' },
+}
 
 interface DeploymentItem {
   id: string
@@ -22,6 +33,7 @@ export default function DeploymentsPage() {
   const { orgId, isLoading: orgLoading } = useOrg()
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<Partial<DeploymentItem> | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const agentsQuery = useQuery({
     queryKey: ['agents-for-deployments', orgId],
@@ -70,13 +82,6 @@ export default function DeploymentsPage() {
     }
   }
 
-  const testMutation = {
-    mutateAsync: async (id: string) => {
-      const res = await deploymentsApi.test(id)
-      return res.data
-    }
-  }
-
   const deployments = allDeploymentsQuery.data || []
 
   if (orgLoading || allDeploymentsQuery.isLoading) {
@@ -91,12 +96,12 @@ export default function DeploymentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Deployments</h1>
-          <p className="text-sm text-muted-foreground">Manage channel deployments for your agents</p>
+          <h1 className="text-xl font-bold tracking-tight">Deployments</h1>
+          <p className="text-sm text-muted-foreground">Connect agents to channels</p>
         </div>
-        <Button onClick={() => setEditing({})}>
-          <Plus className="size-4 mr-2" />
-          New Deployment
+        <Button size="sm" onClick={() => setEditing({})}>
+          <Plus className="size-4" />
+          New
         </Button>
       </div>
 
@@ -112,75 +117,91 @@ export default function DeploymentsPage() {
       )}
 
       {deployments.length === 0 && !editing && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Link className="size-8 text-muted-foreground mb-4" />
-            <p className="text-sm text-muted-foreground">No deployments yet.</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Add your first deployment to connect an agent to a channel.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-3">
+            <Globe className="size-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium">No deployments</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Create your first deployment to connect an agent to a channel.
+          </p>
+        </div>
       )}
 
-      <div className="grid gap-4">
-        {deployments.map((deployment: DeploymentItem) => (
-          <Card key={deployment.id}>
-            <CardHeader className="flex flex-row items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <CardTitle className="text-sm font-medium capitalize">{deployment.channel}</CardTitle>
-                <Badge variant={deployment.status === 'active' ? 'default' : 'secondary'}>
-                  {deployment.status}
-                </Badge>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {deployments.map((deployment: DeploymentItem) => {
+          const ch = channelLogos[deployment.channel] || channelLogos.web
+          return (
+            <div
+              key={deployment.id}
+              className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5"
+            >
+              <div className="flex size-8 items-center justify-center rounded-md bg-muted shrink-0">
+                {ch.logo ? (
+                  <img src={ch.logo} alt={deployment.channel} className="size-4" />
+                ) : (
+                  <span className="text-[10px] font-bold text-muted-foreground">{ch.fallback}</span>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    const result = await testMutation.mutateAsync(deployment.id)
-                    alert(result.data?.message || 'Test completed')
-                  }}
-                >
-                  Test
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteMutation.mutate(deployment.id)}
-                >
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="py-2 space-y-1.5">
-              <div className="text-xs text-muted-foreground">
-                Agent: {deployment.agentName || deployment.agentId}
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="text-[11px] font-mono bg-muted/50 px-1.5 py-0.5 rounded select-all">
-                  {deployment.id}
-                </code>
-                <button
-                  className="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-foreground transition-colors shrink-0"
-                  onClick={() => {
-                    navigator.clipboard.writeText(deployment.id)
-                    const el = document.getElementById(`copy-${deployment.id}`)
-                    if (el) {
-                      el.classList.remove('hidden')
-                      setTimeout(() => el.classList.add('hidden'), 1500)
-                    }
-                  }}
-                >
-                  <Copy className="size-3" />
-                  <span id={`copy-${deployment.id}`} className="hidden text-success items-center gap-1">
-                    <Check className="size-3" /> Copied
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium capitalize truncate">{deployment.channel}</span>
+                  <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0 ${
+                    deployment.status === 'active'
+                      ? 'bg-success/10 text-success'
+                      : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {deployment.status}
                   </span>
-                </button>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{deployment.agentName || deployment.agentId}</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        className="rounded p-1 text-muted-foreground hover:bg-muted transition-colors"
+                        onClick={() => {
+                          navigator.clipboard.writeText(deployment.id)
+                          setCopiedId(deployment.id)
+                          setTimeout(() => setCopiedId(null), 1500)
+                        }}
+                      >
+                        {copiedId === deployment.id ? (
+                          <Check className="size-3 text-success" />
+                        ) : (
+                          <Copy className="size-3" />
+                        )}
+                      </button>
+                    }
+                  />
+                  <TooltipContent side="top" className="text-xs">
+                    {copiedId === deployment.id ? 'Copied!' : 'Copy deployment ID'}
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        onClick={() => deleteMutation.mutate(deployment.id)}
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    }
+                  />
+                  <TooltipContent side="top" className="text-xs">
+                    Delete deployment
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
