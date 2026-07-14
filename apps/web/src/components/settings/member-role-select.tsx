@@ -18,7 +18,7 @@ interface MemberRoleSelectProps {
 export function MemberRoleSelect({ value, onChange, disabled, isOwner }: MemberRoleSelectProps) {
   if (isOwner) {
     return (
-      <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+      <span className="inline-flex h-8 items-center rounded-full bg-primary/10 px-2.5 text-xs font-medium text-primary">
         Owner
       </span>
     )
@@ -26,7 +26,7 @@ export function MemberRoleSelect({ value, onChange, disabled, isOwner }: MemberR
 
   return (
     <Select value={value} onValueChange={(v) => onChange(v as MemberRole)} disabled={disabled}>
-      <SelectTrigger className="w-28">
+      <SelectTrigger className="h-8 w-28">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

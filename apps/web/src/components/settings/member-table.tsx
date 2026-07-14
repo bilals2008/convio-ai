@@ -58,7 +58,7 @@ export function MemberTable({ members, onRoleChange, onRemove, loading }: Member
               </div>
             </TableCell>
             <TableCell className="text-muted-foreground">{member.email}</TableCell>
-            <TableCell>
+            <TableCell className="align-middle">
               <MemberRoleSelect
                 value={member.role}
                 onChange={(role) => onRoleChange(member.userId, role)}

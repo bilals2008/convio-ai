@@ -90,39 +90,35 @@ export function MemberInviteForm({ open, onOpenChange, onSubmit, loading, invite
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex items-end gap-2">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="invite-email">Email</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="colleague@company.com"
-                disabled={loading}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    addMember()
-                  }
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as 'admin' | 'member')}>
-                <SelectTrigger className="w-28">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="button" variant="outline" size="icon" className="shrink-0 mb-0.5" onClick={addMember}>
-              <Plus className="size-4" />
-            </Button>
+          <div className="space-y-2">
+            <Label htmlFor="invite-email">Email</Label>
+            <Input
+              id="invite-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="colleague@company.com"
+              disabled={loading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addMember()
+                }
+              }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Role</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as 'admin' | 'member')}>
+              <SelectTrigger className="h-9 w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -160,6 +156,10 @@ export function MemberInviteForm({ open, onOpenChange, onSubmit, loading, invite
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
+            </Button>
+            <Button type="button" variant="outline" onClick={addMember} disabled={!email}>
+              <Plus className="size-4" />
+              Add
             </Button>
             <Button type="submit" disabled={loading || members.length === 0}>
               {loading && <Loader2 className="size-4 animate-spin" />}
