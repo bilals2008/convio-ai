@@ -165,6 +165,14 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     preHandler: [fastify.authenticate],
   }, async () => {
     const numbers = await listPhoneNumbers()
+    const usedIds = new Set(
+      (await prisma.deployment.findMany({
+        where: { channel: 'whatsapp', status: 'active' },
+        select: { config: true },
+      }))
+        .map((d) => (d.config as Record<string, unknown>)?.phoneNumberId as string | undefined)
+        .filter(Boolean)
+    )
     const data = numbers
       .filter((n) => n.kind !== 'sandbox')
       .map((n) => ({
@@ -172,6 +180,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
         displayName: n.display_name ?? null,
         displayPhone: n.display_phone_number ?? null,
         kind: n.kind ?? null,
+        inUse: usedIds.has(n.id),
       }))
     return { data }
   })

@@ -30,6 +30,7 @@ interface KapsoNumber {
   displayName: string | null
   displayPhone: string | null
   kind: string | null
+  inUse?: boolean
 }
 
 interface DeploymentFormProps {
@@ -296,7 +297,12 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                           <SelectLabel>Already connected</SelectLabel>
                           {kapsoNumbers.map((n) => (
                             <SelectItem key={n.phoneNumberId} value={n.phoneNumberId}>
-                              {n.displayPhone || n.displayName || n.phoneNumberId}
+                              <span className="flex items-center gap-2">
+                                {n.displayPhone || n.displayName || n.phoneNumberId}
+                                {n.inUse && (
+                                  <Badge variant="destructive" className="text-[9px]">In use</Badge>
+                                )}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectGroup>
@@ -304,9 +310,15 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    {kapsoNumberChoice
-                      ? 'This agent will use the selected connected number. No setup link needed.'
-                      : "You'll get a setup link to connect a new WhatsApp number via Facebook login."}
+                    {(() => {
+                      const chosen = kapsoNumbers.find((n) => n.phoneNumberId === kapsoNumberChoice)
+                      if (chosen?.inUse) {
+                        return 'This number is already in use by another deployment — creating will fail.'
+                      }
+                      return kapsoNumberChoice
+                        ? 'This agent will use the selected connected number. No setup link needed.'
+                        : "You'll get a setup link to connect a new WhatsApp number via Facebook login."
+                    })()}
                   </p>
                 </div>
               ) : useTwilio ? twilioFields.map((field) => (
