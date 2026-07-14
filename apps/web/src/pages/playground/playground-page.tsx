@@ -106,6 +106,7 @@ const PROVIDERS = [
   { id: 'together', name: 'Together', slug: 'together-ai', variant: 'light' },
   { id: 'deepseek', name: 'DeepSeek', slug: 'deepseek', variant: 'default' },
   { id: 'perplexity', name: 'Perplexity', slug: 'perplexity', variant: 'default' },
+  { id: 'agentrouter', name: 'Agent Router', slug: 'agentrouter', variant: 'light' },
   { id: 'local', name: 'Local API', slug: '', variant: 'default' },
 ] as const
 
@@ -125,6 +126,7 @@ const FALLBACK_MODELS: Record<string, string[]> = {
   together: ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct-Turbo'],
   deepseek: ['deepseek-chat', 'deepseek-reasoner'],
   perplexity: ['sonar-pro', 'sonar', 'llama-3.1-sonar-large-128k-online'],
+  agentrouter: ['claude-sonnet-4-5-20250929', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'gpt-4o', 'gpt-4o-mini'],
   local: ['auto/best-coding', 'auto/best-reasoning', 'auto/best-fast', 'auto/best-vision', 'auto/best-chat', 'auto/pro-coding', 'auto/coding', 'auto/fast', 'auto/chat'],
 }
 
@@ -140,6 +142,7 @@ const ENV_KEY_MAP: Record<ProviderId, string> = {
   together: 'TOGETHER_API_KEY',
   deepseek: 'DEEPSEEK_API_KEY',
   perplexity: 'PERPLEXITY_API_KEY',
+  agentrouter: 'AGENT_ROUTER_API_KEY',
   local: 'LOCAL_API_URL',
 }
 
