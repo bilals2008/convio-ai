@@ -40,6 +40,7 @@ model Organization {
   auditLogs      AuditLog[]
   ssoConfigs     SsoConfig[]
   widgets        Widget[]
+  moderationConfig ModerationConfig?
 
   @@index([slug])
 }
@@ -305,6 +306,23 @@ model AuditLog {
   @@index([organizationId, entityType])
   @@index([actorId])
   @@map("audit_logs")
+}
+
+model ModerationConfig {
+  id                  String   @id @default(uuid())
+  organizationId      String   @unique
+  enabled             Boolean  @default(false)
+  profanityEnabled    Boolean  @default(true)
+  piiEnabled          Boolean  @default(true)
+  injectionEnabled    Boolean  @default(true)
+  blockOnViolation    Boolean  @default(true)
+  customRules         Json     @default("[]")
+  createdAt           DateTime @default(now()) @db.Timestamptz()
+  updatedAt           DateTime @updatedAt @db.Timestamptz()
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("moderation_configs")
 }
 
 model SsoConfig {

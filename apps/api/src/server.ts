@@ -22,6 +22,7 @@ import authRoutes from './modules/auth/routes.js'
 import usersRoutes from './modules/users/routes.js'
 import organizationsRoutes from './modules/organizations/routes.js'
 import agentsRoutes from './modules/agents/routes.js'
+import toolsRoutes from './modules/tools/routes.js'
 import deploymentsRoutes from './modules/deployments/routes.js'
 import conversationsRoutes from './modules/conversations/routes.js'
 import messagesRoutes from './modules/messages/routes.js'
@@ -35,6 +36,7 @@ import providerKeysRoutes from './modules/provider-keys/routes.js'
 import apiKeysRoutes from './modules/api-keys/routes.js'
 import auditLogRoutes from './modules/audit-logs/routes.js'
 import ssoRoutes from './modules/sso/routes.js'
+import moderationRoutes from './modules/moderation/routes.js'
 
 async function buildServer() {
   const app = Fastify({
@@ -62,6 +64,7 @@ async function buildServer() {
   await app.register(usersRoutes, { prefix: '/api' })
   await app.register(organizationsRoutes, { prefix: '/api' })
   await app.register(agentsRoutes, { prefix: '/api' })
+  await app.register(toolsRoutes, { prefix: '/api' })
   await app.register(deploymentsRoutes, { prefix: '/api' })
   await app.register(conversationsRoutes, { prefix: '/api' })
   await app.register(messagesRoutes, { prefix: '/api' })
@@ -75,6 +78,7 @@ async function buildServer() {
   await app.register(apiKeysRoutes, { prefix: '/api' })
   await app.register(auditLogRoutes, { prefix: '/api' })
   await app.register(ssoRoutes, { prefix: '/api' })
+  await app.register(moderationRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {

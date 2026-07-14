@@ -13,6 +13,7 @@ import {
   Link as LinkIcon,
   ChevronLeft,
   Shield,
+  ShieldAlert,
   ScrollText,
   Building2,
   LogOut,
@@ -36,6 +37,7 @@ const settingsGeneral = [
 ]
 
 const settingsAdvanced = [
+  { icon: ShieldAlert, label: 'Moderation', href: '/settings/moderation' },
   { icon: Building2, label: 'SSO', href: '/settings/sso' },
   { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
   { icon: Terminal, label: 'Playground', href: '/settings/playground' },
