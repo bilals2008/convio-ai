@@ -72,7 +72,8 @@ export async function processIncomingMessage(
   deploymentId: string,
   from: string,
   body: string,
-  contactName?: string
+  contactName?: string,
+  messageId?: string
 ): Promise<{ response?: string; error?: string }> {
   try {
     const deployment = await prisma.deployment.findUnique({
@@ -83,6 +84,23 @@ export async function processIncomingMessage(
 
     const agentId = deployment.agentId
     const fromNumber = from.replace('whatsapp:', '')
+
+    // Dedup: if we've already stored this provider message id, skip it.
+    // Kapso can redeliver the same webhook (retries / at-least-once delivery),
+    // which would otherwise produce duplicate replies.
+    if (messageId) {
+      const already = await prisma.message.findFirst({
+        where: {
+          role: 'user',
+          conversation: { agentId, channel: 'whatsapp', contactPhone: fromNumber },
+          metadata: { path: ['providerMessageId'], equals: messageId },
+        },
+        select: { id: true },
+      })
+      if (already) {
+        return { response: undefined }
+      }
+    }
 
     let conversation = await prisma.conversation.findFirst({
       where: { agentId, channel: 'whatsapp', contactPhone: fromNumber, status: { not: 'closed' } },
@@ -141,7 +159,7 @@ export async function processIncomingMessage(
         conversationId: conversation.id,
         role: 'user',
         content: body,
-        metadata: { from: fromNumber },
+        metadata: { from: fromNumber, ...(messageId ? { providerMessageId: messageId } : {}) },
       },
     })
 
