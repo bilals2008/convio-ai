@@ -35,6 +35,7 @@ const PROVIDER_BASE_URLS: Record<string, string> = {
   kie: 'https://api.kie.ai/v1',
   openrouter: 'https://openrouter.ai/api/v1',
   opencode: 'https://opencode.ai/zen/v1',
+  agentrouter: 'https://agentrouter.org/v1',
   mistral: 'https://api.mistral.ai/v1',
   together: 'https://api.together.xyz/v1',
   deepseek: 'https://api.deepseek.com/v1',
@@ -51,6 +52,7 @@ const FALLBACK_MODELS: Record<string, string[]> = {
   kie: ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro'],
   openrouter: ['openai/gpt-4o', 'anthropic/claude-3-5-sonnet', 'google/gemini-2.0-flash', 'meta-llama/llama-3.3-70b-instruct'],
   opencode: ['deepseek-v4-flash-free', 'mimo-v2.5-free', 'qwen3.6-plus-free', 'minimax-m3-free', 'nemotron-3-ultra-free', 'north-mini-code-free', 'big-pickle'],
+  agentrouter: ['claude-sonnet-4-5-20250929', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'gpt-4o', 'gpt-4o-mini'],
   mistral: ['mistral-large-latest', 'mistral-small-latest', 'pixtral-large-latest'],
   together: ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct-Turbo'],
   deepseek: ['deepseek-chat', 'deepseek-reasoner'],
@@ -159,6 +161,21 @@ async function fetchDeepSeekModels(apiKey: string): Promise<string[]> {
 
 async function fetchPerplexityModels(_apiKey: string): Promise<string[]> {
   return FALLBACK_MODELS.perplexity
+}
+
+async function fetchAgentRouterModels(apiKey: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${PROVIDER_BASE_URLS.agentrouter}/models`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    })
+    if (!res.ok) return FALLBACK_MODELS.agentrouter
+    const data = await res.json()
+    return (data.data || [])
+      .map((m: any) => m.id)
+      .sort()
+  } catch {
+    return FALLBACK_MODELS.agentrouter
+  }
 }
 
 async function fetchOpenCodeModels(apiKey: string): Promise<string[]> {
@@ -486,6 +503,7 @@ async function runSingleTest(
       case 'mistral':
       case 'together':
       case 'deepseek':
+      case 'agentrouter':
         result = await testOpenAICompat(PROVIDER_BASE_URLS[provider], apiKey, testModel, message, tools)
         break
       case 'perplexity':
@@ -616,6 +634,9 @@ export default async function playgroundRoutes(fastify: FastifyInstance) {
           break
         case 'opencode':
           models = await fetchOpenCodeModels(apiKey)
+          break
+        case 'agentrouter':
+          models = await fetchAgentRouterModels(apiKey)
           break
         case 'local':
           models = await fetchLocalModels()

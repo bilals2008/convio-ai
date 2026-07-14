@@ -5,7 +5,44 @@ import { AppError } from '../../plugins/error.js'
 import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
+import { moderateForOrg, type ModerationFlag } from '../../services/moderation.js'
 import { z } from 'zod'
+
+// User-facing message shown when a message is blocked by moderation.
+const MODERATION_REFUSAL = 'Your message could not be processed because it violates this workspace’s content policy. Please rephrase and try again.'
+
+// Compact flag summary for audit-log metadata (avoid storing raw matched text at length).
+function summarizeFlags(flags: ModerationFlag[]) {
+  return flags.map((f) => ({ type: f.type, severity: f.severity, label: f.label }))
+}
+
+// Run moderation for an org and decide whether the message may proceed.
+// A message is allowed unless moderation is enabled, failed, and blocking is on.
+async function moderateMessage(organizationId: string, content: string) {
+  const result = await moderateForOrg(organizationId, content)
+  const blocked = result.enabled && !result.passed && result.blockOnViolation
+  const flagged = result.enabled && !result.passed
+  return {
+    allowed: !blocked,
+    flagged,
+    result,
+    message: MODERATION_REFUSAL,
+  }
+}
+
+async function logModerationViolation(
+  fastify: FastifyInstance,
+  params: { organizationId: string; conversationId: string; channel: string; actorId?: string; flags: ModerationFlag[]; blocked?: boolean },
+) {
+  await fastify.auditLog({
+    organizationId: params.organizationId,
+    actorId: params.actorId,
+    action: 'moderation.violation',
+    entityType: 'conversation',
+    entityId: params.conversationId,
+    metadata: { channel: params.channel, blocked: params.blocked ?? true, flags: summarizeFlags(params.flags) },
+  })
+}
 
 const convParamsSchema = z.object({
   id: z.string().uuid(),
@@ -115,6 +152,36 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     if (!agent.model) {
       throw new AppError(400, 'Agent has no model configured')
+    }
+
+    // Moderate the incoming user message before spending any tokens.
+    const moderation = await moderateForOrg(orgId, content)
+    if (moderation.enabled && !moderation.passed) {
+      await fastify.auditLog({
+        organizationId: orgId,
+        actorId: request.userId,
+        action: 'moderation.violation',
+        entityType: 'conversation',
+        entityId: id,
+        metadata: { channel: 'stream', blocked: moderation.blockOnViolation, flags: summarizeFlags(moderation.flags) },
+      })
+
+      if (moderation.blockOnViolation) {
+        reply.hijack()
+        reply.raw.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+          ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
+        })
+        reply.raw.flushHeaders()
+        reply.raw.write(`data: ${JSON.stringify({ content: MODERATION_REFUSAL })}\n\n`)
+        reply.raw.write(`data: ${JSON.stringify({ type: 'moderation', flags: summarizeFlags(moderation.flags) })}\n\n`)
+        reply.raw.write('data: [DONE]\n\n')
+        reply.raw.end()
+        return
+      }
     }
 
     const historyPromise = prisma.message.findMany({
@@ -337,6 +404,18 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     if (!conversation || conversation.agent.status !== 'active') {
       throw new AppError(404, 'Conversation not found or agent is not active')
+    }
+
+    // Moderate the inbound message before storing it or calling the AI.
+    const widgetModeration = await moderateMessage(conversation.agent.organizationId, content)
+    if (!widgetModeration.allowed) {
+      await logModerationViolation(fastify, {
+        organizationId: conversation.agent.organizationId,
+        conversationId: id,
+        channel: 'widget',
+        flags: widgetModeration.result.flags,
+      })
+      return { data: { response: widgetModeration.message } }
     }
 
     await prisma.$transaction([

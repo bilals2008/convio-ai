@@ -10,6 +10,7 @@ export type AuditAction =
   | 'api_key.created' | 'api_key.deleted'
   | 'provider_key.created' | 'provider_key.updated' | 'provider_key.deleted'
   | 'sso.configured' | 'sso.disabled'
+  | 'moderation.updated' | 'moderation.violation'
 
 declare module 'fastify' {
   interface FastifyInstance {
