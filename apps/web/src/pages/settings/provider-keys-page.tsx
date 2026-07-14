@@ -208,7 +208,7 @@ export default function ProviderKeysPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-[10px]">
+                    <Badge className="text-[10px] bg-success/10 text-success border-success/20">
                       Connected
                     </Badge>
                     <Button
