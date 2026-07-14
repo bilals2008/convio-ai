@@ -6,6 +6,7 @@ import { AppError } from '../../plugins/error.js'
 import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
+import { getTemplate, listTemplates } from './templates.js'
 import { z } from 'zod'
 
 const orgParamsSchema = z.object({
@@ -53,6 +54,18 @@ const createAgentBodySchema = createAgentSchema.extend({
   knowledgeBaseId: z.string().uuid().optional().nullable(),
 })
 
+const fromTemplateBodySchema = z.object({
+  organizationId: z.string().uuid(),
+  template: z.string().min(1),
+  name: z.string().trim().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  model: z.string().min(1).optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  systemPrompt: z.string().max(10000).optional(),
+  knowledgeBaseId: z.string().uuid().optional().nullable(),
+  providerKeyId: z.string().uuid().optional(),
+})
+
 const updateAgentBodySchema = updateAgentSchema.extend({
   knowledgeBaseId: z.string().uuid().optional().nullable(),
 })
@@ -79,6 +92,63 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         organizationId: orgId,
         createdById: request.userId,
       } as any,
+    })
+
+    return { data: agent }
+  })
+
+  // GET /api/organizations/:orgId/agent-templates — List ready-made prompt templates (member only)
+  fastify.get('/organizations/:orgId/agent-templates', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: orgParamsSchema }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+
+    await fastify.getMembership(request.userId!, orgId)
+
+    return { data: listTemplates() }
+  })
+
+  // POST /api/agents/from-template — Create an agent pre-filled from a template (member only)
+  fastify.post('/agents/from-template', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ body: fromTemplateBodySchema }),
+    ],
+  }, async (request) => {
+    const body = request.body as z.infer<typeof fromTemplateBodySchema>
+    const { organizationId, template: templateType } = body
+
+    await fastify.getMembership(request.userId!, organizationId)
+
+    const template = getTemplate(templateType)
+    if (!template) {
+      throw new AppError(404, `Unknown template: ${templateType}`)
+    }
+
+    const agent = await prisma.agent.create({
+      data: {
+        organizationId,
+        createdById: request.userId,
+        name: body.name ?? template.name,
+        description: body.description ?? template.description,
+        model: body.model ?? template.suggestedModel,
+        temperature: body.temperature ?? template.suggestedTemperature,
+        systemPrompt: body.systemPrompt ?? template.systemPrompt,
+        knowledgeBaseId: body.knowledgeBaseId || null,
+        providerKeyId: body.providerKeyId ?? null,
+      } as any,
+    })
+
+    await fastify.auditLog({
+      organizationId,
+      actorId: request.userId,
+      action: 'agent.created',
+      entityType: 'agent',
+      entityId: agent.id,
+      metadata: { template: template.id },
     })
 
     return { data: agent }

@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
+import { AgentTemplatePicker, type AgentTemplate } from '@/components/agents/agent-template-picker'
 import { defaultCapabilities } from '@/components/agents/agent-capabilities'
 import { AgentKnowledgeSources } from '@/components/agents/agent-knowledge-sources'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
@@ -65,6 +66,27 @@ export default function CreateAgentPage() {
     resolver: zodResolver(createSchema),
     defaultValues: DEFAULT_FORM_VALUES,
   })
+
+  const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
+
+  const applyTemplate = (template: AgentTemplate) => {
+    setActiveTemplate(template.id)
+    // Prefill the form with the template's suggested settings. The user can
+    // edit any of these before creating the agent.
+    if (template.name && !form.getValues('name')) {
+      form.setValue('name', template.name, { shouldValidate: true })
+    }
+    if (template.description) {
+      form.setValue('description', template.description)
+    }
+    form.setValue('systemPrompt', template.systemPrompt)
+    if (typeof template.suggestedTemperature === 'number') {
+      form.setValue('temperature', template.suggestedTemperature)
+    }
+    if (template.suggestedModel && models.some((m) => m.id === template.suggestedModel)) {
+      form.setValue('model', template.suggestedModel, { shouldValidate: true })
+    }
+  }
 
   const createMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => agentsApi.create(data),
@@ -143,6 +165,21 @@ export default function CreateAgentPage() {
         <div className="grid gap-6 lg:grid-cols-5">
           {/* Main form — 3/5 */}
           <div className="space-y-6 lg:col-span-3">
+            {/* Template picker */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Start from a template</CardTitle>
+                <CardDescription>Optional. Prefill the prompt and settings, then customize.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AgentTemplatePicker
+                  selectedId={activeTemplate ?? undefined}
+                  onSelect={applyTemplate}
+                  disabled={saving}
+                />
+              </CardContent>
+            </Card>
+
             {/* Identity */}
             <Card>
               <CardHeader>
