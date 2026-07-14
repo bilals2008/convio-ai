@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { deployments as deploymentsApi, agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Plus, Trash2, Loader2, Copy, Check, Globe } from 'lucide-react'
 import { DeploymentForm } from '@/components/settings/deployment-form'
+import { SearchFilterBar } from '@/components/shared/search-filter-bar'
 
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
 
@@ -34,6 +35,8 @@ export default function DeploymentsPage() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<Partial<DeploymentItem> | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const agentsQuery = useQuery({
     queryKey: ['agents-for-deployments', orgId],
@@ -70,9 +73,11 @@ export default function DeploymentsPage() {
 
   const createMutation = {
     mutate: async (data: {agentId: string; channel: string; config: Record<string, unknown>}) => {
-      await deploymentsApi.create(data.agentId, { channel: data.channel, config: data.config })
+      return deploymentsApi.create(data.agentId, { channel: data.channel, config: data.config })
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-deployments'] })
-    }
+    },
   }
 
   const deleteMutation = {
@@ -83,6 +88,22 @@ export default function DeploymentsPage() {
   }
 
   const deployments = allDeploymentsQuery.data || []
+
+  const filteredDeployments = useMemo(() => {
+    return deployments.filter((deployment: DeploymentItem) => {
+      const matchesSearch =
+        search === '' ||
+        deployment.channel.toLowerCase().includes(search.toLowerCase()) ||
+        (deployment.agentName || deployment.agentId)
+          .toLowerCase()
+          .includes(search.toLowerCase())
+
+      const matchesStatus =
+        statusFilter === 'all' || deployment.status === statusFilter
+
+      return matchesSearch && matchesStatus
+    })
+  }, [deployments, search, statusFilter])
 
   if (orgLoading || allDeploymentsQuery.isLoading) {
     return (
@@ -105,11 +126,33 @@ export default function DeploymentsPage() {
         </Button>
       </div>
 
+      <SearchFilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search deployments..."
+        filters={[
+          { value: 'all', label: 'All' },
+          { value: 'active', label: 'Active' },
+          { value: 'pending', label: 'Pending' },
+        ]}
+        activeFilter={statusFilter}
+        onFilterChange={setStatusFilter}
+        filterLabel="Status"
+      />
+
       {editing && (
         <DeploymentForm
           agents={agentsData}
           onSave={async (data) => {
-            await createMutation.mutate(data)
+            const res = await createMutation.mutate(data)
+            const body = res?.data
+            const config = body?.data?.config || {}
+            const setupLinkUrl = config.kapsoSetupLinkUrl as string | undefined
+            if (setupLinkUrl) {
+              createMutation.onSuccess()
+              return { setupLinkUrl }
+            }
+            createMutation.onSuccess()
             setEditing(null)
           }}
           onCancel={() => setEditing(null)}
@@ -128,8 +171,20 @@ export default function DeploymentsPage() {
         </div>
       )}
 
+      {deployments.length > 0 && filteredDeployments.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-3">
+            <Globe className="size-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium">No results found</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Try adjusting your search or filter criteria.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        {deployments.map((deployment: DeploymentItem) => {
+        {filteredDeployments.map((deployment: DeploymentItem) => {
           const ch = channelLogos[deployment.channel] || channelLogos.web
           return (
             <div
