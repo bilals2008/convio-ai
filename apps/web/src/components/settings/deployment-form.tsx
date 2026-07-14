@@ -296,7 +296,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                         <SelectGroup>
                           <SelectLabel>Already connected</SelectLabel>
                           {kapsoNumbers.map((n) => (
-                            <SelectItem key={n.phoneNumberId} value={n.phoneNumberId}>
+                            <SelectItem key={n.phoneNumberId} value={n.phoneNumberId} disabled={n.inUse}>
                               <span className="flex items-center gap-2">
                                 {n.displayPhone || n.displayName || n.phoneNumberId}
                                 {n.inUse && (
