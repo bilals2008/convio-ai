@@ -28,21 +28,24 @@ import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
-function SettingsGroup({ collapsed }: { collapsed: boolean }) {
-  const items = [
-    { icon: User, label: 'Profile', href: '/settings/profile' },
-    { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
-    { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
-    { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
-    { icon: Building2, label: 'SSO', href: '/settings/sso' },
-    { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
-    { icon: Terminal, label: 'Playground', href: '/settings/playground' },
-  ]
+const settingsGeneral = [
+  { icon: User, label: 'Profile', href: '/settings/profile' },
+  { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
+  { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
+  { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
+]
 
+const settingsAdvanced = [
+  { icon: Building2, label: 'SSO', href: '/settings/sso' },
+  { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
+  { icon: Terminal, label: 'Playground', href: '/settings/playground' },
+]
+
+function SettingsGroup({ collapsed }: { collapsed: boolean }) {
   if (collapsed) {
     return (
       <div className="space-y-0.5 mt-4">
-        {items.map((item) => (
+        {[...settingsGeneral, ...settingsAdvanced].map((item) => (
           <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
         ))}
       </div>
@@ -55,7 +58,15 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
         Settings
       </div>
       <div className="flex flex-col gap-0.5">
-        {items.map((item) => (
+        {settingsGeneral.map((item) => (
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+        ))}
+      </div>
+      <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
+        Advanced
+      </div>
+      <div className="flex flex-col gap-0.5">
+        {settingsAdvanced.map((item) => (
           <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
         ))}
       </div>
@@ -349,12 +360,17 @@ const mobileNavGroups = [
 
 const mobileSettingsGroups = [
   {
-    label: 'Settings',
+    label: 'General',
     items: [
       { icon: User, label: 'Profile', href: '/settings/profile' },
       { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
+    ],
+  },
+  {
+    label: 'Advanced',
+    items: [
       { icon: Building2, label: 'SSO', href: '/settings/sso' },
       { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
       { icon: Terminal, label: 'Playground', href: '/settings/playground' },
