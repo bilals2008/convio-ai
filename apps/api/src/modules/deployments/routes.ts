@@ -5,6 +5,11 @@ import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
 import crypto from 'node:crypto'
 import { processIncomingMessage } from '../../services/whatsapp.js'
+import {
+  createKapsoCustomer,
+  generateSetupLink,
+  registerMessageWebhook,
+} from '../../services/kapso-platform.js'
 
 const channels = ['web', 'whatsapp', 'slack', 'discord', 'telegram', 'api'] as const
 type Channel = (typeof channels)[number]
@@ -35,8 +40,11 @@ const whatsappConfigSchema = z.object({
   twilioAccountSid: z.string().optional(),
   twilioAuthToken: z.string().optional(),
   twilioNumber: z.string().optional(),
-  kapsoApiKey: z.string().optional(),
-  webhookUrl: z.string().url().optional(),
+  webhookUrl: z.string().optional(),
+  kapsoCustomerId: z.string().optional(),
+  kapsoSetupLink: z.string().optional(),
+  kapsoSetupLinkUrl: z.string().optional(),
+  kapsoDisplayPhone: z.string().optional(),
 }).passthrough()
 
 const slackConfigSchema = z.object({
@@ -93,7 +101,6 @@ const sensitiveKeys = new Set([
   'appToken',
   'signingSecret',
   'apiKey',
-  'kapsoApiKey',
   'verifyToken',
   'password',
   'secret',
@@ -146,6 +153,37 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const finalConfig: Record<string, unknown> = { ...config }
     if (channel === 'api') {
       finalConfig.apiKey = crypto.randomUUID()
+    }
+
+    if (channel === 'whatsapp' && config.provider === 'kapso') {
+      const webhookBaseUrl = (config.webhookUrl as string) || fastify.config.PUBLIC_URL
+
+      const customer = await createKapsoCustomer(
+        agent.name,
+        `${agent.organizationId}:${agentId}`
+      )
+      finalConfig.kapsoCustomerId = customer.id
+
+      const successUrl = `${webhookBaseUrl}/api/deployments/PLACEHOLDER/kapso-callback`
+      const failureUrl = `${webhookBaseUrl}/api/deployments/PLACEHOLDER/kapso-callback`
+
+      const deployment = await prisma.deployment.create({
+        data: { agentId, channel, config: finalConfig as any, status: 'pending' },
+      })
+
+      const actualSuccessUrl = successUrl.replace('PLACEHOLDER', deployment.id)
+      const actualFailureUrl = failureUrl.replace('PLACEHOLDER', deployment.id)
+
+      const setupLink = await generateSetupLink(customer.id, actualSuccessUrl, actualFailureUrl)
+      finalConfig.kapsoSetupLink = setupLink.id
+      finalConfig.kapsoSetupLinkUrl = setupLink.url
+
+      const updated = await prisma.deployment.update({
+        where: { id: deployment.id },
+        data: { config: finalConfig as any },
+      })
+
+      return { data: maskSensitive(updated) }
     }
 
     const deployment = await prisma.deployment.create({
@@ -270,7 +308,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const requiredFields: Record<Channel, string[]> = {
       web: [],
       whatsapp: (config.provider === 'twilio') ? ['twilioAccountSid', 'twilioAuthToken', 'twilioNumber']
-        : (config.provider === 'kapso') ? ['kapsoApiKey', 'phoneNumberId']
+        : (config.provider === 'kapso') ? ['webhookUrl']
         : ['phoneNumberId', 'accessToken'],
       slack: ['botToken', 'signingSecret'],
       discord: ['botToken', 'applicationId'],
@@ -297,6 +335,62 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
         message: `Deployment for ${channel} is properly configured`,
       },
     }
+  })
+
+  // GET /api/deployments/:id/kapso-callback — Kapso setup success redirect (no auth, browser redirect from Kapso)
+  fastify.get('/deployments/:id/kapso-callback', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const query = request.query as Record<string, string>
+
+    const deployment = await prisma.deployment.findUnique({
+      where: { id },
+      include: { agent: true },
+    })
+
+    if (!deployment || deployment.channel !== 'whatsapp') {
+      return reply.code(302).redirect('/')
+    }
+
+    const config = deployment.config as Record<string, unknown>
+    if (config.provider !== 'kapso') {
+      return reply.code(302).redirect('/')
+    }
+
+    const status = query.status
+    if (status === 'completed') {
+      const phoneNumberId = query.phone_number_id
+      const displayPhone = query.display_phone_number
+
+      if (phoneNumberId) {
+        const webhookBaseUrl = config.webhookUrl as string
+        const messageWebhookUrl = `${webhookBaseUrl}/api/deployments/${id}/kapso-webhook`
+
+        try {
+          await registerMessageWebhook(phoneNumberId, messageWebhookUrl)
+          request.log.info({ deploymentId: id, phoneNumberId }, 'Kapso message webhook registered')
+        } catch (err) {
+          request.log.error({ deploymentId: id, error: (err as Error).message }, 'Failed to register Kapso webhook')
+        }
+
+        config.phoneNumberId = phoneNumberId
+        config.kapsoDisplayPhone = displayPhone ? decodeURIComponent(displayPhone) : undefined
+        delete config.kapsoSetupLinkUrl
+
+        await prisma.deployment.update({
+          where: { id },
+          data: { config: config as any, status: 'active' },
+        })
+
+        request.log.info({ deploymentId: id, phoneNumberId }, 'Kapso WhatsApp connected')
+
+        const frontendUrl = process.env.CORS_ORIGIN?.split(',')[0] || 'http://localhost:5173'
+        return reply.code(302).redirect(`${frontendUrl}/settings?tab=deployments&connected=true`)
+      }
+    }
+
+    const frontendUrl = process.env.CORS_ORIGIN?.split(',')[0] || 'http://localhost:5173'
+    const errorCode = query.error_code || 'setup_failed'
+    return reply.code(302).redirect(`${frontendUrl}/settings?tab=deployments&error=${errorCode}`)
   })
 
   // POST /api/deployments/:id/whatsapp-webhook — Twilio incoming message webhook
@@ -381,7 +475,12 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
 
     request.log.info({ from, deploymentId: id }, 'Kapso webhook: processing incoming message')
 
-    await processIncomingMessage(id, from, text, contactName)
+    const result = await processIncomingMessage(id, from, text, contactName)
+    if (result.error) {
+      request.log.error({ error: result.error, from, deploymentId: id }, 'Kapso webhook: processing failed')
+    } else {
+      request.log.info({ from, deploymentId: id }, 'Kapso webhook: processing succeeded')
+    }
 
     return reply.code(200).send('OK')
   })

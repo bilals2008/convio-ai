@@ -1,21 +1,12 @@
 import { prisma } from '@convio/database'
 import twilio from 'twilio'
-import { WhatsAppClient } from '@kapso/whatsapp-cloud-api'
+import { sendPlatformMessage } from './kapso-platform.js'
 import { chatWithAgent } from '../modules/ai/routes.js'
 
 function getTwilioClient(config: Record<string, unknown>) {
   const accountSid = config.twilioAccountSid as string
   const authToken = config.twilioAuthToken as string
   return twilio(accountSid, authToken)
-}
-
-function getKapsoClient(config: Record<string, unknown>) {
-  const kapsoApiKey = config.kapsoApiKey as string
-  const baseUrl = process.env.KAPSO_API_BASE_URL || 'https://api.kapso.ai/meta/whatsapp'
-  return new WhatsAppClient({
-    baseUrl,
-    kapsoApiKey,
-  })
 }
 
 export async function sendWhatsAppMessage(
@@ -67,11 +58,10 @@ async function sendKapsoMessage(
   body: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    const client = getKapsoClient(config)
     const phoneNumberId = config.phoneNumberId as string
     if (!phoneNumberId) return { success: false, error: 'phoneNumberId is required for Kapso' }
 
-    const result = await client.messages.sendText({ phoneNumberId, to, body })
+    const result = await sendPlatformMessage(phoneNumberId, to, body)
     return { success: true, messageId: result.messages?.[0]?.id }
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to send Kapso message' }
