@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Loader2, Plus, Globe, Link, MessageCircle, Code, Lightbulb, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Globe, Link, Code, Lightbulb, ExternalLink } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
+const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
+
 import { PageContainer } from '@/components/shared/page-container'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -37,10 +39,10 @@ const createSchema = z.object({
 type CreateAgentValues = z.infer<typeof createSchema>
 
 const DEFAULT_DEPLOYMENTS = [
-  { id: 'web-chat-widget', label: 'Web chat widget', description: 'Embed on your website', icon: Globe, enabled: true },
-  { id: 'shareable-link', label: 'Shareable link', description: 'A public chat URL', icon: Link, enabled: false },
-  { id: 'api-access', label: 'API access', description: 'Connect through the API', icon: Code, enabled: false },
-  { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp Business', icon: MessageCircle, enabled: true },
+  { id: 'web-chat-widget', label: 'Web chat widget', description: 'Embed on your website', icon: 'globe', enabled: true },
+  { id: 'shareable-link', label: 'Shareable link', description: 'A public chat URL', icon: 'link', enabled: false },
+  { id: 'api-access', label: 'API access', description: 'Connect through the API', icon: 'code', enabled: false },
+  { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp Business', icon: 'whatsapp', enabled: true },
 ]
 
 const DEFAULT_FORM_VALUES: CreateAgentValues = {
@@ -280,7 +282,7 @@ export default function CreateAgentPage() {
                     {DEFAULT_DEPLOYMENTS.map((opt) => {
                       const enabled = deploymentOptions.find((o) => o.id === opt.id)?.enabled ?? opt.enabled
                       const available = enabled || opt.id === 'web-chat-widget' || opt.id === 'whatsapp'
-                      const Icon = opt.icon
+                      const isBrand = opt.icon === 'whatsapp'
                       return (
                         <div
                           key={opt.id}
@@ -291,7 +293,15 @@ export default function CreateAgentPage() {
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className={cn('flex size-7 shrink-0 items-center justify-center rounded-md', enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>
-                              <Icon className="size-4" />
+                              {isBrand ? (
+                                <img src={`${CDN}/whatsapp/default.svg`} alt="WhatsApp" className="size-4" />
+                              ) : opt.icon === 'globe' ? (
+                                <Globe className="size-4" />
+                              ) : opt.icon === 'link' ? (
+                                <Link className="size-4" />
+                              ) : (
+                                <Code className="size-4" />
+                              )}
                             </div>
                             <div className="min-w-0">
                               <Label className="text-xs font-medium leading-tight">{opt.label}</Label>
