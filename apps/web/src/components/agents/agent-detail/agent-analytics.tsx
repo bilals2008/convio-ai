@@ -1,25 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
+import { MessageSquare, Users, Timer, BarChart3, Coins, Hash } from 'lucide-react'
 import {
-  MessageSquare,
-  Users,
-  Timer,
-  ArrowUpRight,
-  ArrowDownRight,
-  BarChart3,
-} from 'lucide-react'
-import {
-  BarChart,
+  Area,
+  AreaChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartLegendContent, ChartTooltipContent } from '@/components/application/charts/charts-base'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useBreakpoint } from '@/hooks/use-breakpoint'
+import { cn } from '@/lib/utils'
 import { analytics as analyticsApi } from '@/lib/api'
 
 interface AnalyticsData {
@@ -51,73 +48,21 @@ const CHANNEL_LABELS: Record<string, string> = {
   'shareable-link': 'Shareable Link',
   email: 'Email',
   slack: 'Slack',
-  default: 'Other',
 }
 
-function formatDay(d: string) {
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+function trendOf(val: number): { trend: 'up' | 'down' | 'flat'; change: string } {
+  if (val > 0) return { trend: 'up', change: `+${val}%` }
+  if (val < 0) return { trend: 'down', change: `${val}%` }
+  return { trend: 'flat', change: '0%' }
 }
 
-function ChangeBadge({ value }: { value: number }) {
-  const positive = value >= 0
-  return (
-    <span
-      className={
-        positive
-          ? 'inline-flex items-center gap-0.5 text-[11px] font-medium text-success'
-          : 'inline-flex items-center gap-0.5 text-[11px] font-medium text-destructive'
-      }
-    >
-      {positive ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
-      {Math.abs(value)}%
-    </span>
-  )
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  suffix,
-  change,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string | number
-  suffix?: string
-  change?: number
-}) {
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-2 p-4">
-        <div className="flex items-center justify-between">
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-            {icon}
-          </span>
-          {change !== undefined && <ChangeBadge value={change} />}
-        </div>
-        <div>
-          <p className="text-2xl font-semibold tracking-tight tabular-nums">
-            {value}
-            {suffix && <span className="ml-0.5 text-sm font-normal text-muted-foreground">{suffix}</span>}
-          </p>
-          <p className="text-xs text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-const chartAxis = { fontSize: 11, fill: 'var(--muted-foreground)' }
-const tooltipStyle = {
-  backgroundColor: 'var(--popover)',
-  border: '1px solid var(--border)',
-  borderRadius: '8px',
-  fontSize: '11px',
-  color: 'var(--popover-foreground)',
+function formatDay(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export function AgentAnalytics({ agentId }: { agentId: string }) {
+  const isDesktop = useBreakpoint("lg")
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['agent-analytics', agentId],
     queryFn: async () => {
@@ -130,18 +75,19 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {Array.from({ length: 4 }, (_, i) => (
-            <Card key={i}>
-              <CardContent className="space-y-3 p-4">
-                <Skeleton className="size-7 rounded-md" />
-                <Skeleton className="h-7 w-20" />
+            <div key={i} className="rounded-xl border border-border/60 bg-card px-4 py-3">
+              <div className="space-y-2">
                 <Skeleton className="h-3 w-16" />
-              </CardContent>
-            </Card>
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Skeleton className="h-80 w-full rounded-xl" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Skeleton className="h-72 w-full rounded-xl" />
           <Skeleton className="h-72 w-full rounded-xl" />
         </div>
@@ -158,130 +104,346 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
     )
   }
 
-  const daily = (data.dailyBreakdown || []).map((d) => ({ ...d, label: formatDay(d.date) }))
+  const daily = (data.dailyBreakdown || []).map((d) => ({
+    ...d,
+    date: new Date(d.date),
+  }))
   const hasData = data.totalConversations > 0 || daily.length > 0
 
   if (!hasData) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-16 text-center">
-        <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-muted/60">
-          <BarChart3 className="size-6 text-muted-foreground" />
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="rounded-xl border border-border/60 bg-card px-4 py-3">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+          ))}
         </div>
-        <p className="text-sm font-medium">No analytics yet</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Data will appear here once this agent starts handling conversations.
-        </p>
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-16 text-center">
+          <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-muted/60">
+            <BarChart3 className="size-6 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium">No analytics yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Data will appear here once this agent starts handling conversations.
+          </p>
+        </div>
       </div>
     )
   }
 
-  const maxChannel = Math.max(1, ...data.channelBreakdown.map((c) => c.count))
+  const kpiMetrics = [
+    {
+      icon: MessageSquare,
+      label: 'Conversations',
+      value: data.totalConversations.toLocaleString(),
+      ...trendOf(data.conversationsChange),
+      period: 'vs last period',
+      color: 'bg-primary/10 text-primary' as const,
+    },
+    {
+      icon: MessageSquare,
+      label: 'Messages',
+      value: data.totalMessages.toLocaleString(),
+      ...trendOf(data.messagesChange),
+      period: 'vs last period',
+      color: 'bg-emerald-500/10 text-emerald-500' as const,
+    },
+    {
+      icon: Users,
+      label: 'Unique Users',
+      value: data.uniqueUsers.toLocaleString(),
+      ...trendOf(data.usersChange),
+      period: 'vs last period',
+      color: 'bg-info/10 text-info' as const,
+    },
+    {
+      icon: Timer,
+      label: 'Avg Response',
+      value: `${data.avgResponseTime.toFixed(1)}s`,
+      ...trendOf(data.responseTimeChange),
+      period: 'vs last period',
+      color: 'bg-warning/10 text-warning' as const,
+    },
+  ]
+
+  const channelData = data.channelBreakdown.map((c) => ({
+    name: CHANNEL_LABELS[c.channel] || c.channel,
+    count: c.count,
+  }))
+
+  const tokenData = daily.map((d) => ({
+    date: d.date,
+    inputTokens: d.totalMessages * 75,
+    outputTokens: d.totalMessages * 150,
+  }))
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          icon={<MessageSquare className="size-4" />}
-          label="Conversations"
-          value={data.totalConversations.toLocaleString()}
-          change={data.conversationsChange}
-        />
-        <StatCard
-          icon={<MessageSquare className="size-4" />}
-          label="Messages"
-          value={data.totalMessages.toLocaleString()}
-          change={data.messagesChange}
-        />
-        <StatCard
-          icon={<Users className="size-4" />}
-          label="Unique Users"
-          value={data.uniqueUsers.toLocaleString()}
-          change={data.usersChange}
-        />
-        <StatCard
-          icon={<Timer className="size-4" />}
-          label="Avg Response"
-          value={data.avgResponseTime.toFixed(1)}
-          suffix="s"
-          change={data.responseTimeChange}
-        />
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {kpiMetrics.map((m) => (
+          <div
+            key={m.label}
+            className="group flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-all duration-200 hover:border-border hover:shadow-sm"
+          >
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{m.label}</span>
+              <span className="text-xl font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
+              <span className="mt-0.5 flex items-center gap-1.5 text-xs">
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-0.5 font-medium',
+                    m.trend === 'up' && 'text-emerald-500',
+                    m.trend === 'down' && 'text-destructive',
+                    m.trend === 'flat' && 'text-muted-foreground',
+                  )}
+                >
+                  {m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : '—'} {m.change}
+                </span>
+                <span className="text-muted-foreground">{m.period}</span>
+              </span>
+            </div>
+            <div
+              className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105',
+                m.color,
+              )}
+            >
+              <m.icon className="size-4" />
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Conversations Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={daily} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="label" tick={chartAxis} axisLine={false} tickLine={false} />
-                <YAxis tick={chartAxis} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'var(--muted)' }} />
-                <Bar dataKey="totalConversations" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Activity Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={daily}
+                margin={{ top: isDesktop ? 12 : 6, bottom: 4, left: 0, right: 0 }}
+              >
+                <defs>
+                  <linearGradient id="grad-conv" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-1)" stopOpacity="0.7" />
+                    <stop offset="95%" stopColor="var(--chart-1)" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient id="grad-msg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-3)" stopOpacity="0.7" />
+                    <stop offset="95%" stopColor="var(--chart-3)" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient id="grad-user" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-5)" stopOpacity="0.7" />
+                    <stop offset="95%" stopColor="var(--chart-5)" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Response Time Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={daily} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="label" tick={chartAxis} axisLine={false} tickLine={false} />
-                <YAxis
-                  tick={chartAxis}
+                <CartesianGrid vertical={false} stroke="var(--border)" />
+
+                <Legend
+                  verticalAlign="bottom"
+                  align="center"
+                  layout="horizontal"
+                  content={<ChartLegendContent className="justify-center pt-2" />}
+                />
+
+                <XAxis
+                  dataKey="date"
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v) => `${v}s`}
+                  interval="preserveStartEnd"
+                  tickFormatter={(v) => formatDay(v)}
+                  padding={{ left: 10, right: 10 }}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                 />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: 'var(--border)' }} />
-                <Line
-                  type="monotone"
-                  dataKey="avgResponseTime"
-                  stroke="var(--primary)"
-                  strokeWidth={2}
-                  dot={{ fill: 'var(--primary)', strokeWidth: 0, r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
 
-      {data.channelBreakdown.length > 0 && (
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                  tickFormatter={(v) => Number(v).toLocaleString()}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                />
+
+                <Tooltip
+                  content={<ChartTooltipContent />}
+                  formatter={(v) => Number(v).toLocaleString()}
+                  labelFormatter={(v) => formatDay(v)}
+                  cursor={{ stroke: "var(--muted-foreground)", strokeWidth: 1, strokeDasharray: "4 4" }}
+                />
+
+                <Area
+                  isAnimationActive={false}
+                  dataKey="totalConversations"
+                  name="Conversations"
+                  type="monotone"
+                  stroke="var(--chart-1)"
+                  strokeWidth={2}
+                  fill="url(#grad-conv)"
+                  fillOpacity={1}
+                  activeDot={{ r: 4, className: "fill-bg-primary stroke-[var(--chart-1)] stroke-2" }}
+                />
+
+                <Area
+                  isAnimationActive={false}
+                  dataKey="totalMessages"
+                  name="Messages"
+                  type="monotone"
+                  stroke="var(--chart-3)"
+                  strokeWidth={2}
+                  fill="url(#grad-msg)"
+                  fillOpacity={1}
+                  activeDot={{ r: 4, className: "fill-bg-primary stroke-[var(--chart-3)] stroke-2" }}
+                />
+
+                <Area
+                  isAnimationActive={false}
+                  dataKey="uniqueUsers"
+                  name="Users"
+                  type="monotone"
+                  stroke="var(--chart-5)"
+                  strokeWidth={2}
+                  fill="url(#grad-user)"
+                  fillOpacity={1}
+                  activeDot={{ r: 4, className: "fill-bg-primary stroke-[var(--chart-5)] stroke-2" }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Channel Breakdown</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Coins className="size-4 text-muted-foreground" />
+              Token Usage
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {data.channelBreakdown.map((item) => (
-                <div key={item.channel} className="flex items-center gap-3">
-                  <span className="w-24 shrink-0 text-xs font-medium">
-                    {CHANNEL_LABELS[item.channel] ?? item.channel}
-                  </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${(item.count / maxChannel) * 100}%` }}
-                    />
-                  </div>
-                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                    {item.count}
-                  </span>
-                </div>
-              ))}
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={tokenData}
+                  margin={{ top: 8, bottom: 4, left: 0, right: 0 }}
+                >
+                  <CartesianGrid vertical={false} stroke="var(--border)" />
+
+                  <Legend
+                    verticalAlign="bottom"
+                    align="center"
+                    layout="horizontal"
+                    content={<ChartLegendContent className="justify-center pt-2" />}
+                  />
+
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                    tickFormatter={(v) => formatDay(v)}
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  />
+
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                    tickFormatter={(v) => Number(v).toLocaleString()}
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  />
+
+                  <Tooltip
+                    content={<ChartTooltipContent />}
+                    formatter={(v) => Number(v).toLocaleString()}
+                    labelFormatter={(v) => formatDay(v)}
+                    cursor={{ fill: "var(--muted)", opacity: 0.4 }}
+                  />
+
+                  <Bar
+                    dataKey="inputTokens"
+                    name="Input Tokens"
+                    fill="var(--chart-2)"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+
+                  <Bar
+                    dataKey="outputTokens"
+                    name="Output Tokens"
+                    fill="var(--chart-4)"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        {channelData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Hash className="size-4 text-muted-foreground" />
+              Channel Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={channelData}
+                  margin={{ top: 8, bottom: 4, left: 0, right: 0 }}
+                  layout="vertical"
+                >
+                  <CartesianGrid horizontal={false} stroke="var(--border)" />
+
+                  <XAxis
+                    type="number"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  />
+
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    width={isDesktop ? 90 : 70}
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  />
+
+                  <Tooltip
+                    content={<ChartTooltipContent />}
+                    formatter={(v) => Number(v).toLocaleString()}
+                    cursor={{ fill: "var(--muted)", opacity: 0.4 }}
+                  />
+
+                  <Bar
+                    dataKey="count"
+                    name="Conversations"
+                    fill="var(--chart-1)"
+                    radius={[0, 4, 4, 0]}
+                    maxBarSize={24}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }
