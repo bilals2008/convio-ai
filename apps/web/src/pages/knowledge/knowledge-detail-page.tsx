@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { LayoutDashboard, Database, FlaskConical, History, Loader2 } from 'lucide-react'
+import { FileIcon } from '@/components/shared/file-icon'
 import { z } from 'zod'
 import { PageContainer } from '@/components/shared/page-container'
 import { Skeleton } from '@/components/shared/loading'
@@ -485,6 +486,7 @@ export default function KnowledgeDetailPage() {
         <DialogContent className="w-[90vw] max-w-none max-h-[85vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="flex flex-wrap items-center gap-2">
+              {viewDoc && <FileIcon type={viewDoc.type} size={20} />}
               {viewDoc?.name || 'Document'}
               {viewDoc && (
                 <>

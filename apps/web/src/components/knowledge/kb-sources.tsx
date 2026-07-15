@@ -8,16 +8,11 @@ import {
   RefreshCw,
   Download,
   Trash2,
-  FileText,
-  FileType2,
-  FileJson,
-  Table2,
-  Link2,
-  FileCode2,
   Check,
   X,
   Loader2,
 } from 'lucide-react'
+import { FileIcon } from '@/components/shared/file-icon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -31,13 +26,8 @@ import type { DocumentItem } from './document-card'
 
 type DocType = DocumentItem['type']
 
-const fileIcon: Record<DocType, React.ComponentType<{ className?: string }>> = {
-  txt: FileText,
-  pdf: FileType2,
-  csv: Table2,
-  md: FileCode2,
-  json: FileJson,
-  url: Link2,
+function DocIcon({ type, size = 16 }: { type: DocType; size?: number }) {
+  return <FileIcon type={type === 'url' ? 'web' : type} size={size} />
 }
 
 const statusFilterOptions = [
@@ -118,7 +108,6 @@ function SourceCardView({
   onReprocess: () => void
   reprocessing: boolean
 }) {
-  const Icon = fileIcon[doc.type]
   const isBusy = doc.status === 'processing' || doc.status === 'pending' || reprocessing
   const embeddings = doc.status === 'ready' ? doc.chunkCount ?? 0 : 0
 
@@ -149,7 +138,7 @@ function SourceCardView({
           />
         )}
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted/60">
-          <Icon className="size-4 text-foreground/80" />
+          <DocIcon type={doc.type} size={16} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -187,7 +176,7 @@ function SourceCardView({
       )}
       <div className="flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted/60">
-          <Icon className="size-5 text-foreground/80" />
+          <DocIcon type={doc.type} size={20} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
