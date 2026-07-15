@@ -16,7 +16,7 @@ export function PageHeader({ title, description, action, className }: PageHeader
           <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && <div className="shrink-0 self-end sm:self-auto">{action}</div>}
     </div>
   )
 }
