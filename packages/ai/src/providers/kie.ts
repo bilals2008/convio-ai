@@ -65,16 +65,29 @@ export class KIEProvider implements AIProvider {
   }
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
+    const body: Record<string, unknown> = {
+      model: params.model,
+      messages: params.messages,
+      temperature: params.temperature,
+      max_tokens: params.maxTokens,
+      stream: true,
+    }
+
+    if (params.tools && params.tools.length > 0) {
+      body.tools = params.tools.map(t => ({
+        type: 'function',
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      }))
+    }
+
     const response = await fetch(`${KIE_BASE}/${params.model}/v1/chat/completions`, {
       method: 'POST',
       headers: this.getHeaders(params.apiKey),
-      body: JSON.stringify({
-        model: params.model,
-        messages: params.messages,
-        temperature: params.temperature,
-        max_tokens: params.maxTokens,
-        stream: true,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -87,6 +100,7 @@ export class KIEProvider implements AIProvider {
 
     const decoder = new TextDecoder()
     let buffer = ''
+    const toolCallAccum: Record<number, { id: string; name: string; arguments: string }> = {}
 
     while (true) {
       const { done, value } = await reader.read()
@@ -105,15 +119,35 @@ export class KIEProvider implements AIProvider {
           }
           try {
             const parsed = JSON.parse(data) as {
-              choices: Array<{ delta: { content?: string } }>
+              choices: Array<{ delta: { content?: string; tool_calls?: Array<{ index: number; id?: string; type?: string; function?: { name?: string; arguments?: string } }> } }>
             }
-            const content = parsed.choices[0]?.delta?.content
-            if (content) {
-              yield { type: 'text', content }
+            const delta = parsed.choices[0]?.delta
+            if (delta?.content) {
+              yield { type: 'text', content: delta.content }
+            }
+            if (delta?.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index
+                if (tc.id) {
+                  toolCallAccum[idx] = { id: tc.id, name: tc.function?.name || '', arguments: tc.function?.arguments || '' }
+                } else if (toolCallAccum[idx]) {
+                  toolCallAccum[idx].arguments += tc.function?.arguments || ''
+                }
+              }
             }
           } catch { /* skip parse errors */ }
         }
       }
+    }
+
+    for (const tc of Object.values(toolCallAccum)) {
+      try {
+        const args = JSON.parse(tc.arguments) as Record<string, unknown>
+        yield {
+          type: 'tool_call',
+          toolCall: { id: tc.id, name: tc.name, arguments: args },
+        }
+      } catch { /* skip malformed tool call JSON */ }
     }
 
     yield { type: 'done' }

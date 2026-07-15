@@ -1,4 +1,4 @@
-import { generateText, streamText } from 'ai'
+import { generateText, streamText, jsonSchema } from 'ai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 
@@ -34,19 +34,50 @@ export class AnthropicProvider implements AIProvider {
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const sysMsg = params.messages.find(m => m.role === 'system')
     const chatMessages = params.messages.filter(m => m.role !== 'system')
+
+    const tools = params.tools?.reduce((acc: any, t) => {
+      acc[t.name] = { description: t.description, inputSchema: jsonSchema(t.parameters as any) }
+      return acc
+    }, {} as any)
+
     const result = streamText({
       model: this.getClient(params.apiKey)(params.model),
       messages: chatMessages,
       ...(sysMsg && { instructions: sysMsg.content }),
       temperature: params.temperature,
       maxOutputTokens: params.maxTokens,
+      ...(tools && Object.keys(tools).length > 0 && { tools }),
     })
 
-    for await (const chunk of result.textStream) {
-      yield { type: 'text', content: chunk }
+    for await (const chunk of result.fullStream) {
+      if (chunk.type === 'text-delta' && chunk.text) {
+        yield { type: 'text', content: chunk.text }
+      }
+      if (chunk.type === 'reasoning-delta' && chunk.text) {
+        yield { type: 'reasoning', content: chunk.text }
+      }
+      if (chunk.type === 'tool-call') {
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: chunk.toolCallId,
+            name: chunk.toolName,
+            arguments: chunk.input as Record<string, unknown>,
+          },
+        }
+      }
+      if (chunk.type === 'finish') {
+        const u = chunk.totalUsage
+        yield {
+          type: 'done',
+          usage: u ? {
+            promptTokens: u.inputTokens ?? 0,
+            completionTokens: u.outputTokens ?? 0,
+            totalTokens: u.totalTokens ?? 0,
+          } : undefined,
+        }
+      }
     }
-
-    yield { type: 'done' }
   }
 
   async embed(_text: string): Promise<number[]> {

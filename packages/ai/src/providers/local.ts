@@ -80,6 +80,7 @@ export class LocalProvider implements AIProvider {
     const decoder = new TextDecoder()
     let buffer = ''
     let finalUsage: StreamChunk['usage']
+    const toolCallAccum: Record<number, { id: string; name: string; arguments: string }> = {}
 
     while (true) {
       const { done, value } = await reader.read()
@@ -101,6 +102,16 @@ export class LocalProvider implements AIProvider {
           const delta = parsed.choices?.[0]?.delta
           if (delta?.content) yield { type: 'text', content: delta.content }
           if (delta?.reasoning_content) yield { type: 'reasoning', content: delta.reasoning_content }
+          if (delta?.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index
+              if (tc.id) {
+                toolCallAccum[idx] = { id: tc.id, name: tc.function?.name || '', arguments: tc.function?.arguments || '' }
+              } else if (toolCallAccum[idx]) {
+                toolCallAccum[idx].arguments += tc.function?.arguments || ''
+              }
+            }
+          }
           if (parsed.usage) {
             finalUsage = {
               promptTokens: parsed.usage.prompt_tokens ?? 0,
@@ -110,6 +121,16 @@ export class LocalProvider implements AIProvider {
           }
         } catch { /* skip malformed SSE */ }
       }
+    }
+
+    for (const tc of Object.values(toolCallAccum)) {
+      try {
+        const args = JSON.parse(tc.arguments) as Record<string, unknown>
+        yield {
+          type: 'tool_call',
+          toolCall: { id: tc.id, name: tc.name, arguments: args },
+        }
+      } catch { /* skip malformed tool call JSON */ }
     }
 
     yield { type: 'done', usage: finalUsage }

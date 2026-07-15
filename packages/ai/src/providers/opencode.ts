@@ -1,4 +1,4 @@
-import { generateText, streamText } from 'ai'
+import { generateText, streamText, jsonSchema } from 'ai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 
@@ -55,12 +55,19 @@ export class OpenCodeProvider implements AIProvider {
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const sysMsg = params.messages.find(m => m.role === 'system')
     const chatMessages = params.messages.filter(m => m.role !== 'system')
+
+    const tools = params.tools?.reduce((acc: any, t) => {
+      acc[t.name] = { description: t.description, inputSchema: jsonSchema(t.parameters as any) }
+      return acc
+    }, {} as any)
+
     const result = streamText({
       model: this.getClient(params.apiKey).chatModel(stripPrefix(params.model)),
       messages: chatMessages,
       ...(sysMsg && { instructions: sysMsg.content }),
       temperature: params.temperature,
       maxOutputTokens: params.maxTokens,
+      ...(tools && Object.keys(tools).length > 0 && { tools }),
     })
 
     for await (const chunk of result.fullStream) {
@@ -69,6 +76,16 @@ export class OpenCodeProvider implements AIProvider {
       }
       if (chunk.type === 'reasoning-delta' && chunk.text) {
         yield { type: 'reasoning', content: chunk.text }
+      }
+      if (chunk.type === 'tool-call') {
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: chunk.toolCallId,
+            name: chunk.toolName,
+            arguments: chunk.input as Record<string, unknown>,
+          },
+        }
       }
       if (chunk.type === 'finish') {
         const u = chunk.totalUsage
