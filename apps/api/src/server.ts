@@ -29,14 +29,10 @@ import messagesRoutes from './modules/messages/routes.js'
 import knowledgeRoutes from './modules/knowledge/routes.js'
 import analyticsRoutes from './modules/analytics/routes.js'
 import aiRoutes from './modules/ai/routes.js'
-import playgroundRoutes from './modules/playground/routes.js'
 import billingRoutes from './modules/billing/routes.js'
 import widgetsRoutes from './modules/widgets/routes.js'
 import providerKeysRoutes from './modules/provider-keys/routes.js'
 import apiKeysRoutes from './modules/api-keys/routes.js'
-import auditLogRoutes from './modules/audit-logs/routes.js'
-import ssoRoutes from './modules/sso/routes.js'
-import moderationRoutes from './modules/moderation/routes.js'
 
 async function buildServer() {
   const app = Fastify({
@@ -71,14 +67,10 @@ async function buildServer() {
   await app.register(knowledgeRoutes, { prefix: '/api' })
   await app.register(analyticsRoutes, { prefix: '/api' })
   await app.register(aiRoutes, { prefix: '/api' })
-  await app.register(playgroundRoutes, { prefix: '/api' })
   await app.register(billingRoutes, { prefix: '/api' })
   await app.register(widgetsRoutes, { prefix: '/api' })
   await app.register(providerKeysRoutes, { prefix: '/api' })
   await app.register(apiKeysRoutes, { prefix: '/api' })
-  await app.register(auditLogRoutes, { prefix: '/api' })
-  await app.register(ssoRoutes, { prefix: '/api' })
-  await app.register(moderationRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {

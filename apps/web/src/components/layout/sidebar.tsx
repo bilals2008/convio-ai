@@ -8,21 +8,26 @@ import {
   MessageCircle,
   BookOpen,
   Users,
+  User,
   Key,
-  Terminal,
   Link as LinkIcon,
   ChevronLeft,
+  ChevronUp,
   Shield,
-  ShieldAlert,
-  ScrollText,
   Building2,
   LogOut,
-  User,
   X,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import { SidebarGroup, SidebarItem } from './sidebar-nav'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
@@ -30,24 +35,16 @@ import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
 const settingsGeneral = [
-  { icon: User, label: 'Profile', href: '/settings/profile' },
   { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
   { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
   { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
-]
-
-const settingsAdvanced = [
-  { icon: ShieldAlert, label: 'Moderation', href: '/settings/moderation' },
-  { icon: Building2, label: 'SSO', href: '/settings/sso' },
-  { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
-  { icon: Terminal, label: 'Playground', href: '/settings/playground' },
 ]
 
 function SettingsGroup({ collapsed }: { collapsed: boolean }) {
   if (collapsed) {
     return (
       <div className="space-y-0.5 mt-4">
-        {[...settingsGeneral, ...settingsAdvanced].map((item) => (
+        {settingsGeneral.map((item) => (
           <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
         ))}
       </div>
@@ -56,19 +53,11 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
 
   return (
     <div className="space-y-0.5 mt-4">
-      <div className="px-3 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
+      <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
         Settings
       </div>
       <div className="flex flex-col gap-0.5">
         {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
-        ))}
-      </div>
-      <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
-        Advanced
-      </div>
-      <div className="flex flex-col gap-0.5">
-        {settingsAdvanced.map((item) => (
           <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
         ))}
       </div>
@@ -143,20 +132,17 @@ export function Sidebar() {
 
       <ScrollArea className="flex-1 min-h-0">
         <nav className="flex flex-col px-2 py-2">
-          <SidebarGroup label="Dashboard">
-            <SidebarItem icon={LayoutDashboard} label="Overview" href="/dashboard" exact />
+          <SidebarGroup label="Overview">
+            <SidebarItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" exact />
             <SidebarItem icon={BarChart3} label="Analytics" href="/dashboard/analytics" />
           </SidebarGroup>
 
           <SidebarGroup label="AI">
             <SidebarItem icon={Brain} label="Agents" href="/agents" />
-          </SidebarGroup>
-
-          <SidebarGroup label="Knowledge">
             <SidebarItem icon={BookOpen} label="Knowledge Base" href="/knowledge" />
           </SidebarGroup>
 
-          <SidebarGroup label="Conversations">
+          <SidebarGroup label="Channels">
             <SidebarItem icon={MessageSquare} label="Conversations" href="/conversations" />
             <SidebarItem icon={MessageCircle} label="Widgets" href="/widgets" />
           </SidebarGroup>
@@ -172,43 +158,46 @@ export function Sidebar() {
 
       {/* User section */}
       <div className="border-t border-border/50 p-2 mt-auto">
-        <div className={cn(
-          'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm',
-          collapsed && 'justify-center px-0'
-        )}>
-          <Avatar className="size-8 shrink-0">
-            <AvatarImage src={avatarSrc} />
-            <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
-          </Avatar>
-          {!collapsed && (
-            <div className="flex-1 truncate text-left">
-              <div className="text-sm font-medium truncate">{user?.name || 'User'}</div>
-              <div className="text-[11px] text-muted-foreground truncate">{user?.email}</div>
-            </div>
-          )}
-        </div>
-        {!collapsed && (
-          <div className="flex gap-1 mt-2 px-1">
-            <button
-              onClick={() => navigate('/settings/profile')}
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
-            >
-              <User className="size-3" />
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className={cn(
+              'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted outline-none',
+              collapsed && 'justify-center px-0'
+            )}
+          >
+            <Avatar className="size-8 shrink-0">
+              <AvatarImage src={avatarSrc} />
+              <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+              <>
+                <div className="flex-1 truncate text-left">
+                  <div className="text-sm font-medium truncate">{user?.name || 'User'}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{user?.email}</div>
+                </div>
+                <ChevronUp className="size-4 text-muted-foreground" />
+              </>
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side={collapsed ? 'right' : 'top'} align="start" sideOffset={8}>
+            <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
+              <User className="size-4" />
               Profile
-            </button>
-            <button
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
               onClick={() => {
                 logout.mutate(undefined, {
                   onSuccess: () => navigate('/login', { replace: true }),
                 })
               }}
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10 transition-colors"
             >
-              <LogOut className="size-3" />
+              <LogOut className="size-4" />
               Sign Out
-            </button>
-          </div>
-        )}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   )
@@ -272,48 +261,46 @@ export function Sidebar() {
                       </div>
                     ))}
 
-                    {/* Mobile settings with sub-groups */}
-                    <div className="space-y-1">
-                      <h4 className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Settings
-                      </h4>
-                      {mobileSettingsGroups.map((group) => (
-                        <div key={group.label}>
-                          <div className="px-3 py-1 text-[10px] font-medium text-muted-foreground/50">
-                            {group.label}
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            {group.items.map((item) => (
-                              <Link
-                                key={item.href}
-                                to={item.href}
-                                onClick={() => setMobileOpen(false)}
-                                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                              >
-                                <item.icon className="size-4 shrink-0" />
-                                <span className="flex-1 truncate">{item.label}</span>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                   </nav>
                 </ScrollArea>
 
                 <div className="border-t p-4 shrink-0">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="size-8">
-                      <AvatarImage src={avatarSrc} />
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 truncate text-sm">
-                      <div className="font-medium">{user?.name || 'User'}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {user?.email}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      onClick={() => setMobileOpen(false)}
+                      className="flex w-full items-center gap-3 rounded-lg p-1 -m-1 transition-colors hover:bg-muted outline-none"
+                    >
+                      <Avatar className="size-8">
+                        <AvatarImage src={avatarSrc} />
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 truncate text-sm text-left">
+                        <div className="font-medium">{user?.name || 'User'}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {user?.email}
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                <ChevronUp className="size-4 text-muted-foreground" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="top" align="start" sideOffset={8}>
+                      <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
+                        <User className="size-4" />
+                        Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => {
+                          logout.mutate(undefined, {
+                            onSuccess: () => navigate('/login', { replace: true }),
+                          })
+                        }}
+                      >
+                        <LogOut className="size-4" />
+                        Sign Out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </aside>
             </div>
@@ -326,9 +313,9 @@ export function Sidebar() {
 
 const mobileNavGroups = [
   {
-    label: 'Dashboard',
+    label: 'Overview',
     items: [
-      { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
       { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
     ],
   },
@@ -336,16 +323,11 @@ const mobileNavGroups = [
     label: 'AI',
     items: [
       { icon: Brain, label: 'Agents', href: '/agents' },
-    ],
-  },
-  {
-    label: 'Knowledge',
-    items: [
       { icon: BookOpen, label: 'Knowledge Base', href: '/knowledge' },
     ],
   },
   {
-    label: 'Conversations',
+    label: 'Channels',
     items: [
       { icon: MessageSquare, label: 'Conversations', href: '/conversations' },
       { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
@@ -356,26 +338,6 @@ const mobileNavGroups = [
     items: [
       { icon: Building2, label: 'Organization', href: '/settings/organization' },
       { icon: Users, label: 'Team', href: '/settings/team' },
-    ],
-  },
-]
-
-const mobileSettingsGroups = [
-  {
-    label: 'General',
-    items: [
-      { icon: User, label: 'Profile', href: '/settings/profile' },
-      { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
-      { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
-      { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
-    ],
-  },
-  {
-    label: 'Advanced',
-    items: [
-      { icon: Building2, label: 'SSO', href: '/settings/sso' },
-      { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
-      { icon: Terminal, label: 'Playground', href: '/settings/playground' },
     ],
   },
 ]

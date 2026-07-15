@@ -63,6 +63,11 @@ Rules for AI agents working on this codebase.
 - Use `className` directly on trigger elements instead of `<Button asChild>`
 - Base UI Select requires `<SelectGroup>` wrapping `<SelectLabel>` and `<SelectSeparator>`
 
+## Icons
+
+- NEVER use the `Sparkles` icon from lucide-react — it does not exist and will cause a runtime error
+- Use `Shield`, `Star`, `Zap`, or `Award` as alternatives for highlight/feature icons
+
 ## Provider API Keys (BYOK)
 
 - Users can bring their own API keys per provider in Settings → Provider Keys

@@ -24,17 +24,13 @@ import AnalyticsPage from '@/pages/analytics/analytics-page'
 import WidgetsListPage from '@/pages/widgets/widgets-list-page'
 import WidgetConfigPage from '@/pages/widgets/widget-config-page'
 import WidgetDemoPage from '@/pages/widget/WidgetDemo'
-import PlaygroundPage from '@/pages/playground/playground-page'
-import AuditLogsPage from '@/pages/settings/audit-logs-page'
-import SsoSettingsPage from '@/pages/settings/sso-settings-page'
-import ModerationSettingsPage from '@/pages/settings/moderation-settings-page'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import OrganizationSettingsPage from '@/pages/settings/organization-settings-page'
 import TeamMembersPage from '@/pages/settings/team-members-page'
 import DeploymentsPage from '@/pages/settings/deployments-page'
 import ApiKeysPage from '@/pages/settings/api-keys-page'
 import ProviderKeysPage from '@/pages/settings/provider-keys-page'
-import ProfileSettingsPage from '@/pages/settings/profile-settings-page'
+import ProfilePage from '@/pages/settings/profile-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,16 +71,12 @@ export function App() {
               </Route>
               <Route path="/settings" element={<SettingsLayout />}>
                 <Route index element={<OrganizationSettingsPage />} />
-                <Route path="profile" element={<ProfileSettingsPage />} />
+                <Route path="profile" element={<ProfilePage />} />
                 <Route path="organization" element={<OrganizationSettingsPage />} />
                 <Route path="team" element={<TeamMembersPage />} />
                 <Route path="deployments" element={<DeploymentsPage />} />
                 <Route path="api-keys" element={<ApiKeysPage />} />
                 <Route path="provider-keys" element={<ProviderKeysPage />} />
-                <Route path="audit-logs" element={<AuditLogsPage />} />
-                <Route path="sso" element={<SsoSettingsPage />} />
-                <Route path="moderation" element={<ModerationSettingsPage />} />
-                <Route path="playground" element={<PlaygroundPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

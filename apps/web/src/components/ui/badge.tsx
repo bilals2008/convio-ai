@@ -24,7 +24,9 @@ const badgeVariants = cva(
         admin:
           "bg-warning/10 text-warning border-warning/20",
         member:
-          "bg-muted text-muted-foreground border-border",
+          "bg-primary/10 text-primary border-primary/20",
+        viewer:
+          "bg-info/10 text-info border-info/20",
       },
     },
     defaultVariants: {
