@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Shield, Check, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -59,7 +61,9 @@ export default function SsoSettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sso-config', orgId] })
       queryClient.invalidateQueries({ queryKey: ['audit-logs', orgId] })
+      toast.success('SSO configuration saved')
     },
+    onError: (error: Error) => toast.error(error.message || 'Unable to save SSO configuration'),
   })
 
   const handleSave = () => {
@@ -85,17 +89,17 @@ export default function SsoSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="SSO / SAML"
-        description="Configure single sign-on for your organization"
+        description="Single sign-on for your organization"
       />
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="size-5" />
-            Single Sign-On Configuration
+            Single Sign-On
           </CardTitle>
           <CardDescription>
-            Configure SAML or OIDC to allow your team to sign in using your corporate identity provider.
+            Let your team sign in with your corporate identity provider.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -103,7 +107,7 @@ export default function SsoSettingsPage() {
             <div>
               <p className="text-sm font-medium">Enable SSO</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {enabled ? 'SSO is active for this organization' : 'SSO is disabled'}
+                {enabled ? 'SSO is active' : 'SSO is disabled'}
               </p>
             </div>
             <Switch
@@ -112,66 +116,64 @@ export default function SsoSettingsPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Provider</Label>
-            <Select value={provider} onValueChange={(v) => setProvider(v ?? 'saml')}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="saml">SAML 2.0</SelectItem>
-                <SelectItem value="oidc">OpenID Connect (OIDC)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Provider</Label>
+              <Select value={provider} onValueChange={(v) => setProvider(v ?? 'saml')}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="saml">SAML 2.0</SelectItem>
+                  <SelectItem value="oidc">OpenID Connect (OIDC)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label>Issuer / Entity ID</Label>
-            <Input
-              value={issuer}
-              onChange={(e) => setIssuer(e.target.value)}
-              placeholder="https://your-idp.com/entity-id"
-            />
-            <p className="text-xs text-muted-foreground">The unique identifier of your identity provider.</p>
-          </div>
+            <div className="space-y-2">
+              <Label>Issuer / Entity ID</Label>
+              <Input
+                value={issuer}
+                onChange={(e) => setIssuer(e.target.value)}
+                placeholder="https://your-idp.com/entity-id"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label>SSO Entry Point</Label>
-            <Input
-              value={entryPoint}
-              onChange={(e) => setEntryPoint(e.target.value)}
-              placeholder="https://your-idp.com/saml/sso"
-            />
-            <p className="text-xs text-muted-foreground">The URL where authentication requests are sent.</p>
+            <div className="space-y-2">
+              <Label>SSO Entry Point</Label>
+              <Input
+                value={entryPoint}
+                onChange={(e) => setEntryPoint(e.target.value)}
+                placeholder="https://your-idp.com/saml/sso"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Metadata URL</Label>
+              <Input
+                value={metadataUrl}
+                onChange={(e) => setMetadataUrl(e.target.value)}
+                placeholder="https://your-idp.com/metadata.xml"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label>X.509 Certificate</Label>
-            <textarea
+            <Textarea
               value={certificate}
               onChange={(e) => setCertificate(e.target.value)}
               placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
-              className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
+              className="min-h-[100px] font-mono"
             />
-            <p className="text-xs text-muted-foreground">The certificate used to verify SAML responses.</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Metadata URL</Label>
-            <Input
-              value={metadataUrl}
-              onChange={(e) => setMetadataUrl(e.target.value)}
-              placeholder="https://your-idp.com/metadata.xml"
-            />
-            <p className="text-xs text-muted-foreground">Optional URL to fetch IdP metadata automatically.</p>
           </div>
 
           {config && (
             <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
               {config.enabled ? (
-                <><Check className="size-3.5 text-emerald-500" /> SSO is configured and active</>
+                <><Check className="size-3.5 text-success" /> SSO is configured and active</>
               ) : (
-                <><X className="size-3.5 text-muted-foreground" /> SSO is not yet active. Fill in the details and enable above.</>
+                <><X className="size-3.5 text-muted-foreground" /> SSO is not yet active</>
               )}
             </div>
           )}
@@ -182,19 +184,6 @@ export default function SsoSettingsPage() {
               Save Configuration
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>How it works</CardTitle>
-          <CardDescription>SSO setup overview for Convio</CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>1. Configure your IdP (Okta, Azure AD, Google Workspace, etc.) with Convio as a SAML/OIDC application.</p>
-          <p>2. Fill in the details from your IdP above (Issuer, Entry Point, Certificate).</p>
-          <p>3. Enable SSO and save. Members can then sign in using your corporate IdP.</p>
-          <p className="text-xs text-muted-foreground/70 mt-3">Note: This stores your SSO configuration. Your Supabase project must also have SSO enabled. Contact support for enterprise setup assistance.</p>
         </CardContent>
       </Card>
     </div>
