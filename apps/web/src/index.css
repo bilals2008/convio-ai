@@ -56,41 +56,41 @@
 }
 
 :root {
-    --background: hsl(36 100% 97%);
-    --foreground: hsl(36 20% 10%);
-    --card: hsl(36 15% 98%);
-    --card-foreground: hsl(36 20% 10%);
-    --popover: hsl(36 15% 98%);
-    --popover-foreground: hsl(36 20% 10%);
-    --primary: hsl(136 76% 25%);
-    --primary-foreground: hsl(36 20% 95%);
-    --secondary: hsl(36 15% 94%);
-    --secondary-foreground: hsl(36 20% 15%);
-    --muted: hsl(136 15% 91%);
-    --muted-foreground: hsl(36 20% 41%);
-    --accent: hsl(136 76% 32%);
-    --accent-foreground: hsl(36 20% 95%);
-    --destructive: hsl(0 84% 60%);
-    --border: hsl(36 15% 89%);
-    --input: hsl(36 15% 89%);
-    --ring: hsl(136 76% 25%);
-    --chart-1: hsl(136 76% 25%);
-    --chart-2: hsl(142 71% 45%);
-    --chart-3: hsl(217 91% 60%);
-    --chart-4: hsl(270 65% 60%);
-    --chart-5: hsl(38 92% 50%);
+    --background: hsl(142 30% 97%);
+    --foreground: hsl(142 40% 8%);
+    --card: hsl(142 20% 99%);
+    --card-foreground: hsl(142 40% 8%);
+    --popover: hsl(142 20% 99%);
+    --popover-foreground: hsl(142 40% 8%);
+    --primary: hsl(142 71% 28%);
+    --primary-foreground: hsl(142 20% 97%);
+    --secondary: hsl(142 25% 93%);
+    --secondary-foreground: hsl(142 40% 14%);
+    --muted: hsl(142 20% 92%);
+    --muted-foreground: hsl(142 15% 35%);
+    --accent: hsl(142 30% 90%);
+    --accent-foreground: hsl(142 40% 14%);
+    --destructive: hsl(0 84% 58%);
+    --border: hsl(142 25% 88%);
+    --input: hsl(142 25% 88%);
+    --ring: hsl(142 71% 28%);
+    --chart-1: hsl(142 71% 28%);
+    --chart-2: hsl(142 71% 42%);
+    --chart-3: hsl(217 91% 55%);
+    --chart-4: hsl(270 65% 55%);
+    --chart-5: hsl(38 92% 48%);
     --radius: 0.625rem;
-    --success: hsl(142 71% 45%);
-    --warning: hsl(38 92% 50%);
-    --info: hsl(217 91% 60%);
-    --sidebar: hsl(36 100% 97%);
-    --sidebar-foreground: hsl(36 20% 10%);
-    --sidebar-primary: hsl(136 76% 25%);
-    --sidebar-primary-foreground: hsl(36 20% 95%);
-    --sidebar-accent: hsl(36 15% 94%);
-    --sidebar-accent-foreground: hsl(36 20% 15%);
-    --sidebar-border: hsl(36 15% 89%);
-    --sidebar-ring: hsl(136 76% 25%);
+    --success: hsl(142 71% 42%);
+    --warning: hsl(38 92% 48%);
+    --info: hsl(217 91% 55%);
+    --sidebar: hsl(142 30% 97%);
+    --sidebar-foreground: hsl(142 30% 18%);
+    --sidebar-primary: hsl(142 71% 28%);
+    --sidebar-primary-foreground: hsl(142 20% 97%);
+    --sidebar-accent: hsl(142 25% 93%);
+    --sidebar-accent-foreground: hsl(142 40% 14%);
+    --sidebar-border: hsl(142 25% 88%);
+    --sidebar-ring: hsl(142 71% 28%);
 }
 
 .dark {
