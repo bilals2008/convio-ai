@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Shield, Loader2 } from 'lucide-react'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { Shield, Loader2, AlertCircle } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +24,11 @@ interface AuditLog {
   actorId?: string
   metadata?: Record<string, unknown>
   createdAt: string
+}
+
+interface AuditLogResponse {
+  data: AuditLog[]
+  nextCursor: string | null
 }
 
 const actionLabels: Record<string, string> = {
@@ -63,32 +68,30 @@ const actionColors: Record<string, string> = {
 export default function AuditLogsPage() {
   const { orgId, isLoading: orgLoading } = useOrg()
   const [actionFilter, setActionFilter] = useState('')
-  const [logs, setLogs] = useState<AuditLog[]>([])
-  const [cursor, setCursor] = useState<string | null>(null)
 
-  const { isLoading, isFetching } = useQuery({
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchNextPage,
+    hasNextPage,
+    fetchNextPage,
+    error,
+  } = useInfiniteQuery<AuditLogResponse>({
     queryKey: ['audit-logs', orgId, actionFilter],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }) => {
       const params: Record<string, string | number> = { limit: 50 }
       if (actionFilter) params.action = actionFilter
+      if (pageParam) params.cursor = pageParam as string
       const res = await orgsApi.api.get(`/organizations/${orgId}/audit-logs`, { params })
-      const data = res.data
-      setLogs(data.data || [])
-      setCursor(data.nextCursor || null)
-      return data
+      return res.data
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!orgId,
   })
 
-  const loadMore = async () => {
-    if (!cursor) return
-    const params: Record<string, string | number> = { limit: 50, cursor }
-    if (actionFilter) params.action = actionFilter
-    const res = await orgsApi.api.get(`/organizations/${orgId}/audit-logs`, { params })
-    const data = res.data
-    setLogs((prev) => [...prev, ...(data.data || [])])
-    setCursor(data.nextCursor || null)
-  }
+  const logs = data?.pages.flatMap((p) => p.data) ?? []
 
   return (
     <div className="space-y-6">
@@ -98,12 +101,12 @@ export default function AuditLogsPage() {
       />
 
       <div className="flex items-center gap-2">
-        <Select value={actionFilter} onValueChange={(v) => setActionFilter(v ?? '')}>
+        <Select value={actionFilter || 'all'} onValueChange={(v) => setActionFilter(v === 'all' ? '' : v)}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="All actions" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value=" ">All actions</SelectItem>
+            <SelectItem value="all">All actions</SelectItem>
             {Object.entries(actionLabels).map(([key, label]) => (
               <SelectItem key={key} value={key}>{label}</SelectItem>
             ))}
@@ -121,6 +124,12 @@ export default function AuditLogsPage() {
           {orgLoading || isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertCircle className="size-10 text-destructive/60 mb-3" />
+              <p className="text-sm text-destructive">Failed to load audit logs</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">{(error as Error).message}</p>
             </div>
           ) : logs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -162,10 +171,10 @@ export default function AuditLogsPage() {
         </CardContent>
       </Card>
 
-      {cursor && (
+      {hasNextPage && (
         <div className="flex justify-center">
-          <Button variant="outline" size="sm" onClick={loadMore} disabled={isFetching}>
-            {isFetching && <Loader2 className="size-3 animate-spin mr-2" />}
+          <Button variant="outline" size="sm" onClick={() => fetchNextPage()} disabled={isFetchNextPage}>
+            {isFetchNextPage && <Loader2 className="size-3 animate-spin mr-2" />}
             Load More
           </Button>
         </div>

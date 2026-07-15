@@ -22,9 +22,10 @@ Rules for AI agents working on this codebase.
 
 ## Data Fetching
 
-- Use TanStack Query for server state
-- Never put fetch logic in components
-- Use custom hooks in `lib/hooks/`
+- NEVER use `useEffect` for data fetching — it causes double-renders, race conditions, and cache invalidation issues
+- ALWAYS use TanStack Query (`useQuery`, `useMutation`, `useInfiniteQuery`) for all server state
+- Never put fetch logic in components — abstract into custom hooks in `lib/hooks/`
+- `queryFn` must be a pure function that returns data — never call `setState` inside it
 
 ## File Structure
 
