@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { defaultCapabilities } from '@/components/agents/agent-capabilities'
+import { builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
 import { AgentDetailLayout } from '@/components/agents/agent-detail-layout'
 import {
   AgentOverview,
@@ -42,6 +43,7 @@ interface Agent {
   organizationId: string
   createdAt: string
   updatedAt: string
+  widgetConfig?: { tools?: string[] }
 }
 
 const agentDetailSchema = z.object({
@@ -65,6 +67,7 @@ export default function AgentDetailPage() {
 
   const [activeTab, setActiveTab] = useState('overview')
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
+  const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
 
   const form = useForm({
     resolver: zodResolver(agentDetailSchema),
@@ -102,7 +105,8 @@ export default function AgentDetailPage() {
     queryKey: ['agent', id],
     queryFn: async () => {
       const res = await agentsApi.get(id!)
-      return res.data.data as Agent
+      const agentData = res.data.data ?? res.data
+      return agentData as Agent
     },
     enabled: !!id,
   })
@@ -120,6 +124,13 @@ export default function AgentDetailPage() {
         toneOfVoice: 'friendly',
         language: 'english',
       })
+
+      const savedTools = agent.widgetConfig?.tools
+      if (savedTools && savedTools.length > 0) {
+        setTools((prev) =>
+          prev.map((t) => ({ ...t, enabled: savedTools.includes(t.id) }))
+        )
+      }
     }
   }, [agent, form])
 
@@ -148,6 +159,7 @@ export default function AgentDetailPage() {
       temperature: data.temperature,
       reasoningEffort: data.reasoningEffort,
       maxTokens: data.maxTokens,
+      tools: tools.filter((t) => t.enabled).map((t) => t.id),
     })
   })
 
@@ -160,6 +172,12 @@ export default function AgentDetailPage() {
   const handleDeploymentToggle = (optionId: string, enabled: boolean) => {
     setDeploymentOptions((prev) =>
       prev.map((o) => (o.id === optionId ? { ...o, enabled } : o))
+    )
+  }
+
+  const handleToolToggle = (toolId: string, enabled: boolean) => {
+    setTools((prev) =>
+      prev.map((t) => (t.id === toolId ? { ...t, enabled } : t))
     )
   }
 
@@ -252,6 +270,8 @@ export default function AgentDetailPage() {
             modelsLoading={modelsLoading}
             modelsError={modelsError}
             modelsErrorMessage={modelsErrorObj instanceof Error ? modelsErrorObj.message : undefined}
+            tools={tools}
+            onToolToggle={handleToolToggle}
           />
         </TabsContent>
 
@@ -275,6 +295,7 @@ export default function AgentDetailPage() {
               reasoningEffort: values.reasoningEffort,
               providerKeyId: agent.providerKeyId || undefined,
               knowledgeBaseId: agent.knowledgeBaseId || null,
+              tools: tools.filter((t) => t.enabled).map((t) => t.id),
             }}
           />
         </TabsContent>

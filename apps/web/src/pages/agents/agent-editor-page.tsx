@@ -64,7 +64,8 @@ export default function AgentEditorPage() {
     queryKey: ['agent', id],
     queryFn: async () => {
       const res = await agentsApi.get(id!)
-      return res.data.data as Agent
+      const agentData = res.data.data ?? res.data
+      return agentData as Agent
     },
     enabled: isEdit,
   })

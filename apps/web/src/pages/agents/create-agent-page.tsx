@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
 import { AgentTemplatePicker, type AgentTemplate } from '@/components/agents/agent-template-picker'
 import { defaultCapabilities } from '@/components/agents/agent-capabilities'
+import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
 import { AgentKnowledgeSources } from '@/components/agents/agent-knowledge-sources'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
 import { agents as agentsApi } from '@/lib/api'
@@ -63,6 +64,7 @@ export default function CreateAgentPage() {
   const { orgId } = useOrg()
   const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
+  const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
   const [deploymentOptions, setDeploymentOptions] = useState(DEFAULT_DEPLOYMENTS)
   const form = useForm<CreateAgentValues>({
     resolver: zodResolver(createSchema),
@@ -100,6 +102,10 @@ export default function CreateAgentPage() {
     onError: (error: Error) => toast.error(error.message || 'Unable to create agent. Please try again.'),
   })
 
+  const handleToolToggle = (id: string, enabled: boolean) => {
+    setTools((prev) => prev.map((t) => (t.id === id ? { ...t, enabled } : t)))
+  }
+
   const handleCreate = form.handleSubmit(
     (data) => {
       const model = data.model || models[0]?.id || ''
@@ -119,6 +125,7 @@ export default function CreateAgentPage() {
         maxTokens: 2048,
         organizationId: orgId,
         capabilities: capabilities.filter((c) => c.enabled).map((c) => c.id),
+        tools: tools.filter((t) => t.enabled).map((t) => t.id),
         deployment: deploymentOptions.filter((o) => o.enabled).map((o) => o.id),
         settings: { toneOfVoice: data.toneOfVoice, language: data.language },
       })
@@ -231,6 +238,21 @@ export default function CreateAgentPage() {
           {/* Sidebar — 2/5 */}
           <div className="space-y-6 lg:col-span-2">
             <div className="lg:sticky lg:top-6 lg:space-y-6">
+              {/* Tools */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tools</CardTitle>
+                  <CardDescription>Built-in tools your agent can use.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AgentToolPicker
+                    tools={tools}
+                    onToggle={handleToolToggle}
+                    disabled={saving}
+                  />
+                </CardContent>
+              </Card>
+
               {/* Capabilities */}
               <Card>
                 <CardHeader>
