@@ -99,15 +99,13 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const orgId = await getConversationOrgId(id)
     await fastify.getMembership(request.userId!, orgId)
 
-    const [message] = await prisma.$transaction([
-      prisma.message.create({
-        data: { conversationId: id, role, content, status: 'sent' },
-      }),
-      prisma.conversation.update({
-        where: { id },
-        data: { status: 'active' },
-      }),
-    ])
+    const message = await prisma.message.create({
+      data: { conversationId: id, role, content, status: 'sent' },
+    })
+    await prisma.conversation.update({
+      where: { id },
+      data: { status: 'active' },
+    })
 
     return { data: message }
   })
@@ -418,10 +416,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       return { data: { response: widgetModeration.message } }
     }
 
-    await prisma.$transaction([
-      prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } }),
-      prisma.conversation.update({ where: { id }, data: { status: 'active' } }),
-    ])
+    await prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } })
+    await prisma.conversation.update({ where: { id }, data: { status: 'active' } })
 
     const agent = conversation.agent
     if (!agent || !agent.model) {
