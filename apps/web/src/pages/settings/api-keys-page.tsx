@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Key } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Plus, Key, AlertCircle } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
@@ -10,15 +10,8 @@ import { ApiKeyTable } from '@/components/settings/api-key-table'
 import { ApiKeyCreateDialog } from '@/components/settings/api-key-create-dialog'
 import { ApiKeyDeleteDialog } from '@/components/settings/api-key-delete-dialog'
 import { apiKeys as apiKeysClient } from '@/lib/api'
+import { useApiKeys } from '@/lib/hooks/use-api-keys'
 import { useOrg } from '@/lib/org-context'
-
-interface ApiKey {
-  id: string
-  name: string
-  keyPreview: string
-  createdAt: string
-  lastUsedAt?: string
-}
 
 interface CreatedKey {
   name: string
@@ -32,14 +25,7 @@ export default function ApiKeysPage() {
   const [deleteKeyId, setDeleteKeyId] = useState<string | null>(null)
   const [createdKey, setCreatedKey] = useState<CreatedKey | null>(null)
 
-  const { data: apiKeys, isLoading } = useQuery({
-    queryKey: ['api-keys', orgId],
-    queryFn: async () => {
-      const res = await apiKeysClient.list(orgId!)
-      return (res.data.data || []) as ApiKey[]
-    },
-    enabled: !!orgId,
-  })
+  const { data: apiKeys, isLoading, isFetching, error } = useApiKeys(orgId)
 
   const createMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -92,7 +78,13 @@ export default function ApiKeysPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!apiKeys || apiKeys.length === 0 ? (
+          {error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertCircle className="size-10 text-destructive/60 mb-3" />
+              <p className="text-sm text-destructive">Failed to load API keys</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">{(error as Error).message}</p>
+            </div>
+          ) : !apiKeys || apiKeys.length === 0 ? (
             <EmptyState
               icon={Key}
               title="No API keys"
@@ -103,7 +95,7 @@ export default function ApiKeysPage() {
             <ApiKeyTable
               keys={apiKeys}
               onDelete={(id) => setDeleteKeyId(id)}
-              loading={deleteMutation.isPending}
+              loading={deleteMutation.isPending || isFetching}
             />
           )}
         </CardContent>
