@@ -3,6 +3,7 @@ import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { createToolSchema, updateToolSchema } from '@convio/validation'
 import { AppError } from '../../plugins/error.js'
+import { listTools } from '../../services/tools/index.js'
 import { z } from 'zod'
 
 const orgParamsSchema = z.object({
@@ -18,6 +19,11 @@ const createToolBodySchema = createToolSchema.omit({ organizationId: true })
 const updateToolBodySchema = updateToolSchema.omit({ organizationId: true })
 
 export default async function toolsRoutes(fastify: FastifyInstance) {
+  // GET /api/tools/built-in — List built-in AI tools (no auth, used by test-stream)
+  fastify.get('/tools/built-in', async () => {
+    return { data: listTools() }
+  })
+
   // POST /api/organizations/:orgId/tools — Create tool (admin only)
   fastify.post('/organizations/:orgId/tools', {
     preHandler: [

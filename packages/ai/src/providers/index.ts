@@ -6,6 +6,7 @@ import { GroqProvider } from './groq.js'
 import { KIEProvider } from './kie.js'
 import { LocalProvider } from './local.js'
 import { OpenCodeProvider } from './opencode.js'
+import { OpenRouterProvider } from './openrouter.js'
 
 export const openaiProvider = new OpenAIProvider()
 export const anthropicProvider = new AnthropicProvider()
@@ -14,6 +15,7 @@ export const groqProvider = new GroqProvider()
 export const kieProvider = new KIEProvider()
 export const localProvider = new LocalProvider()
 export const opencodeProvider = new OpenCodeProvider()
+export const openrouterProvider = new OpenRouterProvider()
 
 export const allProviders: AIProvider[] = [
   openaiProvider,
@@ -23,6 +25,7 @@ export const allProviders: AIProvider[] = [
   kieProvider,
   localProvider,
   opencodeProvider,
+  openrouterProvider,
 ]
 
 export function getProviderById(id: string): AIProvider | undefined {
@@ -49,5 +52,7 @@ export function getProviderForModel(model: string): AIProvider {
   if (model.startsWith('llama-') || model.startsWith('mixtral-')) return groqProvider
   if (OPENCODE_MODEL_PREFIXES.some(p => model.startsWith(p))) return opencodeProvider
   if (LOCAL_MODEL_PREFIXES.some(p => model.startsWith(p))) return localProvider
+  // OpenRouter models use the format: provider/model-name
+  if (model.includes('/') && !model.startsWith('auto/') && !model.startsWith('no-think/')) return openrouterProvider
   throw new Error(`No provider found for model: ${model}`)
 }
