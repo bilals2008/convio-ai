@@ -681,31 +681,7 @@ export default function WidgetConfigPage() {
             </div>
           </ProductCard>
 
-          {/* Appearance (placeholder) */}
-          <ProductCard className="p-5 opacity-60">
-            <div className="flex items-center gap-3">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
-                <Rocket className="size-4 text-muted-foreground" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold">Appearance</h2>
-                <p className="text-xs text-muted-foreground">Coming soon</p>
-              </div>
-            </div>
-          </ProductCard>
 
-          {/* Analytics (placeholder) */}
-          <ProductCard className="p-5 opacity-60">
-            <div className="flex items-center gap-3">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
-                <Rocket className="size-4 text-muted-foreground" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold">Analytics</h2>
-                <p className="text-xs text-muted-foreground">Coming soon</p>
-              </div>
-            </div>
-          </ProductCard>
         </aside>
       </div>
     </div>
