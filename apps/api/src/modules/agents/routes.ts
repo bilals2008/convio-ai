@@ -7,6 +7,7 @@ import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { getTemplate, listTemplates } from './templates.js'
+import { getToolHandler } from '../../services/tools/index.js'
 import { z } from 'zod'
 
 const orgParamsSchema = z.object({
@@ -48,10 +49,12 @@ const testStreamSchema = z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string().min(1).max(12000),
   })).max(30).optional().default([]),
+  tools: z.array(z.string()).optional().default([]),
 })
 
 const createAgentBodySchema = createAgentSchema.extend({
   knowledgeBaseId: z.string().uuid().optional().nullable(),
+  tools: z.array(z.string()).optional(),
 })
 
 const fromTemplateBodySchema = z.object({
@@ -68,6 +71,7 @@ const fromTemplateBodySchema = z.object({
 
 const updateAgentBodySchema = updateAgentSchema.extend({
   knowledgeBaseId: z.string().uuid().optional().nullable(),
+  tools: z.array(z.string()).optional(),
 })
 
 export default async function agentsRoutes(fastify: FastifyInstance) {
@@ -83,11 +87,16 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, orgId)
 
     const body = request.body as Record<string, unknown>
-    const { knowledgeBaseId, reasoningEffort, ...rest } = body
+    const { knowledgeBaseId, reasoningEffort, tools, ...rest } = body
+
+    const createData: Record<string, unknown> = { ...rest }
+    if (tools !== undefined) {
+      createData.widgetConfig = { tools }
+    }
 
     const agent = await prisma.agent.create({
       data: {
-        ...rest,
+        ...createData,
         knowledgeBaseId: knowledgeBaseId || null,
         organizationId: orgId,
         createdById: request.userId,
@@ -223,11 +232,20 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, existing.organizationId)
 
     const body = request.body as Record<string, unknown>
-    const { knowledgeBaseId, reasoningEffort, ...rest } = body
+    const { knowledgeBaseId, reasoningEffort, tools, ...rest } = body
+
+    const updateData: Record<string, unknown> = { ...rest }
+    if (knowledgeBaseId !== undefined) {
+      updateData.knowledgeBaseId = knowledgeBaseId || null
+    }
+    if (tools !== undefined) {
+      const existingConfig = (existing.widgetConfig as Record<string, unknown>) || {}
+      updateData.widgetConfig = { ...existingConfig, tools }
+    }
 
     const agent = await prisma.agent.update({
       where: { id },
-      data: { ...rest, knowledgeBaseId: knowledgeBaseId !== undefined ? (knowledgeBaseId || null) : undefined } as any,
+      data: updateData as any,
     })
 
     return { data: agent }
@@ -387,6 +405,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       providerKeyId,
       knowledgeBaseId,
       history,
+      tools: toolNames,
     } = request.body as z.infer<typeof testStreamSchema>
 
     const providerKey = providerKeyId
@@ -422,6 +441,16 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     let systemContext = systemPrompt
 
+    // Convert tool names to native tool definitions for the AI provider
+    const toolDefs = toolNames
+      .map((name) => getToolHandler(name))
+      .filter((h): h is NonNullable<ReturnType<typeof getToolHandler>> => !!h)
+      .map((h) => ({
+        name: h.schema.name,
+        description: h.schema.description,
+        parameters: h.schema.parameters,
+      }))
+
     if (knowledgeBaseId) {
       const context = await retrieveContext(message, knowledgeBaseId).catch(() => null)
       if (context) {
@@ -435,7 +464,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     const messages = [
       { role: 'system' as const, content: systemContext },
-      ...history.map((h) => ({ role: h.role, content: h.content })),
+      ...history.map((h) => ({ role: h.role as 'user' | 'assistant' | 'system', content: h.content })),
       { role: 'user' as const, content: message },
     ]
 
@@ -461,19 +490,68 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         maxTokens,
         reasoningEffort: reasoningEffort || undefined,
         apiKey,
+        tools: toolDefs.length > 0 ? toolDefs : undefined,
       })
 
       let finalUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined
+
+      let firstResponseText = ''
+      const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
 
       for await (const chunk of stream) {
         if (clientDisconnected) break
         if (chunk.type === 'reasoning') {
           reply.raw.write(`data: ${JSON.stringify({ type: 'reasoning', content: chunk.content })}\n\n`)
         } else if (chunk.type === 'text' && chunk.content) {
+          firstResponseText += chunk.content
           reply.raw.write(`data: ${JSON.stringify({ type: 'text', content: chunk.content })}\n\n`)
+        } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+          const toolName = chunk.toolCall.name
+          const args = chunk.toolCall.arguments
+          toolCallsFromStream.push({ tool: toolName, args })
+          reply.raw.write(`data: ${JSON.stringify({ type: 'tool_call', tool: toolName, args })}\n\n`)
         } else if (chunk.type === 'done') {
           finalUsage = chunk.usage
           break
+        }
+      }
+
+      // Execute tools from native tool calls and make second AI call for summarization
+      if (toolCallsFromStream.length > 0) {
+        const results: { tool: string; result: unknown }[] = []
+        for (const tc of toolCallsFromStream) {
+          const handler = getToolHandler(tc.tool)
+          if (handler) {
+            const result = await handler.execute(tc.args)
+            reply.raw.write(`data: ${JSON.stringify({ type: 'tool_result', tool: tc.tool, result })}\n\n`)
+            results.push({ tool: tc.tool, result })
+          }
+        }
+
+        const resultsSummary = results
+          .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
+          .join('\n\n')
+
+        const finalStream = provider.stream({
+          model,
+          messages: [
+            ...history.map((h) => ({ role: h.role as 'user' | 'assistant' | 'system', content: h.content })),
+            { role: 'user', content: message },
+            { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
+            { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
+          ],
+          temperature,
+          maxTokens,
+          apiKey,
+        })
+        for await (const chunk of finalStream) {
+          if (clientDisconnected) break
+          if (chunk.type === 'text' && chunk.content) {
+            reply.raw.write(`data: ${JSON.stringify({ type: 'text', content: chunk.content })}\n\n`)
+          }
+          if (chunk.type === 'done' && chunk.usage) {
+            finalUsage = chunk.usage
+          }
         }
       }
 
