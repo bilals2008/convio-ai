@@ -21,6 +21,7 @@ interface AgentChatPanelProps {
     maxTokens: number
     providerKeyId?: string
     knowledgeBaseId?: string | null
+    tools?: string[]
   }
   className?: string
 }
@@ -73,6 +74,7 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
         maxTokens: config.maxTokens,
         providerKeyId: config.providerKeyId,
         knowledgeBaseId: config.knowledgeBaseId,
+        tools: config.tools,
         history,
       })
 

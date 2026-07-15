@@ -49,6 +49,7 @@ export const agents = {
   update: (id: string, data: Record<string, unknown>) => api.patch(`/agents/${id}`, data),
   delete: (id: string) => api.delete(`/agents/${id}`),
   test: (id: string, message: string) => api.post(`/agents/${id}/test`, { message }),
+  listBuiltInTools: () => api.get('/tools/built-in'),
   testStream: async (config: {
     model: string
     systemPrompt: string
@@ -58,6 +59,7 @@ export const agents = {
     reasoningEffort?: string
     providerKeyId?: string
     knowledgeBaseId?: string
+    tools?: string[]
     history?: Array<{ role: 'user' | 'assistant'; content: string }>
     signal?: AbortSignal
   }) => {
