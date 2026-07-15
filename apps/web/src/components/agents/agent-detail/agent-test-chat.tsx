@@ -13,6 +13,10 @@ import {
   Settings2,
   Copy,
   Check,
+  Globe,
+  Calculator,
+  ExternalLink,
+  Clock,
 } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
@@ -36,6 +40,20 @@ import { AiResponse } from '@/components/shared/ai-response'
 import { agents as agentsApi, conversations as conversationsApi, messages as messagesApi } from '@/lib/api'
 import { getReasoningEfforts } from '../reasoning'
 
+interface ToolCallEntry {
+  tool: string
+  args: Record<string, unknown>
+  result?: unknown
+  status: 'calling' | 'done'
+}
+
+const toolIcons: Record<string, React.ElementType> = {
+  'web-search': Globe,
+  'url-fetcher': ExternalLink,
+  calculator: Calculator,
+  'current-time': Clock,
+}
+
 interface AgentTestChatProps {
   agentConfig: {
     name: string
@@ -46,6 +64,7 @@ interface AgentTestChatProps {
     reasoningEffort?: string
     providerKeyId?: string
     knowledgeBaseId?: string | null
+    tools?: string[]
   }
   agentId: string
 }
@@ -147,6 +166,25 @@ function formatModelLabel(id: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function renderToolResultPreview(tool: string, result: unknown): string {
+  if (!result) return ''
+  const r = result as Record<string, unknown>
+  if (tool === 'web-search' && Array.isArray(r.results)) {
+    return `${r.results.length} results`
+  }
+  if (tool === 'current-time' && r.datetime) {
+    return String(r.datetime)
+  }
+  if (tool === 'calculator') {
+    return String(r.result ?? r)
+  }
+  return truncate(JSON.stringify(r), 60)
+}
+
+function truncate(str: string, max: number): string {
+  return str.length > max ? str.slice(0, max) + '…' : str
+}
+
 export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConvId, setActiveConvId] = useState<string>('')
@@ -154,6 +192,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const [streaming, setStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const [streamingReasoning, setStreamingReasoning] = useState('')
+  const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([])
   const [error, setError] = useState('')
   const [inputValue, setInputValue] = useState('')
   const [showReasoning, setShowReasoning] = useState(true)
@@ -333,6 +372,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
         reasoningEffort: reasoningOverride || cfg.reasoningEffort,
         providerKeyId: cfg.providerKeyId,
         knowledgeBaseId: cfg.knowledgeBaseId,
+        tools: cfg.tools,
         history,
         signal: controller.signal,
       })
@@ -350,6 +390,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       let assistantContent = ''
       let assistantReasoning = ''
       let finalUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
+      const completedToolCalls: string[] = []
 
       while (true) {
         const { done, value } = await reader.read()
@@ -369,9 +410,18 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                 assistantReasoning += parsed.content
                 setStreamingReasoning(assistantReasoning)
                 queueStreamingContent(assistantContent)
-              } else if (parsed.content) {
+              } else if (parsed.type === 'text' && parsed.content) {
                 assistantContent += parsed.content
                 queueStreamingContent(assistantContent)
+              } else if (parsed.type === 'tool_call') {
+                setToolCalls(prev => [...prev, { tool: parsed.tool, args: parsed.args, status: 'calling' }])
+              } else if (parsed.type === 'tool_result') {
+                completedToolCalls.push(parsed.tool)
+                setToolCalls(prev => prev.map(tc =>
+                  tc.tool === parsed.tool && tc.status === 'calling'
+                    ? { ...tc, result: parsed.result, status: 'done' as const }
+                    : tc
+                ))
               }
               if (parsed.type === 'usage' && parsed.usage) {
                 finalUsage = parsed.usage
@@ -386,11 +436,11 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
         }
       }
 
-      if (assistantContent) {
+      if (assistantContent || completedToolCalls.length > 0) {
         const assistantMessage: MessageItem = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: assistantContent,
+          content: assistantContent || 'I used the available tools to look that up.',
           reasoning: assistantReasoning || undefined,
           usage: finalUsage,
           createdAt: new Date().toISOString(),
@@ -402,7 +452,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
         if (convId) {
           try {
-            await messagesApi.send(convId, assistantContent, 'assistant')
+            await messagesApi.send(convId, assistantContent || 'I used the available tools to look that up.', 'assistant')
           } catch { /* non-blocking */ }
         }
       }
@@ -413,6 +463,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     } finally {
       setStreaming(false)
       setStreamingContent('')
+      setToolCalls([])
       abortRef.current = null
     }
   }, [inputValue, streaming, messages, queueStreamingContent, updateActiveConversation, reasoningOverride, activeConvId])
@@ -434,6 +485,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     setStreaming(false)
     setStreamingContent('')
     setStreamingReasoning('')
+    setToolCalls([])
     setError('')
 
     for (const conv of conversations) {
@@ -454,6 +506,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     setStreaming(false)
     setStreamingContent('')
     setStreamingReasoning('')
+    setToolCalls([])
     setError('')
   }, [updateActiveConversation])
 
@@ -735,9 +788,40 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                            </div>
                         </details>
                       )}
+                      {toolCalls.length > 0 && (
+                        <div className="px-3 py-2 space-y-1.5 border-b border-border/40">
+                          {toolCalls.map((tc, i) => {
+                            const Icon = toolIcons[tc.tool] || Bot
+                            const isDone = tc.status === 'done'
+                            return (
+                              <div
+                                key={`${tc.tool}-${i}`}
+                                className="flex items-center gap-2 text-xs"
+                              >
+                                {isDone ? (
+                                  <Check className="size-3 text-success shrink-0" />
+                                ) : (
+                                  <Loader2 className="size-3 animate-spin shrink-0" />
+                                )}
+                                <Icon className="size-3 text-muted-foreground shrink-0" />
+                                <span className="text-muted-foreground">
+                                  {tc.tool.replace(/-/g, ' ')}
+                                </span>
+                                {isDone && tc.result && (
+                                  <span className="text-[11px] text-muted-foreground/60 truncate max-w-[200px]">
+                                    {renderToolResultPreview(tc.tool, tc.result)}
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                       <BubbleContent>
                         {streamingContent ? (
                           <AiResponse content={streamingContent} isStreaming showActions={false} />
+                        ) : toolCalls.length > 0 ? (
+                          <TypingIndicator />
                         ) : (
                           <TypingIndicator />
                         )}
