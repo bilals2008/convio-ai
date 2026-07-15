@@ -17,6 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { useOrg } from '@/lib/org-context'
 import { moderation as moderationApi } from '@/lib/api'
 
@@ -65,6 +74,10 @@ export default function ModerationSettingsPage() {
   const [testText, setTestText] = useState('')
   const [testFlags, setTestFlags] = useState<ModerationFlag[] | null>(null)
   const [testPassed, setTestPassed] = useState<boolean | null>(null)
+
+  const emptyRule: CustomRule = { name: '', pattern: '', isRegex: false, severity: 'medium' }
+  const [ruleDialogOpen, setRuleDialogOpen] = useState(false)
+  const [newRule, setNewRule] = useState<CustomRule>(emptyRule)
 
   const { isLoading } = useQuery({
     queryKey: ['moderation-config', orgId],
@@ -115,8 +128,11 @@ export default function ModerationSettingsPage() {
     })
   }
 
-  const addRule = () =>
-    setCustomRules((rules) => [...rules, { name: '', pattern: '', isRegex: false, severity: 'medium' }])
+  const saveNewRule = () => {
+    setCustomRules((rules) => [...rules, newRule])
+    setNewRule(emptyRule)
+    setRuleDialogOpen(false)
+  }
 
   const updateRule = (index: number, patch: Partial<CustomRule>) =>
     setCustomRules((rules) => rules.map((r, i) => (i === index ? { ...r, ...patch } : r)))
@@ -248,10 +264,86 @@ export default function ModerationSettingsPage() {
               </Button>
             </div>
           ))}
-          <Button type="button" variant="outline" size="sm" onClick={addRule}>
-            <Plus className="size-3.5" />
-            Add rule
-          </Button>
+          <Dialog
+            open={ruleDialogOpen}
+            onOpenChange={(open) => {
+              setRuleDialogOpen(open)
+              if (!open) setNewRule(emptyRule)
+            }}
+          >
+            <DialogTrigger
+              render={
+                <Button type="button" size="sm">
+                  <Plus className="size-3.5" />
+                  Add rule
+                </Button>
+              }
+            />
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add custom rule</DialogTitle>
+                <DialogDescription>
+                  Match a keyword or regular expression. Regex is evaluated case-insensitively.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Name</Label>
+                  <Input
+                    value={newRule.name}
+                    onChange={(e) => setNewRule((r) => ({ ...r, name: e.target.value }))}
+                    placeholder="No competitor names"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Pattern</Label>
+                  <Input
+                    value={newRule.pattern}
+                    onChange={(e) => setNewRule((r) => ({ ...r, pattern: e.target.value }))}
+                    placeholder={newRule.isRegex ? '\\bexample\\b' : 'keyword'}
+                    className={newRule.isRegex ? 'font-mono' : undefined}
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Severity</Label>
+                    <Select
+                      value={newRule.severity}
+                      onValueChange={(v) => setNewRule((r) => ({ ...r, severity: (v as Severity) ?? 'medium' }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <label className="flex items-center gap-2 pt-6 text-sm">
+                    <Switch
+                      checked={newRule.isRegex}
+                      onCheckedChange={(v) => setNewRule((r) => ({ ...r, isRegex: v }))}
+                    />
+                    Regex
+                  </label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setRuleDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={saveNewRule}
+                  disabled={!newRule.name.trim() || !newRule.pattern.trim()}
+                >
+                  Add rule
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
 
