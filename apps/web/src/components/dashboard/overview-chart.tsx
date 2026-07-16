@@ -19,11 +19,11 @@ interface OverviewChartProps {
 const chartConfig = {
   messages: {
     label: 'Messages',
-    color: 'var(--chart-1)',
+    color: 'hsl(142, 71%, 45%)',
   },
   conversations: {
     label: 'Conversations',
-    color: 'var(--chart-2)',
+    color: 'hsl(160, 60%, 37%)',
   },
 } satisfies ChartConfig
 

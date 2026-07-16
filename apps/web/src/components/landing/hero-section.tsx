@@ -162,14 +162,14 @@ export function HeroSection() {
         </p>
 
         {/* CTAs */}
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link to="/signup">
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <Link to="/signup" className="flex-1 sm:flex-none">
             <Button size="lg" className="glow-primary-sm w-full sm:w-auto">
               Start free
               <ArrowRight className="size-4" />
             </Button>
           </Link>
-          <a href="#channels">
+          <a href="#channels" className="flex-1 sm:flex-none">
             <Button size="lg" variant="outline" className="w-full bg-card/60 sm:w-auto">
               See channels
             </Button>
