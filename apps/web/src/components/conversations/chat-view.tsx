@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils'
 
 type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
 type MessageRole = 'user' | 'assistant' | 'system'
-type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'error'
+type MessageStatus = 'sending' | 'sent' | 'error'
 
 interface MessageItem {
   id: string
@@ -214,7 +214,7 @@ export function ChatView() {
                 fullContent += parsed.content
                 setStreamingContent(fullContent)
               }
-            } catch { /* skip malformed JSON */ }
+            } catch (e) { console.warn('Malformed SSE chunk:', data, e) }
           }
         }
       }

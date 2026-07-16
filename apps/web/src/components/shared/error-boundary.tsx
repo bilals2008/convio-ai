@@ -1,7 +1,6 @@
-import { Component, ErrorInfo, ReactNode } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { Component, type ReactNode, type ErrorInfo } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { AlertCircle } from 'lucide-react'
 
 interface Props {
   children: ReactNode
@@ -14,49 +13,30 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null,
-  }
+  state: State = { hasError: false, error: null }
 
-  public static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo)
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('ErrorBoundary caught:', error, info)
   }
 
-  public render() {
+  render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback
-      }
-
+      if (this.props.fallback) return this.props.fallback
       return (
-        <Card className="m-4">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10 mb-4">
-              <AlertTriangle className="size-6 text-destructive" />
-            </div>
-            <h3 className="text-lg font-semibold mb-1">Something went wrong</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {this.state.error?.message || 'An unexpected error occurred'}
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                this.setState({ hasError: false, error: null })
-                window.location.reload()
-              }}
-            >
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center h-full text-center p-8" role="alert" aria-live="assertive">
+          <AlertCircle className="size-8 text-destructive mb-3" />
+          <p className="text-sm font-semibold text-foreground mb-1">Something went wrong</p>
+          <p className="text-xs text-muted-foreground mb-4">{this.state.error?.message || 'An unexpected error occurred'}</p>
+          <Button size="sm" variant="outline" onClick={() => this.setState({ hasError: false, error: null })}>
+            Try Again
+          </Button>
+        </div>
       )
     }
-
     return this.props.children
   }
 }

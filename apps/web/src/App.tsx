@@ -16,6 +16,7 @@ import AgentDetailPage from '@/pages/agents/agent-detail-page'
 import ConversationsListPage from '@/pages/conversations/conversations-list-page'
 import { ConversationsLayout } from '@/components/conversations/conversations-layout'
 import { ChatView } from '@/components/conversations/chat-view'
+import { ErrorBoundary } from '@/components/shared/error-boundary'
 import KnowledgeListPage from '@/pages/knowledge/knowledge-list-page'
 import KnowledgeDetailPage from '@/pages/knowledge/knowledge-detail-page'
 
@@ -66,7 +67,7 @@ export function App() {
               <Route path="/widgets/:id" element={<WidgetConfigPage />} />
               <Route path="/conversations" element={<ConversationsLayout />}>
                 <Route index element={<ConversationsListPage />} />
-                <Route path=":id" element={<ChatView />} />
+                <Route path=":id" element={<ErrorBoundary><ChatView /></ErrorBoundary>} />
               </Route>
               <Route path="/settings" element={<SettingsLayout />}>
                 <Route index element={<OrganizationSettingsPage />} />

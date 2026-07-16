@@ -236,9 +236,9 @@ export function ConversationsLayout() {
           <Button
             size="sm"
             onClick={() => setShowAgentPicker(true)}
-            disabled={agents.length === 0}
+            disabled={agentsLoading || agents.length === 0}
           >
-            <Plus className="size-3.5" />
+            {agentsLoading ? <Skeleton className="size-3.5 rounded-full" /> : <Plus className="size-3.5" />}
             New
           </Button>
         </div>
@@ -295,7 +295,9 @@ export function ConversationsLayout() {
 
           {!isLoading && filteredConvs.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
-              <p className="text-xs text-muted-foreground">No conversations</p>
+              <p className="text-xs text-muted-foreground">
+                {search ? 'No conversations matching your search' : 'No conversations yet'}
+              </p>
             </div>
           )}
 
@@ -303,6 +305,8 @@ export function ConversationsLayout() {
             <button
               key={conv.id}
               onClick={() => handleSelect(conv.id)}
+              aria-label={`Conversation with ${conv.userName || 'Anonymous'}`}
+              aria-current={selectedId === conv.id ? 'page' : undefined}
               className={cn(
                 'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
                 selectedId === conv.id

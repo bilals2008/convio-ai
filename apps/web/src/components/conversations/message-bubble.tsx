@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { AiResponse } from '@/components/shared/ai-response'
 
 type MessageRole = 'user' | 'assistant' | 'system'
-type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'error'
+type MessageStatus = 'sending' | 'sent' | 'error'
 
 interface MessageItem {
   id: string

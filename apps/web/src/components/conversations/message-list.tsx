@@ -6,7 +6,7 @@ import { AiResponse } from '@/components/shared/ai-response'
 import { MessageBubble } from './message-bubble'
 
 type MessageRole = 'user' | 'assistant' | 'system'
-type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'error'
+type MessageStatus = 'sending' | 'sent' | 'error'
 
 interface MessageItem {
   id: string
