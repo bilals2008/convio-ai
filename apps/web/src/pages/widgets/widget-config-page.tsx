@@ -474,8 +474,8 @@ export default function WidgetConfigPage() {
                 />
               }
             >
-              {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : isLive ? <Trash2 className="size-3.5" /> : <Play className="size-3.5" />}
-              {save.isPending ? 'Saving…' : isLive ? 'Pause' : 'Publish'}
+              {isLive ? <Trash2 className="size-3.5" /> : <Play className="size-3.5" />}
+              {isLive ? 'Pause' : 'Publish'}
             </TooltipTrigger>
             <TooltipContent>{isLive ? 'Disable widget without deleting' : 'Make widget live'}</TooltipContent>
           </Tooltip>
