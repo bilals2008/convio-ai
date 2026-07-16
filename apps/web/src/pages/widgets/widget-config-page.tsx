@@ -19,6 +19,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { ChatWidget } from '@/components/widget'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -858,6 +859,23 @@ export default function WidgetConfigPage() {
 
         </aside>
       </div>
+
+      {widget.agent.id && (
+        <ChatWidget
+          key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${greeting}-${agentAvatar}-${prompts.map(p => p.text).join(',')}`}
+          agentId={widget.agent.id}
+          position={position}
+          greeting={greeting || 'Hi there! How can I help you today?'}
+          agentName={agentName || widget.agent.name}
+          agentAvatar={agentAvatar || undefined}
+          quickReplies={prompts.map(p => p.text).filter(Boolean)}
+          theme={{
+            primaryColor,
+            backgroundColor,
+            textColor: ['#ffffff', '#f3f4f6', '#e5e7eb'].includes(backgroundColor) ? '#1f2937' : textColor,
+          }}
+        />
+      )}
     </div>
   )
 }
