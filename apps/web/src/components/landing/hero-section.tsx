@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, ArrowUpRight, Sparkles, Check } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Zap, Check } from 'lucide-react'
 import { WhatsAppIcon, TelegramIcon, DiscordIcon, SlackIcon, WebIcon } from './channel-icons'
-import { LogoMarquee } from './logo-marquee'
 
 const channels = [
   { name: 'Web', icon: WebIcon },
@@ -35,7 +34,7 @@ function ProductPreview() {
           <aside className="hidden flex-col gap-1 border-r border-border p-3 md:flex">
             <div className="flex items-center gap-2 px-2 py-1.5">
               <div className="size-6 rounded-md bg-primary/15 grid place-items-center">
-                <Sparkles className="size-3.5 text-primary" />
+                <Zap className="size-3.5 text-primary" />
               </div>
               <span className="text-[13px] font-semibold">Convio</span>
             </div>
@@ -131,7 +130,7 @@ export function HeroSection() {
             className="group inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[12px] text-foreground/80 backdrop-blur transition-colors hover:border-primary/30"
           >
             <span className="inline-flex items-center gap-1 text-primary">
-              <Sparkles className="size-3.5" />
+              <Zap className="size-3.5" />
               New
             </span>
             <span className="text-muted-foreground">Knowledge base &amp; RAG</span>
@@ -190,11 +189,6 @@ export function HeroSection() {
         {/* Product preview */}
         <div className="mt-16 md:mt-20">
           <ProductPreview />
-        </div>
-
-        {/* Social proof */}
-        <div className="mt-16 md:mt-20">
-          <LogoMarquee label="Powering support at teams like" />
         </div>
       </div>
     </section>

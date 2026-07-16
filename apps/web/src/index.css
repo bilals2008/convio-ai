@@ -216,17 +216,11 @@
   .animate-orbit-mid {
     animation: orbit 38s linear infinite;
   }
-  .animate-orbit-fast {
-    animation: orbit 28s linear infinite;
-  }
   .animate-orbit-counter-slow {
     animation: orbit-counter 48s linear infinite;
   }
   .animate-orbit-counter-mid {
     animation: orbit-counter 38s linear infinite;
-  }
-  .animate-orbit-counter-fast {
-    animation: orbit-counter 28s linear infinite;
   }
 
   .bg-grid-pattern {

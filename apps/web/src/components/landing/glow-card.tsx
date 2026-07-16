@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { Sparkles } from 'lucide-react'
+import { Zap } from 'lucide-react'
 
 interface GlowCardProps {
   children: ReactNode
@@ -15,10 +15,10 @@ export function GlowCard({ children, className, decorations = true }: GlowCardPr
       {decorations && (
         <>
           <div className="absolute -top-10 -left-10 md:-top-14 md:-left-14 pointer-events-none select-none opacity-[0.03] rotate-[195deg]">
-            <Sparkles className="size-[180px] md:size-[300px]" />
+            <Zap className="size-[180px] md:size-[300px]" />
           </div>
           <div className="absolute -bottom-10 -right-10 md:-bottom-14 md:-right-14 pointer-events-none select-none opacity-[0.03] rotate-[15deg]">
-            <Sparkles className="size-[180px] md:size-[300px]" />
+            <Zap className="size-[180px] md:size-[300px]" />
           </div>
         </>
       )}

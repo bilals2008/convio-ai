@@ -19,6 +19,7 @@ const plans = [
       'Basic analytics',
     ],
     cta: 'Get Started',
+    href: '/signup',
     variant: 'outline' as const,
     highlighted: false,
   },
@@ -37,6 +38,7 @@ const plans = [
       'Custom branding',
     ],
     cta: 'Start Free Trial',
+    href: '/signup',
     variant: 'default' as const,
     highlighted: true,
   },
@@ -54,6 +56,7 @@ const plans = [
       'SLA guarantee',
     ],
     cta: 'Contact Sales',
+    href: 'mailto:sales@convio.ai',
     variant: 'outline' as const,
     highlighted: false,
   },
@@ -118,11 +121,19 @@ export function Pricing() {
                     ))}
                   </ul>
 
-                  <Link to="/signup" className="mt-auto">
-                    <Button variant={plan.variant} className="w-full py-3 text-[14px] h-auto">
-                      {plan.cta}
-                    </Button>
-                  </Link>
+                  {plan.href.startsWith('/') ? (
+                    <Link to={plan.href} className="mt-auto">
+                      <Button variant={plan.variant} className="w-full py-3 text-[14px] h-auto">
+                        {plan.cta}
+                      </Button>
+                    </Link>
+                  ) : (
+                    <a href={plan.href} className="mt-auto">
+                      <Button variant={plan.variant} className="w-full py-3 text-[14px] h-auto">
+                        {plan.cta}
+                      </Button>
+                    </a>
+                  )}
                 </div>
               </div>
             </ScrollReveal>

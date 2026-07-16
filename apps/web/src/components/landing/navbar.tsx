@@ -16,8 +16,8 @@ import {
 
 const navLinks = [
   { label: 'Channels', href: '#channels' },
-  { label: 'Channels', href: '#channels' },
   { label: 'Pricing', href: '#pricing' },
+  { label: 'Demo', href: '/widget/demo' },
 ]
 
 export function Navbar() {
@@ -51,18 +51,22 @@ export function Navbar() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="group relative rounded-md px-3 py-1.5 text-[13px] font-medium transition-[transform] duration-200 ease-out hover:-translate-y-[1px]"
-              >
-                <span className="absolute inset-0 rounded-md bg-primary/0 ring-1 ring-transparent transition-[background-color,box-shadow] duration-300 ease-out group-hover:bg-primary/10 group-hover:ring-primary/15" />
-                <span className="relative z-10 flex items-center">
-                  <DirectionHover title={link.label} fontSize={13} />
-                </span>
-              </a>
-            ))}
+            {navLinks.map((link) => {
+              const inner = (
+                <>
+                  <span className="absolute inset-0 rounded-md bg-primary/0 ring-1 ring-transparent transition-[background-color,box-shadow] duration-300 ease-out group-hover:bg-primary/10 group-hover:ring-primary/15" />
+                  <span className="relative z-10 flex items-center">
+                    <DirectionHover title={link.label} fontSize={13} />
+                  </span>
+                </>
+              )
+              const cls = "group relative rounded-md px-3 py-1.5 text-[13px] font-medium transition-[transform] duration-200 ease-out hover:-translate-y-[1px]"
+              return link.href.startsWith('/') ? (
+                <Link key={link.href} to={link.href} className={cls}>{inner}</Link>
+              ) : (
+                <a key={link.href} href={link.href} className={cls}>{inner}</a>
+              )
+            })}
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -156,16 +160,15 @@ export function Navbar() {
 
       {isOpen && (
         <div className="md:hidden border-t border-border bg-background/95 backdrop-blur px-5 py-4 space-y-3">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="block text-sm font-medium text-muted-foreground hover:text-foreground"
-              onClick={() => setIsOpen(false)}
-            >
-              <DirectionHover title={link.label} fontSize={14} hoverColor="var(--foreground)" />
-            </a>
-          ))}
+          {navLinks.map((link) => {
+            const cls = "block text-sm font-medium text-muted-foreground hover:text-foreground"
+            const inner = <DirectionHover title={link.label} fontSize={14} hoverColor="var(--foreground)" />
+            return link.href.startsWith('/') ? (
+              <Link key={link.href} to={link.href} className={cls} onClick={() => setIsOpen(false)}>{inner}</Link>
+            ) : (
+              <a key={link.href} href={link.href} className={cls} onClick={() => setIsOpen(false)}>{inner}</a>
+            )
+          })}
           <div className="flex flex-col gap-2 pt-3 border-t border-border">
             {!isLoading && !isAuthenticated && (
               <>

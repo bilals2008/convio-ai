@@ -1,12 +1,12 @@
+import type { SVGProps, ComponentType } from 'react'
 import { ScrollReveal } from './scroll-reveal'
 import { SectionHeading } from './section-heading'
-import {
-  MessageCircle, Send, Bot, Boxes, Database, Code2, Mail, Phone,
-  Webhook, Plug, Workflow, Cpu, Sparkles, Globe,
-} from 'lucide-react'
+import { Bot, Database, Code2, Mail, Phone, Webhook } from 'lucide-react'
 import { WhatsAppIcon, TelegramIcon, DiscordIcon, SlackIcon, WebIcon } from './channel-icons'
 
-const INNER = [
+type NodeComponent = ComponentType<SVGProps<SVGSVGElement>>
+
+const INNER: { node: NodeComponent; label: string }[] = [
   { node: WebIcon, label: 'Web' },
   { node: WhatsAppIcon, label: 'WhatsApp' },
   { node: TelegramIcon, label: 'Telegram' },
@@ -14,28 +14,13 @@ const INNER = [
   { node: SlackIcon, label: 'Slack' },
 ]
 
-const MIDDLE = [
-  { node: MessageCircle, label: 'SMS' },
-  { node: Mail, label: 'Email' },
-  { node: Phone, label: 'Voice' },
+const OUTER: { node: NodeComponent; label: string }[] = [
   { node: Bot, label: 'Agents' },
   { node: Database, label: 'RAG' },
   { node: Code2, label: 'API' },
   { node: Webhook, label: 'Webhooks' },
-  { node: Plug, label: 'Plugins' },
-]
-
-const OUTER = [
-  { node: Globe, label: 'Website' },
-  { node: Boxes, label: 'CRM' },
-  { node: Workflow, label: 'Automations' },
-  { node: Cpu, label: 'AI Models' },
-  { node: Sparkles, label: 'Tools' },
-  { node: Send, label: 'Broadcast' },
-  { node: Phone, label: 'Call Center' },
-  { node: Mail, label: 'Digest' },
-  { node: Code2, label: 'SDK' },
-  { node: Webhook, label: 'Events' },
+  { node: Mail, label: 'Email' },
+  { node: Phone, label: 'Voice' },
 ]
 
 function OrbitRing({
@@ -44,14 +29,14 @@ function OrbitRing({
   spin,
   counter,
 }: {
-  items: { node: typeof Globe; label: string }[]
+  items: { node: typeof Bot; label: string }[]
   size: string
   spin: string
   counter: string
 }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center">
-      <div className={`relative aspect-square ${spin}`} style={{ width: size }}>
+      <div className={`relative aspect-square motion-reduce:animate-none ${spin}`} style={{ width: size }}>
         {items.map((item, i) => {
           const rad = ((360 / items.length) * i * Math.PI) / 180
           const x = 50 + 50 * Math.cos(rad)
@@ -59,7 +44,7 @@ function OrbitRing({
           const Icon = item.node
           return (
             <div key={item.label} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ top: `${y}%`, left: `${x}%` }}>
-              <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-card border border-border flex items-center justify-center ${counter}`}>
+              <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl bg-card border border-border flex items-center justify-center motion-reduce:animate-none ${counter}`} title={item.label}>
                 <Icon className="size-[18px] md:size-5 text-primary/80" />
               </div>
             </div>
@@ -70,12 +55,6 @@ function OrbitRing({
   )
 }
 
-const FEATURES = [
-  { label: 'One brain', desc: 'Train once, answer everywhere' },
-  { label: 'In sync', desc: 'Same context on every channel' },
-  { label: 'No code', desc: 'Connect in a single click' },
-]
-
 export function ChannelOrbit() {
   return (
     <section id="channels" className="relative border-t border-border/60 overflow-hidden">
@@ -84,47 +63,29 @@ export function ChannelOrbit() {
           <SectionHeading
             eyebrow="Channels"
             title="Every channel. One brain."
-            description="From messaging apps to your own product, Convio keeps a single agent in sync — so customers get the same answer whether they reach you on Slack or WhatsApp."
+            description="Train a single agent on your knowledge and deploy it everywhere — customers get the same answer on web, WhatsApp, Telegram, Discord, and Slack."
           />
         </ScrollReveal>
 
-      <div className="relative w-full aspect-square max-w-[520px] mx-auto mask-radial">
-        {/* Center logo */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-card border border-border flex items-center justify-center glow-primary-sm">
-            <img src="/logo.png" alt="Convio" className="w-8 h-8 md:w-10 md:h-10" />
-          </div>
-        </div>
-
-        {/* Orbit rings */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[38%] aspect-square rounded-full border border-primary/15" />
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[62%] aspect-square rounded-full border border-primary/10" />
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[88%] aspect-square rounded-full border border-primary/5" />
-        </div>
-
-        <OrbitRing items={INNER} size="38%" spin="animate-orbit-slow" counter="animate-orbit-counter-slow" />
-        <OrbitRing items={MIDDLE} size="62%" spin="animate-orbit-mid" counter="animate-orbit-counter-mid" />
-        <OrbitRing items={OUTER} size="88%" spin="animate-orbit-fast" counter="animate-orbit-counter-fast" />
-      </div>
-
-      <ScrollReveal className="mt-16 md:mt-20">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {FEATURES.map((f) => (
-            <div
-              key={f.label}
-              className="rounded-xl border border-border bg-card/50 px-5 py-4"
-            >
-              <div className="text-[13px] font-semibold text-foreground">{f.label}</div>
-              <div className="mt-1 text-[12px] text-muted-foreground">{f.desc}</div>
+        <div className="relative w-full aspect-square max-w-[480px] mx-auto mt-14 mask-radial">
+          {/* Center logo */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-card border border-border flex items-center justify-center glow-primary-sm">
+              <img src="/logo.png" alt="Convio" className="w-8 h-8 md:w-10 md:h-10" />
             </div>
-          ))}
+          </div>
+
+          {/* Orbit rings */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[42%] aspect-square rounded-full border border-primary/15" />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[78%] aspect-square rounded-full border border-primary/10" />
+          </div>
+
+          <OrbitRing items={INNER} size="42%" spin="animate-orbit-slow" counter="animate-orbit-counter-slow" />
+          <OrbitRing items={OUTER} size="78%" spin="animate-orbit-mid" counter="animate-orbit-counter-mid" />
         </div>
-      </ScrollReveal>
       </div>
     </section>
   )
