@@ -39,11 +39,14 @@ interface WidgetDetail {
   config: {
     greeting?: string
     primaryColor?: string
+    backgroundColor?: string
+    textColor?: string
     position?: 'bottom-right' | 'bottom-left'
     quickReplies?: string[]
     agentName?: string
+    agentAvatar?: string
   }
-  agent: { id: string; name: string }
+  agent: { id: string; name: string; avatar?: string | null }
 }
 
 interface PromptItem {
