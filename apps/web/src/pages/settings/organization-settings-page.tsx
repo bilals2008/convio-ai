@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Loader2, Plus, Shield, Calendar, Users, Pencil, Building2, Link2, ChevronRight, Crown, UserCog } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -87,6 +88,7 @@ function formatDate(date: string) {
 
 export default function OrganizationSettingsPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const { orgId, isLoading: orgLoading } = useOrg()
 
   const [editOpen, setEditOpen] = useState(false)
@@ -251,7 +253,7 @@ export default function OrganizationSettingsPage() {
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h2 className="text-lg font-bold tracking-tight">{org.name}</h2>
-                  <Badge variant={getRoleBadgeVariant(org.plan === 'owner' ? 'owner' : undefined)} className="gap-1 text-[11px] capitalize">
+                  <Badge variant={getRoleBadgeVariant(org.plan === 'owner' ? 'owner' : undefined)} className="gap-1 text-[11px] capitalize cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/settings/billing')}>
                     <Shield className="size-3" />
                     {org.plan}
                   </Badge>

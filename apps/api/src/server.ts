@@ -12,6 +12,7 @@ import corsPlugin from './plugins/cors.js'
 import authPlugin from './plugins/auth.js'
 import validationPlugin from './plugins/validate.js'
 import membershipPlugin from './plugins/membership.js'
+import billingLimitsPlugin from './plugins/billing-limits.js'
 import auditLoggerPlugin from './plugins/audit-logger.js'
 import swaggerPlugin from './plugins/swagger.js'
 import rateLimitPlugin from './plugins/rate-limit.js'
@@ -45,6 +46,7 @@ async function buildServer() {
   await app.register(corsPlugin)
   await app.register(authPlugin)
   await app.register(membershipPlugin)
+  await app.register(billingLimitsPlugin)
   await app.register(auditLoggerPlugin)
   await app.register(validationPlugin)
   await app.register(swaggerPlugin)

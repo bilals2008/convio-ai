@@ -23,27 +23,47 @@ export const GROQ_API_KEY = process.env.GROQ_API_KEY || ''
 // Storage config
 export const STORAGE_BUCKET = process.env.STORAGE_BUCKET || 'convio'
 
-// Limits
-export const LIMITS = {
+// Billing config
+export const CREEM_API_KEY = process.env.CREEM_API_KEY || ''
+export const CREEM_WEBHOOK_SECRET = process.env.CREEM_WEBHOOK_SECRET || ''
+export const CREEM_TEST_MODE = process.env.NODE_ENV !== 'production'
+
+export const PLANS: Record<string, {
+  label: string
+  features: string[]
+  limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
+  price: string
+  priceMonthly: number
+  providerProductId?: string
+}> = {
   free: {
-    agents: 1,
-    messagesPerDay: 100,
-    knowledgeBases: 1,
-    documentsPerKB: 5,
+    label: 'Free',
+    features: ['1 agent', '1,000 messages/mo', 'Web widget', 'Basic analytics'],
+    limits: { agents: 1, messagesPerMonth: 1000, knowledgeBases: 1 },
+    price: '$0',
+    priceMonthly: 0,
   },
   pro: {
-    agents: Infinity,
-    messagesPerDay: 10000,
-    knowledgeBases: 10,
-    documentsPerKB: 100,
+    label: 'Pro',
+    features: ['Unlimited agents', '50,000 messages/mo', 'Multi-channel', 'Advanced analytics', 'Custom branding'],
+    limits: { agents: Infinity, messagesPerMonth: 50000, knowledgeBases: 10 },
+    price: '$29/mo',
+    priceMonthly: 29,
+    providerProductId: process.env.CREEM_PRO_PRODUCT_ID || '',
   },
   enterprise: {
-    agents: Infinity,
-    messagesPerDay: Infinity,
-    knowledgeBases: Infinity,
-    documentsPerKB: Infinity,
+    label: 'Enterprise',
+    features: ['Everything in Pro', 'Unlimited messages', 'SSO', 'Dedicated support', 'SLA'],
+    limits: { agents: Infinity, messagesPerMonth: Infinity, knowledgeBases: Infinity },
+    price: 'Custom',
+    priceMonthly: 0,
+    providerProductId: process.env.CREEM_ENTERPRISE_PRODUCT_ID || '',
   },
-} as const
+}
+
+export const LIMITS = Object.fromEntries(
+  Object.entries(PLANS).map(([k, v]) => [k, v.limits])
+) as Record<string, { agents: number; messagesPerMonth: number; knowledgeBases: number }>
 
 // Channels
 export const CHANNELS = ['web', 'api', 'whatsapp', 'telegram', 'discord', 'slack'] as const

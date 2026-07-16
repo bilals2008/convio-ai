@@ -31,6 +31,7 @@ import DeploymentsPage from '@/pages/settings/deployments-page'
 import ApiKeysPage from '@/pages/settings/api-keys-page'
 import ProviderKeysPage from '@/pages/settings/provider-keys-page'
 import ProfilePage from '@/pages/settings/profile-page'
+import BillingPage from '@/pages/settings/billing-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,6 +78,7 @@ export function App() {
                 <Route path="deployments" element={<DeploymentsPage />} />
                 <Route path="api-keys" element={<ApiKeysPage />} />
                 <Route path="provider-keys" element={<ProviderKeysPage />} />
+                <Route path="billing" element={<BillingPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

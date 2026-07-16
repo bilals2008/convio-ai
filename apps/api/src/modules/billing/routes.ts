@@ -1,24 +1,44 @@
 import type { FastifyInstance } from 'fastify'
+import crypto from 'crypto'
 import { prisma } from '@convio/database'
+import { PLANS, CREEM_API_KEY, CREEM_WEBHOOK_SECRET, CREEM_TEST_MODE, APP_URL } from '@convio/config'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
+import { checkoutBodySchema, billingUsageQuerySchema } from '@convio/validation'
 import { z } from 'zod'
+import { getOrgPlan, getOrgUsage, getActiveSubscription, getBillingInvoices } from '../../services/billing.js'
+
+const CREEM_API = CREEM_TEST_MODE ? 'https://test-api.creem.io' : 'https://api.creem.io'
 
 const orgParamsSchema = z.object({
   orgId: z.string().uuid(),
 })
 
-const dateRangeQuerySchema = z.object({
-  month: z.coerce.number().min(1).max(12).optional(),
-  year: z.coerce.number().min(2020).max(2100).optional(),
-})
+function creemHeaders() {
+  return {
+    'x-api-key': CREEM_API_KEY,
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  }
+}
+
+function verifyWebhookSignature(payload: string, signature: string): boolean {
+  if (!CREEM_WEBHOOK_SECRET) return false
+  const hmac = crypto.createHmac('sha256', CREEM_WEBHOOK_SECRET)
+  const digest = hmac.update(payload).digest('hex')
+  try {
+    return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature))
+  } catch {
+    return false
+  }
+}
 
 export default async function billingRoutes(fastify: FastifyInstance) {
-  // GET /api/organizations/:orgId/billing/usage — Current month usage
+  // GET /api/organizations/:orgId/billing/usage
   fastify.get('/organizations/:orgId/billing/usage', {
     preHandler: [
       fastify.authenticate,
-      validate({ params: orgParamsSchema, query: dateRangeQuerySchema }),
+      validate({ params: orgParamsSchema, query: billingUsageQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
@@ -26,34 +46,21 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, orgId)
 
-    const now = new Date()
-    const targetMonth = month ?? now.getMonth() + 1
-    const targetYear = year ?? now.getFullYear()
-
-    const firstDay = new Date(targetYear, targetMonth - 1, 1)
-    const lastDay = new Date(targetYear, targetMonth, 0)
-
-    const analytics = await prisma.analytics.findMany({
-      where: {
-        agent: { organizationId: orgId },
-        date: { gte: firstDay, lte: lastDay },
-      },
-    })
-
-    const conversations = analytics.reduce((sum, r) => sum + r.totalConversations, 0)
-    const messages = analytics.reduce((sum, r) => sum + r.totalMessages, 0)
+    const usage = await getOrgUsage(orgId, month, year)
 
     return {
       data: {
-        month: targetMonth,
-        year: targetYear,
-        conversations,
-        messages,
+        month: usage.month,
+        year: usage.year,
+        conversations: usage.conversations,
+        messages: usage.messages,
+        limit: usage.limit,
+        messagesPercent: usage.messagesPercent,
       },
     }
   })
 
-  // GET /api/organizations/:orgId/billing/plan — Current plan info
+  // GET /api/organizations/:orgId/billing/plan
   fastify.get('/organizations/:orgId/billing/plan', {
     preHandler: [
       fastify.authenticate,
@@ -64,55 +71,13 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, orgId)
 
-    const org = await prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { plan: true, createdAt: true },
-    })
+    const plan = await getOrgPlan(orgId)
 
-    if (!org) throw new AppError(404, 'Organization not found')
-
-    const plans: Record<string, {
-      name: string
-      features: string[]
-      limits: Record<string, number>
-      price: string
-    }> = {
-      free: {
-        name: 'Free',
-        features: ['5 agents', '1,000 messages/mo', 'Web widget', 'Basic analytics'],
-        limits: { agents: 5, messagesPerMonth: 1000 },
-        price: '$0',
-      },
-      pro: {
-        name: 'Pro',
-        features: ['Unlimited agents', '50,000 messages/mo', 'Multi-channel', 'Advanced analytics', 'Custom branding'],
-        limits: { agents: Infinity, messagesPerMonth: 50000 },
-        price: '$29/mo',
-      },
-      enterprise: {
-        name: 'Enterprise',
-        features: ['Everything in Pro', 'Unlimited messages', 'SSO', 'Dedicated support', 'SLA'],
-        limits: { agents: Infinity, messagesPerMonth: Infinity },
-        price: 'Custom',
-      },
-    }
-
-    const plan = plans[org.plan] || plans.free
-
-    return {
-      data: {
-        plan: org.plan,
-        name: plan.name,
-        features: plan.features,
-        limits: plan.limits,
-        price: plan.price,
-        since: org.createdAt,
-      },
-    }
+    return { data: plan }
   })
 
-  // POST /api/organizations/:orgId/billing/checkout — Create checkout session (placeholder)
-  fastify.post('/organizations/:orgId/billing/checkout', {
+  // GET /api/organizations/:orgId/billing/subscription
+  fastify.get('/organizations/:orgId/billing/subscription', {
     preHandler: [
       fastify.authenticate,
       validate({ params: orgParamsSchema }),
@@ -120,24 +85,14 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
 
-    await fastify.ensureAdmin(request.userId!, orgId)
+    await fastify.getMembership(request.userId!, orgId)
 
-    return {
-      data: {
-        message: 'Payment integration coming soon.',
-        checkoutUrl: null,
-      },
-    }
+    const subscription = await getActiveSubscription(orgId)
+
+    return { data: subscription || null }
   })
 
-  // POST /api/organizations/:orgId/billing/webhook — Handle payment webhook (placeholder)
-  fastify.post('/organizations/:orgId/billing/webhook', {
-    preHandler: [validate({ params: orgParamsSchema })],
-  }, async () => {
-    return { data: { received: true } }
-  })
-
-  // GET /api/organizations/:orgId/billing/invoices — List past invoices (placeholder)
+  // GET /api/organizations/:orgId/billing/invoices
   fastify.get('/organizations/:orgId/billing/invoices', {
     preHandler: [
       fastify.authenticate,
@@ -148,6 +103,419 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, orgId)
 
-    return { data: [] }
+    const invoices = await getBillingInvoices(orgId)
+
+    return { data: invoices }
   })
+
+  // POST /api/organizations/:orgId/billing/checkout
+  fastify.post('/organizations/:orgId/billing/checkout', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: orgParamsSchema, body: checkoutBodySchema }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+    const { plan: planKey } = request.body as { plan: string }
+
+    await fastify.ensureAdmin(request.userId!, orgId)
+
+    const planDef = PLANS[planKey]
+    if (!planDef || !planDef.providerProductId) {
+      throw new AppError(400, `Checkout not available for this plan`, 'CHECKOUT_UNAVAILABLE')
+    }
+
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { name: true },
+    })
+
+    if (!org) throw new AppError(404, 'Organization not found')
+
+    const checkoutResponse = await fetch(`${CREEM_API}/v1/checkouts`, {
+      method: 'POST',
+      headers: creemHeaders(),
+      body: JSON.stringify({
+        product_id: planDef.providerProductId,
+        success_url: `${APP_URL}/settings/billing?checkout=success`,
+        metadata: { orgId },
+      }),
+    })
+
+    if (!checkoutResponse.ok) {
+      const err = await checkoutResponse.text()
+      fastify.log.error({ err }, 'Creem checkout failed')
+      throw new AppError(500, 'Failed to create checkout session')
+    }
+
+    const checkout = await checkoutResponse.json() as { checkout_url: string }
+
+    return {
+      data: { checkoutUrl: checkout.checkout_url },
+    }
+  })
+
+  // POST /api/organizations/:orgId/billing/portal
+  fastify.post('/organizations/:orgId/billing/portal', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: orgParamsSchema }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+
+    await fastify.ensureAdmin(request.userId!, orgId)
+
+    const customer = await prisma.billingCustomer.findUnique({
+      where: { organizationId: orgId },
+    })
+
+    if (!customer) {
+      throw new AppError(404, 'No billing customer found', 'NOT_FOUND')
+    }
+
+    const portalResponse = await fetch(`${CREEM_API}/v1/customers/billing`, {
+      method: 'POST',
+      headers: creemHeaders(),
+      body: JSON.stringify({
+        customer_id: customer.providerCustomerId,
+      }),
+    })
+
+    if (!portalResponse.ok) {
+      fastify.log.error('Failed to create customer portal')
+      throw new AppError(500, 'Failed to create customer portal')
+    }
+
+    const portal = await portalResponse.json() as { customer_portal_link: string }
+
+    return {
+      data: { url: portal.customer_portal_link },
+    }
+  })
+
+  // POST /api/billing/webhook
+  fastify.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (_req, body: string, done) => {
+      done(null, body)
+    },
+  )
+
+  fastify.post('/billing/webhook', {
+    preHandler: [],
+  }, async (request, reply) => {
+    const signature = request.headers['creem-signature'] as string | undefined
+    const body = request.body as string
+
+    if (!signature || !verifyWebhookSignature(body, signature)) {
+      reply.code(401)
+      return { error: 'Invalid signature' }
+    }
+
+    let eventData: any
+
+    try {
+      eventData = JSON.parse(body)
+    } catch {
+      reply.code(400)
+      return { error: 'Invalid payload' }
+    }
+
+    const eventType = eventData?.eventType as string
+    const eventObject = eventData?.object
+
+    if (!eventType || !eventObject) {
+      reply.code(400)
+      return { error: 'Invalid webhook payload' }
+    }
+
+    fastify.log.info({ eventType }, 'Creem webhook received')
+
+    try {
+      switch (eventType) {
+        case 'checkout.completed': {
+          const orgId = eventObject.metadata?.orgId as string | undefined
+          const customerData = eventObject.customer
+
+          if (!orgId) break
+
+          let customer = await prisma.billingCustomer.findUnique({
+            where: { organizationId: orgId },
+          })
+
+          if (!customer && customerData?.id) {
+            customer = await prisma.billingCustomer.create({
+              data: {
+                organizationId: orgId,
+                providerCustomerId: String(customerData.id),
+              },
+            })
+          }
+
+          if (customer && eventObject.order) {
+            const order = eventObject.order
+
+            // Check for existing invoice
+            const existingInvoice = await prisma.invoice.findUnique({
+              where: { providerInvoiceId: String(order.id) },
+            })
+
+            if (!existingInvoice) {
+              await prisma.invoice.create({
+                data: {
+                  customerId: customer.id,
+                  providerInvoiceId: String(order.id),
+                  invoiceNumber: order.id || null,
+                  status: 'paid',
+                  total: order.amount || 0,
+                  currency: order.currency || 'USD',
+                  paidAt: order.created_at ? new Date(order.created_at) : null,
+                  billingReason: order.type === 'recurring' ? 'subscription' : 'initial',
+                },
+              })
+            }
+          }
+
+          break
+        }
+
+        case 'subscription.active':
+        case 'subscription.trialing':
+        case 'subscription.paid': {
+          const subscriptionId = String(eventObject.id)
+          const productId = String(eventObject.product?.id || eventObject.product)
+          const creemCustomerId = String(eventObject.customer?.id || eventObject.customer)
+          const status = eventType === 'subscription.trialing' ? 'on_trial' : 'active'
+          const plan = getPlanFromProductId(productId)
+          const orgId = eventObject.metadata?.orgId as string | undefined
+
+          const bc = await prisma.billingCustomer.findUnique({
+            where: { providerCustomerId: creemCustomerId },
+          })
+
+          if (bc) {
+            const existing = await prisma.subscription.findUnique({
+              where: { providerSubscriptionId: subscriptionId },
+            })
+
+            if (existing) {
+              await prisma.subscription.update({
+                where: { providerSubscriptionId: subscriptionId },
+                data: {
+                  status,
+                  plan,
+                  providerProductId: productId,
+                  trialEndsAt: eventObject.trial_ends_at ? new Date(eventObject.trial_ends_at) : null,
+                  renewsAt: eventObject.current_period_end_date ? new Date(eventObject.current_period_end_date) : null,
+                  endsAt: eventObject.ends_at ? new Date(eventObject.ends_at) : null,
+                },
+              })
+            } else {
+              await prisma.subscription.create({
+                data: {
+                  customerId: bc.id,
+                  providerSubscriptionId: subscriptionId,
+                  providerProductId: productId,
+                  providerPlanId: productId,
+                  plan,
+                  status,
+                  trialEndsAt: eventObject.trial_ends_at ? new Date(eventObject.trial_ends_at) : null,
+                  renewsAt: eventObject.current_period_end_date ? new Date(eventObject.current_period_end_date) : null,
+                  endsAt: eventObject.ends_at ? new Date(eventObject.ends_at) : null,
+                },
+              })
+            }
+
+            if (plan !== 'free') {
+              await prisma.organization.update({
+                where: { id: bc.organizationId },
+                data: { plan },
+              })
+            }
+          } else if (orgId) {
+            const newCustomer = await prisma.billingCustomer.create({
+              data: {
+                organizationId: orgId,
+                providerCustomerId: creemCustomerId,
+              },
+            })
+
+            await prisma.subscription.create({
+              data: {
+                customerId: newCustomer.id,
+                providerSubscriptionId: subscriptionId,
+                providerProductId: productId,
+                providerPlanId: productId,
+                plan,
+                status,
+                trialEndsAt: eventObject.trial_ends_at ? new Date(eventObject.trial_ends_at) : null,
+                renewsAt: eventObject.current_period_end_date ? new Date(eventObject.current_period_end_date) : null,
+              },
+            })
+
+            if (plan !== 'free') {
+              await prisma.organization.update({
+                where: { id: orgId },
+                data: { plan },
+              })
+            }
+          }
+
+          break
+        }
+
+        case 'subscription.past_due': {
+          const subscriptionId = String(eventObject.id)
+
+          await prisma.subscription.updateMany({
+            where: { providerSubscriptionId: subscriptionId },
+            data: { status: 'past_due' },
+          })
+
+          break
+        }
+
+        case 'subscription.canceled': {
+          const subscriptionId = String(eventObject.id)
+
+          await prisma.subscription.updateMany({
+            where: { providerSubscriptionId: subscriptionId },
+            data: {
+              status: 'cancelled',
+              endsAt: eventObject.current_period_end_date
+                ? new Date(eventObject.current_period_end_date)
+                : null,
+              cancelAtPeriodEnd: true,
+            },
+          })
+
+          break
+        }
+
+        case 'subscription.scheduled_cancel': {
+          const subscriptionId = String(eventObject.id)
+
+          await prisma.subscription.updateMany({
+            where: { providerSubscriptionId: subscriptionId },
+            data: { cancelAtPeriodEnd: true },
+          })
+
+          break
+        }
+
+        case 'subscription.expired': {
+          const subscriptionId = String(eventObject.id)
+          const sub = await prisma.subscription.findUnique({
+            where: { providerSubscriptionId: subscriptionId },
+            include: { customer: true },
+          })
+
+          if (sub) {
+            await prisma.subscription.update({
+              where: { id: sub.id },
+              data: { status: 'expired' },
+            })
+
+            await prisma.organization.update({
+              where: { id: sub.customer.organizationId },
+              data: { plan: 'free' },
+            })
+          }
+
+          break
+        }
+
+        case 'subscription.paused': {
+          const subscriptionId = String(eventObject.id)
+
+          await prisma.subscription.updateMany({
+            where: { providerSubscriptionId: subscriptionId },
+            data: { status: 'paused' },
+          })
+
+          break
+        }
+
+        case 'subscription.update': {
+          const subscriptionId = String(eventObject.id)
+          const productId = eventObject.product?.id
+            ? String(eventObject.product.id)
+            : eventObject.product
+              ? String(eventObject.product)
+              : undefined
+          const plan = productId ? getPlanFromProductId(productId) : undefined
+
+          const updateData: Record<string, unknown> = {
+            status: eventObject.status || 'active',
+            trialEndsAt: eventObject.trial_ends_at ? new Date(eventObject.trial_ends_at) : null,
+            renewsAt: eventObject.current_period_end_date
+              ? new Date(eventObject.current_period_end_date)
+              : null,
+            endsAt: eventObject.ends_at ? new Date(eventObject.ends_at) : null,
+            cancelAtPeriodEnd: eventObject.status === 'scheduled_cancel',
+          }
+
+          if (productId) updateData.providerProductId = productId
+          if (plan) updateData.plan = plan
+
+          await prisma.subscription.updateMany({
+            where: { providerSubscriptionId: subscriptionId },
+            data: updateData,
+          })
+
+          if (plan && plan !== 'free') {
+            const sub = await prisma.subscription.findUnique({
+              where: { providerSubscriptionId: subscriptionId },
+              include: { customer: true },
+            })
+
+            if (sub) {
+              await prisma.organization.update({
+                where: { id: sub.customer.organizationId },
+                data: { plan },
+              })
+            }
+          }
+
+          break
+        }
+
+        case 'refund.created': {
+          const transaction = eventObject.transaction
+          if (transaction?.order) {
+            const orderId = String(transaction.order)
+            await prisma.invoice.updateMany({
+              where: { providerInvoiceId: orderId },
+              data: { status: 'refunded' },
+            })
+          }
+
+          break
+        }
+
+        case 'dispute.created': {
+          fastify.log.warn({ eventType, eventObject }, 'Dispute created')
+          break
+        }
+
+        default:
+          fastify.log.info({ eventType }, 'Unhandled webhook event')
+      }
+    } catch (err) {
+      fastify.log.error({ err, eventType }, 'Webhook processing error')
+      reply.code(500)
+      return { error: 'Webhook processing failed' }
+    }
+
+    return { data: { received: true } }
+  })
+}
+
+function getPlanFromProductId(productId: string): string {
+  for (const [key, plan] of Object.entries(PLANS)) {
+    if (plan.providerProductId === productId) return key
+  }
+  return 'free'
 }

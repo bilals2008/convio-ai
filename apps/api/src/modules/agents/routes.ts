@@ -79,6 +79,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/agents', {
     preHandler: [
       fastify.authenticate,
+      fastify.checkAgentLimit,
       validate({ params: orgParamsSchema, body: createAgentBodySchema }),
     ],
   }, async (request) => {

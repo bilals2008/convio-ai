@@ -6,6 +6,7 @@ import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { moderateForOrg, type ModerationFlag } from '../../services/moderation.js'
+import { checkMessageLimit } from '../../services/billing.js'
 import { z } from 'zod'
 
 // User-facing message shown when a message is blocked by moderation.
@@ -99,6 +100,14 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const orgId = await getConversationOrgId(id)
     await fastify.getMembership(request.userId!, orgId)
 
+    const limitCheck = await checkMessageLimit(orgId)
+    if (!limitCheck.allowed) {
+      throw new AppError(402,
+        `Monthly message limit (${limitCheck.limit.toLocaleString()}) reached. You've used ${limitCheck.current.toLocaleString()} messages this month. Upgrade your plan to continue.`,
+        'PLAN_LIMIT_EXCEEDED',
+      )
+    }
+
     const message = await prisma.message.create({
       data: { conversationId: id, role, content, status: 'sent' },
     })
@@ -141,6 +150,14 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const orgId = conversation.agent.organizationId
     await fastify.getMembership(request.userId!, orgId)
+
+    const limitCheck = await checkMessageLimit(orgId)
+    if (!limitCheck.allowed) {
+      throw new AppError(402,
+        `Monthly message limit (${limitCheck.limit.toLocaleString()}) reached. You've used ${limitCheck.current.toLocaleString()} messages this month. Upgrade your plan to continue.`,
+        'PLAN_LIMIT_EXCEEDED',
+      )
+    }
 
     const agent = conversation.agent
 

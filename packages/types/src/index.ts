@@ -166,3 +166,50 @@ export interface ApiError {
   message: string
   statusCode: number
 }
+
+// Billing types
+export type PlanName = 'free' | 'pro' | 'enterprise'
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'past_due' | 'on_trial' | 'unpaid'
+export type InvoiceStatus = 'paid' | 'pending' | 'refunded' | 'void'
+
+export interface BillingPlan {
+  name: PlanName
+  label: string
+  features: string[]
+  limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
+  price: string
+  priceMonthly: number
+  providerProductId?: string
+}
+
+export interface BillingUsage {
+  month: number
+  year: number
+  conversations: number
+  messages: number
+  limit: number
+}
+
+export interface Subscription {
+  id: string
+  customerId: string
+  plan: PlanName
+  status: SubscriptionStatus
+  trialEndsAt?: string
+  renewsAt?: string
+  endsAt?: string
+  cancelAtPeriodEnd: boolean
+  createdAt: string
+}
+
+export interface Invoice {
+  id: string
+  subscriptionId?: string
+  status: InvoiceStatus
+  total: number
+  currency: string
+  invoiceUrl?: string
+  paidAt?: string
+  billingReason?: string
+  createdAt: string
+}

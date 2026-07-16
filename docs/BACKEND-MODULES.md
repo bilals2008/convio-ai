@@ -76,7 +76,7 @@ Channel configs: Web Widget → WhatsApp → Telegram → Discord → Slack
 ### 11. billing/
 
 - Basic structure only
-- Lemon Squeezy integration later
+- Creem integration (checkout, subscriptions, webhooks, portal)
 
 ### 12. ai/
 

@@ -27,6 +27,14 @@ const badgeVariants = cva(
           "bg-primary/10 text-primary border-primary/20",
         viewer:
           "bg-info/10 text-info border-info/20",
+        active:
+          "bg-success/10 text-success border-success/20",
+        trialing:
+          "bg-info/10 text-info border-info/20",
+        canceled:
+          "bg-muted text-muted-foreground border-border",
+        past_due:
+          "bg-warning/10 text-warning border-warning/20",
       },
     },
     defaultVariants: {

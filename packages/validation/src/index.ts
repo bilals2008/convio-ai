@@ -249,6 +249,12 @@ export const auditLogActionSchema = z.enum([
   'provider_key.deleted',
   'sso.configured',
   'sso.disabled',
+  'subscription.created',
+  'subscription.cancelled',
+  'subscription.updated',
+  'invoice.paid',
+  'invoice.refunded',
+  'plan.changed',
 ])
 
 export const auditLogSchema = z.object({
@@ -299,6 +305,18 @@ export const bulkInviteSchema = z.object({
       message: 'Cannot add a member as owner.',
     }),
   })).min(1).max(50),
+})
+
+// Billing schemas
+export const billingPlanSchema = z.enum(['free', 'pro', 'enterprise'])
+
+export const checkoutBodySchema = z.object({
+  plan: billingPlanSchema,
+})
+
+export const billingUsageQuerySchema = z.object({
+  month: z.coerce.number().min(1).max(12).optional(),
+  year: z.coerce.number().min(2020).max(2100).optional(),
 })
 
 // Types inferred from schemas

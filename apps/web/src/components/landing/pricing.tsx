@@ -12,12 +12,11 @@ const plans = [
     price: '$0',
     period: 'forever',
     features: [
-      '1 AI Agent',
-      '1 Chatbot',
-      '1,000 messages/month',
-      'Web channel only',
+      '1 AI agent',
+      '1 knowledge base',
+      '1,000 messages/mo',
+      'Web widget',
       'Basic analytics',
-      'Community support',
     ],
     cta: 'Get Started',
     variant: 'outline' as const,
@@ -30,14 +29,12 @@ const plans = [
     period: '/month',
     badge: 'Most Popular',
     features: [
-      '10 AI Agents',
-      '25 Chatbots',
-      'Unlimited messages',
-      'All channels',
+      'Unlimited agents',
+      '10 knowledge bases',
+      '50,000 messages/mo',
+      'Multi-channel',
       'Advanced analytics',
       'Custom branding',
-      'Priority support',
-      'Knowledge base',
     ],
     cta: 'Start Free Trial',
     variant: 'default' as const,
@@ -50,14 +47,11 @@ const plans = [
     period: '',
     features: [
       'Unlimited agents',
-      'Unlimited chatbots',
+      'Unlimited knowledge bases',
       'Unlimited messages',
-      'All channels + API',
-      'Custom AI models',
-      'SSO & SAML',
+      'SSO / SAML',
       'Dedicated support',
       'SLA guarantee',
-      'On-premise option',
     ],
     cta: 'Contact Sales',
     variant: 'outline' as const,
@@ -73,7 +67,7 @@ export function Pricing() {
           <SectionHeading
             eyebrow="Pricing"
             title="Simple, transparent pricing"
-            description="Start free and upgrade as you grow. Every plan includes all channels — you only pay for scale."
+            description="Start free and upgrade as you grow. Every plan includes access to RAG and community support."
           />
         </ScrollReveal>
 
@@ -136,7 +130,7 @@ export function Pricing() {
         </div>
 
         <p className="mt-8 text-center text-[12px] text-muted-foreground">
-          All plans include unlimited channels, RAG, and community access. Prices in USD, billed monthly.
+          All plans include RAG and community access. Prices in USD.
         </p>
       </div>
     </section>

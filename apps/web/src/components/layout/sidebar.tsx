@@ -17,6 +17,7 @@ import {
   LogOut,
   Settings,
   X,
+  CreditCard,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -38,6 +39,7 @@ const settingsGeneral = [
   { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
   { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
   { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
+  { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
 ]
 
 function SettingsGroup({ collapsed }: { collapsed: boolean }) {
@@ -338,6 +340,15 @@ const mobileNavGroups = [
     items: [
       { icon: Building2, label: 'Organization', href: '/settings/organization' },
       { icon: Users, label: 'Team', href: '/settings/team' },
+    ],
+  },
+  {
+    label: 'Settings',
+    items: [
+      { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
+      { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
+      { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
+      { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
     ],
   },
 ]

@@ -18,3 +18,8 @@ See [code-style/taste.md](code-style/taste.md)
 
 # ui
 - Stream AI responses word-by-word with markdown rendering (like ChatGPT), not all at once after completion. Build this as a reusable component. Confidence: 0.65
+
+# billing
+- Use Creem as the payment provider for billing integration (checkout, webhooks, subscription management); migrated from Lemon Squeezy. Confidence: 0.85
+- Build billing module to be provider-agnostic — abstract payment provider behind interfaces so switching to Stripe, Polar, or another provider in the future is easy. Confidence: 0.80
+- Use hard blocks (not soft warnings) for plan limit enforcement — reject actions exceeding limits with 402 status and PLANT_LIMIT_EXCEEDED code. Confidence: 0.65

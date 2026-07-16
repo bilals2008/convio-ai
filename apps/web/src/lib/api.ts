@@ -198,6 +198,17 @@ export const apiKeys = {
   delete: (orgId: string, keyId: string) => api.delete(`/organizations/${orgId}/api-keys/${keyId}`),
 }
 
+export const billing = {
+  usage: (orgId: string, params?: { month?: number; year?: number }) =>
+    api.get(`/organizations/${orgId}/billing/usage`, { params }),
+  plan: (orgId: string) => api.get(`/organizations/${orgId}/billing/plan`),
+  subscription: (orgId: string) => api.get(`/organizations/${orgId}/billing/subscription`),
+  checkout: (orgId: string, plan: string) =>
+    api.post(`/organizations/${orgId}/billing/checkout`, { plan }),
+  portal: (orgId: string) => api.post(`/organizations/${orgId}/billing/portal`),
+  invoices: (orgId: string) => api.get(`/organizations/${orgId}/billing/invoices`),
+}
+
 export const publicApi = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
   headers: { 'Content-Type': 'application/json' },

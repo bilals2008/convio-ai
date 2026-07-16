@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@convio/ai": "workspace:*",
+    "@convio/config": "workspace:*",
     "@convio/database": "workspace:*",
+    "@convio/types": "workspace:*",
     "@convio/validation": "workspace:*",
     "@fastify/cors": "^10.0.0",
     "@fastify/error": "^4.0.0",
