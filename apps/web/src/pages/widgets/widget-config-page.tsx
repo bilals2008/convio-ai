@@ -668,75 +668,99 @@ export default function WidgetConfigPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-medium">Primary Color</Label>
-                <div className="flex flex-wrap gap-1.5">
+                <Label className="text-sm font-semibold">Primary Color</Label>
+                <p className="text-[11px] text-muted-foreground">Accent for the launcher button and user bubbles</p>
+                <div className="flex flex-wrap gap-2">
                   {primaryPresets.map((p) => (
                     <button
                       key={p.color}
                       onClick={() => { setPrimaryColor(p.color); setIsDirty(true) }}
-                      className={`size-7 rounded-full border-2 transition-all ${
-                        primaryColor === p.color ? 'border-foreground scale-110' : 'border-transparent hover:scale-110'
+                      className={`relative size-8 rounded-full ring-2 transition-all hover:scale-110 ${
+                        primaryColor === p.color
+                          ? 'ring-primary ring-offset-2 ring-offset-background scale-110'
+                          : 'ring-transparent hover:ring-foreground/20'
                       }`}
                       style={{ backgroundColor: p.color }}
                       title={p.label}
-                    />
+                    >
+                      {primaryColor === p.color && (
+                        <Check className="size-3.5 absolute inset-0 m-auto text-white drop-shadow" />
+                      )}
+                    </button>
                   ))}
                   <div className="relative">
                     <input
                       type="color"
                       value={primaryColor}
                       onChange={(e) => { setPrimaryColor(e.target.value); setIsDirty(true) }}
-                      className="size-7 cursor-pointer rounded-full border-2 border-border"
+                      className="size-8 cursor-pointer rounded-full border-2 border-border"
+                      title="Custom color"
                     />
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-medium">Background Color</Label>
-                <div className="flex flex-wrap gap-1.5">
+                <Label className="text-sm font-semibold">Background Color</Label>
+                <p className="text-[11px] text-muted-foreground">Main background of the widget window</p>
+                <div className="flex flex-wrap gap-2">
                   {bgPresets.map((p) => (
                     <button
                       key={p.color}
                       onClick={() => { setBackgroundColor(p.color); setIsDirty(true) }}
-                      className={`size-7 rounded-full border-2 transition-all ${
-                        backgroundColor === p.color ? 'border-foreground scale-110' : 'border-transparent hover:scale-110'
+                      className={`relative size-8 rounded-full ring-2 transition-all hover:scale-110 ${
+                        backgroundColor === p.color
+                          ? 'ring-primary ring-offset-2 ring-offset-background scale-110'
+                          : 'ring-transparent hover:ring-foreground/20'
                       }`}
                       style={{ backgroundColor: p.color }}
                       title={p.label}
-                    />
+                    >
+                      {backgroundColor === p.color && (
+                        <Check className="size-3.5 absolute inset-0 m-auto text-white drop-shadow" />
+                      )}
+                    </button>
                   ))}
                   <div className="relative">
                     <input
                       type="color"
                       value={backgroundColor}
                       onChange={(e) => { setBackgroundColor(e.target.value); setIsDirty(true) }}
-                      className="size-7 cursor-pointer rounded-full border-2 border-border"
+                      className="size-8 cursor-pointer rounded-full border-2 border-border"
+                      title="Custom color"
                     />
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-medium">Text Color</Label>
-                <div className="flex flex-wrap gap-1.5">
+                <Label className="text-sm font-semibold">Text Color</Label>
+                <p className="text-[11px] text-muted-foreground">Color of message text and labels</p>
+                <div className="flex flex-wrap gap-2">
                   {textPresets.map((p) => (
                     <button
                       key={p.color}
                       onClick={() => { setTextColor(p.color); setIsDirty(true) }}
-                      className={`size-7 rounded-full border-2 transition-all ${
-                        textColor === p.color ? 'border-foreground scale-110' : 'border-transparent hover:scale-110'
+                      className={`relative size-8 rounded-full ring-2 transition-all hover:scale-110 ${
+                        textColor === p.color
+                          ? 'ring-primary ring-offset-2 ring-offset-background scale-110'
+                          : 'ring-transparent hover:ring-foreground/20'
                       }`}
                       style={{ backgroundColor: p.color }}
                       title={p.label}
-                    />
+                    >
+                      {textColor === p.color && (
+                        <Check className="size-3.5 absolute inset-0 m-auto text-white drop-shadow" />
+                      )}
+                    </button>
                   ))}
                   <div className="relative">
                     <input
                       type="color"
                       value={textColor}
                       onChange={(e) => { setTextColor(e.target.value); setIsDirty(true) }}
-                      className="size-7 cursor-pointer rounded-full border-2 border-border"
+                      className="size-8 cursor-pointer rounded-full border-2 border-border"
+                      title="Custom color"
                     />
                   </div>
                 </div>
