@@ -17,7 +17,7 @@ import {
 const navLinks = [
   { label: 'Channels', href: '#channels' },
   { label: 'Pricing', href: '#pricing' },
-  { label: 'Demo', href: '/widget/demo' },
+  { label: 'Docs', href: '/docs' },
 ]
 
 export function Navbar() {

@@ -32,6 +32,8 @@ import ApiKeysPage from '@/pages/settings/api-keys-page'
 import ProviderKeysPage from '@/pages/settings/provider-keys-page'
 import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
+import DocsPage from '@/pages/docs-page'
+import ComingSoonPage from '@/pages/coming-soon-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {

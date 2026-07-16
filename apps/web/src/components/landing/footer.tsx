@@ -7,7 +7,7 @@ import { ArrowUp } from 'lucide-react'
 const footerLinks = [
   { label: 'Channels', href: '#channels' },
   { label: 'Pricing', href: '#pricing' },
-  { label: 'Live Demo', href: '/widget/demo' },
+  { label: 'Docs', href: '/docs' },
   { label: 'Log In', href: '/login' },
   { label: 'Get Started', href: '/signup' },
 ]
