@@ -296,8 +296,8 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     const { visitorId } = request.body as { visitorId?: string }
 
     const agent = await prisma.agent.findUnique({ where: { id: agentId } })
-    if (!agent || agent.status !== 'active') {
-      throw new AppError(404, 'Agent not found or is not active')
+    if (!agent || agent.status === 'archived') {
+      throw new AppError(404, 'Agent not found or is unavailable')
     }
 
     const conversation = await prisma.conversation.create({

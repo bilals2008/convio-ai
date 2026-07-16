@@ -400,8 +400,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       },
     })
 
-    if (!conversation || conversation.agent.status !== 'active') {
-      throw new AppError(404, 'Conversation not found or agent is not active')
+    if (!conversation || conversation.agent.status === 'archived') {
+      throw new AppError(404, 'Conversation not found or agent is unavailable')
     }
 
     // Moderate the inbound message before storing it or calling the AI.
