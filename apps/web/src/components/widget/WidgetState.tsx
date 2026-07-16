@@ -8,6 +8,7 @@ export interface WidgetStateValue {
   exiting: boolean
   messages: WidgetMessage[]
   isTyping: boolean
+  isCreatingConversation: boolean
   unreadCount: number
   error: string | null
   theme: WidgetTheme
@@ -19,6 +20,7 @@ export interface WidgetStateValue {
   onToggle: () => void
   onClose: () => void
   onMinimize: () => void
+  dismissError: () => void
 }
 
 const WidgetStateContext = createContext<WidgetStateValue | null>(null)

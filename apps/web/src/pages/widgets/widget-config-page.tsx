@@ -298,6 +298,7 @@ export default function WidgetConfigPage() {
     if (!isDirty) return
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault()
+      e.returnValue = ''
     }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
@@ -413,9 +414,18 @@ export default function WidgetConfigPage() {
               {widget.status}
             </Badge>
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Connected to {widget.agent.name}
-          </p>
+          <div className="flex items-center gap-2">
+            {widget.agent.avatar ? (
+              <img src={widget.agent.avatar} alt="" className="size-5 rounded-full object-cover" />
+            ) : (
+              <div className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
+                {widget.agent.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground">
+              Connected to {widget.agent.name}
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -463,8 +473,8 @@ export default function WidgetConfigPage() {
                 />
               }
             >
-              {isLive ? <Trash2 className="size-3.5" /> : <Play className="size-3.5" />}
-              {isLive ? 'Pause' : 'Publish'}
+              {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : isLive ? <Trash2 className="size-3.5" /> : <Play className="size-3.5" />}
+              {save.isPending ? 'Saving…' : isLive ? 'Pause' : 'Publish'}
             </TooltipTrigger>
             <TooltipContent>{isLive ? 'Disable widget without deleting' : 'Make widget live'}</TooltipContent>
           </Tooltip>
@@ -474,8 +484,8 @@ export default function WidgetConfigPage() {
             onClick={() => save.mutate()}
             disabled={save.isPending || !isDirty}
           >
-            <Save className="size-3.5" />
-            Save
+            {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+            {save.isPending ? 'Saving…' : 'Save'}
           </Button>
 
           <Tooltip>

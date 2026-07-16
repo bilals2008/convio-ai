@@ -33,14 +33,16 @@ interface DemoConfig {
 const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173'
 
 function getEmbedScript(agentId: string, position: string, primaryColor: string) {
-  return `<script>
+  const params = new URLSearchParams({ embed: 'true', agentId: agentId || 'YOUR_AGENT_ID' })
+  if (position) params.set('position', position)
+  if (primaryColor) params.set('primaryColor', primaryColor)
+  return `<script async>
   (function() {
-    var script = document.createElement('script');
-    script.src = '${appUrl}/widget.js';
-    script.dataset.agentId = '${agentId || 'YOUR_AGENT_ID'}';
-    script.dataset.position = '${position}';
-    script.dataset.primary = '${primaryColor}';
-    document.body.appendChild(script);
+    var iframe = document.createElement('iframe');
+    iframe.src = '${appUrl}/widget/demo?${params.toString()}';
+    iframe.style.cssText = 'position:fixed;bottom:20px;right:20px;width:400px;height:600px;border:none;z-index:2147483647;max-width:calc(100vw - 40px);max-height:calc(100vh - 40px);box-shadow:0 4px 24px rgba(0,0,0,0.16);border-radius:12px;overflow:hidden;background:#fff;';
+    iframe.title = 'Chat Widget';
+    document.body.appendChild(iframe);
   })();
 </script>`
 }
@@ -127,8 +129,9 @@ function WidgetEmbedPage() {
     const backgroundColor = params.get('backgroundColor') || '#1c1c1c'
     const greeting = params.get('greeting') || "Hi there! I'm an AI assistant. How can I help you today?"
     const agentName = params.get('agentName') || 'Convio Demo'
+    const agentAvatar = params.get('agentAvatar') || undefined
     const quickReplies = (params.get('quickReplies') || 'What can you help with?\nHow does pricing work?\nTell me about features\nGet started guide').split('\n').map(s => s.trim()).filter(Boolean)
-    return <ChatWidget agentId={agentId} position={position} greeting={greeting} agentName={agentName} quickReplies={quickReplies} theme={{ primaryColor, backgroundColor, textColor: isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6' }} />
+    return <ChatWidget agentId={agentId} position={position} greeting={greeting} agentName={agentName} agentAvatar={agentAvatar} quickReplies={quickReplies} theme={{ primaryColor, backgroundColor, textColor: isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6' }} />
   }
 
   return null

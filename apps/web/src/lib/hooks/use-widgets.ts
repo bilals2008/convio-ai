@@ -13,9 +13,10 @@ export interface WidgetSummary {
 }
 
 export function useWidgets(orgId?: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ['widgets', orgId],
     queryFn: async () => (await widgetsApi.list(orgId!)).data.data as WidgetSummary[],
     enabled: Boolean(orgId),
   })
+  return { ...query, widgets: query.data ?? [] }
 }

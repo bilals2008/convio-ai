@@ -29,7 +29,7 @@ export default function WidgetsListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { orgId } = useOrg()
-  const { data: widgets = [], isLoading } = useWidgets(orgId)
+  const { widgets = [], isLoading, isError, refetch } = useWidgets(orgId)
   const [createOpen, setCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterStatus>('all')
@@ -61,6 +61,7 @@ export default function WidgetsListPage() {
   const archiveWidget = useMutation({
     mutationFn: (id: string) => widgetsApi.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['widgets', orgId] }),
+    onError: (error: Error) => toast.error(error.message || 'Could not archive widget'),
   })
 
   const copyEmbed = async (widget: WidgetSummary) => {
@@ -185,6 +186,20 @@ export default function WidgetsListPage() {
           {[0, 1].map((item) => (
             <div key={item} className="h-44 animate-pulse rounded-lg border border-border bg-muted/50" />
           ))}
+        </div>
+      ) : isError ? (
+        /* Error state */
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-destructive/10">
+            <span className="text-2xl text-destructive">!</span>
+          </div>
+          <h3 className="mt-5 text-lg font-semibold">Failed to load widgets</h3>
+          <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+            Something went wrong. Please try again.
+          </p>
+          <Button className="mt-6" variant="outline" onClick={() => refetch()}>
+            Try Again
+          </Button>
         </div>
       ) : filtered.length > 0 ? (
         /* Widget grid */

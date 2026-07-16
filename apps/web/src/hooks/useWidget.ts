@@ -43,12 +43,14 @@ export function useWidget(config: WidgetConfig) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false)
   const [entering, setEntering] = useState(false)
   const [exiting, setExiting] = useState(false)
 
   const theme = { ...defaultTheme, ...config.theme }
 
   const createConversation = useCallback(async () => {
+    setIsCreatingConversation(true)
     try {
       const { data } = config.publicKey
         ? await api.post(`/public/widgets/${config.publicKey}/conversations`, {})
@@ -59,6 +61,8 @@ export function useWidget(config: WidgetConfig) {
     } catch {
       setError('Failed to start conversation')
       return null
+    } finally {
+      setIsCreatingConversation(false)
     }
   }, [config.agentId, config.publicKey])
 
@@ -117,6 +121,7 @@ export function useWidget(config: WidgetConfig) {
   )
 
   const openWidget = useCallback(() => {
+    setError(null)
     setEntering(true)
     setExiting(false)
     setIsOpen(true)
@@ -178,9 +183,11 @@ export function useWidget(config: WidgetConfig) {
     isMinimized,
     messages,
     isTyping,
+    isCreatingConversation,
     unreadCount,
     conversationId,
     error,
+    setError,
     theme,
     entering,
     exiting,

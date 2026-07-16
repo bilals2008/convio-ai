@@ -58,6 +58,7 @@ export function ChatWidget({
     exiting: widget.exiting,
     messages: widget.messages,
     isTyping: widget.isTyping,
+    isCreatingConversation: widget.isCreatingConversation,
     unreadCount: widget.unreadCount,
     error: widget.error,
     theme,
@@ -69,6 +70,7 @@ export function ChatWidget({
     onToggle: widget.toggleWidget,
     onClose: widget.closeWidget,
     onMinimize: () => widget.setIsMinimized((prev) => !prev),
+    dismissError: () => widget.setError(null),
   }
 
   return createPortal(

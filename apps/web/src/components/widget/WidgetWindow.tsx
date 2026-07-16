@@ -6,7 +6,7 @@ import { WidgetMessages } from './WidgetMessages'
 import { WidgetInput } from './WidgetInput'
 
 export function WidgetWindow() {
-  const { isOpen, isMinimized, entering, exiting, position } = useWidgetState()
+  const { isOpen, isMinimized, entering, exiting, position, error, dismissError } = useWidgetState()
 
   if (!isOpen && !exiting) return null
 
@@ -25,6 +25,12 @@ export function WidgetWindow() {
       style={{ backgroundColor: `hsl(var(--widget-bg))` }}
     >
       <WidgetHeader />
+      {error && (
+        <div className="mx-3 mt-2 flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <span className="flex-1">{error}</span>
+          <button onClick={() => dismissError()} className="shrink-0 text-destructive/60 hover:text-destructive">&times;</button>
+        </div>
+      )}
       {!isMinimized && (
         <>
           <WidgetWelcome />
