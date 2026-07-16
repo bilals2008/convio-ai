@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Copy, Check, ArrowLeft, Settings2, Code2, Palette, MessageSquare, Rocket } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { agents as agentsApi } from '@/lib/api'
+import { agents as agentsApi, publicApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
 type Position = 'bottom-right' | 'bottom-left'
@@ -84,15 +84,54 @@ function isLightColor(hex: string): boolean {
 
 function WidgetEmbedPage() {
   const params = new URLSearchParams(window.location.search)
+  const widgetKey = params.get('widgetKey')
   const agentId = params.get('agentId')
-  if (!agentId) return null
-  const position = (params.get('position') as Position) || 'bottom-right'
-  const primaryColor = params.get('primaryColor') || '#fb923c'
-  const backgroundColor = params.get('backgroundColor') || '#1c1c1c'
-  const greeting = params.get('greeting') || "Hi there! I'm a Convio agent. How can I help you today?"
-  const agentName = params.get('agentName') || 'Convio Demo'
-  const quickReplies = (params.get('quickReplies') || 'What can you help with?\nHow does pricing work?\nTell me about features\nGet started guide').split('\n').map(s => s.trim()).filter(Boolean)
-  return <ChatWidget agentId={agentId} position={position} greeting={greeting} agentName={agentName} quickReplies={quickReplies} theme={{ primaryColor, backgroundColor, textColor: isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6' }} />
+
+  const { data: widgetConfig, isLoading: configLoading } = useQuery({
+    queryKey: ['widget-config', widgetKey],
+    queryFn: async () => (await publicApi.get(`/public/widgets/${widgetKey}`)).data.data,
+    enabled: !!widgetKey,
+  })
+
+  if (widgetKey && configLoading) {
+    return <div className="flex h-dvh w-dvw items-center justify-center bg-background">
+      <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  }
+
+  if (widgetKey && widgetConfig) {
+    const config = widgetConfig.config || {}
+    const position = (config.position as Position) || 'bottom-right'
+    const primaryColor = config.primaryColor || '#fb923c'
+    const backgroundColor = config.backgroundColor || '#1c1c1c'
+    const greeting = config.greeting || "Hi there! How can I help you today?"
+    const agentName = config.agentName || widgetConfig.agent?.name || 'Assistant'
+    const agentAvatar = config.agentAvatar || widgetConfig.agent?.avatar
+    const quickReplies = (config.quickReplies || []).map((s: string) => s.trim()).filter(Boolean)
+
+    return <ChatWidget
+      agentId={widgetConfig.agent.id}
+      publicKey={widgetKey}
+      position={position}
+      greeting={greeting}
+      agentName={agentName}
+      agentAvatar={agentAvatar}
+      quickReplies={quickReplies}
+      theme={{ primaryColor, backgroundColor, textColor: isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6' }}
+    />
+  }
+
+  if (agentId) {
+    const position = (params.get('position') as Position) || 'bottom-right'
+    const primaryColor = params.get('primaryColor') || '#fb923c'
+    const backgroundColor = params.get('backgroundColor') || '#1c1c1c'
+    const greeting = params.get('greeting') || "Hi there! I'm an AI assistant. How can I help you today?"
+    const agentName = params.get('agentName') || 'Convio Demo'
+    const quickReplies = (params.get('quickReplies') || 'What can you help with?\nHow does pricing work?\nTell me about features\nGet started guide').split('\n').map(s => s.trim()).filter(Boolean)
+    return <ChatWidget agentId={agentId} position={position} greeting={greeting} agentName={agentName} quickReplies={quickReplies} theme={{ primaryColor, backgroundColor, textColor: isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6' }} />
+  }
+
+  return null
 }
 
 export default function WidgetDemoPage() {

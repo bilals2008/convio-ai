@@ -133,7 +133,7 @@ export function WidgetCard({ widget, onCopyEmbed, onArchive }: WidgetCardProps) 
         </Tooltip>
 
         <Tooltip>
-          <TooltipTrigger render={<Button variant="ghost" size="sm" onClick={() => navigate(`/widgets/${widget.id}?tab=preview`)} />}>
+          <TooltipTrigger render={<Button variant="ghost" size="sm" onClick={() => window.open(`/widget/demo?embed=true&widgetKey=${widget.publicKey}`, '_blank')} />}>
             <Eye className="size-3.5" />
             Preview
           </TooltipTrigger>
@@ -167,7 +167,7 @@ export function WidgetCard({ widget, onCopyEmbed, onArchive }: WidgetCardProps) 
               {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
               {copied ? 'Copied!' : 'Copy Embed'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate(`/widgets/${widget.id}?tab=preview`)}>
+            <DropdownMenuItem onClick={() => window.open(`/widget/demo?embed=true&widgetKey=${widget.publicKey}`, '_blank')}>
               <Eye className="size-4" />
               Preview
             </DropdownMenuItem>

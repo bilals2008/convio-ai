@@ -607,7 +607,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, existing.organizationId)
 
     const baseUrl = process.env.CORS_ORIGIN || 'http://localhost:5173'
-    const snippet = `<script src="${baseUrl}/widget.js" data-agent-id="${id}"></script>\n<div id="convio-widget" data-agent-id="${id}"></div>`
+    const snippet = `<script src="${baseUrl}/widget.js" data-agent-id="${id}"></script>`
 
     return { data: { snippet } }
   })

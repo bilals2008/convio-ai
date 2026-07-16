@@ -10,6 +10,7 @@ import {
   Globe2,
   GripVertical,
   Loader2,
+  Palette,
   Pencil,
   Play,
   Plus,
@@ -184,6 +185,29 @@ function DomainTag({
   )
 }
 
+const primaryPresets = [
+  { label: 'Orange', color: '#fb923c' },
+  { label: 'Blue', color: '#3b82f6' },
+  { label: 'Emerald', color: '#10b981' },
+  { label: 'Violet', color: '#8b5cf6' },
+  { label: 'Rose', color: '#f43f5e' },
+  { label: 'Slate', color: '#475569' },
+]
+
+const bgPresets = [
+  { label: 'Dark', color: '#1c1c1c' },
+  { label: 'Charcoal', color: '#2d2d2d' },
+  { label: 'White', color: '#ffffff' },
+  { label: 'Light Gray', color: '#f5f5f5' },
+]
+
+const textPresets = [
+  { label: 'Light', color: '#f3f4f6' },
+  { label: 'White', color: '#ffffff' },
+  { label: 'Dark', color: '#1f2937' },
+  { label: 'Charcoal', color: '#111827' },
+]
+
 export default function WidgetConfigPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -202,6 +226,11 @@ export default function WidgetConfigPage() {
   const [domains, setDomains] = useState<string[]>([])
   const [domainInput, setDomainInput] = useState('')
   const [position, setPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
+  const [primaryColor, setPrimaryColor] = useState('#fb923c')
+  const [backgroundColor, setBackgroundColor] = useState('#1c1c1c')
+  const [textColor, setTextColor] = useState('#f3f4f6')
+  const [agentName, setAgentName] = useState('')
+  const [agentAvatar, setAgentAvatar] = useState('')
   const [copied, setCopied] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
 
@@ -219,6 +248,11 @@ export default function WidgetConfigPage() {
       )
       setDomains(widget.allowedDomains ?? [])
       setPosition(widget.config.position ?? 'bottom-right')
+      setPrimaryColor(widget.config.primaryColor ?? '#fb923c')
+      setBackgroundColor(widget.config.backgroundColor ?? '#1c1c1c')
+      setTextColor(widget.config.textColor ?? '#f3f4f6')
+      setAgentName(widget.config.agentName ?? widget.agent.name ?? '')
+      setAgentAvatar(widget.config.agentAvatar ?? '')
     }
   }, [widget])
 
@@ -231,6 +265,11 @@ export default function WidgetConfigPage() {
       prompts: (widget.config.quickReplies ?? []).join('\n'),
       domains: (widget.allowedDomains ?? []).join(','),
       position: widget.config.position ?? 'bottom-right',
+      primaryColor: widget.config.primaryColor ?? '#fb923c',
+      backgroundColor: widget.config.backgroundColor ?? '#1c1c1c',
+      textColor: widget.config.textColor ?? '#f3f4f6',
+      agentName: widget.config.agentName ?? widget.agent.name ?? '',
+      agentAvatar: widget.config.agentAvatar ?? '',
     }
   }, [widget])
 
@@ -242,9 +281,14 @@ export default function WidgetConfigPage() {
       prompts: prompts.map((p) => p.text).join('\n'),
       domains: domains.join(','),
       position,
+      primaryColor,
+      backgroundColor,
+      textColor,
+      agentName,
+      agentAvatar,
     }
     setIsDirty(JSON.stringify(current) !== JSON.stringify(savedSnapshot))
-  }, [name, greeting, prompts, domains, position, savedSnapshot])
+  }, [name, greeting, prompts, domains, position, primaryColor, backgroundColor, textColor, agentName, agentAvatar, savedSnapshot])
 
   // Warn on page close / navigation if dirty
   useEffect(() => {
@@ -266,6 +310,11 @@ export default function WidgetConfigPage() {
           greeting,
           quickReplies: prompts.map((p) => p.text),
           position,
+          primaryColor,
+          backgroundColor,
+          textColor,
+          agentName,
+          ...(agentAvatar ? { agentAvatar } : {}),
         },
       }),
     onSuccess: () => {
@@ -387,7 +436,7 @@ export default function WidgetConfigPage() {
                   size="sm"
                   onClick={() =>
                     window.open(
-                      `/widget/demo?embed=true&agentId=${widget.agent.id}&position=${position}`,
+                      `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}`,
                       '_blank',
                     )
                   }
@@ -568,6 +617,118 @@ export default function WidgetConfigPage() {
               </div>
             </div>
           </ProductCard>
+
+          {/* Appearance */}
+          <ProductCard className="p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+                <Palette className="size-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold">Appearance</h2>
+                <p className="text-xs text-muted-foreground">Customize the widget look and feel.</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="agentName" className="text-xs font-medium">Agent Name</Label>
+                <Input
+                  id="agentName"
+                  value={agentName}
+                  onChange={(e) => { setAgentName(e.target.value); setIsDirty(true) }}
+                  placeholder="Assistant"
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="agentAvatar" className="text-xs font-medium">Agent Avatar URL</Label>
+                <Input
+                  id="agentAvatar"
+                  value={agentAvatar}
+                  onChange={(e) => { setAgentAvatar(e.target.value); setIsDirty(true) }}
+                  placeholder="https://example.com/avatar.png"
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Primary Color</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {primaryPresets.map((p) => (
+                    <button
+                      key={p.color}
+                      onClick={() => { setPrimaryColor(p.color); setIsDirty(true) }}
+                      className={`size-7 rounded-full border-2 transition-all ${
+                        primaryColor === p.color ? 'border-foreground scale-110' : 'border-transparent hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: p.color }}
+                      title={p.label}
+                    />
+                  ))}
+                  <div className="relative">
+                    <input
+                      type="color"
+                      value={primaryColor}
+                      onChange={(e) => { setPrimaryColor(e.target.value); setIsDirty(true) }}
+                      className="size-7 cursor-pointer rounded-full border-2 border-border"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Background Color</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {bgPresets.map((p) => (
+                    <button
+                      key={p.color}
+                      onClick={() => { setBackgroundColor(p.color); setIsDirty(true) }}
+                      className={`size-7 rounded-full border-2 transition-all ${
+                        backgroundColor === p.color ? 'border-foreground scale-110' : 'border-transparent hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: p.color }}
+                      title={p.label}
+                    />
+                  ))}
+                  <div className="relative">
+                    <input
+                      type="color"
+                      value={backgroundColor}
+                      onChange={(e) => { setBackgroundColor(e.target.value); setIsDirty(true) }}
+                      className="size-7 cursor-pointer rounded-full border-2 border-border"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Text Color</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {textPresets.map((p) => (
+                    <button
+                      key={p.color}
+                      onClick={() => { setTextColor(p.color); setIsDirty(true) }}
+                      className={`size-7 rounded-full border-2 transition-all ${
+                        textColor === p.color ? 'border-foreground scale-110' : 'border-transparent hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: p.color }}
+                      title={p.label}
+                    />
+                  ))}
+                  <div className="relative">
+                    <input
+                      type="color"
+                      value={textColor}
+                      onChange={(e) => { setTextColor(e.target.value); setIsDirty(true) }}
+                      className="size-7 cursor-pointer rounded-full border-2 border-border"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ProductCard>
         </main>
 
         {/* Sidebar */}
@@ -644,7 +805,7 @@ export default function WidgetConfigPage() {
             <div className="space-y-3">
               <div className="rounded-lg border border-border bg-muted/30 p-3">
                 <code className="block text-[11px] leading-relaxed text-muted-foreground break-all">
-                  {`<script src="${window.location.origin}/widget.js" data-agent-id="${widget.agent.id}"></script>`}
+                  {`<script src="${window.location.origin}/widget.js" data-widget-key="${widget.publicKey}"></script>`}
                 </code>
               </div>
 
@@ -660,7 +821,7 @@ export default function WidgetConfigPage() {
                   className="text-xs"
                   onClick={() =>
                     window.open(
-                      `/widget/demo?embed=true&agentId=${widget.agent.id}&position=${position}`,
+                      `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}`,
                       '_blank',
                     )
                   }

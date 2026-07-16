@@ -1,5 +1,5 @@
 import { useWidgetState } from './WidgetState'
-import { Sparkles } from 'lucide-react'
+import { Zap } from 'lucide-react'
 
 const defaultQuickReplies = [
   'What can you help with?',
@@ -42,7 +42,7 @@ export function WidgetWelcome() {
             </div>
           )}
           <div className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-500 border-2 border-[hsl(var(--widget-bg))] flex items-center justify-center">
-            <Sparkles className="size-2.5 text-white" />
+            <Zap className="size-2.5 text-white" />
           </div>
         </div>
 

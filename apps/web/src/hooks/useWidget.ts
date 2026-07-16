@@ -16,6 +16,7 @@ export interface WidgetTheme {
 
 export interface WidgetConfig {
   agentId: string
+  publicKey?: string
   position: 'bottom-right' | 'bottom-left'
   theme: WidgetTheme
   greeting: string
@@ -49,7 +50,9 @@ export function useWidget(config: WidgetConfig) {
 
   const createConversation = useCallback(async () => {
     try {
-      const { data } = await api.post(`/widget/agents/${config.agentId}/conversations`, { channel: 'web' })
+      const { data } = config.publicKey
+        ? await api.post(`/public/widgets/${config.publicKey}/conversations`, {})
+        : await api.post(`/widget/agents/${config.agentId}/conversations`, { channel: 'web' })
       const conversation = data.data || data
       setConversationId(conversation.id)
       return conversation.id
@@ -57,7 +60,7 @@ export function useWidget(config: WidgetConfig) {
       setError('Failed to start conversation')
       return null
     }
-  }, [config.agentId])
+  }, [config.agentId, config.publicKey])
 
   const sendMessage = useCallback(
     async (content: string) => {
