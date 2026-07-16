@@ -29,7 +29,7 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
             <img
               src={agentAvatar}
               alt={agentName}
-              className="size-7 rounded-full object-cover"
+              className="size-7 rounded-full object-cover ring-2 ring-[hsl(var(--widget-primary))]"
             />
           ) : (
             <div

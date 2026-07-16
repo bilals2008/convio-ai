@@ -89,7 +89,7 @@ export function WidgetMessages() {
         <div className="convio-msg flex gap-2 mb-3 animate-in fade-in duration-300 justify-start">
           <div className="mt-1 shrink-0">
             {agentAvatar ? (
-              <img src={agentAvatar} alt={agentName} className="size-7 rounded-full object-cover" />
+              <img src={agentAvatar} alt={agentName} className="size-7 rounded-full object-cover ring-2 ring-[hsl(var(--widget-primary))]" />
             ) : (
               <div
                 className="size-7 rounded-full flex items-center justify-center"
