@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 export interface ChatWidgetProps {
   agentId: string
   publicKey?: string
+  preview?: boolean
   position?: 'bottom-right' | 'bottom-left'
   theme?: Partial<WidgetTheme>
   greeting?: string
@@ -41,6 +42,7 @@ function WidgetBackdrop({ show, onClose }: { show: boolean; onClose: () => void 
 export function ChatWidget({
   agentId,
   publicKey,
+  preview,
   position = 'bottom-right',
   theme: themeOverride,
   greeting = "Hi there! 👋 I'm here to help. What can I do for you today?",
@@ -49,7 +51,7 @@ export function ChatWidget({
   quickReplies,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, position, theme, greeting, agentName, agentAvatar, quickReplies })
+  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies })
 
   const stateValue = {
     isOpen: widget.isOpen,

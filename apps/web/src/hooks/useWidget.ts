@@ -17,6 +17,7 @@ export interface WidgetTheme {
 export interface WidgetConfig {
   agentId: string
   publicKey?: string
+  preview?: boolean
   position: 'bottom-right' | 'bottom-left'
   theme: WidgetTheme
   greeting: string
@@ -52,8 +53,9 @@ export function useWidget(config: WidgetConfig) {
   const createConversation = useCallback(async () => {
     setIsCreatingConversation(true)
     try {
+      const query = config.preview ? '?preview=true' : ''
       const { data } = config.publicKey
-        ? await api.post(`/public/widgets/${config.publicKey}/conversations`, {})
+        ? await api.post(`/public/widgets/${config.publicKey}/conversations${query}`, {})
         : await api.post(`/widget/agents/${config.agentId}/conversations`, { channel: 'web' })
       const conversation = data.data || data
       setConversationId(conversation.id)
@@ -64,7 +66,7 @@ export function useWidget(config: WidgetConfig) {
     } finally {
       setIsCreatingConversation(false)
     }
-  }, [config.agentId, config.publicKey])
+  }, [config.agentId, config.publicKey, config.preview])
 
   const sendMessage = useCallback(
     async (content: string) => {

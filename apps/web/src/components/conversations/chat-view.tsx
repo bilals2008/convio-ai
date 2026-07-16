@@ -69,6 +69,7 @@ export function ChatView() {
   const queryClient = useQueryClient()
   const [sending, setSending] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [streamingReasoning, setStreamingReasoning] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [typingAgents, setTypingAgents] = useState<string[]>([])
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -143,6 +144,16 @@ export function ChatView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversation', id] })
     },
+    onError: (err: Error) => toast.error(err.message || 'Could not update status'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => conversationsApi.delete(id!),
+    onSuccess: () => {
+      toast.success('Conversation deleted')
+      navigate('/conversations')
+    },
+    onError: (err: Error) => toast.error(err.message || 'Could not delete conversation'),
   })
 
   const handleSendMessage = async (content: string) => {
@@ -177,6 +188,7 @@ export function ChatView() {
       const decoder = new TextDecoder()
       let buffer = ''
       let fullContent = ''
+      let fullReasoning = ''
       let streamError: string | null = null
 
       while (true) {
@@ -195,6 +207,9 @@ export function ChatView() {
               const parsed = JSON.parse(data)
               if (parsed.error) {
                 streamError = parsed.error
+              } else if (parsed.type === 'reasoning') {
+                fullReasoning += parsed.content
+                setStreamingReasoning(fullReasoning)
               } else if (parsed.content) {
                 fullContent += parsed.content
                 setStreamingContent(fullContent)
@@ -335,7 +350,8 @@ export function ChatView() {
       <MessageList
         messages={displayMessages}
         loading={isLoading}
-        streamingMessage={streaming ? { role: 'assistant', content: streamingContent, id: 'streaming', createdAt: new Date().toISOString(), status: 'sending' } : undefined}
+        streamingMessage={streaming ? { role: 'assistant', content: streamingContent, id: 'streaming', createdAt: new Date().toISOString(), status: 'sending', reasoning: streamingReasoning } : undefined}
+        streamingReasoning={streamingReasoning}
       />
 
       {typingAgents.length > 0 && !streaming && (
@@ -347,7 +363,7 @@ export function ChatView() {
       )}
 
       {error && (
-        <div className="flex items-center gap-2 px-4 pb-2 text-xs text-destructive">
+        <div className="flex items-center gap-2 px-4 pb-2 text-xs text-destructive" role="alert" aria-live="polite">
           <AlertCircle className="size-3 shrink-0" />
           <span>{error}</span>
         </div>
@@ -379,14 +395,10 @@ export function ChatView() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                conversationsApi.delete(conversation.id).then(() => {
-                  toast.success('Conversation deleted')
-                  navigate('/conversations')
-                })
-              }}
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
             >
-              Delete
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -89,9 +89,11 @@ function WidgetEmbedPage() {
   const widgetKey = params.get('widgetKey')
   const agentId = params.get('agentId')
 
+  const preview = params.get('preview') === 'true'
+
   const { data: widgetConfig, isLoading: configLoading } = useQuery({
     queryKey: ['widget-config', widgetKey],
-    queryFn: async () => (await publicApi.get(`/public/widgets/${widgetKey}`)).data.data,
+    queryFn: async () => (await publicApi.get(`/public/widgets/${widgetKey}${preview ? '?preview=true' : ''}`)).data.data,
     enabled: !!widgetKey,
   })
 
@@ -114,6 +116,7 @@ function WidgetEmbedPage() {
     return <ChatWidget
       agentId={widgetConfig.agent.id}
       publicKey={widgetKey}
+      preview={preview}
       position={position}
       greeting={greeting}
       agentName={agentName}

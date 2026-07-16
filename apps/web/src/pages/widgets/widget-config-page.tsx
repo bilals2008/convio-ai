@@ -349,7 +349,7 @@ export default function WidgetConfigPage() {
   }
 
   const addDomain = () => {
-    const d = domainInput.trim().toLowerCase()
+    const d = domainInput.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
     if (!d) return
     if (domains.includes(d)) {
       toast.error('Domain already added')
@@ -449,7 +449,7 @@ export default function WidgetConfigPage() {
                   size="sm"
                   onClick={() =>
                     window.open(
-                      `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}`,
+                      `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}&preview=true`,
                       '_blank',
                     )
                   }
@@ -834,7 +834,7 @@ export default function WidgetConfigPage() {
                   className="text-xs"
                   onClick={() =>
                     window.open(
-                      `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}`,
+                      `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}&preview=true`,
                       '_blank',
                     )
                   }

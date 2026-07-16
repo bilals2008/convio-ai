@@ -48,12 +48,12 @@ export function MessageInput({
         placeholder={placeholder}
         disabled={disabled || loading}
         rows={1}
+        aria-label="Message input"
         className={cn(
           'flex-1 resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm',
           'placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
           'disabled:cursor-not-allowed disabled:opacity-50 min-h-[40px] max-h-[120px]'
         )}
-        style={{ fieldSizing: 'content' } as React.CSSProperties}
       />
       <Button
         onClick={handleSend}

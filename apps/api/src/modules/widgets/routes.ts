@@ -10,6 +10,7 @@ const widgetStatuses = ['draft', 'active', 'paused', 'archived'] as const
 const orgParamsSchema = z.object({ orgId: z.string().uuid() })
 const widgetParamsSchema = z.object({ id: z.string().uuid() })
 const publicWidgetParamsSchema = z.object({ publicKey: z.string().min(1) })
+const publicWidgetQuerySchema = z.object({ preview: z.coerce.boolean().optional() })
 const widgetQuerySchema = z.object({ cursor: z.string().uuid().optional(), limit: z.coerce.number().min(1).max(100).default(20) })
 const domainSchema = z.string().trim().min(1).max(253).regex(/^(localhost(?::\d+)?|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,})$/i, 'Enter a domain without a protocol')
 const widgetConfigSchema = z.object({
@@ -156,10 +157,11 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     return { data: { snippet: `<script async src="${baseUrl}/widget.js" data-widget-key="${widget.publicKey}"></script>` } }
   })
 
-  fastify.get('/public/widgets/:publicKey', { preHandler: [validate({ params: publicWidgetParamsSchema })] }, async (request, reply) => {
+  fastify.get('/public/widgets/:publicKey', { preHandler: [validate({ params: publicWidgetParamsSchema, query: publicWidgetQuerySchema })] }, async (request, reply) => {
     const { publicKey } = request.params as { publicKey: string }
+    const { preview } = request.query as z.infer<typeof publicWidgetQuerySchema>
     const widget = await prisma.widget.findFirst({
-      where: { publicKey, status: 'active' },
+      where: { publicKey, ...(preview ? {} : { status: 'active' }) },
       select: { publicKey: true, name: true, config: true, allowedDomains: true, agent: { select: { id: true, name: true, avatar: true } } },
     })
     if (!widget) throw new AppError(404, 'Widget not found')
@@ -169,12 +171,13 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/public/widgets/:publicKey/conversations', {
-    preHandler: [validate({ params: publicWidgetParamsSchema, body: publicConversationBodySchema })],
+    preHandler: [validate({ params: publicWidgetParamsSchema, body: publicConversationBodySchema, query: publicWidgetQuerySchema })],
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
   }, async (request, reply) => {
     const { publicKey } = request.params as { publicKey: string }
     const { visitorId } = request.body as z.infer<typeof publicConversationBodySchema>
-    const widget = await prisma.widget.findFirst({ where: { publicKey, status: 'active' }, select: { id: true, agentId: true, allowedDomains: true } })
+    const { preview } = request.query as z.infer<typeof publicWidgetQuerySchema>
+    const widget = await prisma.widget.findFirst({ where: { publicKey, ...(preview ? {} : { status: 'active' }) }, select: { id: true, agentId: true, allowedDomains: true } })
     if (!widget) throw new AppError(404, 'Widget not found')
     assertPublicAccess(request, widget.allowedDomains)
     const conversation = await prisma.conversation.create({ data: { agentId: widget.agentId, userId: visitorId ?? null, channel: 'web' } })

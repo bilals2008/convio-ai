@@ -18,7 +18,6 @@ const channelNames: Record<Channel, string> = {
 
 interface ConversationStatsProps {
   userName?: string
-  userEmail?: string
   agentName: string
   channel: Channel
   status: ConvStatus
@@ -31,7 +30,7 @@ interface ConversationStatsProps {
 
 export function ConversationStats({
   userName,
-  botName,
+  agentName,
   channel,
   status,
   messageCount,
