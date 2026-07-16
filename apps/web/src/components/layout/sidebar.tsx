@@ -12,10 +12,10 @@ import {
   Key,
   Link as LinkIcon,
   ChevronLeft,
-  ChevronUp,
   Shield,
   Building2,
   LogOut,
+  Settings,
   X,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -161,7 +161,7 @@ export function Sidebar() {
         <DropdownMenu>
           <DropdownMenuTrigger
             className={cn(
-              'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted outline-none',
+              'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-muted/60 outline-none',
               collapsed && 'justify-center px-0'
             )}
           >
@@ -175,7 +175,7 @@ export function Sidebar() {
                   <div className="text-sm font-medium truncate">{user?.name || 'User'}</div>
                   <div className="text-[11px] text-muted-foreground truncate">{user?.email}</div>
                 </div>
-                <ChevronUp className="size-4 text-muted-foreground" />
+                <Settings className="size-4 text-muted-foreground shrink-0" />
               </>
             )}
           </DropdownMenuTrigger>
@@ -280,7 +280,7 @@ export function Sidebar() {
                           {user?.email}
                         </div>
                       </div>
-                <ChevronUp className="size-4 text-muted-foreground" />
+                <Settings className="size-4 text-muted-foreground" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent side="top" align="start" sideOffset={8}>
                       <DropdownMenuItem onClick={() => navigate('/settings/profile')}>

@@ -36,7 +36,7 @@ export function SidebarItem({ icon: Icon, label, href, badge, exact }: SidebarIt
           <Icon
             className={cn(
               'size-4 shrink-0 transition-colors duration-150',
-              isActive ? 'text-primary' : 'text-muted-foreground/40 group-hover/item:text-muted-foreground/70'
+              isActive ? 'text-primary' : 'text-muted-foreground group-hover/item:text-foreground'
             )}
           />
           {!collapsed && (
