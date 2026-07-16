@@ -45,6 +45,7 @@ export function useWidget(config: WidgetConfig) {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isCreatingConversation, setIsCreatingConversation] = useState(false)
+  const [streamingContent, setStreamingContent] = useState('')
   const [entering, setEntering] = useState(false)
   const [exiting, setExiting] = useState(false)
 
@@ -73,6 +74,7 @@ export function useWidget(config: WidgetConfig) {
       if (!content.trim()) return
 
       setError(null)
+      setStreamingContent('')
       const userMessage: WidgetMessage = {
         id: generateId(),
         role: 'user',
@@ -94,29 +96,77 @@ export function useWidget(config: WidgetConfig) {
       }
 
       try {
-        const { data } = await api.post(`/widget/conversations/${activeConversationId}/messages`, {
-          content: content.trim(),
-          role: 'user',
+        const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+        const response = await fetch(`${baseURL}/widget/conversations/${activeConversationId}/messages/stream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: content.trim() }),
         })
-        const res = data.data || data
-        const assistantMessage: WidgetMessage = {
-          id: generateId(),
-          role: 'assistant',
-          content: res.response || res.content || data.response || data.content || 'Sorry, I could not process that.',
-          timestamp: new Date(),
+
+        if (!response.ok) throw new Error('Stream request failed')
+
+        const reader = response.body?.getReader()
+        if (!reader) throw new Error('No response body')
+
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let fullContent = ''
+        let streamError: string | null = null
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6)
+              if (data === '[DONE]') break
+              try {
+                const parsed = JSON.parse(data)
+                if (parsed.error) {
+                  streamError = parsed.error
+                } else if (parsed.content) {
+                  fullContent += parsed.content
+                  setStreamingContent(fullContent)
+                }
+              } catch (e) { console.warn('Malformed SSE chunk:', data, e) }
+            }
+          }
         }
-        setMessages((prev) => [...prev, assistantMessage])
+
+        setIsTyping(false)
+        setStreamingContent('')
+
+        if (streamError) {
+          setError(streamError)
+          setMessages((prev) => [...prev, {
+            id: generateId(),
+            role: 'assistant',
+            content: streamError,
+            timestamp: new Date(),
+          }])
+        } else if (fullContent) {
+          setMessages((prev) => [...prev, {
+            id: generateId(),
+            role: 'assistant',
+            content: fullContent,
+            timestamp: new Date(),
+          }])
+        }
       } catch {
-        const fallbackMessage: WidgetMessage = {
+        setIsTyping(false)
+        setStreamingContent('')
+        setMessages((prev) => [...prev, {
           id: generateId(),
           role: 'assistant',
           content: 'Sorry, something went wrong. Please try again.',
           timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, fallbackMessage])
+        }])
         setError('Failed to send message')
-      } finally {
-        setIsTyping(false)
       }
     },
     [conversationId, createConversation]
@@ -193,6 +243,7 @@ export function useWidget(config: WidgetConfig) {
     theme,
     entering,
     exiting,
+    streamingContent,
     sendMessage,
     openWidget,
     closeWidget,

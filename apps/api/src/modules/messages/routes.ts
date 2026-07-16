@@ -480,4 +480,146 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       return { data: { response: 'Sorry, something went wrong. Please try again.' } }
     }
   })
+
+  // POST /api/widget/conversations/:id/messages/stream — Widget AI response via SSE (public, rate-limited)
+  fastify.post('/widget/conversations/:id/messages/stream', {
+    preHandler: [validate({ params: convParamsSchema, body: widgetMessageBodySchema })],
+    config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { content } = request.body as { content: string }
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id },
+      select: {
+        agent: {
+          select: {
+            organizationId: true,
+            status: true,
+            model: true,
+            systemPrompt: true,
+            temperature: true,
+            maxTokens: true,
+            providerKeyId: true,
+            knowledgeBaseId: true,
+          },
+        },
+      },
+    })
+
+    if (!conversation || conversation.agent.status === 'archived') {
+      throw new AppError(404, 'Conversation not found or agent is unavailable')
+    }
+
+    const widgetModeration = await moderateMessage(conversation.agent.organizationId, content)
+    if (!widgetModeration.allowed) {
+      await logModerationViolation(fastify, {
+        organizationId: conversation.agent.organizationId,
+        conversationId: id,
+        channel: 'widget',
+        flags: widgetModeration.result.flags,
+      })
+      return { data: { response: widgetModeration.message } }
+    }
+
+    await prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } })
+    await prisma.conversation.update({ where: { id }, data: { status: 'active' } })
+
+    const agent = conversation.agent
+    if (!agent || !agent.model) {
+      return { data: { response: 'I am not configured to respond yet.' } }
+    }
+
+    let provider
+    try {
+      provider = getProviderForModel(agent.model)
+    } catch {
+      return { data: { response: 'AI provider is not available.' } }
+    }
+
+    const historyPromise = prisma.message.findMany({
+      where: { conversationId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { role: true, content: true },
+    })
+    const contextPromise = agent.knowledgeBaseId
+      ? retrieveContext(content, agent.knowledgeBaseId).catch(() => null)
+      : Promise.resolve(null)
+    const providerKeyPromise = agent.providerKeyId
+      ? prisma.providerKey.findFirst({
+          where: { id: agent.providerKeyId, organizationId: agent.organizationId },
+          select: { apiKey: true },
+        })
+      : Promise.resolve(null)
+
+    const [historyDesc, context, providerKey] = await Promise.all([
+      historyPromise,
+      contextPromise,
+      providerKeyPromise,
+    ])
+    const history = historyDesc.reverse()
+    const apiKey = providerKey?.apiKey
+    const systemContext = context
+      ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
+      : agent.systemPrompt
+
+    const aiMessages = [
+      { role: 'system' as const, content: systemContext },
+      ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+    ]
+
+    reply.hijack()
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
+    })
+    reply.raw.flushHeaders()
+
+    let clientDisconnected = false
+    request.raw.once('close', () => { clientDisconnected = true })
+
+    let fullResponse = ''
+
+    try {
+      const stream = provider.stream({
+        model: agent.model,
+        messages: aiMessages,
+        temperature: agent.temperature ?? 0.7,
+        maxTokens: agent.maxTokens ?? 2048,
+        apiKey,
+      })
+
+      for await (const chunk of stream) {
+        if (clientDisconnected) break
+        if (chunk.type === 'reasoning') continue
+        if (chunk.content) {
+          fullResponse += chunk.content
+          reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+        }
+        if (chunk.type === 'done') break
+      }
+    } catch {
+      if (!clientDisconnected) {
+        reply.raw.write(`data: ${JSON.stringify({ error: 'Sorry, something went wrong. Please try again.' })}\n\n`)
+        reply.raw.write('data: [DONE]\n\n')
+        reply.raw.end()
+      }
+      return
+    }
+
+    if (fullResponse) {
+      await prisma.message.create({
+        data: { conversationId: id, role: 'assistant', content: fullResponse, status: 'sent' },
+      })
+    }
+
+    if (!clientDisconnected) {
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+    }
+  })
 }

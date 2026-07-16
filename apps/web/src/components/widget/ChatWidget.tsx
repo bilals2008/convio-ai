@@ -67,6 +67,7 @@ export function ChatWidget({
     agentName,
     agentAvatar: agentAvatar,
     quickReplies: quickReplies || [],
+    streamingContent: widget.streamingContent,
     position,
     onSendMessage: widget.sendMessage,
     onToggle: widget.toggleWidget,

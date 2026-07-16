@@ -15,6 +15,7 @@ export interface WidgetStateValue {
   agentName: string
   agentAvatar?: string
   quickReplies: string[]
+  streamingContent: string
   position: 'bottom-right' | 'bottom-left'
   onSendMessage: (content: string) => void
   onToggle: () => void
