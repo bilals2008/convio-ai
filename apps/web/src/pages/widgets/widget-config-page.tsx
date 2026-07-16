@@ -788,76 +788,6 @@ export default function WidgetConfigPage() {
 
         {/* Sidebar */}
         <aside className="space-y-6">
-          {/* Mini Preview */}
-          <ProductCard className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-                <Play className="size-3.5 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold">Preview</h2>
-            </div>
-            <div
-              className="relative rounded-xl overflow-hidden shadow-lg"
-              style={{ backgroundColor, height: 180 }}
-            >
-              {/* Header bar */}
-              <div
-                className="flex items-center gap-2 px-3 h-10"
-                style={{ background: `linear-gradient(135deg, ${primaryColor}, color-mix(in srgb, ${primaryColor} 80%, black))` }}
-              >
-                <div className="relative shrink-0">
-                  <div
-                    className="size-6 rounded-full flex items-center justify-center overflow-hidden"
-                    style={{ boxShadow: `0 0 0 1.5px rgba(255,255,255,0.3)` }}
-                  >
-                    {agentAvatar ? (
-                      <img src={agentAvatar} alt="" className="size-full object-cover" />
-                    ) : (
-                      <span className="text-[8px] font-bold text-white">
-                        {(agentName || 'A').split(' ').map((w: string) => w[0]).slice(0, 1).join('').toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <span className="text-[10px] font-semibold text-white truncate">{agentName || 'Assistant'}</span>
-              </div>
-              {/* Greeting bubble */}
-              <div className="px-3 pt-3">
-                <div
-                  className="inline-block max-w-[85%] rounded-xl rounded-bl-md px-2.5 py-1.5 text-[9px] leading-snug"
-                  style={{ color: textColor, backgroundColor: `color-mix(in srgb, ${backgroundColor} 85%, ${textColor === '#f3f4f6' ? 'white' : 'black'})` }}
-                >
-                  {greeting || 'Hi there! How can I help you today?'}
-                </div>
-              </div>
-              {/* Quick replies */}
-              {prompts.length > 0 && (
-                <div className="px-3 pt-2 flex flex-wrap gap-1">
-                  {prompts.slice(0, 2).map((p) => (
-                    <span
-                      key={p.id}
-                      className="inline-block rounded-full border px-2 py-0.5 text-[8px]"
-                      style={{ borderColor: `color-mix(in srgb, ${primaryColor} 40%, transparent)`, color: primaryColor }}
-                    >
-                      {p.text.length > 18 ? p.text.slice(0, 18) + '…' : p.text}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {/* Bottom launcher hint */}
-              <div className="absolute bottom-2 right-2">
-                <div
-                  className="size-7 rounded-full flex items-center justify-center shadow-md"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <svg className="size-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </ProductCard>
-
           {/* Publish / Domains */}
           <ProductCard className="p-5">
             <div className="flex items-center gap-3 mb-4">
@@ -967,6 +897,75 @@ export default function WidgetConfigPage() {
             </div>
           </ProductCard>
 
+          {/* Mini Preview */}
+          <ProductCard className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+                <Play className="size-3.5 text-primary" />
+              </div>
+              <h2 className="text-sm font-semibold">Preview</h2>
+            </div>
+            <div
+              className="relative rounded-xl overflow-hidden shadow-lg"
+              style={{ backgroundColor, height: 180 }}
+            >
+              {/* Header bar */}
+              <div
+                className="flex items-center gap-2 px-3 h-10"
+                style={{ background: `linear-gradient(135deg, ${primaryColor}, color-mix(in srgb, ${primaryColor} 80%, black))` }}
+              >
+                <div className="relative shrink-0">
+                  <div
+                    className="size-6 rounded-full flex items-center justify-center overflow-hidden"
+                    style={{ boxShadow: `0 0 0 1.5px rgba(255,255,255,0.3)` }}
+                  >
+                    {agentAvatar ? (
+                      <img src={agentAvatar} alt="" className="size-full object-cover" />
+                    ) : (
+                      <span className="text-[8px] font-bold text-white">
+                        {(agentName || 'A').split(' ').map((w: string) => w[0]).slice(0, 1).join('').toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className="text-[10px] font-semibold text-white truncate">{agentName || 'Assistant'}</span>
+              </div>
+              {/* Greeting bubble */}
+              <div className="px-3 pt-3">
+                <div
+                  className="inline-block max-w-[85%] rounded-xl rounded-bl-md px-2.5 py-1.5 text-[9px] leading-snug"
+                  style={{ color: textColor, backgroundColor: `color-mix(in srgb, ${backgroundColor} 85%, ${textColor === '#f3f4f6' ? 'white' : 'black'})` }}
+                >
+                  {greeting || 'Hi there! How can I help you today?'}
+                </div>
+              </div>
+              {/* Quick replies */}
+              {prompts.length > 0 && (
+                <div className="px-3 pt-2 flex flex-wrap gap-1">
+                  {prompts.slice(0, 2).map((p) => (
+                    <span
+                      key={p.id}
+                      className="inline-block rounded-full border px-2 py-0.5 text-[8px]"
+                      style={{ borderColor: `color-mix(in srgb, ${primaryColor} 40%, transparent)`, color: primaryColor }}
+                    >
+                      {p.text.length > 18 ? p.text.slice(0, 18) + '…' : p.text}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Bottom launcher hint */}
+              <div className="absolute bottom-2 right-2">
+                <div
+                  className="size-7 rounded-full flex items-center justify-center shadow-md"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <svg className="size-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </ProductCard>
 
         </aside>
       </div>
