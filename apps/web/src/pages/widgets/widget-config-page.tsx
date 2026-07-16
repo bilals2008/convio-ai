@@ -917,7 +917,7 @@ export default function WidgetConfigPage() {
                 <div className="relative shrink-0">
                   <div
                     className="size-6 rounded-full flex items-center justify-center overflow-hidden"
-                    style={{ boxShadow: `0 0 0 1.5px rgba(255,255,255,0.3)` }}
+                    style={{ boxShadow: `0 0 0 2px ${primaryColor}` }}
                   >
                     {agentAvatar ? (
                       <img src={agentAvatar} alt="" className="size-full object-cover" />

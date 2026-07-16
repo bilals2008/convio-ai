@@ -15,3 +15,6 @@ See [code-style/taste.md](code-style/taste.md)
 
 # security
 - Mask sensitive config fields (tokens/secrets) in GET responses by showing only "x" + last 4 characters. Generate API keys using crypto.randomUUID(). Never log sensitive config fields. Confidence: 0.75
+
+# ui
+- Stream AI responses word-by-word with markdown rendering (like ChatGPT), not all at once after completion. Build this as a reusable component. Confidence: 0.65
