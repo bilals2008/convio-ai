@@ -668,10 +668,14 @@ export default function WidgetConfigPage() {
                   />
                   <div
                     className="size-10 shrink-0 rounded-full flex items-center justify-center overflow-hidden"
-                    style={{
-                      background: agentAvatar ? 'transparent' : `linear-gradient(135deg, ${primaryColor}, color-mix(in srgb, ${primaryColor} 80%, black))`,
-                      boxShadow: `0 0 0 2px ${primaryColor}`,
-                    }}
+                    style={
+                      agentAvatar
+                        ? {}
+                        : {
+                            background: `linear-gradient(135deg, ${primaryColor}, color-mix(in srgb, ${primaryColor} 80%, black))`,
+                            boxShadow: `0 0 0 2px ${primaryColor}`,
+                          }
+                    }
                   >
                     {agentAvatar ? (
                       <img src={agentAvatar} alt="Avatar preview" className="size-full rounded-full object-cover" />

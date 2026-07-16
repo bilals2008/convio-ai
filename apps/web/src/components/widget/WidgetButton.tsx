@@ -1,20 +1,26 @@
 import { cn } from '@/lib/utils'
 import { useWidgetState } from './WidgetState'
 import { MessageCircle, X } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 export function WidgetButton() {
   const { isOpen, unreadCount, agentAvatar, agentName, position, onToggle } = useWidgetState()
+
+  const initials = agentName
+    ? agentName.split(' ').map((w) => w[0]).slice(0, 1).join('').toUpperCase()
+    : 'A'
 
   return (
     <button
       type="button"
       onClick={onToggle}
       className={cn(
-        'convio-trigger group fixed bottom-5 z-[9999] flex size-14 shrink-0 items-center justify-center rounded-full shadow-lg shadow-black/20 transition-all duration-300 ease-out hover:scale-105 active:scale-95 hover:shadow-xl hover:shadow-black/25',
+        'convio-trigger group fixed bottom-5 z-[9999] flex size-14 shrink-0 items-center justify-center rounded-full shadow-lg shadow-black/20 transition-all duration-300 ease-out hover:scale-105 active:scale-95 hover:shadow-xl hover:shadow-black/25 overflow-hidden',
         position === 'bottom-left' ? 'left-5' : 'right-5'
       )}
-      style={{ backgroundColor: `hsl(var(--widget-primary))` }}
+      style={{
+        backgroundColor: agentAvatar ? 'transparent' : `hsl(var(--widget-primary))`,
+        boxShadow: agentAvatar ? `0 0 0 3px hsl(var(--widget-primary))` : undefined,
+      }}
       aria-label={isOpen ? 'Close chat' : 'Open chat'}
     >
       <span
@@ -24,12 +30,7 @@ export function WidgetButton() {
         )}
       >
         {agentAvatar ? (
-          <Avatar size="default" className="size-9">
-            <AvatarImage src={agentAvatar} alt={agentName} />
-            <AvatarFallback className="bg-transparent text-[hsl(var(--widget-primary-foreground))] text-xs">
-              {agentName?.charAt(0).toUpperCase() || 'A'}
-            </AvatarFallback>
-          </Avatar>
+          <img src={agentAvatar} alt={agentName} className="size-full rounded-full object-cover" />
         ) : (
           <MessageCircle className="size-5 text-[hsl(var(--widget-primary-foreground))]" />
         )}
