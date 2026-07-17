@@ -6,6 +6,7 @@ import {
   Share,
   MoreVertical,
 } from 'lucide-react'
+import { ShareDialog } from '@/components/agents/share-dialog'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -77,6 +78,7 @@ interface AgentDetailLayoutProps {
   onCopyLink?: () => void
   onOpenWidget?: () => void
   onDelete?: () => void
+  shareUrl?: string
   tabs: ReactNode
   children: ReactNode
 }
@@ -90,6 +92,7 @@ export function AgentDetailLayout({
   onCopyLink,
   onOpenWidget,
   onDelete,
+  shareUrl,
   tabs,
   children,
 }: AgentDetailLayoutProps) {
@@ -143,10 +146,12 @@ export function AgentDetailLayout({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 opacity-60 cursor-not-allowed" title="Coming soon">
-              <Share className="size-3.5" />
-              Share
-            </Button>
+            <ShareDialog shareUrl={shareUrl} agentName={agentName}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Share className="size-3.5" />
+                Share
+              </Button>
+            </ShareDialog>
             <Button
               size="sm"
               className="gap-1.5"

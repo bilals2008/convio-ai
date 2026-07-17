@@ -287,6 +287,7 @@ export default function AgentDetailPage() {
         isSaving={updateMutation.isPending}
         onSave={handleSave}
         onCopyLink={() => navigator.clipboard.writeText(window.location.href)}
+        shareUrl={shareUrl}
         onDelete={() => {
           if (confirm('Are you sure you want to delete this agent?')) {
             deleteMutation.mutate()
