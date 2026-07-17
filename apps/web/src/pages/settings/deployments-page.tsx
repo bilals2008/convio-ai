@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Plus, Trash2, Loader2, Copy, Check, Globe } from 'lucide-react'
 import { DeploymentForm } from '@/components/settings/deployment-form'
+import { DeploymentDetail } from '@/components/settings/deployment-detail'
 import { SearchFilterBar } from '@/components/shared/search-filter-bar'
 
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
@@ -37,6 +38,7 @@ export default function DeploymentsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [selectedDeployment, setSelectedDeployment] = useState<DeploymentItem | null>(null)
 
   const agentsQuery = useQuery({
     queryKey: ['agents-for-deployments', orgId],
@@ -189,7 +191,8 @@ export default function DeploymentsPage() {
           return (
             <div
               key={deployment.id}
-              className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5"
+              className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/30"
+              onClick={() => setSelectedDeployment(deployment)}
             >
               <div className="flex size-8 items-center justify-center rounded-md bg-muted shrink-0">
                 {ch.logo ? (
@@ -219,7 +222,8 @@ export default function DeploymentsPage() {
                     render={
                       <button
                         className="rounded p-1 text-muted-foreground hover:bg-muted transition-colors"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           navigator.clipboard.writeText(deployment.id)
                           setCopiedId(deployment.id)
                           setTimeout(() => setCopiedId(null), 1500)
@@ -243,7 +247,10 @@ export default function DeploymentsPage() {
                     render={
                       <button
                         className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        onClick={() => deleteMutation.mutate(deployment.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteMutation.mutate(deployment.id)
+                        }}
                       >
                         <Trash2 className="size-3" />
                       </button>
@@ -258,6 +265,13 @@ export default function DeploymentsPage() {
           )
         })}
       </div>
+
+      <DeploymentDetail
+        deploymentId={selectedDeployment?.id || null}
+        agentName={selectedDeployment?.agentName || ''}
+        onClose={() => setSelectedDeployment(null)}
+        onDelete={(id) => deleteMutation.mutate(id)}
+      />
     </div>
   )
 }
