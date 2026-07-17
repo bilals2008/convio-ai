@@ -26,7 +26,7 @@ import {
   AgentAnalytics,
   AgentSettings,
 } from '@/components/agents/agent-detail'
-import { agents as agentsApi } from '@/lib/api'
+import { agents as agentsApi, deployments as deploymentsApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 
 interface Agent {
@@ -43,6 +43,9 @@ interface Agent {
   organizationId: string
   createdAt: string
   updatedAt: string
+  status: string
+  welcomeMessage?: string
+  widgetColor: string
   widgetConfig?: { tools?: string[] }
 }
 
@@ -57,8 +60,6 @@ const agentDetailSchema = z.object({
   language: z.string(),
   maxTokens: z.number(),
 })
-
-type AgentDetailValues = z.infer<typeof agentDetailSchema>
 
 export default function AgentDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -94,12 +95,6 @@ export default function AgentDetailPage() {
   }, [activeTab])
 
   const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
-  const [deploymentOptions, setDeploymentOptions] = useState([
-    { id: 'web-chat-widget', enabled: true },
-    { id: 'shareable-link', enabled: false },
-    { id: 'api-access', enabled: false },
-    { id: 'whatsapp', enabled: true },
-  ])
 
   const { data: agent, isLoading } = useQuery({
     queryKey: ['agent', id],
@@ -109,6 +104,38 @@ export default function AgentDetailPage() {
       return agentData as Agent
     },
     enabled: !!id,
+  })
+
+  const { data: agentDeployments = [] } = useQuery({
+    queryKey: ['agent-deployments', id],
+    queryFn: async () => {
+      const res = await deploymentsApi.list(id!)
+      return (res.data.data ?? []) as Array<{ id: string; channel: string; status: string }>
+    },
+    enabled: !!id,
+  })
+
+  const deploymentOptions = [
+    { id: 'web-chat-widget', enabled: agentDeployments.some((d) => d.channel === 'web'), deploymentId: agentDeployments.find((d) => d.channel === 'web')?.id },
+    { id: 'shareable-link', enabled: false },
+    { id: 'api-access', enabled: agentDeployments.some((d) => d.channel === 'api'), deploymentId: agentDeployments.find((d) => d.channel === 'api')?.id },
+    { id: 'whatsapp', enabled: agentDeployments.some((d) => d.channel === 'whatsapp'), deploymentId: agentDeployments.find((d) => d.channel === 'whatsapp')?.id },
+  ]
+
+  const toggleDeployment = useMutation({
+    mutationFn: ({ deploymentId, channel, enabled }: { deploymentId?: string; channel: string; enabled: boolean }) => {
+      if (enabled && deploymentId) {
+        return deploymentsApi.update(deploymentId, { status: 'active' })
+      }
+      if (enabled) {
+        const config = channel === 'web' ? { type: 'widget' } : {}
+        return deploymentsApi.create(id!, { channel, config })
+      }
+      return deploymentsApi.update(deploymentId!, { status: 'inactive' })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agent-deployments', id] })
+    },
   })
 
   useEffect(() => {
@@ -170,9 +197,12 @@ export default function AgentDetailPage() {
   }
 
   const handleDeploymentToggle = (optionId: string, enabled: boolean) => {
-    setDeploymentOptions((prev) =>
-      prev.map((o) => (o.id === optionId ? { ...o, enabled } : o))
-    )
+    const option = deploymentOptions.find((o) => o.id === optionId)
+    if (!option) return
+    const channelMap: Record<string, string> = { 'web-chat-widget': 'web', 'api-access': 'api', 'whatsapp': 'whatsapp' }
+    const channel = channelMap[optionId]
+    if (!channel) return
+    toggleDeployment.mutate({ deploymentId: option.deploymentId, channel, enabled })
   }
 
   const handleToolToggle = (toolId: string, enabled: boolean) => {
@@ -310,9 +340,14 @@ export default function AgentDetailPage() {
             hasKnowledgeBase={!!agent.knowledgeBaseId}
             hasProviderKey={!!agent.providerKeyId}
             createdAt={agent.createdAt}
+            welcomeMessage={agent.welcomeMessage}
+            widgetColor={agent.widgetColor}
+            status={agent.status}
             deploymentOptions={deploymentOptions}
             onDeploymentToggle={handleDeploymentToggle}
-            disabled={updateMutation.isPending}
+            onSave={(data) => updateMutation.mutate(data)}
+            isSaving={updateMutation.isPending}
+            disabled={updateMutation.isPending || toggleDeployment.isPending}
           />
         </TabsContent>
       </AgentDetailLayout>
