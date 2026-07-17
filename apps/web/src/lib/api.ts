@@ -192,12 +192,6 @@ export const providerKeys = {
   delete: (orgId: string, keyId: string) => api.delete(`/organizations/${orgId}/provider-keys/${keyId}`),
 }
 
-export const apiKeys = {
-  list: (orgId: string) => api.get(`/organizations/${orgId}/api-keys`),
-  create: (orgId: string, name: string) => api.post(`/organizations/${orgId}/api-keys`, { name }),
-  delete: (orgId: string, keyId: string) => api.delete(`/organizations/${orgId}/api-keys/${keyId}`),
-}
-
 export const billing = {
   usage: (orgId: string, params?: { month?: number; year?: number }) =>
     api.get(`/organizations/${orgId}/billing/usage`, { params }),

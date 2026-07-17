@@ -9,7 +9,6 @@ import {
   BookOpen,
   Users,
   User,
-  Key,
   Link as LinkIcon,
   ChevronLeft,
   Shield,
@@ -36,7 +35,6 @@ import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
 const settingsGeneral = [
-  { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
   { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
   { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
   { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
@@ -345,7 +343,6 @@ const mobileNavGroups = [
   {
     label: 'Settings',
     items: [
-      { icon: Key, label: 'API Keys', href: '/settings/api-keys' },
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
       { icon: CreditCard, label: 'Billing', href: '/settings/billing' },

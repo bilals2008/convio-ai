@@ -28,7 +28,6 @@ import { SettingsLayout } from '@/components/settings/settings-layout'
 import OrganizationSettingsPage from '@/pages/settings/organization-settings-page'
 import TeamMembersPage from '@/pages/settings/team-members-page'
 import DeploymentsPage from '@/pages/settings/deployments-page'
-import ApiKeysPage from '@/pages/settings/api-keys-page'
 import ProviderKeysPage from '@/pages/settings/provider-keys-page'
 import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
@@ -78,7 +77,6 @@ export function App() {
                 <Route path="organization" element={<OrganizationSettingsPage />} />
                 <Route path="team" element={<TeamMembersPage />} />
                 <Route path="deployments" element={<DeploymentsPage />} />
-                <Route path="api-keys" element={<ApiKeysPage />} />
                 <Route path="provider-keys" element={<ProviderKeysPage />} />
                 <Route path="billing" element={<BillingPage />} />
               </Route>
