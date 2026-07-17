@@ -119,8 +119,8 @@ export default function AgentDetailPage() {
     queryKey: ['agent-widgets', agent?.organizationId],
     queryFn: async () => {
       const res = await widgets.list(agent!.organizationId)
-      const items = (res.data.data ?? []) as Array<{ id: string; publicKey: string; agentId: string; status: string; name: string }>
-      return items.filter((w) => w.agentId === id && w.status !== 'archived')
+      const items = (res.data.data ?? []) as Array<{ id: string; publicKey: string; agent: { id: string }; status: string; name: string }>
+      return items.filter((w) => w.agent.id === id && w.status !== 'archived')
     },
     enabled: !!agent?.organizationId,
   })
