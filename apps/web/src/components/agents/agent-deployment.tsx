@@ -24,8 +24,8 @@ const defaultOptions: DeploymentOption[] = [
   { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp Business', icon: <MessageCircle className="size-4" />, enabled: true },
 ]
 
-function isAvailable(option: DeploymentOption) {
-  return option.enabled || option.id === 'web-chat-widget' || option.id === 'whatsapp'
+function isAvailable() {
+  return true
 }
 
 export function AgentDeployment({
@@ -36,7 +36,7 @@ export function AgentDeployment({
   return (
     <div className="space-y-0.5">
       {options.map((option) => {
-        const available = isAvailable(option)
+        const available = isAvailable()
         return (
           <div
             key={option.id}
