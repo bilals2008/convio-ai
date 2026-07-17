@@ -8,6 +8,7 @@ import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { ChannelChart } from '@/components/dashboard/channel-chart'
 import { ActivityChart } from '@/components/dashboard/activity-chart'
 import { TopAgentsTable } from '@/components/dashboard/top-agents-table'
+import { RecentConversations } from '@/components/dashboard/recent-conversations'
 import { EmptyState } from '@/components/shared/empty-state'
 import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -279,6 +280,9 @@ export default function DashboardOverviewPage() {
 
       {/* ── Top Agents ────────────────────────────────────────────────── */}
       <TopAgentsTable />
+
+      {/* ── Recent Conversations ─────────────────────────────────────── */}
+      <RecentConversations />
     </PageContainer>
   )
 }

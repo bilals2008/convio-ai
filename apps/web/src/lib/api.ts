@@ -37,6 +37,8 @@ export const analytics = {
     api.get(`/organizations/${orgId}/analytics`, { params }),
   agent: (agentId: string, params?: { from?: string; to?: string }) =>
     api.get(`/agents/${agentId}/analytics`, { params }),
+  topAgents: (orgId: string, params?: { from?: string; to?: string }) =>
+    api.get(`/organizations/${orgId}/analytics/top-agents`, { params }),
 }
 
 export const agents = {

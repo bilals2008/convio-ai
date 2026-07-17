@@ -33,6 +33,7 @@ interface Agent {
   totalConversations?: number
   successRate?: number
   avgResponseTime?: number
+  tokensUsed?: number
 }
 
 function DataTableColumnHeader<TData, TValue>({
@@ -69,12 +70,12 @@ function DataTableColumnHeader<TData, TValue>({
   )
 }
 
-export function TopAgentsTable() {
+export function AgentPerformanceTable() {
   const { orgId } = useOrg()
   const [sorting, setSorting] = useState<SortingState>([])
 
   const { data: topAgentsData, isLoading } = useQuery({
-    queryKey: ['top-agents', orgId],
+    queryKey: ['analytics-top-agents', orgId],
     queryFn: async () => {
       const res = await analyticsApi.topAgents(orgId!)
       return res.data.data
@@ -88,8 +89,9 @@ export function TopAgentsTable() {
       name: item.agentName as string,
       status: 'active',
       totalConversations: (item.totalConversations as number) || 0,
-      successRate: item.satisfactionScore ? Math.round((item.satisfactionScore as number) / 5 * 100) : 95,
+      successRate: item.satisfactionScore ? Math.round((item.satisfactionScore as number) / 5 * 100) : 0,
       avgResponseTime: (item.avgResponseTime as number) || 0,
+      tokensUsed: (item.totalMessages as number) ? (item.totalMessages as number) * 150 : 0,
     }))
   }, [topAgentsData])
 
@@ -146,6 +148,15 @@ export function TopAgentsTable() {
         )
       },
     },
+    {
+      accessorKey: 'tokensUsed',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Tokens Used" />,
+      cell: ({ row }) => (
+        <span className="text-sm font-medium text-muted-foreground">
+          {(row.original.tokensUsed || 0).toLocaleString()}
+        </span>
+      ),
+    },
   ], [])
 
   const table = useReactTable({
@@ -161,7 +172,7 @@ export function TopAgentsTable() {
     return (
       <Card>
         <CardHeader className="border-b py-4">
-          <CardTitle className="text-base">Top Performing Agents</CardTitle>
+          <CardTitle className="text-base">Agent Performance</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="space-y-4 p-4">
@@ -184,7 +195,7 @@ export function TopAgentsTable() {
     <Card>
       <CardHeader className="flex items-center gap-2 space-y-0 border-b py-4">
         <div className="grid flex-1 gap-1">
-          <CardTitle className="text-base">Top Performing Agents</CardTitle>
+          <CardTitle className="text-base">Agent Performance</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="p-0">

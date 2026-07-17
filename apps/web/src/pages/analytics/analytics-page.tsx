@@ -6,6 +6,9 @@ import { StatsCard } from '@/components/dashboard/stats-card'
 import { PageHeader } from '@/components/shared/page-header'
 import { OverviewChart } from '@/components/dashboard/overview-chart'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
+import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
+import { ChannelPerformanceChart } from '@/components/analytics/channel-performance-chart'
+import { AgentPerformanceTable } from '@/components/analytics/agent-performance-table'
 import { EmptyState } from '@/components/shared/empty-state'
 import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -153,6 +156,15 @@ export default function AnalyticsPage() {
       </div>
 
       <OverviewChart data={chartData} loading={isLoading} />
+
+      {/* ── Response Time & Channel Performance ──────────────────────── */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <ResponseTimeChart data={chartData} loading={isLoading} />
+        <ChannelPerformanceChart data={overview?.channelBreakdown} loading={isLoading} />
+      </div>
+
+      {/* ── Agent Performance Table ──────────────────────────────────── */}
+      <AgentPerformanceTable />
     </PageContainer>
   )
 }
