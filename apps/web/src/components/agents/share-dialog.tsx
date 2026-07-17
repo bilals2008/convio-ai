@@ -59,7 +59,7 @@ export function ShareDialog({ shareUrl, agentName, children }: ShareDialogProps)
   return (
     <Dialog>
       <DialogTrigger
-        className="inline-flex items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex items-center justify-center gap-1.5 rounded-md bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {children}
       </DialogTrigger>
