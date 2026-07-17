@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Building2, MessageSquare, Bot, Zap, Star } from 'lucide-react'
+import { Building2, MessageSquare, Bot, Zap, Star, Plus, BookOpen, MessageCircle, BarChart3 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { PageContainer } from '@/components/shared/page-container'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -205,6 +207,57 @@ export default function DashboardOverviewPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ── Quick Actions ─────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">Quick Actions</h2>
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <Link to="/agents/create">
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Plus className="size-4" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-medium">New Agent</div>
+                <div className="text-xs text-muted-foreground">Create AI agent</div>
+              </div>
+            </Button>
+          </Link>
+          <Link to="/knowledge">
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                <BookOpen className="size-4" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-medium">Knowledge Base</div>
+                <div className="text-xs text-muted-foreground">Manage docs</div>
+              </div>
+            </Button>
+          </Link>
+          <Link to="/conversations">
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-info/10 text-info">
+                <MessageCircle className="size-4" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-medium">Conversations</div>
+                <div className="text-xs text-muted-foreground">View chats</div>
+              </div>
+            </Button>
+          </Link>
+          <Link to="/dashboard/analytics">
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
+                <BarChart3 className="size-4" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-medium">Analytics</div>
+                <div className="text-xs text-muted-foreground">View stats</div>
+              </div>
+            </Button>
+          </Link>
+        </div>
       </div>
     </PageContainer>
   )
