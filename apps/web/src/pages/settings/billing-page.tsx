@@ -26,13 +26,17 @@ import {
   Zap,
   Star,
   AlertCircle,
+  MessageSquare,
+  Bot,
+  Infinity as InfinityIcon,
 } from 'lucide-react'
 
 const upgradePlans = [
   {
     key: 'pro',
     name: 'Pro',
-    price: '$29/mo',
+    price: '$29',
+    period: '/mo',
     description: 'For growing teams and businesses',
     features: [
       'Unlimited agents',
@@ -42,11 +46,13 @@ const upgradePlans = [
       'Custom branding',
     ],
     icon: Zap,
+    highlight: true,
   },
   {
     key: 'enterprise',
     name: 'Enterprise',
     price: 'Custom',
+    period: '',
     description: 'For large organizations with custom needs',
     features: [
       'Everything in Pro',
@@ -56,6 +62,7 @@ const upgradePlans = [
       'Custom SLA',
     ],
     icon: Shield,
+    highlight: false,
   },
 ]
 
@@ -64,6 +71,14 @@ function formatCurrency(total: number, currency: string) {
     style: 'currency',
     currency: currency || 'USD',
   }).format(total / 100)
+}
+
+function getBadgeVariant(status?: string) {
+  if (!status || status === 'active') return 'active' as const
+  if (status === 'trialing') return 'trialing' as const
+  if (status === 'canceled') return 'canceled' as const
+  if (status === 'past_due') return 'past_due' as const
+  return 'secondary' as const
 }
 
 export default function BillingPage() {
@@ -113,20 +128,23 @@ export default function BillingPage() {
 
   if (!orgId) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-6 max-w-5xl">
         <PageHeader title="Billing" />
-        <Skeleton className="h-64" />
+        <Skeleton className="h-44 w-full rounded-xl" />
       </div>
     )
   }
 
   if (planLoading || usageLoading || subLoading) {
     return (
-      <div className="space-y-5">
-        <PageHeader title="Billing" />
-        <Skeleton className="h-48" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-64" />
+      <div className="space-y-6 max-w-5xl">
+        <PageHeader title="Billing" description="Manage your subscription, view invoices, and monitor usage." />
+        <Skeleton className="h-44 w-full rounded-xl" />
+        <div className="grid gap-4 md:grid-cols-5">
+          <Skeleton className="h-52 w-full rounded-xl md:col-span-2" />
+          <Skeleton className="h-52 w-full rounded-xl md:col-span-3" />
+        </div>
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     )
   }
@@ -138,161 +156,235 @@ export default function BillingPage() {
 
   const currentPlanKey = plan?.name
   const isFree = currentPlanKey === 'free'
+  const agentsLimit = plan?.limits?.agents
+  const agentsUnlimited = !agentsLimit || agentsLimit === Infinity
+  const messagesLimit = usage?.limit
+  const messagesUnlimited = !messagesLimit || messagesLimit === Infinity
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <PageHeader
         title="Billing & Plan"
         description="Manage your subscription, view invoices, and monitor usage."
       />
 
-      {/* Current Plan */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="size-5" />
-            Current Plan
-          </CardTitle>
-          <CardDescription>Your active subscription and usage summary</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-2xl font-bold">{plan?.label}</h3>
-                <Badge variant={
-                  isFree ? 'secondary' :
-                  subscription?.status === 'trialing' ? 'trialing' :
-                  subscription?.status === 'canceled' ? 'canceled' :
-                  subscription?.status === 'past_due' ? 'past_due' :
-                  'active'
-                }>
+      {/* ── Hero ──────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-xl ring-1 ring-foreground/10 bg-card">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.06] via-transparent to-transparent" />
+        <div className="relative p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-lg font-bold tracking-tight">{plan?.label}</h2>
+                <Badge variant={getBadgeVariant(subscription?.status)}>
                   {subscription?.status || 'active'}
                 </Badge>
               </div>
-              <p className="text-muted-foreground mt-1">{plan?.price}</p>
-              {subscription?.cancelAtPeriodEnd && (
-                <div className="mt-3 flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
-                  <AlertCircle className="size-4 shrink-0" />
-                  <span>
-                    Your subscription will end on{' '}
-                    {subscription.endsAt
-                      ? new Date(subscription.endsAt as string).toLocaleDateString()
-                      : 'the end of the billing period'}
-                    . Reactivate to keep your plan.
-                  </span>
-                </div>
-              )}
+              <p className="text-sm text-muted-foreground">{plan?.price}</p>
             </div>
-            <div className="flex gap-2">
-              {!isFree && (
-                <Button
-                  variant="outline"
-                  onClick={() => portalMutation.mutate()}
-                  disabled={portalMutation.isPending}
-                >
-                  {portalMutation.isPending ? 'Loading...' : 'Manage Billing'}
-                  <ExternalLink className="ml-2 size-4" />
-                </Button>
-              )}
-            </div>
+            {!isFree && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => portalMutation.mutate()}
+                disabled={portalMutation.isPending}
+                className="self-start"
+              >
+                {portalMutation.isPending ? 'Loading...' : 'Manage Billing'}
+                <ExternalLink className="ml-1.5 size-3.5" />
+              </Button>
+            )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {plan?.features.map((feature: string) => (
-              <div key={feature} className="flex items-center gap-2 text-sm">
-                <Check className="size-4 text-primary shrink-0" />
-                <span>{feature}</span>
+          {subscription?.cancelAtPeriodEnd && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>
+                Your subscription will end on{' '}
+                {subscription.endsAt
+                  ? new Date(subscription.endsAt as string).toLocaleDateString()
+                  : 'the end of the billing period'}
+                . Reactivate to keep your plan.
+              </span>
+            </div>
+          )}
+
+          {/* Inline usage stats */}
+          <div className="mt-5 flex flex-wrap gap-3">
+            <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
+              <Bot className="size-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium">
+                {agentsUnlimited ? (
+                  <span className="inline-flex items-center gap-1">Unlimited agents <InfinityIcon className="size-3" /></span>
+                ) : (
+                  `${usage?.agents ?? 0} / ${agentsLimit} agents`
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
+              <MessageSquare className="size-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium">
+                {messagesUnlimited ? (
+                  <span className="inline-flex items-center gap-1">Unlimited messages <InfinityIcon className="size-3" /></span>
+                ) : (
+                  `${(usage?.messages || 0).toLocaleString()} / ${messagesLimit?.toLocaleString()} messages`
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
+              <CreditCard className="size-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium capitalize">{currentPlanKey} plan</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Two Column: Features + Usage ─────────────────── */}
+      <div className="grid gap-4 md:grid-cols-5">
+        {/* Left — Plan Features */}
+        <div className="md:col-span-2">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Star className="size-4 text-muted-foreground" />
+                Plan Features
+              </CardTitle>
+              <CardDescription>What's included in {plan?.label}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-0 divide-y divide-foreground/5">
+                {plan?.features.map((feature: string) => (
+                  <div key={feature} className="flex items-center gap-2.5 py-2.5">
+                    <div className="flex size-5 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                      <Check className="size-3 text-primary" />
+                    </div>
+                    <span className="text-sm">{feature}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          <div className="space-y-4 pt-2">
-            <UsageMeter
-              label="Agents"
-              used={usage?.messages ? plan?.limits?.agents : 0}
-              limit={plan?.limits?.agents || 0}
-            />
-            <UsageMeter
-              label="Messages this month"
-              used={usage?.messages || 0}
-              limit={usage?.limit || 0}
-            />
-          </div>
-        </CardContent>
-      </Card>
+        {/* Right — Usage */}
+        <div className="md:col-span-3">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <MessageSquare className="size-4 text-muted-foreground" />
+                Usage This Period
+              </CardTitle>
+              <CardDescription>Current usage against your plan limits</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <UsageMeter
+                label="Agents"
+                used={usage?.messages ? plan?.limits?.agents : 0}
+                limit={plan?.limits?.agents || 0}
+              />
+              <UsageMeter
+                label="Messages this month"
+                used={usage?.messages || 0}
+                limit={usage?.limit || 0}
+              />
+              <UsageMeter
+                label="Conversations this month"
+                used={usage?.conversations || 0}
+                limit={0}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-      {/* Upgrade Plans */}
+      {/* ── Upgrade Plans ─────────────────────────────────── */}
       {currentPlanKey !== 'enterprise' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{isFree ? 'Upgrade Your Plan' : 'Compare Plans'}</CardTitle>
-            <CardDescription>
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight">
+              {isFree ? 'Upgrade Your Plan' : 'Explore Higher Tiers'}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
               {isFree
                 ? 'Unlock more agents, messages, and features.'
-                : 'Explore higher tiers for additional capabilities.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {upgradePlans
-                .filter((p) => {
-                  if (currentPlanKey === 'enterprise') return false
-                  if (currentPlanKey === 'pro') return p.key === 'enterprise'
-                  return true
-                })
-                .map((p) => {
-                  const Icon = p.icon
-                  const isLoading = checkoutLoading === p.key
+                : 'Get additional capabilities with a higher plan.'}
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {upgradePlans
+              .filter((p) => {
+                if (currentPlanKey === 'enterprise') return false
+                if (currentPlanKey === 'pro') return p.key === 'enterprise'
+                return true
+              })
+              .map((p) => {
+                const Icon = p.icon
+                const isLoading = checkoutLoading === p.key
 
-                  return (
-                    <Card key={p.key} className="relative flex flex-col">
-                      <CardHeader>
-                        <div className="flex items-center gap-2">
-                          <Icon className="size-5 text-primary" />
-                          <CardTitle>{p.name}</CardTitle>
+                return (
+                  <div
+                    key={p.key}
+                    className="relative flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10 bg-card transition-shadow hover:ring-foreground/20"
+                  >
+                    {p.highlight && (
+                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
+                    )}
+                    <div className="p-5 flex-1 flex flex-col">
+                      <div className="flex items-center gap-2.5 mb-3">
+                        <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                          <Icon className="size-4 text-primary" />
                         </div>
-                        <CardDescription>{p.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="flex-1 flex flex-col gap-4">
-                        <p className="text-3xl font-bold">{p.price}</p>
-                        <ul className="space-y-2 text-sm">
-                          {p.features.map((f) => (
-                            <li key={f} className="flex items-center gap-2">
-                              <Check className="size-4 text-primary shrink-0" />
-                              {f}
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="mt-auto pt-4">
-                          <Button
-                            className="w-full"
-                            disabled={isLoading}
-                            onClick={() => {
-                              setCheckoutLoading(p.key)
-                              checkoutMutation.mutate(p.key, {
-                                onSettled: () => setCheckoutLoading(null),
-                              })
-                            }}
-                          >
-                            {isLoading ? 'Redirecting...' : `Upgrade to ${p.name}`}
-                            <ArrowUpRight className="ml-2 size-4" />
-                          </Button>
+                        <div>
+                          <p className="text-sm font-semibold">{p.name}</p>
+                          <p className="text-xs text-muted-foreground">{p.description}</p>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-            </div>
-          </CardContent>
-        </Card>
+                      </div>
+
+                      <div className="mb-4">
+                        <span className="text-2xl font-bold tracking-tight">{p.price}</span>
+                        {p.period && (
+                          <span className="text-sm text-muted-foreground">{p.period}</span>
+                        )}
+                      </div>
+
+                      <div className="space-y-0 divide-y divide-foreground/5 flex-1">
+                        {p.features.map((f) => (
+                          <div key={f} className="flex items-center gap-2.5 py-2">
+                            <div className="flex size-4 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                              <Check className="size-2.5 text-primary" />
+                            </div>
+                            <span className="text-sm">{f}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <Button
+                        className="w-full mt-5"
+                        variant={p.highlight ? 'default' : 'outline'}
+                        disabled={isLoading}
+                        onClick={() => {
+                          setCheckoutLoading(p.key)
+                          checkoutMutation.mutate(p.key, {
+                            onSettled: () => setCheckoutLoading(null),
+                          })
+                        }}
+                      >
+                        {isLoading ? 'Redirecting...' : `Upgrade to ${p.name}`}
+                        <ArrowUpRight className="ml-1.5 size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
+        </div>
       )}
 
-      {/* Invoice History */}
+      {/* ── Invoice History ───────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Receipt className="size-5" />
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Receipt className="size-4 text-muted-foreground" />
             Invoice History
           </CardTitle>
           <CardDescription>Past billing invoices and payments</CardDescription>
@@ -301,9 +393,14 @@ export default function BillingPage() {
           {invoicesLoading ? (
             <Skeleton className="h-32" />
           ) : invoices.length === 0 ? (
-            <div className="flex flex-col items-center py-8 text-center">
-              <Receipt className="size-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">No invoices yet</p>
+            <div className="flex flex-col items-center py-10 text-center">
+              <div className="flex size-10 items-center justify-center rounded-full bg-muted/50 mb-3">
+                <Receipt className="size-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">No invoices yet</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Invoices will appear here after your first payment.
+              </p>
             </div>
           ) : (
             <Table>
@@ -319,15 +416,19 @@ export default function BillingPage() {
                 {invoices.map((inv: Record<string, unknown>) => (
                   <TableRow key={inv.id as string}>
                     <TableCell className="text-sm">
-                      {new Date(inv.createdAt as string).toLocaleDateString()}
+                      {new Date(inv.createdAt as string).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
                     </TableCell>
-                    <TableCell className="text-sm font-medium">
+                    <TableCell className="text-sm font-medium tabular-nums">
                       {formatCurrency(inv.total as number, inv.currency as string)}
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant={
-                          inv.status === 'paid' ? 'default' :
+                          inv.status === 'paid' ? 'active' :
                           inv.status === 'refunded' ? 'destructive' : 'secondary'
                         }
                       >
@@ -341,10 +442,11 @@ export default function BillingPage() {
                           size="sm"
                           onClick={() => window.open(inv.invoiceUrl as string, '_blank')}
                         >
-                          View <ExternalLink className="ml-1 size-3" />
+                          View
+                          <ExternalLink className="ml-1 size-3" />
                         </Button>
                       ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
                   </TableRow>
