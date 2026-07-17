@@ -20,7 +20,6 @@ const dateRanges = [
   { label: '7 days', value: '7d' },
   { label: '30 days', value: '30d' },
   { label: '90 days', value: '90d' },
-  { label: 'Year', value: '1y' },
 ] as const
 
 function getDateRange(range: string) {
@@ -39,13 +38,8 @@ function getDateRange(range: string) {
       from = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10)
       break
     case '90d':
-      from = new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10)
-      break
-    case '1y':
-      from = new Date(now.getTime() - 365 * 86400000).toISOString().slice(0, 10)
-      break
     default:
-      from = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10)
+      from = new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10)
   }
 
   return { from, to }
