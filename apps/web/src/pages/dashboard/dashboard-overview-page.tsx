@@ -5,6 +5,9 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { PageContainer } from '@/components/shared/page-container'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
+import { ChannelChart } from '@/components/dashboard/channel-chart'
+import { ActivityChart } from '@/components/dashboard/activity-chart'
+import { TopAgentsTable } from '@/components/dashboard/top-agents-table'
 import { EmptyState } from '@/components/shared/empty-state'
 import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -98,6 +101,14 @@ export default function DashboardOverviewPage() {
       </PageContainer>
     )
   }
+
+  const chartData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; totalConversations: number; totalMessages: number }) => ({
+      date: d.date,
+      conversations: d.totalConversations,
+      messages: d.totalMessages,
+    }),
+  )
 
   function trendOf(val: number): { trend: 'up' | 'down' | 'flat'; change: string } {
     if (val > 0) return { trend: 'up', change: `+${val}%` }
@@ -259,6 +270,15 @@ export default function DashboardOverviewPage() {
           </Link>
         </div>
       </div>
+
+      {/* ── Chart ─────────────────────────────────────────────────────── */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <ChannelChart data={chartData} loading={isLoading} />
+        <ActivityChart data={chartData} loading={isLoading} />
+      </div>
+
+      {/* ── Top Agents ────────────────────────────────────────────────── */}
+      <TopAgentsTable />
     </PageContainer>
   )
 }
