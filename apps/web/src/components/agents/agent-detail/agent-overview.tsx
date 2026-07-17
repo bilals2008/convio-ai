@@ -1,7 +1,8 @@
-import { Bot, BookOpen, CheckCircle2, Clock3, KeyRound, MessageSquareText, Settings2, Wrench, type LucideIcon } from 'lucide-react'
+import { Bot, BookOpen, CheckCircle2, Clock3, KeyRound, MessageSquareText, Settings2, Wrench, Cpu, Calendar, RefreshCw, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 interface AgentOverviewProps {
   agentName?: string
@@ -39,18 +40,26 @@ export function AgentOverview({
     { label: 'Provider key', complete: hasProviderKey, tab: 'settings', icon: KeyRound },
   ]
 
+  const stats = [
+    { icon: Cpu, label: 'Model', value: agentModel || 'Not selected', color: 'bg-primary/10 text-primary' as const },
+    { icon: BookOpen, label: 'Knowledge', value: hasKnowledgeBase ? 'Connected' : 'Not connected', color: hasKnowledgeBase ? ('bg-emerald-500/10 text-emerald-500' as const) : ('bg-muted text-muted-foreground' as const) },
+    { icon: Calendar, label: 'Created', value: formatDate(agentCreatedAt), color: 'bg-info/10 text-info' as const },
+    { icon: RefreshCw, label: 'Updated', value: formatDate(agentUpdatedAt), color: 'bg-warning/10 text-warning' as const },
+  ]
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <section className="rounded-md border border-border bg-card p-5 sm:p-6">
+      {/* Hero */}
+      <section className="rounded-xl border border-border/60 bg-card p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary"><Bot className="size-4" /></span>
+              <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Bot className="size-4" /></span>
               <Badge variant="secondary" className="font-medium">Agent overview</Badge>
             </div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">{agentName || 'Your agent'}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{agentDescription || 'Add a description so your team understands this agent’s role.'}</p>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{agentDescription || 'Add a description so your team understands this agent\'s role.'}</p>
             </div>
           </div>
           <Button onClick={() => onNavigateToTab('test-chat')} className="shrink-0">
@@ -59,13 +68,25 @@ export function AgentOverview({
         </div>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Model</p><p className="mt-2 truncate text-sm font-semibold">{agentModel || 'Not selected'}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Knowledge</p><p className="mt-2 text-sm font-semibold">{hasKnowledgeBase ? 'Connected' : 'Not connected'}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Created</p><p className="mt-2 text-sm font-semibold">{formatDate(agentCreatedAt)}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Last updated</p><p className="mt-2 text-sm font-semibold">{formatDate(agentUpdatedAt)}</p></CardContent></Card>
+      {/* Dashboard-style KPI cards */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {stats.map((s) => (
+          <div
+            key={s.label}
+            className="group flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-all duration-200 hover:border-border hover:shadow-sm"
+          >
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{s.label}</span>
+              <span className="text-sm font-semibold leading-none tracking-tight text-foreground">{s.value}</span>
+            </div>
+            <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105', s.color)}>
+              <s.icon className="size-4" />
+            </div>
+          </div>
+        ))}
       </div>
 
+      {/* Main content */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
         <Card>
           <CardHeader className="border-b border-border">
@@ -100,8 +121,8 @@ export function AgentOverview({
       <Card>
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Clock3 className="size-4" /></span>
-            <div><p className="text-sm font-medium">Ready to validate the experience?</p><p className="text-sm text-muted-foreground">Run a live conversation with this agent’s current configuration.</p></div>
+            <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Clock3 className="size-4" /></span>
+            <div><p className="text-sm font-medium">Ready to validate the experience?</p><p className="text-sm text-muted-foreground">Run a live conversation with this agent's current configuration.</p></div>
           </div>
           <Button variant="outline" onClick={() => onNavigateToTab('test-chat')}><Wrench className="size-4" /> Open test chat</Button>
         </CardContent>

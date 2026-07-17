@@ -1,21 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { MessageSquare, Users, Timer, BarChart3, Coins, Hash } from 'lucide-react'
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ChartLegendContent, ChartTooltipContent } from '@/components/application/charts/charts-base'
+import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from '@/components/ui/chart'
+import { ChartTooltipContent, ChartLegendContent } from '@/components/application/charts/charts-base'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useBreakpoint } from '@/hooks/use-breakpoint'
 import { cn } from '@/lib/utils'
 import { analytics as analyticsApi } from '@/lib/api'
 
@@ -50,6 +39,21 @@ const CHANNEL_LABELS: Record<string, string> = {
   slack: 'Slack',
 }
 
+const activityConfig = {
+  totalConversations: { label: 'Conversations', color: 'hsl(142, 71%, 45%)' },
+  totalMessages: { label: 'Messages', color: 'hsl(199, 89%, 48%)' },
+  uniqueUsers: { label: 'Users', color: 'hsl(263, 70%, 58%)' },
+} satisfies ChartConfig
+
+const tokenConfig = {
+  inputTokens: { label: 'Input Tokens', color: 'hsl(217, 91%, 60%)' },
+  outputTokens: { label: 'Output Tokens', color: 'hsl(38, 92%, 50%)' },
+} satisfies ChartConfig
+
+const channelConfig = {
+  count: { label: 'Conversations', color: 'hsl(142, 71%, 45%)' },
+} satisfies ChartConfig
+
 function trendOf(val: number): { trend: 'up' | 'down' | 'flat'; change: string } {
   if (val > 0) return { trend: 'up', change: `+${val}%` }
   if (val < 0) return { trend: 'down', change: `${val}%` }
@@ -61,8 +65,6 @@ function formatDay(d: Date) {
 }
 
 export function AgentAnalytics({ agentId }: { agentId: string }) {
-  const isDesktop = useBreakpoint("lg")
-
   const { data, isLoading, isError } = useQuery({
     queryKey: ['agent-analytics', agentId],
     queryFn: async () => {
@@ -86,10 +88,10 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
             </div>
           ))}
         </div>
-        <Skeleton className="h-80 w-full rounded-xl" />
+        <Skeleton className="h-[280px] w-full rounded-xl" />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Skeleton className="h-72 w-full rounded-xl" />
-          <Skeleton className="h-72 w-full rounded-xl" />
+          <Skeleton className="h-[280px] w-full rounded-xl" />
+          <Skeleton className="h-[280px] w-full rounded-xl" />
         </div>
       </div>
     )
@@ -185,6 +187,7 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
 
   return (
     <div className="space-y-6">
+      {/* KPI Cards */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {kpiMetrics.map((m) => (
           <div
@@ -220,227 +223,123 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
         ))}
       </div>
 
+      {/* Activity Overview */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Activity Overview</CardTitle>
+        <CardHeader className="border-b py-4">
+          <CardTitle className="text-base">Activity Overview</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={daily}
-                margin={{ top: isDesktop ? 12 : 6, bottom: 4, left: 0, right: 0 }}
-              >
-                <defs>
-                  <linearGradient id="grad-conv" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--chart-1)" stopOpacity="0.7" />
-                    <stop offset="95%" stopColor="var(--chart-1)" stopOpacity="0" />
-                  </linearGradient>
-                  <linearGradient id="grad-msg" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--chart-3)" stopOpacity="0.7" />
-                    <stop offset="95%" stopColor="var(--chart-3)" stopOpacity="0" />
-                  </linearGradient>
-                  <linearGradient id="grad-user" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--chart-5)" stopOpacity="0.7" />
-                    <stop offset="95%" stopColor="var(--chart-5)" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-
-                <CartesianGrid vertical={false} stroke="var(--border)" />
-
-                <Legend
-                  verticalAlign="bottom"
-                  align="center"
-                  layout="horizontal"
-                  content={<ChartLegendContent className="justify-center pt-2" />}
-                />
-
-                <XAxis
-                  dataKey="date"
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                  tickFormatter={(v) => formatDay(v)}
-                  padding={{ left: 10, right: 10 }}
-                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                />
-
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                  tickFormatter={(v) => Number(v).toLocaleString()}
-                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                />
-
-                <Tooltip
-                  content={<ChartTooltipContent />}
-                  formatter={(v) => Number(v).toLocaleString()}
-                  labelFormatter={(v) => formatDay(v)}
-                  cursor={{ stroke: "var(--muted-foreground)", strokeWidth: 1, strokeDasharray: "4 4" }}
-                />
-
-                <Area
-                  isAnimationActive={false}
-                  dataKey="totalConversations"
-                  name="Conversations"
-                  type="monotone"
-                  stroke="var(--chart-1)"
-                  strokeWidth={2}
-                  fill="url(#grad-conv)"
-                  fillOpacity={1}
-                  activeDot={{ r: 4, className: "fill-bg-primary stroke-[var(--chart-1)] stroke-2" }}
-                />
-
-                <Area
-                  isAnimationActive={false}
-                  dataKey="totalMessages"
-                  name="Messages"
-                  type="monotone"
-                  stroke="var(--chart-3)"
-                  strokeWidth={2}
-                  fill="url(#grad-msg)"
-                  fillOpacity={1}
-                  activeDot={{ r: 4, className: "fill-bg-primary stroke-[var(--chart-3)] stroke-2" }}
-                />
-
-                <Area
-                  isAnimationActive={false}
-                  dataKey="uniqueUsers"
-                  name="Users"
-                  type="monotone"
-                  stroke="var(--chart-5)"
-                  strokeWidth={2}
-                  fill="url(#grad-user)"
-                  fillOpacity={1}
-                  activeDot={{ r: 4, className: "fill-bg-primary stroke-[var(--chart-5)] stroke-2" }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <ChartContainer config={activityConfig} className="h-[280px] w-full">
+            <AreaChart data={daily} margin={{ top: 6, bottom: 4, left: 0, right: 0 }}>
+              <defs>
+                <linearGradient id="act-conv" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-totalConversations)" stopOpacity={0.7} />
+                  <stop offset="95%" stopColor="var(--color-totalConversations)" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="act-msg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-totalMessages)" stopOpacity={0.7} />
+                  <stop offset="95%" stopColor="var(--color-totalMessages)" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="act-user" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-uniqueUsers)" stopOpacity={0.7} />
+                  <stop offset="95%" stopColor="var(--color-uniqueUsers)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => formatDay(v)}
+                tickMargin={8}
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent labelFormatter={(v) => formatDay(v)} />}
+              />
+              <Area
+                dataKey="totalConversations"
+                type="monotone"
+                stroke="var(--color-totalConversations)"
+                strokeWidth={2}
+                fill="url(#act-conv)"
+              />
+              <Area
+                dataKey="totalMessages"
+                type="monotone"
+                stroke="var(--color-totalMessages)"
+                strokeWidth={2}
+                fill="url(#act-msg)"
+              />
+              <Area
+                dataKey="uniqueUsers"
+                type="monotone"
+                stroke="var(--color-uniqueUsers)"
+                strokeWidth={2}
+                fill="url(#act-user)"
+              />
+              <ChartLegend content={<ChartLegendContent />} />
+            </AreaChart>
+          </ChartContainer>
         </CardContent>
       </Card>
 
+      {/* Token Usage + Channel Performance */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <CardHeader className="border-b py-4">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Coins className="size-4 text-muted-foreground" />
               Token Usage
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={tokenData}
-                  margin={{ top: 8, bottom: 4, left: 0, right: 0 }}
-                >
-                  <CartesianGrid vertical={false} stroke="var(--border)" />
-
-                  <Legend
-                    verticalAlign="bottom"
-                    align="center"
-                    layout="horizontal"
-                    content={<ChartLegendContent className="justify-center pt-2" />}
-                  />
-
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                    tickFormatter={(v) => formatDay(v)}
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                  />
-
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                    tickFormatter={(v) => Number(v).toLocaleString()}
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                  />
-
-                  <Tooltip
-                    content={<ChartTooltipContent />}
-                    formatter={(v) => Number(v).toLocaleString()}
-                    labelFormatter={(v) => formatDay(v)}
-                    cursor={{ fill: "var(--muted)", opacity: 0.4 }}
-                  />
-
-                  <Bar
-                    dataKey="inputTokens"
-                    name="Input Tokens"
-                    fill="var(--chart-2)"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={28}
-                  />
-
-                  <Bar
-                    dataKey="outputTokens"
-                    name="Output Tokens"
-                    fill="var(--chart-4)"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={28}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+            <ChartContainer config={tokenConfig} className="h-[280px] w-full">
+              <BarChart data={tokenData} margin={{ top: 8, bottom: 4, left: 0, right: 0 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => formatDay(v)}
+                  tickMargin={8}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent labelFormatter={(v) => formatDay(v)} />}
+                />
+                <Bar dataKey="inputTokens" fill="var(--color-inputTokens)" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="outputTokens" fill="var(--color-outputTokens)" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <ChartLegend content={<ChartLegendContent />} />
+              </BarChart>
+            </ChartContainer>
           </CardContent>
         </Card>
 
         {channelData.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Hash className="size-4 text-muted-foreground" />
-              Channel Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={channelData}
-                  margin={{ top: 8, bottom: 4, left: 0, right: 0 }}
-                  layout="vertical"
-                >
-                  <CartesianGrid horizontal={false} stroke="var(--border)" />
-
-                  <XAxis
-                    type="number"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                  />
-
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    axisLine={false}
-                    tickLine={false}
-                    width={isDesktop ? 90 : 70}
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                  />
-
-                  <Tooltip
+          <Card>
+            <CardHeader className="border-b py-4">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Hash className="size-4 text-muted-foreground" />
+                Channel Performance
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+              <ChartContainer config={channelConfig} className="h-[280px] w-full">
+                <BarChart data={channelData} margin={{ top: 8, bottom: 4, left: 0, right: 0 }} layout="vertical">
+                  <CartesianGrid horizontal={false} />
+                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                  <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={90} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                  <ChartTooltip
+                    cursor={false}
                     content={<ChartTooltipContent />}
-                    formatter={(v) => Number(v).toLocaleString()}
-                    cursor={{ fill: "var(--muted)", opacity: 0.4 }}
                   />
-
-                  <Bar
-                    dataKey="count"
-                    name="Conversations"
-                    fill="var(--chart-1)"
-                    radius={[0, 4, 4, 0]}
-                    maxBarSize={24}
-                  />
+                  <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} maxBarSize={24} />
                 </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
+              </ChartContainer>
+            </CardContent>
           </Card>
         )}
       </div>
