@@ -195,7 +195,7 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                   variant="ghost"
                   size="sm"
                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => { onDelete(data.id); onClose() }}
+                  onClick={() => { const id = data.id; onClose(); onDelete(id) }}
                 >
                   <Trash2 className="size-3.5" />
                   Delete

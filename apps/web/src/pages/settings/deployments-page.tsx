@@ -1,14 +1,24 @@
 import { useState, useMemo } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { deployments as deploymentsApi, agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Plus, Trash2, Loader2, Copy, Check, Globe } from 'lucide-react'
 import { DeploymentForm } from '@/components/settings/deployment-form'
 import { DeploymentDetail } from '@/components/settings/deployment-detail'
 import { SearchFilterBar } from '@/components/shared/search-filter-bar'
+import { toast } from 'sonner'
 
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
 
@@ -39,6 +49,7 @@ export default function DeploymentsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedDeployment, setSelectedDeployment] = useState<DeploymentItem | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const agentsQuery = useQuery({
     queryKey: ['agents-for-deployments', orgId],
@@ -82,12 +93,16 @@ export default function DeploymentsPage() {
     },
   }
 
-  const deleteMutation = {
-    mutate: async (id: string) => {
-      await deploymentsApi.delete(id)
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deploymentsApi.delete(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-deployments'] })
-    }
-  }
+      toast.success('Deployment deleted')
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to delete deployment')
+    },
+  })
 
   const deployments = allDeploymentsQuery.data || []
 
@@ -250,10 +265,14 @@ export default function DeploymentsPage() {
                         className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation()
-                          deleteMutation.mutate(deployment.id)
+                          setDeletingId(deployment.id)
                         }}
                       >
-                        <Trash2 className="size-3" />
+                        {deleteMutation.isPending && deletingId === deployment.id ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-3" />
+                        )}
                       </button>
                     }
                   />
@@ -267,11 +286,47 @@ export default function DeploymentsPage() {
         })}
       </div>
 
+      <AlertDialog
+        open={!!deletingId}
+        onOpenChange={(open) => { if (!open) setDeletingId(null) }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete deployment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this deployment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingId) {
+                  deleteMutation.mutate(deletingId, {
+                    onSuccess: () => setDeletingId(null),
+                  })
+                }
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <DeploymentDetail
         deploymentId={selectedDeployment?.id || null}
         agentName={selectedDeployment?.agentName || ''}
         onClose={() => setSelectedDeployment(null)}
-        onDelete={(id) => deleteMutation.mutate(id)}
+        onDelete={(id) => setDeletingId(id)}
       />
     </div>
   )

@@ -311,9 +311,15 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const deployments = await prisma.deployment.findMany({
       where: { agentId },
       orderBy: { createdAt: 'desc' },
+      include: { agent: { select: { name: true } } },
     })
 
-    return { data: deployments.map(maskSensitive) }
+    return {
+      data: deployments.map((d) => ({
+        ...maskSensitive(d),
+        agentName: d.agent.name,
+      })),
+    }
   })
 
   // GET /api/deployments/:id — Get deployment by ID (member only, masked)
