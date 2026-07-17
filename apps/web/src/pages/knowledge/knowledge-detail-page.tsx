@@ -185,7 +185,6 @@ export default function KnowledgeDetailPage() {
     if (kb && !kbInit.current) {
       kbInit.current = true
       setForm({ name: kb.name, description: kb.description || '', tags: kb.tags ?? [] })
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (kb.settings) setSettings({ ...DEFAULT_KB_SETTINGS, ...kb.settings })
     }
   }, [kb])
@@ -335,15 +334,18 @@ export default function KnowledgeDetailPage() {
 
   if (isEdit && isLoading) {
     return (
-      <PageContainer>
-        <div className="space-y-6">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
-            ))}
-          </div>
+      <PageContainer className="max-w-5xl">
+        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-16 w-full rounded-xl" />
+        <Skeleton className="h-11 w-full rounded-lg" />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-56 rounded-xl" />
+          <Skeleton className="h-56 rounded-xl" />
         </div>
       </PageContainer>
     )
@@ -351,7 +353,7 @@ export default function KnowledgeDetailPage() {
 
   if (isEdit && kbError) {
     return (
-      <PageContainer>
+      <PageContainer className="max-w-5xl">
         <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {kbError instanceof Error ? kbError.message : 'Failed to load knowledge base'}
         </div>
@@ -376,118 +378,116 @@ export default function KnowledgeDetailPage() {
       ]
 
   return (
-    <PageContainer>
-      <div className="space-y-5">
-        <KbHeader
+    <PageContainer className="max-w-5xl">
+      <KbHeader
+        kb={detail}
+        saving={saving}
+        onBack={() => navigate('/knowledge')}
+        onSave={handleSave}
+        onDelete={() => deleteMutation.mutate()}
+        onDuplicate={() => toast.info('Duplicate coming soon')}
+        onViewLogs={() => toast.info('Logs coming soon')}
+      />
+
+      {!isCreate && (
+        <KbNextStep
           kb={detail}
-          saving={saving}
-          onBack={() => navigate('/knowledge')}
-          onSave={handleSave}
-          onDelete={() => deleteMutation.mutate()}
-          onDuplicate={() => toast.info('Duplicate coming soon')}
-          onViewLogs={() => toast.info('Logs coming soon')}
+          hasTested={hasTested}
+          onAddSource={() => setSourceModalOpen(true)}
+          onNavigate={setActiveTab}
         />
+      )}
 
-        {!isCreate && (
-          <KbNextStep
+      {!isCreate && (
+        <KbErrorCard
+          failedCount={detail.errorCount}
+          onRetry={() => documents.filter((d) => d.status === 'error').forEach((d) => handleReprocess(d.id))}
+          onViewLogs={() => toast.info('Logs coming soon')}
+          onDownloadLogs={() => toast.info('Download coming soon')}
+          onContactSupport={() => toast.info('Support coming soon')}
+        />
+      )}
+
+      {saveError && (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {saveError}
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList variant="line" className="!h-11 flex-nowrap whitespace-nowrap md:!h-10 w-max">
+          {tabs.map((t) => (
+            <TabsTrigger key={t.value} value={t.value} id={t.value === 'test' ? 'tab-test' : undefined}>
+              <t.icon className="size-4" />
+              {t.label}
+              {t.value === 'sources' && detail.documentCount > 0 && (
+                <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
+                  {detail.documentCount}
+                </span>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <Separator />
+
+        <TabsContent value="overview" className="mt-5">
+          <KbOverview
             kb={detail}
-            hasTested={hasTested}
-            onAddSource={() => setSourceModalOpen(true)}
-            onNavigate={setActiveTab}
+            form={form}
+            errors={errors}
+            onFormChange={setForm}
+            settings={settings}
+            health={health}
+            disabled={saving}
           />
-        )}
+        </TabsContent>
 
         {!isCreate && (
-          <KbErrorCard
-            failedCount={detail.errorCount}
-            onRetry={() => documents.filter((d) => d.status === 'error').forEach((d) => handleReprocess(d.id))}
-            onViewLogs={() => toast.info('Logs coming soon')}
-            onDownloadLogs={() => toast.info('Download coming soon')}
-            onContactSupport={() => toast.info('Support coming soon')}
-          />
+          <>
+            <TabsContent value="sources" className="mt-5">
+              <KbSources
+                documents={documents}
+                loading={docsLoading}
+                selectionMode={selectionMode}
+                setSelectionMode={setSelectionMode}
+                selected={selected}
+                toggleSelect={(docId) =>
+                  setSelected((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(docId)) next.delete(docId)
+                    else next.add(docId)
+                    return next
+                  })
+                }
+                onAddSource={() => setSourceModalOpen(true)}
+                onPreview={setViewDocId}
+                onDelete={handleDeleteDocument}
+                onReprocess={handleReprocess}
+                reprocessingId={reprocessingId}
+                onBulkDelete={handleBulkDelete}
+                onBulkReprocess={handleBulkReprocess}
+                onUploadFiles={handleUploadFiles}
+                uploading={uploading}
+              />
+            </TabsContent>
+
+            <TabsContent value="test" className="mt-5">
+              <KbTestPanel knowledgeBaseId={id!} onTested={() => setHasTested(true)} onSearch={handleTestSearch} />
+            </TabsContent>
+
+            <TabsContent value="activity" className="mt-5">
+              <KbActivityTab documents={documents} events={activityEvents} />
+            </TabsContent>
+          </>
         )}
-
-        {saveError && (
-          <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {saveError}
-          </div>
-        )}
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList variant="line" className="!h-11 flex-nowrap whitespace-nowrap md:!h-10 w-max">
-            {tabs.map((t) => (
-              <TabsTrigger key={t.value} value={t.value} id={t.value === 'test' ? 'tab-test' : undefined}>
-                <t.icon className="size-4" />
-                {t.label}
-                {t.value === 'sources' && detail.documentCount > 0 && (
-                  <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
-                    {detail.documentCount}
-                  </span>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          <Separator />
-
-          <TabsContent value="overview" className="mt-5">
-            <KbOverview
-              kb={detail}
-              form={form}
-              errors={errors}
-              onFormChange={setForm}
-              settings={settings}
-              health={health}
-              disabled={saving}
-            />
-          </TabsContent>
-
-          {!isCreate && (
-            <>
-              <TabsContent value="sources" className="mt-5">
-                <KbSources
-                  documents={documents}
-                  loading={docsLoading}
-                  selectionMode={selectionMode}
-                  setSelectionMode={setSelectionMode}
-                  selected={selected}
-                  toggleSelect={(docId) =>
-                    setSelected((prev) => {
-                      const next = new Set(prev)
-                      if (next.has(docId)) next.delete(docId)
-                      else next.add(docId)
-                      return next
-                    })
-                  }
-                  onAddSource={() => setSourceModalOpen(true)}
-                  onPreview={setViewDocId}
-                  onDelete={handleDeleteDocument}
-                  onReprocess={handleReprocess}
-                  reprocessingId={reprocessingId}
-                  onBulkDelete={handleBulkDelete}
-                  onBulkReprocess={handleBulkReprocess}
-                  onUploadFiles={handleUploadFiles}
-                  uploading={uploading}
-                />
-              </TabsContent>
-
-              <TabsContent value="test" className="mt-5">
-                <KbTestPanel knowledgeBaseId={id!} onTested={() => setHasTested(true)} onSearch={handleTestSearch} />
-              </TabsContent>
-
-              <TabsContent value="activity" className="mt-5">
-                <KbActivityTab documents={documents} events={activityEvents} />
-              </TabsContent>
-            </>
-          )}
-        </Tabs>
-      </div>
+      </Tabs>
 
       <Dialog open={!!viewDocId} onOpenChange={(open) => !open && setViewDocId(null)}>
-        <DialogContent className="w-[90vw] max-w-none max-h-[85vh] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-4">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
             <DialogTitle className="flex flex-wrap items-center gap-2">
               {viewDoc && <FileIcon type={viewDoc.type} size={20} />}
-              {viewDoc?.name || 'Document'}
+              <span className="truncate">{viewDoc?.name || 'Document'}</span>
               {viewDoc && (
                 <>
                   <DocumentTypeBadge type={viewDoc.type} />
@@ -501,28 +501,29 @@ export default function KnowledgeDetailPage() {
                 : 'Document preview'}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden px-6">
+
+          <div className="flex-1 overflow-hidden px-6 py-4">
             <Tabs defaultValue="content" className="flex h-full flex-col">
               <TabsList className="mb-3 w-fit">
                 <TabsTrigger value="content">Content</TabsTrigger>
                 <TabsTrigger value="chunks">Chunks ({viewDocChunks.length})</TabsTrigger>
-          </TabsList>
-          <Separator />
-              <TabsContent value="content" className="flex-1 overflow-auto">
-                <ScrollArea className="h-full rounded-lg border bg-muted/20 p-4">
+              </TabsList>
+              <Separator />
+              <TabsContent value="content" className="flex-1 overflow-auto mt-3">
+                <ScrollArea className="h-[50vh] rounded-lg border border-border/60 bg-muted/20 p-4">
                   {viewLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="size-5 animate-spin text-muted-foreground" />
                     </div>
                   ) : (
-                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-foreground">
+                    <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground">
                       {viewDoc?.content?.trim() ? viewDoc.content : 'No extracted content yet. Wait for indexing or reprocess the document.'}
                     </pre>
                   )}
                 </ScrollArea>
               </TabsContent>
-              <TabsContent value="chunks" className="flex-1 overflow-auto">
-                <ScrollArea className="h-full rounded-lg border bg-muted/20 p-4">
+              <TabsContent value="chunks" className="flex-1 overflow-auto mt-3">
+                <ScrollArea className="h-[50vh] rounded-lg border border-border/60 bg-muted/20 p-4">
                   {viewDocChunks.length === 0 ? (
                     <p className="py-8 text-center text-xs text-muted-foreground">No chunks yet</p>
                   ) : (
@@ -540,7 +541,7 @@ export default function KnowledgeDetailPage() {
                               {chunk.hasEmbedding ? 'embedded' : 'no embedding'}
                             </span>
                           </div>
-                          <p className="whitespace-pre-wrap break-words text-xs text-foreground/90">{chunk.content}</p>
+                          <p className="whitespace-pre-wrap break-words text-xs text-foreground/90 leading-relaxed">{chunk.content}</p>
                         </div>
                       ))}
                     </div>
@@ -549,6 +550,7 @@ export default function KnowledgeDetailPage() {
               </TabsContent>
             </Tabs>
           </div>
+
           <div className="flex justify-end gap-2 border-t border-border/60 px-6 py-4">
             {viewDocId && (
               <Button
