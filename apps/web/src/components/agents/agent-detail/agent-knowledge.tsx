@@ -8,7 +8,7 @@ import {
   FileText,
   Loader2,
   Unplug,
-  Sparkles,
+  Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -22,7 +22,6 @@ import {
 import { knowledge as knowledgeApi, agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
 import { DocumentStatusBadge } from '@/components/knowledge/document-status-badge'
 
 interface KnowledgeBase {
@@ -126,11 +125,11 @@ export function AgentKnowledge({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border bg-card p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <Sparkles className="size-4" />
+    <div className="space-y-6">
+      <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
+        <div className="mb-5 flex items-center gap-2">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Zap className="size-4" />
           </div>
           <div>
             <h3 className="text-sm font-semibold">RAG Knowledge Base</h3>
@@ -141,13 +140,13 @@ export function AgentKnowledge({
         </div>
 
         {knowledgeBaseId && connectedKb ? (
-          <div className="mb-4 flex flex-col gap-3 rounded-lg border border-success/20 bg-success/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-5 flex flex-col gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success/10">
-                <CheckCircle2 className="size-4 text-success" />
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+                <CheckCircle2 className="size-5 text-emerald-500" />
               </div>
               <div>
-                <p className="text-sm font-medium">{connectedKb.name}</p>
+                <p className="text-sm font-semibold">{connectedKb.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {connectedKb.documentCount} documents · {readyCount} ready
                   {totalChunks > 0 ? ` · ${totalChunks} chunks` : ''}
@@ -179,13 +178,13 @@ export function AgentKnowledge({
             </div>
           </div>
         ) : (
-          <div className="mb-4 rounded-lg border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+          <div className="mb-5 rounded-lg border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
             No knowledge base connected. RAG is off for this agent.
           </div>
         )}
 
         <div className="space-y-2">
-          <Label>Select knowledge base</Label>
+          <Label className="text-xs font-medium">Select knowledge base</Label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select
               value={selectedId || knowledgeBaseId || ''}
@@ -243,10 +242,12 @@ export function AgentKnowledge({
       </div>
 
       {activeKbId && (
-        <div className="rounded-xl border bg-card p-5">
-          <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <FileText className="size-4 text-muted-foreground" />
+              <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <FileText className="size-3.5" />
+              </div>
               <h3 className="text-sm font-semibold">Indexed documents</h3>
             </div>
             <Button
@@ -259,15 +260,15 @@ export function AgentKnowledge({
           </div>
 
           {docsLoading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-10">
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : documents.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
+            <p className="py-8 text-center text-sm text-muted-foreground">
               This knowledge base has no documents yet. Add sources to enable retrieval.
             </p>
           ) : (
-            <ul className="divide-y divide-border/50">
+            <ul className="divide-y divide-border/60">
               {documents.slice(0, 8).map((doc) => (
                 <li
                   key={doc.id}
@@ -289,22 +290,18 @@ export function AgentKnowledge({
           )}
 
           {documents.length > 8 && (
-            <p className="mt-2 text-center text-xs text-muted-foreground">
+            <p className="mt-3 text-center text-xs text-muted-foreground">
               +{documents.length - 8} more — open the knowledge base to see all
             </p>
           )}
         </div>
       )}
 
-      <div
-        className={cn(
-          'rounded-xl border border-border/50 bg-muted/20 px-4 py-3 text-xs text-muted-foreground',
-        )}
-      >
+      <div className="rounded-xl border border-border/60 bg-muted/20 px-5 py-3.5 text-xs text-muted-foreground">
         At chat time, the last user message is embedded and the top matching chunks (similarity ≥
         ~0.7) are injected into the system prompt. Requires{' '}
-        <code className="rounded bg-muted px-1 py-0.5 text-[10px]">OPENAI_API_KEY</code> for
-        embeddings (text-embedding-3-small).
+        <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">OPENAI_API_KEY</code>{' '}
+        for embeddings (text-embedding-3-small).
       </div>
     </div>
   )
