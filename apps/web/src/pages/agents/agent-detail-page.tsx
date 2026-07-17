@@ -126,7 +126,13 @@ export default function AgentDetailPage() {
   })
 
   const shareWidget = agentWidgets[0]
-  const shareUrl = shareWidget ? `${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}/chat/${shareWidget.publicKey}` : undefined
+  const [shareLinkOptimistic, setShareLinkOptimistic] = useState<boolean | null>(null)
+  const shareLinkEnabled = shareLinkOptimistic ?? !!shareWidget
+  const shareUrl = (shareLinkEnabled && shareWidget?.publicKey) ? `${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}/chat/${shareWidget.publicKey}` : undefined
+
+  useEffect(() => {
+    setShareLinkOptimistic(null)
+  }, [agentWidgets])
 
   const createShareLink = useMutation({
     mutationFn: () => widgets.create(agent!.organizationId, { name: `${agent!.name} - Share Link`, agentId: id! }),
@@ -144,7 +150,7 @@ export default function AgentDetailPage() {
 
   const deploymentOptions = [
     { id: 'web-chat-widget', enabled: agentDeployments.some((d) => d.channel === 'web'), deploymentId: agentDeployments.find((d) => d.channel === 'web')?.id },
-    { id: 'shareable-link', enabled: !!shareWidget },
+    { id: 'shareable-link', enabled: shareLinkEnabled },
     { id: 'api-access', enabled: agentDeployments.some((d) => d.channel === 'api'), deploymentId: agentDeployments.find((d) => d.channel === 'api')?.id },
     { id: 'whatsapp', enabled: agentDeployments.some((d) => d.channel === 'whatsapp'), deploymentId: agentDeployments.find((d) => d.channel === 'whatsapp')?.id },
   ]
@@ -227,10 +233,15 @@ export default function AgentDetailPage() {
     const option = deploymentOptions.find((o) => o.id === optionId)
     if (!option) return
     if (optionId === 'shareable-link') {
+      setShareLinkOptimistic(enabled)
       if (enabled && !shareWidget) {
-        createShareLink.mutate()
+        createShareLink.mutate(undefined, {
+          onError: () => setShareLinkOptimistic(null),
+        })
       } else if (!enabled && shareWidget) {
-        removeShareLink.mutate()
+        removeShareLink.mutate(undefined, {
+          onError: () => setShareLinkOptimistic(null),
+        })
       }
       return
     }
@@ -375,7 +386,7 @@ export default function AgentDetailPage() {
             hasKnowledgeBase={!!agent.knowledgeBaseId}
             hasProviderKey={!!agent.providerKeyId}
             createdAt={agent.createdAt}
-            welcomeMessage={agent.welcomeMessage}
+            welcomeMessage={agent.welcomeMessage || ''}
             widgetColor={agent.widgetColor}
             status={agent.status}
             shareUrl={shareUrl}
