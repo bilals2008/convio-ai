@@ -67,7 +67,6 @@ export default function ProfilePage() {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isDirty },
   } = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -76,8 +75,6 @@ export default function ProfilePage() {
       avatar: profile?.avatar ?? user?.avatar ?? '',
     },
   })
-
-  const avatarValue = watch('avatar')
 
   const onSubmit = (data: ProfileValues) => {
     updateProfile.mutate(
@@ -196,23 +193,15 @@ export default function ProfilePage() {
 
               <div className="space-y-2">
                 <Label htmlFor="avatar">Avatar URL</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Camera className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                    <Input
-                      id="avatar"
-                      placeholder="https://example.com/avatar.jpg"
-                      className="pl-8"
-                      {...register('avatar')}
-                      disabled={updateProfile.isPending}
-                    />
-                  </div>
-                  {avatarValue && (
-                    <Avatar className="size-8 shrink-0 ring-1 ring-foreground/10">
-                      <AvatarImage src={avatarValue} />
-                      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                    </Avatar>
-                  )}
+                <div className="relative">
+                  <Camera className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                  <Input
+                    id="avatar"
+                    placeholder="https://example.com/avatar.jpg"
+                    className="pl-8"
+                    {...register('avatar')}
+                    disabled={updateProfile.isPending}
+                  />
                 </div>
                 {errors.avatar && (
                   <p className="text-xs text-destructive">{errors.avatar.message}</p>
