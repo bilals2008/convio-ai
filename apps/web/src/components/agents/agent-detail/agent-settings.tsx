@@ -1,4 +1,4 @@
-import { Globe, Link, Code, MessageCircle, Bot, Database, KeyRound, CalendarDays, Settings as SettingsIcon, ExternalLink, Palette, MessageSquareText, Radio, Loader2 } from 'lucide-react'
+import { Globe, Link, Code, MessageCircle, Bot, Database, KeyRound, CalendarDays, Settings as SettingsIcon, ExternalLink, Palette, MessageSquareText, Radio, Loader2, Copy, Check } from 'lucide-react'
 import { AgentDeployment } from '@/components/agents/agent-deployment'
 import { ProviderLogo } from '@/components/agents/provider-logos'
 import { Textarea } from '@/components/ui/textarea'
@@ -32,6 +32,7 @@ interface AgentSettingsProps {
   welcomeMessage?: string
   widgetColor: string
   status: string
+  shareUrl?: string
   deploymentOptions: Array<{ id: string; enabled: boolean }>
   onDeploymentToggle: (id: string, enabled: boolean) => void
   onSave: (data: { welcomeMessage?: string; widgetColor?: string; status?: string }) => void
@@ -205,6 +206,7 @@ export function AgentSettings({
   welcomeMessage = '',
   widgetColor = '#fb923c',
   status = 'draft',
+  shareUrl,
   deploymentOptions,
   onDeploymentToggle,
   onSave,
@@ -213,6 +215,7 @@ export function AgentSettings({
 }: AgentSettingsProps) {
   const [draftWelcomeMessage, setDraftWelcomeMessage] = useState(welcomeMessage)
   const [draftWidgetColor, setDraftWidgetColor] = useState(widgetColor)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     setDraftWelcomeMessage(welcomeMessage)
@@ -220,6 +223,8 @@ export function AgentSettings({
   }, [welcomeMessage, widgetColor])
 
   const hasChanges = draftWelcomeMessage !== welcomeMessage || draftWidgetColor !== widgetColor
+
+  const shareLinkEnabled = deploymentOptions.find((o) => o.id === 'shareable-link')?.enabled ?? false
 
   const options = [
     {
@@ -274,6 +279,30 @@ export function AgentSettings({
               </div>
             </div>
             <AgentDeployment options={options} onToggle={onDeploymentToggle} disabled={disabled} />
+
+            {shareLinkEnabled && shareUrl && (
+              <div className="mt-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  <Link className="size-3 text-muted-foreground" />
+                  <span className="text-[11px] font-medium text-muted-foreground">Shareable URL</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <code className="flex-1 truncate rounded bg-background px-2 py-1.5 text-xs text-foreground">{shareUrl}</code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareUrl)
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 2000)
+                    }}
+                    className="flex size-7 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <a
               href="/settings/deployments"
               className="mt-3 flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors px-1"

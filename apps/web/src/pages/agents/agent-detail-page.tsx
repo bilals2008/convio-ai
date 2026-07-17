@@ -26,7 +26,7 @@ import {
   AgentAnalytics,
   AgentSettings,
 } from '@/components/agents/agent-detail'
-import { agents as agentsApi, deployments as deploymentsApi } from '@/lib/api'
+import { agents as agentsApi, deployments as deploymentsApi, widgets } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 
 interface Agent {
@@ -115,9 +115,36 @@ export default function AgentDetailPage() {
     enabled: !!id,
   })
 
+  const { data: agentWidgets = [] } = useQuery({
+    queryKey: ['agent-widgets', agent?.organizationId],
+    queryFn: async () => {
+      const res = await widgets.list(agent!.organizationId)
+      const items = (res.data.data ?? []) as Array<{ id: string; publicKey: string; agentId: string; status: string; name: string }>
+      return items.filter((w) => w.agentId === id && w.status !== 'archived')
+    },
+    enabled: !!agent?.organizationId,
+  })
+
+  const shareWidget = agentWidgets[0]
+  const shareUrl = shareWidget ? `${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}/chat/${shareWidget.publicKey}` : undefined
+
+  const createShareLink = useMutation({
+    mutationFn: () => widgets.create(agent!.organizationId, { name: `${agent!.name} - Share Link`, agentId: id! }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agent-widgets', agent?.organizationId] })
+    },
+  })
+
+  const removeShareLink = useMutation({
+    mutationFn: () => widgets.update(shareWidget!.id, { status: 'archived' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agent-widgets', agent?.organizationId] })
+    },
+  })
+
   const deploymentOptions = [
     { id: 'web-chat-widget', enabled: agentDeployments.some((d) => d.channel === 'web'), deploymentId: agentDeployments.find((d) => d.channel === 'web')?.id },
-    { id: 'shareable-link', enabled: false },
+    { id: 'shareable-link', enabled: !!shareWidget },
     { id: 'api-access', enabled: agentDeployments.some((d) => d.channel === 'api'), deploymentId: agentDeployments.find((d) => d.channel === 'api')?.id },
     { id: 'whatsapp', enabled: agentDeployments.some((d) => d.channel === 'whatsapp'), deploymentId: agentDeployments.find((d) => d.channel === 'whatsapp')?.id },
   ]
@@ -199,6 +226,14 @@ export default function AgentDetailPage() {
   const handleDeploymentToggle = (optionId: string, enabled: boolean) => {
     const option = deploymentOptions.find((o) => o.id === optionId)
     if (!option) return
+    if (optionId === 'shareable-link') {
+      if (enabled && !shareWidget) {
+        createShareLink.mutate()
+      } else if (!enabled && shareWidget) {
+        removeShareLink.mutate()
+      }
+      return
+    }
     const channelMap: Record<string, string> = { 'web-chat-widget': 'web', 'api-access': 'api', 'whatsapp': 'whatsapp' }
     const channel = channelMap[optionId]
     if (!channel) return
@@ -343,11 +378,12 @@ export default function AgentDetailPage() {
             welcomeMessage={agent.welcomeMessage}
             widgetColor={agent.widgetColor}
             status={agent.status}
+            shareUrl={shareUrl}
             deploymentOptions={deploymentOptions}
             onDeploymentToggle={handleDeploymentToggle}
             onSave={(data) => updateMutation.mutate(data)}
             isSaving={updateMutation.isPending}
-            disabled={updateMutation.isPending || toggleDeployment.isPending}
+            disabled={updateMutation.isPending || toggleDeployment.isPending || createShareLink.isPending || removeShareLink.isPending}
           />
         </TabsContent>
       </AgentDetailLayout>
