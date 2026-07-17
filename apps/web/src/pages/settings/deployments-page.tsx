@@ -149,10 +149,11 @@ export default function DeploymentsPage() {
             const res = await createMutation.mutate(data)
             const body = res?.data
             const config = body?.data?.config || {}
+            const deploymentId = body?.data?.id
             const setupLinkUrl = config.kapsoSetupLinkUrl as string | undefined
             if (setupLinkUrl) {
               createMutation.onSuccess()
-              return { setupLinkUrl }
+              return { setupLinkUrl, deploymentId }
             }
             createMutation.onSuccess()
             setEditing(null)

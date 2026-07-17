@@ -35,7 +35,7 @@ interface KapsoNumber {
 
 interface DeploymentFormProps {
   agents: { id: string; name: string }[]
-  onSave: (data: { agentId: string; channel: Channel; config: Record<string, string> }) => Promise<{ setupLinkUrl?: string } | void>
+  onSave: (data: { agentId: string; channel: Channel; config: Record<string, string> }) => Promise<{ setupLinkUrl?: string; deploymentId?: string } | void>
   onCancel: () => void
 }
 
@@ -93,7 +93,18 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
   const [whatsappProvider, setWhatsappProvider] = useState('meta')
   const [saving, setSaving] = useState(false)
   const [setupLinkUrl, setSetupLinkUrl] = useState('')
+  const [createdDeploymentId, setCreatedDeploymentId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  const selectedAgentName = agents.find((a) => a.id === agentId)?.name
+
+  const handleClose = () => {
+    if (createdDeploymentId) {
+      deploymentsApi.delete(createdDeploymentId).catch(() => {})
+    }
+    setCreatedDeploymentId(null)
+    onCancel()
+  }
   const [kapsoNumbers, setKapsoNumbers] = useState<KapsoNumber[]>([])
   const [kapsoNumbersLoading, setKapsoNumbersLoading] = useState(false)
   // '' = connect a new number (setup link), otherwise an existing phoneNumberId
@@ -143,6 +154,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
     const result = await onSave({ agentId, channel, config: finalConfig })
     if (result && result.setupLinkUrl) {
       setSetupLinkUrl(result.setupLinkUrl)
+      if (result.deploymentId) setCreatedDeploymentId(result.deploymentId)
     }
     setSaving(false)
   }
@@ -156,7 +168,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
   }
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onCancel() }}>
+    <Dialog open onOpenChange={(open) => { if (!open) handleClose() }}>
       <DialogContent className="sm:max-w-md">
         {setupLinkUrl ? (
           <>
@@ -192,7 +204,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={onCancel}>
+              <Button type="button" variant="ghost" onClick={(e) => { e.preventDefault(); handleClose() }}>
                 Close
               </Button>
             </DialogFooter>
@@ -209,7 +221,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                 <Label>Agent</Label>
                 <Select value={agentId} onValueChange={setAgentId}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an agent" />
+                    <SelectValue placeholder="Select an agent">{selectedAgentName}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -344,7 +356,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
               ))}
 
               <DialogFooter>
-                <Button type="button" variant="ghost" onClick={onCancel}>
+                <Button type="button" variant="ghost" onClick={handleClose}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={!agentId || saving}>
