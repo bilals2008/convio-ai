@@ -162,41 +162,12 @@ export function ChannelsSection() {
 
             {/* Preview Area */}
             <div className="relative aspect-video bg-gradient-to-br from-secondary/20 via-background to-secondary/10">
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
-                    <svg
-                      className="size-5 text-primary"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-medium text-foreground/80">
-                    Convio Inbox Preview
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Unified conversation view across all channels
-                </p>
-              </div>
-
-              {/* Decorative grid lines */}
-              <div
-                className="pointer-events-none absolute inset-0 opacity-[0.03]"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)',
-                  backgroundSize: '40px 40px',
-                }}
+              <img
+                src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/channel.avif"
+                alt="Convio channels preview"
+                className="object-cover opacity-90 transition-opacity duration-500 hover:opacity-100"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
             </div>
           </div>
         </motion.div>
