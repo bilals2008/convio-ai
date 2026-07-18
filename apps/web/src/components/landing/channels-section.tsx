@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
+import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { SectionHeading } from './section-heading'
 import { ScrollReveal } from './scroll-reveal'
 import {
@@ -131,14 +132,14 @@ export function ChannelsSection() {
         >
           <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
             {/* Preview Area */}
-            <div className="relative aspect-[4/1] bg-gradient-to-br from-secondary/20 via-background to-secondary/10">
+            <AspectRatio ratio={16/9} className="bg-gradient-to-br from-secondary/20 via-background to-secondary/10">
               <img
-                src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/channel.avif"
+                src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/channel-section.avif"
                 alt="Convio channels preview"
-                className="object-cover opacity-90 transition-opacity duration-500 hover:opacity-100"
+                className="absolute inset-0 h-full w-full object-cover opacity-90 transition-opacity duration-500 hover:opacity-100"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
-            </div>
+            </AspectRatio>
           </div>
         </motion.div>
       </div>

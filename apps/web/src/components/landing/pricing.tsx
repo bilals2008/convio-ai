@@ -96,7 +96,7 @@ function PlanCard({ plan }: { plan: PlanConfig }) {
 
 export function Pricing() {
   return (
-    <section id="pricing" className="relative border-t border-border/60">
+    <section id="pricing" className="relative">
       {/* Background glow */}
       <div
         aria-hidden="true"

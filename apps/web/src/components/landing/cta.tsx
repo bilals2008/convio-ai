@@ -6,8 +6,8 @@ import { ArrowRight } from 'lucide-react'
 
 export function CTA() {
   return (
-    <section className="relative border-t border-border/60">
-      <div className="max-w-[1160px] mx-auto px-5 md:px-10 py-20 md:py-28">
+    <section className="relative">
+      <div className="max-w-[1160px] mx-auto px-5 md:px-10 pt-10 md:pt-14 pb-20 md:pb-28">
         <ScrollReveal variant="scaleIn">
           <GlowCard>
             <div className="py-14 md:py-20 px-6 md:px-14 flex flex-col md:flex-row items-start md:items-center gap-10 md:gap-16">
