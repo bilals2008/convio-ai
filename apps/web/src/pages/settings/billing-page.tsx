@@ -22,49 +22,30 @@ import {
   Check,
   ExternalLink,
   Receipt,
-  Shield,
   Zap,
+  Shield,
   Star,
   AlertCircle,
   MessageSquare,
   Bot,
   Infinity as InfinityIcon,
 } from 'lucide-react'
+import { pricingConfig } from '@/lib/pricing/config'
 
-const upgradePlans = [
-  {
-    key: 'pro',
-    name: 'Pro',
-    price: '$29',
-    period: '/mo',
-    description: 'For growing teams and businesses',
-    features: [
-      'Unlimited agents',
-      '50,000 messages/mo',
-      'Multi-channel deployment',
-      'Advanced analytics',
-      'Custom branding',
-    ],
-    icon: Zap,
-    highlight: true,
-  },
-  {
-    key: 'enterprise',
-    name: 'Enterprise',
-    price: 'Custom',
-    period: '',
-    description: 'For large organizations with custom needs',
-    features: [
-      'Everything in Pro',
-      'Unlimited messages',
-      'SSO / SAML',
-      'Dedicated support',
-      'Custom SLA',
-    ],
-    icon: Shield,
-    highlight: false,
-  },
-]
+const iconMap = { zap: Zap, shield: Shield } as const
+
+const upgradePlans = pricingConfig.plans
+  .filter((p) => p.key !== 'free')
+  .map((p) => ({
+    key: p.key,
+    name: p.name,
+    price: p.price,
+    period: p.period || '/mo',
+    description: p.description,
+    features: p.features.map((f) => f.text),
+    icon: (p.icon && iconMap[p.icon]) || Shield,
+    highlight: p.highlighted,
+  }))
 
 function formatCurrency(total: number, currency: string) {
   return new Intl.NumberFormat('en-US', {
