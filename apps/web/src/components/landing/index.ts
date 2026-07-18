@@ -1,6 +1,6 @@
 export { Navbar } from './navbar'
 export { HeroSection } from './hero-section'
-export { ChannelOrbit } from './channel-orbit'
+export { ChannelsSection } from './channels-section'
 export { Pricing } from './pricing'
 export { CTA } from './cta'
 export { Footer } from './footer'
