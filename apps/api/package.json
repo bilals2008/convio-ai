@@ -6,7 +6,8 @@
   "main": "./src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts",
+    "build": "tsup",
+    "start": "node dist/server.js",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/"
   },
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^4.1.10",
+    "tsup": "^8.5.1",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0",
     "vitest": "^4.1.10"

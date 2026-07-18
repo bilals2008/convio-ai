@@ -55,6 +55,7 @@ async function buildServer() {
   await app.register(formbody)
 
   // Health
+  app.get('/', async () => ({ status: 'ok' }))
   app.get('/health', async () => ({ status: 'ok' }))
 
   // API Routes
