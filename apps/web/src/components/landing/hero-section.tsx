@@ -8,8 +8,8 @@ function ProductPreview() {
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
       <AspectRatio ratio={16 / 9} className="bg-secondary/20">
         <img
-          src="/hero-preview.png"
-          alt="Convio dashboard preview"
+          src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/hero.avif"
+          alt="AI agent dashboard preview"
           className="object-cover"
         />
       </AspectRatio>
@@ -20,7 +20,7 @@ function ProductPreview() {
 export function HeroSection() {
   return (
     <section id="top" className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.5] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,black,transparent_75%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-dot-pattern opacity-30 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
 
       <div className="relative mx-auto max-w-[1160px] px-5 md:px-10 pb-16 pt-28 md:pb-24 md:pt-36">
         <div className="flex flex-col items-center text-center">
@@ -32,14 +32,14 @@ export function HeroSection() {
               <Zap className="size-3.5" />
               New
             </span>
-            <span className="text-muted-foreground">Knowledge base &amp; RAG</span>
+            <span className="text-muted-foreground">AI-powered customer intelligence</span>
             <ArrowUpRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </a>
 
           <h1 className="mt-6 max-w-[16ch] font-heading text-[clamp(34px,5.6vw,66px)] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground">
-            One AI agent for{' '}
+            Ship AI agents that{' '}
             <span className="relative whitespace-nowrap text-primary">
-              every channel
+              drive revenue
               <svg
                 className="absolute -bottom-1 left-0 w-full text-primary/40"
                 viewBox="0 0 300 12"
@@ -54,8 +54,7 @@ export function HeroSection() {
           </h1>
 
           <p className="mt-5 max-w-[520px] text-[clamp(15px,1.5vw,18px)] leading-[1.6] text-muted-foreground">
-            Build a single brain for your business and deploy it to web, WhatsApp, Telegram,
-            Discord, and Slack — no code required.
+            Deploy intelligent AI agents across every customer touchpoint to automate support, qualify leads, and scale revenue on autopilot.
           </p>
 
           <div className="mt-8 flex items-center gap-3">
