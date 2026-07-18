@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/lib/auth-context'
+import { RedirectAuthenticated } from '@/components/auth/redirect-authenticated'
 import { OrgProvider } from '@/lib/org-context'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import Landing from '@/pages/landing'
@@ -53,9 +54,9 @@ export function App() {
             <OrgProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/login" element={<RedirectAuthenticated><LoginPage /></RedirectAuthenticated>} />
+            <Route path="/signup" element={<RedirectAuthenticated><SignupPage /></RedirectAuthenticated>} />
+            <Route path="/forgot-password" element={<RedirectAuthenticated><ForgotPasswordPage /></RedirectAuthenticated>} />
             <Route path="/widget/demo" element={<WidgetDemoPage />} />
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<DashboardOverviewPage />} />

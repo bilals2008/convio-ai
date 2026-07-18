@@ -35,6 +35,8 @@ const providers = [
     label: 'Continue with GitHub',
     icon: GitHubIcon,
     hoverClass: 'hover:border-foreground/20 hover:bg-foreground/5',
+    badge: 'Soon',
+    disabled: true,
   },
 ] as const
 
@@ -52,7 +54,7 @@ export function SocialLoginButtons() {
 
   return (
     <div className="grid gap-2.5">
-      {providers.map(({ id, label, icon: Icon, hoverClass }) => (
+      {providers.map(({ id, label, icon: Icon, hoverClass, badge, disabled }) => (
         <Button
           key={id}
           variant="outline"
@@ -62,14 +64,19 @@ export function SocialLoginButtons() {
             'group'
           )}
           onClick={() => handleOAuth(id)}
-          disabled={pending !== null}
+          disabled={pending !== null || disabled}
         >
           {pending === id ? (
             <Loader2 className="size-4.5 shrink-0 animate-spin" />
           ) : (
             <Icon className="size-4.5 shrink-0" />
           )}
-          <span>{label}</span>
+          <span className="flex-1 text-left">{label}</span>
+          {badge && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/50">
+              {badge}
+            </span>
+          )}
         </Button>
       ))}
     </div>
