@@ -5,13 +5,14 @@ import { ArrowRight, ArrowUpRight, Zap, Check, MessageSquare, BarChart3, Globe }
 
 function ProductPreview() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
       <AspectRatio ratio={16 / 9} className="bg-secondary/20">
         <img
           src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/hero.avif"
           alt="AI agent dashboard preview"
-          className="object-cover"
+          className="object-cover opacity-90 transition-opacity duration-500 hover:opacity-100"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
       </AspectRatio>
     </div>
   )
