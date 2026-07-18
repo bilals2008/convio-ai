@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { useOrganizations, type Organization } from '@/lib/hooks/useOrganizations'
+import { useAuth } from '@/lib/auth-context'
 
 interface OrgContextValue {
   orgId: string | null
@@ -12,7 +13,8 @@ interface OrgContextValue {
 const OrgContext = createContext<OrgContextValue | null>(null)
 
 export function OrgProvider({ children }: { children: ReactNode }) {
-  const { data: orgs, isLoading } = useOrganizations()
+  const { isAuthenticated } = useAuth()
+  const { data: orgs, isLoading } = useOrganizations({ enabled: isAuthenticated })
   const [orgId, setOrgId] = useState<string | null>(() => {
     return localStorage.getItem('currentOrgId')
   })

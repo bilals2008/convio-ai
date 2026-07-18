@@ -10,7 +10,7 @@ export interface Organization {
   role?: string
 }
 
-export function useOrganizations() {
+export function useOrganizations({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<Organization[]>({
     queryKey: ['organizations'],
     queryFn: async () => {
@@ -18,5 +18,6 @@ export function useOrganizations() {
       return (res.data.data || []) as Organization[]
     },
     retry: false,
+    enabled,
   })
 }
