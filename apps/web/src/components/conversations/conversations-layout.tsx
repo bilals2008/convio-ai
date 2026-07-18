@@ -5,6 +5,7 @@ import { MessageSquare, Plus, Search, Brain, Check, ArrowUp, ArrowDown } from 'l
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { ChannelBadge } from '@/components/shared/channel-badge'
 import { SearchInput } from '@/components/shared/search-input'
 import { Skeleton } from '@/components/shared/loading'
 import { ConversationStatusBadge } from './conversation-status-badge'
@@ -314,17 +315,15 @@ export function ConversationsLayout() {
                   : 'hover:bg-muted/50'
               )}
             >
-              <div className={cn(
-                'flex size-10 items-center justify-center rounded-full shrink-0',
-                selectedId === conv.id ? 'bg-primary/20' : 'bg-primary/10'
-              )}>
-                <span className={cn(
+              <Avatar size="lg" className="shrink-0">
+                <AvatarFallback className={cn(
                   'text-xs font-semibold',
-                  selectedId === conv.id ? 'text-primary' : 'text-primary/80'
+                  selectedId === conv.id ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary/80'
                 )}>
                   {getInitials(conv.userName)}
-                </span>
-              </div>
+                </AvatarFallback>
+                <ChannelBadge channel={conv.channel} />
+              </Avatar>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">

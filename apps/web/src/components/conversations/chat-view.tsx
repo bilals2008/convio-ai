@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, MessageSquare, AlertCircle, MoreVertical, CheckCircle, Archive, Trash2, Clock } from 'lucide-react'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { ChannelBadge } from '@/components/shared/channel-badge'
 import { toast } from '@/lib/toast'
 import { Skeleton } from '@/components/shared/loading'
 import { TypingIndicator } from '@/components/shared/typing-indicator'
@@ -283,11 +285,12 @@ export function ChatView() {
           <ArrowLeft className="size-4" />
         </Button>
 
-        <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
-          <span className="text-sm font-semibold text-primary">
+        <Avatar size="lg" className="shrink-0">
+          <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
             {getInitials(conversation.userName)}
-          </span>
-        </div>
+          </AvatarFallback>
+          <ChannelBadge channel={conversation.channel} />
+        </Avatar>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
