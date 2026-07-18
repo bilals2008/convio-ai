@@ -4,12 +4,22 @@ import { Separator } from '@/components/ui/separator'
 import { DirectionHover } from './direction-hover'
 import { ArrowUp } from 'lucide-react'
 
-const footerLinks = [
-  { label: 'Channels', href: '#channels' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'Docs', href: '/docs' },
-  { label: 'Log In', href: '/login' },
-  { label: 'Get Started', href: '/signup' },
+const linkGroups = [
+  {
+    title: 'Product',
+    links: [
+      { label: 'Channels', href: '#channels' },
+      { label: 'Pricing', href: '#pricing' },
+      { label: 'Get Started', href: '/signup' },
+    ],
+  },
+  {
+    title: 'Resources',
+    links: [
+      { label: 'Docs', href: '/docs' },
+      { label: 'Log In', href: '/login' },
+    ],
+  },
 ]
 
 const socialLinks = [
@@ -52,42 +62,74 @@ export function Footer() {
 
   return (
     <>
-      <footer className="relative border-t border-border bg-card/30">
-        <div className="mx-auto max-w-[1160px] px-5 md:px-10 py-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <footer className="relative overflow-hidden border-t border-border bg-card/30">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent"
+        />
+
+        <div className="mx-auto max-w-[1160px] px-5 md:px-10 py-8 md:py-10">
+          <div className="grid gap-6 md:grid-cols-[1.4fr_repeat(2,minmax(0,1fr))]">
             <div>
-              <Link to="/" className="flex items-center gap-2 mb-1">
+              <Link to="/" className="flex items-center gap-2">
                 <img src="/logo.png" alt="Convio" className="h-7 w-auto" />
-                <span className="text-lg font-bold font-heading">Convio</span>
+                <span className="font-heading text-lg font-bold tracking-tight">Convio</span>
               </Link>
-              <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+              <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
                 One AI agent for every customer channel.
               </p>
             </div>
 
-            <nav className="flex flex-wrap items-center gap-x-7 gap-y-3">
-              {footerLinks.map((link) =>
-                link.href.startsWith('/') ? (
-                  <Link key={link.href} to={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex">
-                    <DirectionHover title={link.label} fontSize={14} hoverColor="var(--foreground)" />
-                  </Link>
-                ) : (
-                  <a key={link.href} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex">
-                    <DirectionHover title={link.label} fontSize={14} hoverColor="var(--foreground)" />
-                  </a>
-                )
-              )}
-            </nav>
+            {linkGroups.map((group) => (
+              <div key={group.title}>
+                <h3 className="font-heading text-xs font-semibold uppercase tracking-[0.12em] text-foreground/70">
+                  {group.title}
+                </h3>
+                <ul className="mt-3 space-y-2">
+                  {group.links.map((link) => (
+                    <li key={link.href}>
+                      {link.href.startsWith('/') ? (
+                        <Link
+                          to={link.href}
+                          className="inline-flex text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <DirectionHover
+                            title={link.label}
+                            fontSize={14}
+                            textColor="var(--muted-foreground)"
+                            hoverColor="var(--foreground)"
+                          />
+                        </Link>
+                      ) : (
+                        <a
+                          href={link.href}
+                          className="inline-flex text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <DirectionHover
+                            title={link.label}
+                            fontSize={14}
+                            textColor="var(--muted-foreground)"
+                            hoverColor="var(--foreground)"
+                          />
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
 
           <Separator className="my-5" />
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Convio. All rights reserved.
-            </p>
+          <div className="flex flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between">
+            <div className="flex flex-col items-center gap-1 sm:items-start">
+              <p className="text-sm text-muted-foreground">
+                © {new Date().getFullYear()} Convio. All rights reserved.
+              </p>
+            </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               {socialLinks.map((social) => (
                 <a
                   key={social.label}
@@ -95,7 +137,7 @@ export function Footer() {
                   target="_blank"
                   rel="noreferrer"
                   aria-label={social.label}
-                  className="flex size-9 items-center justify-center rounded-lg transition-colors hover:bg-accent"
+                  className="flex size-9 items-center justify-center rounded-lg border border-border bg-background/40 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground"
                 >
                   <img
                     src={social.icon}
