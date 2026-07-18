@@ -131,7 +131,7 @@ export function ChannelsSection() {
         >
           <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
             {/* Preview Area */}
-            <div className="relative aspect-video bg-gradient-to-br from-secondary/20 via-background to-secondary/10">
+            <div className="relative aspect-[2.5/1] bg-gradient-to-br from-secondary/20 via-background to-secondary/10">
               <img
                 src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/channel.avif"
                 alt="Convio channels preview"
