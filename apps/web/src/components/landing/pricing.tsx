@@ -22,8 +22,9 @@ const PLAN_ICONS: Record<string, React.ReactNode> = {
 function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
   const icon = plan.icon ? PLAN_ICONS[plan.icon] : null
   const isLink = plan.href.startsWith('/')
-  const price = isYearly && plan.yearlyPrice ? plan.yearlyPrice : plan.price
+  const monthlyPrice = isYearly && plan.yearlyPrice ? plan.yearlyPrice : plan.price
   const period = isYearly && plan.yearlyPrice ? '/month' : plan.period
+  const yearlyTotal = isYearly && plan.yearlyPrice ? parseInt(plan.yearlyPrice.replace('$', '')) * 12 : null
 
   const cardContent = (
     <div
@@ -59,12 +60,19 @@ function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
           <p className="text-[13px] text-muted-foreground">{plan.description}</p>
         </div>
 
-        <div className="flex items-baseline justify-center gap-1.5 mb-5">
-          <span className="font-mono text-3xl md:text-4xl font-bold tracking-tight text-foreground">
-            {price}
-          </span>
-          {period && (
-            <span className="text-[13px] text-muted-foreground">{period}</span>
+        <div className="flex flex-col items-center mb-5">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-mono text-3xl md:text-4xl font-bold tracking-tight text-foreground">
+              {monthlyPrice}
+            </span>
+            {period && (
+              <span className="text-[13px] text-muted-foreground">{period}</span>
+            )}
+          </div>
+          {isYearly && yearlyTotal !== null && (
+            <span className="text-[11px] text-muted-foreground mt-1">
+              billed ${yearlyTotal}/year
+            </span>
           )}
         </div>
 
@@ -142,7 +150,7 @@ export function Pricing() {
             <span className={cn('text-sm transition-colors', isYearly ? 'text-foreground font-medium' : 'text-muted-foreground')}>
               Yearly
             </span>
-            <Badge className="bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 text-[10px] px-1.5 py-0 h-4">
+            <Badge className="bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0 h-4 font-medium">
               Save 20%
             </Badge>
           </div>
