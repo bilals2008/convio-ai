@@ -211,6 +211,25 @@
   }
 }
 
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.6;
+  }
+  25% {
+    transform: translateY(-12px) translateX(4px);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-6px) translateX(-4px);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateY(-16px) translateX(2px);
+    opacity: 0.5;
+  }
+}
+
 @keyframes orbit {
   to { transform: rotate(360deg); }
 }
@@ -220,6 +239,10 @@
 }
 
 @layer utilities {
+  .animate-float {
+    animation: float 8s ease-in-out infinite;
+  }
+
   .animate-orbit-slow {
     animation: orbit 48s linear infinite;
   }

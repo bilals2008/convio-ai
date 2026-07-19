@@ -1,8 +1,8 @@
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { SectionHeading } from './section-heading'
 import { ScrollReveal } from './scroll-reveal'
+import { FloatingOrbs } from './floating-orbs'
 import {
   WhatsAppIcon,
   TelegramIcon,
@@ -45,20 +45,15 @@ const fadeUp = {
 export function ChannelsSection() {
   const cardsRef = useRef(null)
   const pillsRef = useRef(null)
-  const previewRef = useRef(null)
   const cardsInView = useInView(cardsRef, { once: true, margin: '-60px' })
   const pillsInView = useInView(pillsRef, { once: true, margin: '-40px' })
-  const previewInView = useInView(previewRef, { once: true, margin: '-60px' })
 
   return (
     <section
       id="channels"
       className="relative overflow-hidden border-b border-border bg-background"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[400px] w-[700px] -translate-x-1/2 bg-glow-green opacity-30"
-      />
+      <FloatingOrbs />
 
       <div className="mx-auto max-w-[1160px] px-5 md:px-10 py-20 md:py-28">
         {/* Heading */}
@@ -121,27 +116,6 @@ export function ChannelsSection() {
             </motion.div>
           ))}
         </div>
-
-        {/* Preview Container */}
-        <motion.div
-          ref={previewRef}
-          initial={{ opacity: 0, y: 30 }}
-          animate={previewInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-16"
-        >
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
-            {/* Preview Area */}
-            <AspectRatio ratio={16/9} className="bg-gradient-to-br from-secondary/20 via-background to-secondary/10">
-              <img
-                src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/channel-section.avif"
-                alt="Convio channels preview"
-                className="absolute inset-0 h-full w-full object-cover opacity-90 transition-opacity duration-500 hover:opacity-100"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
-            </AspectRatio>
-          </div>
-        </motion.div>
       </div>
     </section>
   )

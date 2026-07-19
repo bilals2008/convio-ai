@@ -4,14 +4,14 @@ import { chatWithAgent } from '../modules/ai/routes.js'
 
 const DISCORD_API = 'https://discord.com/api/v10'
 
-// Discord interaction types
 const INTERACTION_TYPE_PING = 1
 const INTERACTION_TYPE_APPLICATION_COMMAND = 2
 
-// Discord interaction response types
 const RESPONSE_TYPE_PONG = 1
 const RESPONSE_TYPE_CHANNEL_MESSAGE = 4
 const RESPONSE_TYPE_DEFERRED_CHANNEL_MESSAGE = 5
+
+const BOT_COLOR = 0x22c55e
 
 interface DiscordInteractionOption {
   name: string
@@ -272,7 +272,7 @@ async function handleDiscordReset(
   try {
     const deployment = await prisma.deployment.findUnique({ where: { id: deploymentId } })
     if (!deployment) {
-      await patchDiscordReply(interaction, 'Deployment not found.')
+      await patchDiscordEmbed(interaction, 'Deployment not found.')
       return
     }
 
@@ -290,11 +290,11 @@ async function handleDiscordReset(
       data: { status: 'closed' },
     })
 
-    await patchDiscordReply(interaction, '✅ Conversation reset! New chat started. Use `/chat message:...` to begin.')
+    await patchDiscordEmbed(interaction, '✅ Conversation reset! New chat started. Use `/chat message:...` to begin.')
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Discord] handleDiscordReset error:', message)
-    await patchDiscordReply(interaction, `Sorry, an error occurred: ${message}`)
+    await patchDiscordEmbed(interaction, `Sorry, an error occurred: ${message}`)
   }
 }
 
@@ -311,7 +311,7 @@ async function handleDiscordAiReply(
       include: { agent: true },
     })
     if (!deployment) {
-      await patchDiscordReply(interaction, 'Deployment not found.')
+      await patchDiscordEmbed(interaction, 'Deployment not found.')
       return
     }
 
@@ -320,7 +320,7 @@ async function handleDiscordAiReply(
     const interactionToken = interaction.token
 
     if (!applicationId || !interactionToken) {
-      await patchDiscordReply(interaction, 'Missing Discord configuration.')
+      await patchDiscordEmbed(interaction, 'Missing Discord configuration.')
       return
     }
 
@@ -378,31 +378,77 @@ async function handleDiscordAiReply(
       },
     })
 
-    await patchDiscordReply(interaction, reply)
+    // Send embed reply
+    const replied = await patchDiscordEmbed(interaction, reply)
+    const botToken = config.botToken as string | undefined
+
+    // Create thread on first interaction for this conversation
+    const convMeta = (conversation?.metadata || {}) as Record<string, unknown>
+    if (botToken && replied.messageId && replied.channelId && !convMeta.threadId) {
+      const threadName = `Chat with ${deployment.agent?.name || 'ai'}`
+      const threadId = await createThread(botToken, replied.channelId, replied.messageId, threadName)
+      if (threadId) {
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { metadata: { ...convMeta, threadId } },
+        })
+      }
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Discord] handleDiscordAiReply error:', message)
-    await patchDiscordReply(interaction, `Sorry, an error occurred: ${message}`)
+    await patchDiscordEmbed(interaction, `Sorry, an error occurred: ${message}`)
   }
 }
 
 /**
- * Update the deferred Discord interaction response with the actual reply.
- * Uses the interaction token which doesn't require bot auth.
+ * Update the deferred Discord interaction response with an embed reply.
  */
-async function patchDiscordReply(
+async function patchDiscordEmbed(
   interaction: DiscordInteraction,
-  content: string,
-): Promise<void> {
-  if (!interaction.token) return
+  text: string,
+): Promise<{ messageId?: string; channelId?: string }> {
+  if (!interaction.token) return {}
   try {
     const url = `${DISCORD_API}/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`
-    await fetch(url, {
+    const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        embeds: [{
+          description: text,
+          color: BOT_COLOR,
+          footer: { text: 'Convio AI' },
+        }],
+      }),
     })
+    const data = res.ok ? await res.json().catch(() => ({})) : {}
+    return { messageId: (data as { id?: string }).id, channelId: (data as { channel_id?: string }).channel_id }
   } catch (err) {
-    console.error('[Discord] failed to patch reply:', err)
+    console.error('[Discord] failed to patch embed reply:', err)
+    return {}
+  }
+}
+
+async function createThread(
+  botToken: string,
+  channelId: string,
+  messageId: string,
+  name: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}/threads`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bot ${botToken}`,
+      },
+      body: JSON.stringify({ name, auto_archive_duration: 60, type: 12 }),
+    })
+    if (!res.ok) return null
+    const thread = await res.json() as { id: string }
+    return thread.id
+  } catch {
+    return null
   }
 }

@@ -4,6 +4,7 @@ import { chatWithAgent } from '../modules/ai/routes.js'
 
 const DISCORD_API = 'https://discord.com/api/v10'
 const GATEWAY_URL = 'wss://gateway.discord.gg/?v=10&encoding=json'
+const BOT_COLOR = 0x22c55e
 
 let botUserId: string | null = null
 let gateway: WebSocket | null = null
@@ -11,7 +12,7 @@ let heartbeatInterval: ReturnType<typeof setInterval> | null = null
 let sequence: number | null = null
 let sessionId: string | null = null
 
-async function sendChannelMessage(channelId: string, content: string, botToken: string) {
+async function sendEmbedMessage(channelId: string, text: string, botToken: string): Promise<string | null> {
   const url = `${DISCORD_API}/channels/${channelId}/messages`
   const res = await fetch(url, {
     method: 'POST',
@@ -19,11 +20,20 @@ async function sendChannelMessage(channelId: string, content: string, botToken: 
       'Content-Type': 'application/json',
       Authorization: `Bot ${botToken}`,
     },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({
+      embeds: [{
+        description: text,
+        color: BOT_COLOR,
+        footer: { text: 'Convio AI' },
+      }],
+    }),
   })
   if (!res.ok) {
     console.error('[Discord Gateway] Failed to send message:', await res.text().catch(() => 'unknown'))
+    return null
   }
+  const data = await res.json() as { id: string }
+  return data.id
 }
 
 async function handleMessageCreate(data: any, botToken: string) {
@@ -90,7 +100,8 @@ async function handleMessageCreate(data: any, botToken: string) {
     })
 
     const mention = `<@${contactId}>`
-    await sendChannelMessage(data.channel_id, `${mention} ${reply}`, botToken)
+    const messageId = await sendEmbedMessage(data.channel_id, `${mention} ${reply}`, botToken)
+
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Discord Gateway] AI reply error:', message)

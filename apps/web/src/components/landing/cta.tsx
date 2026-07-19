@@ -2,11 +2,14 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ScrollReveal } from './scroll-reveal'
 import { GlowCard } from './glow-card'
+import { FloatingOrbs } from './floating-orbs'
 import { ArrowRight } from 'lucide-react'
 
 export function CTA() {
   return (
-    <section className="relative">
+    <section className="relative overflow-hidden">
+      <FloatingOrbs />
+
       <div className="max-w-[1160px] mx-auto px-5 md:px-10 pt-10 md:pt-14 pb-20 md:pb-28">
         <ScrollReveal variant="scaleIn">
           <GlowCard>

@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
+import { FloatingOrbs } from './floating-orbs'
 import {
   Globe,
   Database,
@@ -77,6 +78,8 @@ export function Features() {
       ref={sectionRef}
       className="relative overflow-hidden border-b border-border bg-background"
     >
+      <FloatingOrbs />
+
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[400px] w-[600px] -translate-x-1/2 bg-glow-green opacity-40"
