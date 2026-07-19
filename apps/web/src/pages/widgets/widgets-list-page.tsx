@@ -182,9 +182,9 @@ export default function WidgetsListPage() {
 
       {/* Loading */}
       {!orgId || isLoading ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          {[0, 1].map((item) => (
-            <div key={item} className="h-44 animate-pulse rounded-lg border border-border bg-muted/50" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((item) => (
+            <div key={item} className="h-[168px] animate-pulse rounded-xl border border-border bg-muted/50" />
           ))}
         </div>
       ) : isError ? (
@@ -203,15 +203,21 @@ export default function WidgetsListPage() {
         </div>
       ) : filtered.length > 0 ? (
         /* Widget grid */
-        <div className="grid gap-4 xl:grid-cols-2">
-          {filtered.map((widget) => (
-            <WidgetCard
-              key={widget.id}
-              widget={widget}
-              onCopyEmbed={copyEmbed}
-              onArchive={(item) => archiveWidget.mutate(item.id)}
-            />
-          ))}
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {filtered.length} widget{filtered.length !== 1 ? 's' : ''}
+            {filtered.length !== widgets.length ? ' found' : ''}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((widget) => (
+              <WidgetCard
+                key={widget.id}
+                widget={widget}
+                onCopyEmbed={copyEmbed}
+                onArchive={(item) => archiveWidget.mutate(item.id)}
+              />
+            ))}
+          </div>
         </div>
       ) : widgets.length === 0 ? (
         /* Empty state: no widgets */

@@ -10,11 +10,13 @@ import {
   Globe2,
   GripVertical,
   Loader2,
+  MessageSquare,
+  MoreVertical,
   Palette,
+  Pause,
   Pencil,
   Play,
   Plus,
-  Rocket,
   Save,
   Trash2,
   X,
@@ -25,8 +27,15 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { ProductCard } from '@/components/shared/product-card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { widgets as widgetsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -60,6 +69,7 @@ function generateId() {
 }
 
 function AutoGrowTextarea({
+  id,
   value,
   onChange,
   placeholder,
@@ -67,6 +77,7 @@ function AutoGrowTextarea({
   maxLength,
   className = '',
 }: {
+  id?: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
@@ -84,6 +95,7 @@ function AutoGrowTextarea({
   return (
     <div className="relative">
       <textarea
+        id={id}
         ref={ref}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -189,6 +201,58 @@ function DomainTag({
   )
 }
 
+function ColorField({
+  label,
+  hint,
+  value,
+  onChange,
+  presets,
+}: {
+  label: string
+  hint: string
+  value: string
+  onChange: (color: string) => void
+  presets: { label: string; color: string }[]
+}) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <Label className="text-xs font-medium">{label}</Label>
+        <p className="text-[11px] text-muted-foreground">{hint}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {presets.map((p) => (
+          <button
+            key={p.color}
+            type="button"
+            onClick={() => onChange(p.color)}
+            className={`relative size-8 rounded-full ring-2 transition-all hover:scale-110 ${
+              value === p.color
+                ? 'ring-primary ring-offset-2 ring-offset-background scale-110'
+                : 'ring-transparent hover:ring-foreground/20'
+            }`}
+            style={{ backgroundColor: p.color }}
+            title={p.label}
+          >
+            {value === p.color && (
+              <Check className="size-3.5 absolute inset-0 m-auto text-white drop-shadow" />
+            )}
+          </button>
+        ))}
+        <div className="relative">
+          <input
+            type="color"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="size-8 cursor-pointer rounded-full border-2 border-border"
+            title="Custom color"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const primaryPresets = [
   { label: 'Orange', color: '#fb923c' },
   { label: 'Blue', color: '#3b82f6' },
@@ -237,6 +301,7 @@ export default function WidgetConfigPage() {
   const [agentAvatar, setAgentAvatar] = useState('')
   const [copied, setCopied] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
+  const [activeTab, setActiveTab] = useState('content')
 
   // Initialize from widget
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -430,55 +495,15 @@ export default function WidgetConfigPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button variant="ghost" size="sm" onClick={copyEmbed} />
-              }
-            >
-              {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-              {copied ? 'Copied' : 'Copy Embed'}
-            </TooltipTrigger>
-            <TooltipContent>Copies installation code</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    window.open(
-                      `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}&preview=true`,
-                      '_blank',
-                    )
-                  }
-                />
-              }
-            >
-              <ExternalLink className="size-3.5" />
-              Preview
-            </TooltipTrigger>
-            <TooltipContent>Open interactive widget preview</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  size="sm"
-                  onClick={() => save.mutate(isLive ? 'paused' : 'active')}
-                  disabled={save.isPending}
-                  className={isLive ? '' : 'bg-primary text-primary-foreground hover:bg-primary/90'}
-                />
-              }
-            >
-              {isLive ? <Trash2 className="size-3.5" /> : <Play className="size-3.5" />}
-              {isLive ? 'Pause' : 'Publish'}
-            </TooltipTrigger>
-            <TooltipContent>{isLive ? 'Disable widget without deleting' : 'Make widget live'}</TooltipContent>
-          </Tooltip>
+          <Button
+            variant={isLive ? 'outline' : 'default'}
+            size="sm"
+            onClick={() => save.mutate(isLive ? 'paused' : 'active')}
+            disabled={save.isPending}
+          >
+            {isLive ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+            {isLive ? 'Pause' : 'Publish'}
+          </Button>
 
           <Button
             size="sm"
@@ -486,28 +511,45 @@ export default function WidgetConfigPage() {
             disabled={save.isPending || !isDirty}
           >
             {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-            {save.isPending ? 'Saving…' : 'Save'}
+            {save.isPending ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
           </Button>
 
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    if (window.confirm('Delete this widget? This cannot be undone.')) {
-                      deleteWidget.mutate()
-                    }
-                  }}
-                />
-              }
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground" />}
             >
-              <Trash2 className="size-4" />
-            </TooltipTrigger>
-            <TooltipContent>Delete widget</TooltipContent>
-          </Tooltip>
+              <MoreVertical className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={copyEmbed}>
+                {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+                {copied ? 'Copied!' : 'Copy embed code'}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  window.open(
+                    `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}&preview=true`,
+                    '_blank',
+                  )
+                }
+              >
+                <ExternalLink className="size-4" />
+                Open live preview
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => {
+                  if (window.confirm('Delete this widget? This cannot be undone.')) {
+                    deleteWidget.mutate()
+                  }
+                }}
+              >
+                <Trash2 className="size-4" />
+                Delete widget
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -515,14 +557,31 @@ export default function WidgetConfigPage() {
       <div className="border-t border-border" />
 
       {/* Content */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-        {/* Main */}
-        <main className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px] lg:items-start">
+        {/* Settings tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as string)} className="min-w-0">
+          <TabsList variant="line" className="mb-5">
+            <TabsTrigger value="content">
+              <MessageSquare className="size-4" />
+              Content
+            </TabsTrigger>
+            <TabsTrigger value="appearance">
+              <Palette className="size-4" />
+              Appearance
+            </TabsTrigger>
+            <TabsTrigger value="install">
+              <Code2 className="size-4" />
+              Install
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Content tab */}
+          <TabsContent value="content" className="space-y-6">
           {/* Conversation */}
           <ProductCard className="p-6">
             <div className="flex items-center gap-3 mb-5">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-                <Rocket className="size-4 text-primary" />
+                <MessageSquare className="size-4 text-primary" />
               </div>
               <div>
                 <h2 className="text-sm font-semibold">Conversation</h2>
@@ -599,40 +658,11 @@ export default function WidgetConfigPage() {
               </div>
             </div>
           </ProductCard>
+          </TabsContent>
 
-          {/* Placement */}
-          <ProductCard className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Label className="text-xs font-medium">Launcher Position</Label>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="inline-flex size-4 items-center justify-center rounded-full bg-muted text-[10px] text-muted-foreground cursor-help">
-                      ?
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Choose where the floating launcher appears</TooltipContent>
-                </Tooltip>
-              </div>
-              <div className="flex items-center rounded-lg border border-border p-0.5">
-                {(['bottom-right', 'bottom-left'] as const).map((pos) => (
-                  <button
-                    key={pos}
-                    onClick={() => { setPosition(pos); setIsDirty(true) }}
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                      position === pos
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {pos.replace('-', ' ')}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </ProductCard>
-
-          {/* Appearance */}
+          {/* Appearance tab */}
+          <TabsContent value="appearance" className="space-y-6">
+          {/* Identity + colors */}
           <ProductCard className="p-6">
             <div className="flex items-center gap-3 mb-5">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
@@ -688,129 +718,69 @@ export default function WidgetConfigPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Primary Color</Label>
-                <p className="text-[11px] text-muted-foreground">Accent for the launcher button and user bubbles</p>
-                <div className="flex flex-wrap gap-2">
-                  {primaryPresets.map((p) => (
-                    <button
-                      key={p.color}
-                      onClick={() => { setPrimaryColor(p.color); setIsDirty(true) }}
-                      className={`relative size-8 rounded-full ring-2 transition-all hover:scale-110 ${
-                        primaryColor === p.color
-                          ? 'ring-primary ring-offset-2 ring-offset-background scale-110'
-                          : 'ring-transparent hover:ring-foreground/20'
-                      }`}
-                      style={{ backgroundColor: p.color }}
-                      title={p.label}
-                    >
-                      {primaryColor === p.color && (
-                        <Check className="size-3.5 absolute inset-0 m-auto text-white drop-shadow" />
-                      )}
-                    </button>
-                  ))}
-                  <div className="relative">
-                    <input
-                      type="color"
-                      value={primaryColor}
-                      onChange={(e) => { setPrimaryColor(e.target.value); setIsDirty(true) }}
-                      className="size-8 cursor-pointer rounded-full border-2 border-border"
-                      title="Custom color"
-                    />
-                  </div>
-                </div>
-              </div>
+              <ColorField
+                label="Primary Color"
+                hint="Accent for the launcher button and user bubbles"
+                value={primaryColor}
+                onChange={(c) => { setPrimaryColor(c); setIsDirty(true) }}
+                presets={primaryPresets}
+              />
 
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Background Color</Label>
-                <p className="text-[11px] text-muted-foreground">Main background of the widget window</p>
-                <div className="flex flex-wrap gap-2">
-                  {bgPresets.map((p) => (
-                    <button
-                      key={p.color}
-                      onClick={() => { setBackgroundColor(p.color); setIsDirty(true) }}
-                      className={`relative size-8 rounded-full ring-2 transition-all hover:scale-110 ${
-                        backgroundColor === p.color
-                          ? 'ring-primary ring-offset-2 ring-offset-background scale-110'
-                          : 'ring-transparent hover:ring-foreground/20'
-                      }`}
-                      style={{ backgroundColor: p.color }}
-                      title={p.label}
-                    >
-                      {backgroundColor === p.color && (
-                        <Check className="size-3.5 absolute inset-0 m-auto text-white drop-shadow" />
-                      )}
-                    </button>
-                  ))}
-                  <div className="relative">
-                    <input
-                      type="color"
-                      value={backgroundColor}
-                      onChange={(e) => { setBackgroundColor(e.target.value); setIsDirty(true) }}
-                      className="size-8 cursor-pointer rounded-full border-2 border-border"
-                      title="Custom color"
-                    />
-                  </div>
-                </div>
-              </div>
+              <ColorField
+                label="Background Color"
+                hint="Main background of the widget window"
+                value={backgroundColor}
+                onChange={(c) => { setBackgroundColor(c); setIsDirty(true) }}
+                presets={bgPresets}
+              />
 
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Text Color</Label>
-                <p className="text-[11px] text-muted-foreground">Color of message text and labels</p>
-                <div className="flex flex-wrap gap-2">
-                  {textPresets.map((p) => (
-                    <button
-                      key={p.color}
-                      onClick={() => { setTextColor(p.color); setIsDirty(true) }}
-                      className={`relative size-8 rounded-full ring-2 transition-all hover:scale-110 ${
-                        textColor === p.color
-                          ? 'ring-primary ring-offset-2 ring-offset-background scale-110'
-                          : 'ring-transparent hover:ring-foreground/20'
-                      }`}
-                      style={{ backgroundColor: p.color }}
-                      title={p.label}
-                    >
-                      {textColor === p.color && (
-                        <Check className="size-3.5 absolute inset-0 m-auto text-white drop-shadow" />
-                      )}
-                    </button>
-                  ))}
-                  <div className="relative">
-                    <input
-                      type="color"
-                      value={textColor}
-                      onChange={(e) => { setTextColor(e.target.value); setIsDirty(true) }}
-                      className="size-8 cursor-pointer rounded-full border-2 border-border"
-                      title="Custom color"
-                    />
-                  </div>
-                </div>
+              <ColorField
+                label="Text Color"
+                hint="Color of message text and labels"
+                value={textColor}
+                onChange={(c) => { setTextColor(c); setIsDirty(true) }}
+                presets={textPresets}
+              />
+            </div>
+          </ProductCard>
+
+          {/* Placement */}
+          <ProductCard className="p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="text-sm font-semibold">Launcher Position</Label>
+                <p className="text-[11px] text-muted-foreground">Where the floating launcher appears on the page</p>
+              </div>
+              <div className="flex shrink-0 items-center rounded-lg border border-border p-0.5">
+                {(['bottom-right', 'bottom-left'] as const).map((pos) => (
+                  <button
+                    key={pos}
+                    onClick={() => { setPosition(pos); setIsDirty(true) }}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                      position === pos
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {pos.replace('-', ' ')}
+                  </button>
+                ))}
               </div>
             </div>
           </ProductCard>
-        </main>
+          </TabsContent>
 
-        {/* Sidebar */}
-        <aside className="space-y-6">
-          {/* Publish / Domains */}
-          <ProductCard className="p-5">
+          {/* Install tab */}
+          <TabsContent value="install" className="space-y-6">
+          {/* Domains */}
+          <ProductCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
                 <Globe2 className="size-4 text-primary" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold">Publish</h2>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <span className="inline-flex size-4 items-center justify-center rounded-full bg-muted text-[10px] text-muted-foreground cursor-help">
-                        ?
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>Only these domains may load your widget</TooltipContent>
-                  </Tooltip>
-                </div>
-                <p className="text-xs text-muted-foreground">Allowed origins.</p>
+                <h2 className="text-sm font-semibold">Allowed domains</h2>
+                <p className="text-xs text-muted-foreground">Only these origins may load your widget.</p>
               </div>
             </div>
 
@@ -828,7 +798,7 @@ export default function WidgetConfigPage() {
                   value={domainInput}
                   onChange={(e) => setDomainInput(e.target.value)}
                   placeholder="example.com"
-                  className="h-8 text-xs"
+                  className="h-9 text-sm"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
@@ -836,48 +806,47 @@ export default function WidgetConfigPage() {
                     }
                   }}
                 />
-                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={addDomain}>
+                <Button size="sm" variant="outline" onClick={addDomain}>
                   <Plus className="size-3.5" />
+                  Add
                 </Button>
               </div>
 
-              {domains.length > 0 && (
-                <p className="text-[11px] text-muted-foreground">
-                  {domains.length} domain{domains.length !== 1 ? 's' : ''} configured
-                </p>
-              )}
+              <p className="text-[11px] text-muted-foreground">
+                {domains.length > 0
+                  ? `${domains.length} domain${domains.length !== 1 ? 's' : ''} configured`
+                  : 'Add at least one domain before publishing.'}
+              </p>
             </div>
           </ProductCard>
 
-          {/* Install */}
-          <ProductCard className="p-5">
+          {/* Embed snippet */}
+          <ProductCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
                 <Code2 className="size-4 text-primary" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold">Install</h2>
-                <p className="text-xs text-muted-foreground">Embed on your website.</p>
+                <h2 className="text-sm font-semibold">Embed snippet</h2>
+                <p className="text-xs text-muted-foreground">Paste this before the closing &lt;/body&gt; tag.</p>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <code className="block text-[11px] leading-relaxed text-muted-foreground break-all">
+                <code className="block text-xs leading-relaxed text-muted-foreground break-all">
                   {`<script src="${window.location.origin}/widget.js" data-widget-key="${widget.publicKey}"></script>`}
                 </code>
               </div>
 
-              <Button className="w-full" size="sm" onClick={copyEmbed}>
-                {copied ? <Check className="size-3.5 text-primary-foreground" /> : <Copy className="size-3.5" />}
-                {copied ? 'Copied!' : 'Copy Embed'}
-              </Button>
-
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={copyEmbed}>
+                  {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  {copied ? 'Copied!' : 'Copy embed code'}
+                </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="text-xs"
                   onClick={() =>
                     window.open(
                       `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}&preview=true`,
@@ -885,29 +854,31 @@ export default function WidgetConfigPage() {
                     )
                   }
                 >
-                  <ExternalLink className="size-3" />
-                  Preview
+                  <ExternalLink className="size-3.5" />
+                  Live preview
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-xs"
                   onClick={() => window.open('https://docs.convio.ai/embedding', '_blank')}
                 >
-                  <ExternalLink className="size-3" />
-                  View Docs
+                  <ExternalLink className="size-3.5" />
+                  Docs
                 </Button>
               </div>
             </div>
           </ProductCard>
+          </TabsContent>
+        </Tabs>
 
-          {/* Mini Preview */}
+        {/* Sticky live preview */}
+        <aside className="lg:sticky lg:top-6">
           <ProductCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
                 <Play className="size-3.5 text-primary" />
               </div>
-              <h2 className="text-sm font-semibold">Preview</h2>
+              <h2 className="text-sm font-semibold">Live preview</h2>
             </div>
             <div
               className="relative rounded-xl overflow-hidden shadow-lg"
