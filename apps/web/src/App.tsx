@@ -33,7 +33,20 @@ import ProviderKeysPage from '@/pages/settings/provider-keys-page'
 import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
 import DataManagementPage from '@/pages/settings/data-management-page'
-import DocsPage from '@/pages/docs-page'
+import DocsOverviewPage from '@/pages/docs/index'
+import DocsPlanPage from '@/pages/docs/plan'
+import CorrectiveRagPage from '@/pages/docs/corrective-rag'
+import HybridSearchPage from '@/pages/docs/hybrid-search'
+import AgenticRagPage from '@/pages/docs/agentic-rag'
+import KnowledgeGraphRagPage from '@/pages/docs/knowledge-graph-rag'
+import TokenOptimizationPage from '@/pages/docs/token-optimization'
+import ContextOptimizationPage from '@/pages/docs/context-optimization'
+import VoicePage from '@/pages/docs/voice'
+import McpPage from '@/pages/docs/mcp'
+import GenerativeUiPage from '@/pages/docs/generative-ui'
+import MemoryPage from '@/pages/docs/memory'
+import MultiAgentPage from '@/pages/docs/multi-agent'
+import { DocsLayout } from '@/components/docs/docs-layout'
 import ComingSoonPage from '@/pages/coming-soon-page'
 
 const queryClient = new QueryClient({
@@ -59,8 +72,23 @@ export function App() {
             <Route path="/signup" element={<RedirectAuthenticated><SignupPage /></RedirectAuthenticated>} />
             <Route path="/forgot-password" element={<RedirectAuthenticated><ForgotPasswordPage /></RedirectAuthenticated>} />
             <Route path="/widget/demo" element={<WidgetDemoPage />} />
+            <Route element={<DocsLayout />}>
+              <Route path="/docs" element={<DocsOverviewPage />} />
+              <Route path="/docs/plan" element={<DocsPlanPage />} />
+              <Route path="/docs/corrective-rag" element={<CorrectiveRagPage />} />
+              <Route path="/docs/hybrid-search" element={<HybridSearchPage />} />
+              <Route path="/docs/agentic-rag" element={<AgenticRagPage />} />
+              <Route path="/docs/knowledge-graph-rag" element={<KnowledgeGraphRagPage />} />
+              <Route path="/docs/token-optimization" element={<TokenOptimizationPage />} />
+              <Route path="/docs/context-optimization" element={<ContextOptimizationPage />} />
+              <Route path="/docs/voice" element={<VoicePage />} />
+              <Route path="/docs/mcp" element={<McpPage />} />
+              <Route path="/docs/generative-ui" element={<GenerativeUiPage />} />
+              <Route path="/docs/memory" element={<MemoryPage />} />
+              <Route path="/docs/multi-agent" element={<MultiAgentPage />} />
+            </Route>
             <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<DashboardOverviewPage />} />
+            <Route path="/dashboard" element={<DashboardOverviewPage />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="/agents" element={<AgentsListPage />} />
               <Route path="/agents/new" element={<CreateAgentPage />} />
