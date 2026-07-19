@@ -11,11 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
+
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { deployments as deploymentsApi, conversations as conversationsApi } from '@/lib/api'
-import { Copy, Check, Trash2, Loader2, Globe, Play, MessageSquare, Users, Hash, Bot, RefreshCw } from 'lucide-react'
+import { Copy, Check, Trash2, Loader2, Globe, Play, MessageSquare, Users, Hash, Bot, RefreshCw, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
@@ -46,12 +45,27 @@ interface DeploymentDetailProps {
   onDelete: (id: string) => void
 }
 
-const statusBadgeStyles: Record<string, string> = {
-  active: 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:bg-emerald-400/10 dark:text-emerald-400 dark:hover:bg-emerald-400/20',
-  waiting: 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:bg-amber-400/10 dark:text-amber-400 dark:hover:bg-amber-400/20',
-  resolved: 'bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 dark:bg-sky-400/10 dark:text-sky-400 dark:hover:bg-sky-400/20',
-  closed: 'bg-zinc-500/10 text-zinc-600 hover:bg-zinc-500/20 dark:bg-zinc-400/10 dark:text-zinc-400 dark:hover:bg-zinc-400/20',
-  archived: 'bg-zinc-500/10 text-zinc-600 hover:bg-zinc-500/20 dark:bg-zinc-400/10 dark:text-zinc-400 dark:hover:bg-zinc-400/20',
+function MiniSparkline({ data, className }: { data: number[]; className?: string }) {
+  if (data.length < 2) return null
+  const max = Math.max(...data, 1)
+  const min = Math.min(...data, 0)
+  const range = max - min || 1
+  const w = 80
+  const h = 24
+  const points = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * w
+      const y = h - ((v - min) / range) * h
+      return `${x},${y}`
+    })
+    .join(' ')
+  const areaPoints = `0,${h} ${points} ${w},${h}`
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className={cn('shrink-0', className)} preserveAspectRatio="none">
+      <polygon points={areaPoints} fill="currentColor" className="text-primary/10" />
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary" />
+    </svg>
+  )
 }
 
 export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }: DeploymentDetailProps) {
@@ -167,7 +181,7 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                 <TabsTrigger value="conversations">Conversations</TabsTrigger>
               </TabsList>
 
-              <ScrollArea className="max-h-[55vh] pr-2 mt-4">
+              <div className="mt-4">
                 <TabsContent value="info" className="space-y-4 mt-0">
                   {/* Status */}
                   <div className="flex items-center justify-between">
@@ -331,41 +345,26 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                   )}
                 </TabsContent>
 
-                <TabsContent value="analytics" className="space-y-4 mt-0">
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border bg-card p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        <MessageSquare className="size-4" />
-                        <span className="text-xs font-medium">Total Conversations</span>
+                <TabsContent value="analytics" className="space-y-3 mt-0">
+                  {/* Compact KPI Cards */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { icon: MessageSquare, label: 'Conversations', value: channelConversations.length, color: 'text-primary', sparkData: [3, 5, 2, 8, channelConversations.length] },
+                      { icon: Hash, label: 'Messages', value: totalMessages, color: 'text-info', sparkData: [10, 15, 8, 20, totalMessages] },
+                      { icon: Users, label: 'Users', value: uniqueUsers, color: 'text-success', sparkData: [1, 2, 1, 3, uniqueUsers] },
+                      { icon: Bot, label: 'Active / Closed', value: `${activeConvs} / ${closedConvs}`, color: 'text-warning', sparkData: [activeConvs, closedConvs] },
+                    ].map((m) => (
+                      <div
+                        key={m.label}
+                        className="group flex items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-2.5 transition-all duration-200 hover:border-border hover:shadow-sm"
+                      >
+                        <div className="flex min-w-0 flex-col gap-0.5 flex-1 min-w-0">
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">{m.label}</span>
+                          <span className="text-lg font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
+                        </div>
+                        <MiniSparkline data={m.sparkData} className={cn('w-12 h-6', m.color)} />
                       </div>
-                      <p className="text-2xl font-bold">{channelConversations.length}</p>
-                    </div>
-                    <div className="rounded-xl border bg-card p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        <Hash className="size-4" />
-                        <span className="text-xs font-medium">Total Messages</span>
-                      </div>
-                      <p className="text-2xl font-bold">{totalMessages}</p>
-                    </div>
-                    <div className="rounded-xl border bg-card p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        <Users className="size-4" />
-                        <span className="text-xs font-medium">Unique Users</span>
-                      </div>
-                      <p className="text-2xl font-bold">{uniqueUsers}</p>
-                    </div>
-                    <div className="rounded-xl border bg-card p-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                        <Bot className="size-4" />
-                        <span className="text-xs font-medium">Active / Closed</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-2xl font-bold">{activeConvs}</p>
-                        <span className="text-muted-foreground">/</span>
-                        <p className="text-2xl font-bold text-muted-foreground">{closedConvs}</p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
 
                   {/* Conversation Status Chart */}
@@ -373,8 +372,8 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                     <>
                       <Separator />
                       <div>
-                        <span className="text-sm font-medium mb-3 block">Status Distribution</span>
-                        <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground mb-2 block">Status Distribution</span>
+                        <div className="space-y-1.5">
                           {['active', 'waiting', 'resolved', 'closed', 'archived'].map((status) => {
                             const count = channelConversations.filter(
                               (c: ConversationSummary) => c.status === status
@@ -382,23 +381,23 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                             if (count === 0) return null
                             const pct = (count / channelConversations.length) * 100
                             return (
-                              <div key={status} className="flex items-center gap-3">
-                                <Badge className={cn('text-[10px] capitalize', statusBadgeStyles[status])} variant="outline">
+                              <div key={status} className="flex items-center gap-2">
+                                <Badge className="text-[9px] capitalize min-w-[48px] justify-center" variant={status as "active" | "waiting" | "resolved" | "closed" | "archived"}>
                                   {status}
                                 </Badge>
-                                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                                   <div
                                     className={cn(
                                       'h-full rounded-full transition-all',
-                                      status === 'active' ? 'bg-emerald-500' :
-                                      status === 'waiting' ? 'bg-amber-500' :
-                                      status === 'resolved' ? 'bg-sky-500' :
-                                      'bg-zinc-400'
+                                      status === 'active' ? 'bg-success' :
+                                      status === 'waiting' ? 'bg-warning' :
+                                      status === 'resolved' ? 'bg-info' :
+                                      'bg-muted-foreground/40'
                                     )}
                                     style={{ width: `${pct}%` }}
                                   />
                                 </div>
-                                <span className="text-xs text-muted-foreground w-8 text-right">{count}</span>
+                                <span className="text-[10px] text-muted-foreground w-6 text-right tabular-nums">{count}</span>
                               </div>
                             )
                           })}
@@ -408,8 +407,8 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                   )}
 
                   {channelConversations.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <MessageSquare className="size-8 text-muted-foreground/50 mb-2" />
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <MessageSquare className="size-6 text-muted-foreground/50 mb-2" />
                       <p className="text-sm text-muted-foreground">No conversations yet</p>
                       <p className="text-xs text-muted-foreground/60 mt-1">
                         Conversations will appear here once users interact with this deployment
@@ -418,7 +417,7 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                   )}
                 </TabsContent>
 
-                <TabsContent value="conversations" className="space-y-4 mt-0">
+                <TabsContent value="conversations" className="space-y-3 mt-0">
                   {/* Filter Tabs */}
                   <div className="flex items-center gap-2">
                     {[
@@ -441,34 +440,46 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                     ))}
                   </div>
 
-                  {/* Conversations List */}
+                  {/* Conversations List (max 5) */}
                   {filteredConvs.length > 0 ? (
-                    <div className="space-y-1">
-                      {filteredConvs.map((conv: ConversationSummary) => {
-                        const lastMsg = conv.messages?.[0]
-                        return (
-                          <div key={conv.id}>
-                            <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2.5 text-xs">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="font-medium shrink-0">
-                                  {conv.contactName || conv.userName || 'Anonymous'}
-                                </span>
-                                <span className="text-muted-foreground/50">·</span>
-                                <span className="truncate text-muted-foreground">
-                                  {lastMsg ? lastMsg.content.slice(0, 50) : 'No messages'}
-                                </span>
+                    <>
+                      <div className="space-y-1">
+                        {filteredConvs.slice(0, 5).map((conv: ConversationSummary) => {
+                          const lastMsg = conv.messages?.[0]
+                          return (
+                            <div key={conv.id}>
+                              <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-xs">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="font-medium shrink-0">
+                                    {conv.contactName || conv.userName || 'Anonymous'}
+                                  </span>
+                                  <span className="text-muted-foreground/50">·</span>
+                                  <span className="truncate text-muted-foreground">
+                                    {lastMsg ? lastMsg.content.slice(0, 50) : 'No messages'}
+                                  </span>
+                                </div>
+                                <Badge className="text-[10px] ml-2 shrink-0 capitalize" variant={conv.status as "active" | "waiting" | "resolved" | "closed" | "archived"}>
+                                  {conv.status}
+                                </Badge>
                               </div>
-                              <Badge className={cn('text-[10px] ml-2 shrink-0 capitalize', statusBadgeStyles[conv.status])} variant="outline">
-                                {conv.status}
-                              </Badge>
                             </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                          )
+                        })}
+                      </div>
+                      {filteredConvs.length > 5 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          View all {filteredConvs.length} conversations
+                          <ArrowRight className="size-3 ml-1" />
+                        </Button>
+                      )}
+                    </>
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <MessageSquare className="size-8 text-muted-foreground/50 mb-2" />
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <MessageSquare className="size-6 text-muted-foreground/50 mb-2" />
                       <p className="text-sm text-muted-foreground">No conversations</p>
                       <p className="text-xs text-muted-foreground/60 mt-1">
                         {convFilter === 'active' ? 'No active conversations' : 'No closed conversations'}
@@ -476,7 +487,7 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                     </div>
                   )}
                 </TabsContent>
-              </ScrollArea>
+              </div>
             </Tabs>
           </>
         ) : null}

@@ -35,6 +35,14 @@ const badgeVariants = cva(
           "bg-muted text-muted-foreground border-border",
         past_due:
           "bg-warning/10 text-warning border-warning/20",
+        waiting:
+          "bg-warning/10 text-warning border-warning/20",
+        resolved:
+          "bg-info/10 text-info border-info/20",
+        closed:
+          "bg-muted text-muted-foreground border-border",
+        archived:
+          "bg-muted text-muted-foreground border-border",
       },
     },
     defaultVariants: {
