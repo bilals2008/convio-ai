@@ -1,12 +1,12 @@
 const COMPANIES = [
-  { name: 'Linear', src: 'https://cdn.simpleicons.org/linear/5E6AD2', invertDark: false },
-  { name: 'Notion', src: 'https://cdn.simpleicons.org/notion', invertDark: true },
-  { name: 'Vercel', src: 'https://cdn.simpleicons.org/vercel', invertDark: true },
-  { name: 'Resend', src: 'https://cdn.simpleicons.org/resend', invertDark: true },
-  { name: 'PlanetScale', src: 'https://cdn.simpleicons.org/planetscale', invertDark: true },
-  { name: 'Railway', src: 'https://cdn.simpleicons.org/railway', invertDark: true },
-  { name: 'Supabase', src: 'https://cdn.simpleicons.org/supabase/3FCF8E', invertDark: false },
-  { name: 'Prisma', src: 'https://cdn.simpleicons.org/prisma', invertDark: true },
+  { name: 'Akiflow', src: 'https://cdn.simpleicons.org/akiflow', invertDark: false },
+  { name: 'Appsmith', src: 'https://cdn.simpleicons.org/appsmith', invertDark: false },
+  { name: 'Directus', src: 'https://cdn.simpleicons.org/directus', invertDark: false },
+  { name: 'Formbricks', src: 'https://cdn.simpleicons.org/formbricks', invertDark: false },
+  { name: 'Listmonk', src: 'https://cdn.simpleicons.org/listmonk', invertDark: false },
+  { name: 'NocoDB', src: 'https://cdn.simpleicons.org/nocodb', invertDark: false },
+  { name: 'Plane', src: 'https://cdn.simpleicons.org/plane', invertDark: false },
+  { name: 'Gitea', src: 'https://cdn.simpleicons.org/gitea', invertDark: false },
 ]
 
 function CompanyLogo({ company }: { company: (typeof COMPANIES)[number] }) {
