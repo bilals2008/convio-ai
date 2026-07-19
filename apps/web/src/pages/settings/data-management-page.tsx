@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/shared/loading'
-import { Search, X } from 'lucide-react'
+import { Search, X, ChevronRight, Clock, HardDrive } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -51,23 +51,51 @@ import { toast } from 'sonner'
 
 const PAGE_SIZE = 10
 
-interface DataSummary {
-  agents: number
-  conversations: number
-  'knowledge-bases': number
-  documents: number
-  integrations: number
-  'provider-keys': number
-  analytics: number
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
-type CategoryKey = keyof DataSummary
+function formatRelativeTime(dateStr: string | null): string {
+  if (!dateStr) return 'Never'
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
+interface SummaryItem {
+  label: string
+  count: number
+}
+
+interface DataSummary {
+  items: SummaryItem[]
+  total: number
+  storageBytes: number
+  lastUpdated: string | null
+}
+
+type CategoryKey = 'agents' | 'conversations' | 'knowledge-bases' | 'documents' | 'integrations' | 'provider-keys' | 'analytics'
+
+interface CascadeItem {
+  label: string
+  count: number
+}
 
 interface CategoryDef {
   key: CategoryKey
   label: string
   description: string
   icon: typeof Brain
+  iconColor: string
   columns: string[]
   renderRow: (item: Record<string, unknown>) => React.ReactNode
   filterOptions?: { value: string; label: string }[]
@@ -81,6 +109,7 @@ const categories: CategoryDef[] = [
     label: 'Agents',
     description: 'AI agents, configs, deployments & analytics',
     icon: Brain,
+    iconColor: 'text-violet-500',
     columns: ['Name', 'Model', 'Status', 'Created'],
     searchPlaceholder: 'Search agents...',
     filterOptions: [
@@ -104,6 +133,7 @@ const categories: CategoryDef[] = [
     label: 'Conversations',
     description: 'Chat conversations and messages across agents',
     icon: MessageSquare,
+    iconColor: 'text-sky-500',
     columns: ['Channel', 'Agent', 'Status', 'Created'],
     searchPlaceholder: 'Search by name or channel...',
     filterOptions: [
@@ -126,6 +156,7 @@ const categories: CategoryDef[] = [
     label: 'Knowledge Bases',
     description: 'Knowledge bases, documents & embeddings',
     icon: BookOpen,
+    iconColor: 'text-emerald-500',
     columns: ['Name', 'Description', 'Docs', 'Created'],
     searchPlaceholder: 'Search knowledge bases...',
     renderRow: (item) => (
@@ -136,13 +167,14 @@ const categories: CategoryDef[] = [
         <td className="py-2 text-xs text-muted-foreground">{new Date(String(item.createdAt)).toLocaleDateString()}</td>
       </>
     ),
-    warning: 'Agents lose their knowledge source',
+    warning: 'Agents referencing these bases will lose their knowledge source',
   },
   {
     key: 'documents',
     label: 'Documents',
     description: 'Uploaded docs & vector embeddings',
     icon: FileText,
+    iconColor: 'text-amber-500',
     columns: ['Name', 'Type', 'Status', 'Created'],
     searchPlaceholder: 'Search documents...',
     filterOptions: [
@@ -166,6 +198,7 @@ const categories: CategoryDef[] = [
     label: 'Integrations',
     description: 'Channel deployments (WhatsApp, Slack, etc.)',
     icon: LinkIcon,
+    iconColor: 'text-pink-500',
     columns: ['Channel', 'Agent', 'Status', 'Created'],
     searchPlaceholder: 'Search by channel...',
     filterOptions: [
@@ -188,6 +221,7 @@ const categories: CategoryDef[] = [
     label: 'Provider Keys',
     description: 'BYOK API keys (OpenAI, Anthropic, etc.)',
     icon: Shield,
+    iconColor: 'text-rose-500',
     columns: ['Provider', 'Label', 'Key Preview', 'Created'],
     searchPlaceholder: 'Search by provider or label...',
     renderRow: (item) => (
@@ -204,6 +238,7 @@ const categories: CategoryDef[] = [
     label: 'Analytics',
     description: 'Analytics data & performance metrics',
     icon: BarChart3,
+    iconColor: 'text-cyan-500',
     columns: ['Date', 'Agent', 'Conversations', 'Messages'],
     searchPlaceholder: 'Search analytics...',
     renderRow: (item) => (
@@ -260,14 +295,14 @@ export default function DataManagementPage() {
   })
 
   const summary: DataSummary = summaryQuery.data?.data?.data ?? {
-    agents: 0,
-    conversations: 0,
-    'knowledge-bases': 0,
-    documents: 0,
-    integrations: 0,
-    'provider-keys': 0,
-    analytics: 0,
+    items: [],
+    total: 0,
+    storageBytes: 0,
+    lastUpdated: null,
   }
+
+  const getCategoryCount = (label: string): number =>
+    summary.items.find((i) => i.label === label)?.count ?? 0
 
   const itemsQuery = useQuery({
     queryKey: ['data-items', orgId, viewingCategory, search, statusFilter, offset],
@@ -290,6 +325,13 @@ export default function DataManagementPage() {
       }
     }
   }, [itemsQuery.data, offset])
+
+  const cascadeQuery = useQuery({
+    queryKey: ['data-cascade', orgId, deletingCategory],
+    queryFn: () => dataManagementApi.cascade(orgId!, deletingCategory!),
+    enabled: !!orgId && !!deletingCategory,
+  })
+  const cascadeItems: CascadeItem[] = cascadeQuery.data?.data?.data ?? []
 
   const items = loadedItems
   const total: number = itemsQuery.data?.data?.total ?? 0
@@ -332,8 +374,8 @@ export default function DataManagementPage() {
   const getCategoryLabel = (key: string) =>
     categories.find((c) => c.key === key)?.label || key
 
-  const totalItems = Object.values(summary).reduce((sum, count) => sum + count, 0)
-  const hasAnyData = totalItems > 0
+  const hasAnyData = summary.total > 0
+  const summaryError = summaryQuery.isError
 
   if (summaryQuery.isLoading) {
     return (
@@ -350,63 +392,100 @@ export default function DataManagementPage() {
         description="Manage and delete workspace data. These actions are permanent."
       />
 
+      {/* Warning banner */}
+      <div className="flex items-start gap-2.5 rounded-lg border border-warning/20 bg-warning/5 px-3.5 py-2.5 text-sm">
+        <AlertTriangle className="size-4 text-warning shrink-0 mt-0.5" />
+        <p className="text-muted-foreground">
+          Deleted data <span className="font-medium text-foreground">cannot be recovered</span>. Please review carefully before proceeding.
+        </p>
+      </div>
+
+      {summaryError && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/5 px-3.5 py-2.5 text-sm">
+          <AlertTriangle className="size-4 text-destructive shrink-0 mt-0.5" />
+          <p className="text-muted-foreground">
+            Failed to load summary data. <button onClick={() => summaryQuery.refetch()} className="underline text-foreground font-medium">Retry</button>
+          </p>
+        </div>
+      )}
+
+      {/* Summary card */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             <div className="flex size-7 items-center justify-center rounded-md bg-primary/10">
               <Brain className="size-3.5 text-primary" />
             </div>
-            Workspace Data
+            Workspace Summary
           </CardTitle>
-          <CardDescription>
-            {totalItems.toLocaleString()} items across {Object.values(summary).filter((c) => c > 0).length} categories
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-foreground">{summary.total.toLocaleString()}</span>
+              <span className="text-muted-foreground">Total Items</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <HardDrive className="size-3.5 text-muted-foreground" />
+              <span className="font-semibold text-foreground">{formatBytes(summary.storageBytes)}</span>
+              <span className="text-muted-foreground">Storage</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="size-3.5 text-muted-foreground" />
+              <span className="font-semibold text-foreground">{formatRelativeTime(summary.lastUpdated)}</span>
+              <span className="text-muted-foreground">Last Updated</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Category list */}
+      <Card>
+        <CardHeader className="pb-1">
+          <CardTitle className="text-sm">Data Categories</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y divide-border/50">
             {categories.map((cat) => {
-              const count = summary[cat.key]
+              const count = getCategoryCount(cat.key)
               const Icon = cat.icon
               return (
                 <div
                   key={cat.key}
-                  className="flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+                  className="group flex items-center gap-3 px-1 py-3 transition-colors hover:bg-muted/30 cursor-pointer"
+                  onClick={() => { setViewingCategory(cat.key); setSearch(''); setStatusFilter('all'); setOffset(0) }}
                 >
-                  <button
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                    onClick={() => { setViewingCategory(cat.key); setSearch(''); setStatusFilter('all'); setOffset(0) }}
-                  >
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Icon className="size-4 text-primary" />
+                  <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/15`}>
+                    <Icon className={`size-4 ${cat.iconColor}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">{cat.label}</span>
+                      {cat.warning && count > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-warning/10 px-1.5 py-0 text-[9px] font-medium text-warning">
+                          CASCADE
+                        </span>
+                      )}
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{cat.label}</span>
-                        {cat.warning && count > 0 && (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-warning/30 text-warning">
-                            Cascade
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">{cat.description}</p>
+                    <p className="text-xs text-muted-foreground truncate">{cat.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="text-right">
+                      <span className="text-sm font-semibold tabular-nums text-foreground/80">{count.toLocaleString()}</span>
+                      <p className="text-[10px] text-muted-foreground">items</p>
                     </div>
-                  </button>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="text-sm font-semibold tabular-nums">{count.toLocaleString()}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                    <button
+                      className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
                       disabled={count === 0 || deleteCategoryMutation.isPending}
-                      onClick={() => setDeletingCategory(cat.key)}
+                      onClick={(e) => { e.stopPropagation(); setDeletingCategory(cat.key) }}
                     >
                       {deleteCategoryMutation.isPending && deletingCategory === cat.key ? (
-                        <Loader2 className="size-3 animate-spin" />
+                        <Loader2 className="size-3.5 animate-spin" />
                       ) : (
-                        <Trash2 className="size-3" />
+                        <Trash2 className="size-3.5" />
                       )}
-                      Delete
-                    </Button>
+                    </button>
+                    <ChevronRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
                   </div>
                 </div>
               )
@@ -415,34 +494,41 @@ export default function DataManagementPage() {
         </CardContent>
       </Card>
 
+      {/* Danger Zone */}
       <Card className="border-destructive/30">
-        <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2 text-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm text-destructive">
             <div className="flex size-7 items-center justify-center rounded-md bg-destructive/10">
               <AlertTriangle className="size-3.5 text-destructive" />
             </div>
-            Wipe All Data
+            Danger Zone
           </CardTitle>
           <CardDescription>
-            Permanently delete all data in <strong>{org?.name || 'this workspace'}</strong> including agents,
-            conversations, knowledge bases, documents, integrations, provider keys, and analytics.
+            Permanently delete <strong>all data</strong> in <strong>{org?.name || 'this workspace'}</strong>.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
-            variant="destructive"
-            size="sm"
-            disabled={!hasAnyData || wipeMutation.isPending}
-            onClick={() => setWipeDialogOpen(true)}
-            className="gap-1.5"
-          >
-            {wipeMutation.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="size-3.5" />
-            )}
-            Wipe All Data
-          </Button>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Delete Entire Workspace</p>
+                <p className="text-xs text-muted-foreground">
+                  This will remove {summary.total.toLocaleString()} items including agents, conversations,
+                  documents, integrations, provider keys, and analytics.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={!hasAnyData || wipeMutation.isPending}
+                onClick={() => setWipeDialogOpen(true)}
+                className="shrink-0 gap-1.5"
+              >
+                <Trash2 className="size-3.5" />
+                Delete Workspace
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -451,15 +537,14 @@ export default function DataManagementPage() {
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {viewingCat && <viewingCat.icon className="size-4 text-primary" />}
+              {viewingCat && <viewingCat.icon className={`size-4 ${viewingCat.iconColor}`} />}
               {viewingCat?.label}
             </DialogTitle>
             <DialogDescription>
-              {total} total{search || statusFilter !== 'all' ? ` (filtered)` : ''}
+              {total} total{search || statusFilter !== 'all' ? ' (filtered)' : ''}
             </DialogDescription>
           </DialogHeader>
 
-          {/* Search & Filter */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
@@ -492,7 +577,6 @@ export default function DataManagementPage() {
             )}
           </div>
 
-          {/* Items list */}
           <div className="max-h-[480px] overflow-auto -mx-1">
             {itemsQuery.isLoading && items.length === 0 ? (
               <div className="space-y-2 px-1">
@@ -531,7 +615,6 @@ export default function DataManagementPage() {
             )}
           </div>
 
-          {/* Load more */}
           {hasMore && (
             <div className="flex justify-center pt-1">
               <Button
@@ -541,10 +624,8 @@ export default function DataManagementPage() {
                 disabled={itemsQuery.isFetching}
                 onClick={() => setOffset((o) => o + PAGE_SIZE)}
               >
-                {itemsQuery.isFetching ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : null}
-                Load more ({offset + PAGE_SIZE} of {total})
+                {itemsQuery.isFetching && <Loader2 className="size-3 animate-spin" />}
+                Load more ({Math.min(offset + PAGE_SIZE, total)} of {total})
               </Button>
             </div>
           )}
@@ -553,7 +634,7 @@ export default function DataManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Category delete dialog */}
+      {/* Delete category confirmation */}
       <AlertDialog
         open={deletingCategory !== null}
         onOpenChange={(open) => { if (!open) setDeletingCategory(null) }}
@@ -564,23 +645,30 @@ export default function DataManagementPage() {
               <AlertTriangle className="size-4 text-destructive" />
               Delete {deletingCategory ? getCategoryLabel(deletingCategory) : ''}
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
+            <AlertDialogDescription className="space-y-3">
               <span className="block">
-                Are you sure you want to delete all{' '}
-                <strong>{deletingCategory ? getCategoryLabel(deletingCategory).toLowerCase() : ''}</strong>?
-                This cannot be undone.
+                This will permanently delete <strong>{getCategoryCount(deletingCategory ?? '').toLocaleString()} {deletingCategory ? getCategoryLabel(deletingCategory).toLowerCase() : ''}</strong>.
               </span>
+              {cascadeItems.length > 0 && (
+                <div className="rounded-md bg-muted/50 p-2.5 space-y-1">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">This includes</p>
+                  {cascadeItems.map((ci) => (
+                    <div key={ci.label} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{ci.label}</span>
+                      <span className="font-medium tabular-nums">{ci.count.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {deletingCategory && categories.find((c) => c.key === deletingCategory)?.warning && (
-                <span className="flex items-center gap-1 text-destructive font-medium text-xs">
+                <span className="flex items-center gap-1 text-warning text-xs font-medium">
                   <AlertTriangle className="size-3 shrink-0" />
                   {categories.find((c) => c.key === deletingCategory)?.warning}
                 </span>
               )}
-              {deletingCategory && (
-                <span className="block text-xs text-muted-foreground">
-                  {summary[deletingCategory].toLocaleString()} {summary[deletingCategory] === 1 ? 'item' : 'items'} will be deleted.
-                </span>
-              )}
+              <span className="block text-xs text-destructive font-medium">
+                This action cannot be undone.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -592,13 +680,13 @@ export default function DataManagementPage() {
               {deleteCategoryMutation.isPending && deletingCategory && (
                 <Loader2 className="size-3 animate-spin" />
               )}
-              Delete
+              Delete {deletingCategory ? getCategoryLabel(deletingCategory) : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Wipe all dialog */}
+      {/* Wipe all confirmation */}
       <AlertDialog
         open={wipeDialogOpen}
         onOpenChange={(open) => {
@@ -609,22 +697,24 @@ export default function DataManagementPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-destructive" />
-              Wipe All Data
+              Delete Entire Workspace
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <span className="block">
                 This will permanently delete <strong>all data</strong> in{' '}
                 <strong>{org?.name || 'the workspace'}</strong>.
               </span>
-              <span className="block text-xs text-muted-foreground space-y-0.5 rounded-md bg-muted/50 p-2.5">
-                {Object.entries(summary)
-                  .filter(([, count]) => count > 0)
-                  .map(([key, count]) => (
-                    <span key={key} className="block">
-                      {count.toLocaleString()} {getCategoryLabel(key).toLowerCase()}
-                    </span>
+              {summary.total > 0 && (
+                <div className="rounded-md bg-muted/50 p-2.5 space-y-1">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">This includes</p>
+                  {summary.items.filter((i) => i.count > 0).map((i) => (
+                    <div key={i.label} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{getCategoryLabel(i.label).toLowerCase()}</span>
+                      <span className="font-medium tabular-nums">{i.count.toLocaleString()}</span>
+                    </div>
                   ))}
-              </span>
+                </div>
+              )}
               <span className="flex items-center gap-1 text-destructive font-medium text-xs">
                 <AlertTriangle className="size-3 shrink-0" />
                 This action cannot be undone.
@@ -658,7 +748,7 @@ export default function DataManagementPage() {
               className="gap-1.5"
             >
               {wipeMutation.isPending && <Loader2 className="size-3 animate-spin" />}
-              Wipe All Data
+              Delete Workspace
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

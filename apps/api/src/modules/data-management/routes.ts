@@ -80,6 +80,12 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
       deploymentsCount,
       providerKeysCount,
       analyticsCount,
+      lastAgent,
+      lastConversation,
+      lastDocument,
+      lastDeployment,
+      lastKb,
+      lastProviderKey,
     ] = await Promise.all([
       prisma.agent.count({ where: { organizationId: orgId } }),
       agentIds.length > 0
@@ -96,17 +102,47 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
       agentIds.length > 0
         ? prisma.analytics.count({ where: { agentId: { in: agentIds } } })
         : Promise.resolve(0),
+      prisma.agent.findFirst({ where: { organizationId: orgId }, orderBy: { updatedAt: 'desc' }, select: { updatedAt: true } }),
+      agentIds.length > 0
+        ? prisma.conversation.findFirst({ where: { agentId: { in: agentIds } }, orderBy: { updatedAt: 'desc' }, select: { updatedAt: true } })
+        : Promise.resolve(null),
+      kbIds.length > 0
+        ?       prisma.document.findFirst({ where: { knowledgeBaseId: { in: kbIds } }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } })
+        : Promise.resolve(null),
+      agentIds.length > 0
+        ? prisma.deployment.findFirst({ where: { agentId: { in: agentIds } }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } })
+        : Promise.resolve(null),
+      prisma.knowledgeBase.findFirst({ where: { organizationId: orgId }, orderBy: { updatedAt: 'desc' }, select: { updatedAt: true } }),
+      prisma.providerKey.findFirst({ where: { organizationId: orgId }, orderBy: { updatedAt: 'desc' }, select: { updatedAt: true } }),
     ])
+
+    const timestamps = [
+      lastAgent?.updatedAt,
+      lastConversation?.updatedAt,
+      lastDocument?.createdAt,
+      lastDeployment?.createdAt,
+      lastKb?.updatedAt,
+      lastProviderKey?.updatedAt,
+    ].filter((d): d is Date => d instanceof Date)
+    const lastUpdated = timestamps.length > 0 ? new Date(Math.max(...timestamps.map((d) => d.getTime()))).toISOString() : null
+
+    const totalItems = agentsCount + conversationsCount + knowledgeBasesCount + documentsCount + deploymentsCount + providerKeysCount + analyticsCount
+    const storageBytes = agentsCount * 2048 + conversationsCount * 5120 + documentsCount * 3072 + knowledgeBasesCount * 1024 + analyticsCount * 256
 
     return {
       data: {
-        agents: agentsCount,
-        conversations: conversationsCount,
-        'knowledge-bases': knowledgeBasesCount,
-        documents: documentsCount,
-        integrations: deploymentsCount,
-        'provider-keys': providerKeysCount,
-        analytics: analyticsCount,
+        items: [
+          { label: 'agents', count: agentsCount },
+          { label: 'conversations', count: conversationsCount },
+          { label: 'knowledge-bases', count: knowledgeBasesCount },
+          { label: 'documents', count: documentsCount },
+          { label: 'integrations', count: deploymentsCount },
+          { label: 'provider-keys', count: providerKeysCount },
+          { label: 'analytics', count: analyticsCount },
+        ],
+        total: totalItems,
+        storageBytes,
+        lastUpdated,
       },
     }
   })
@@ -199,6 +235,85 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
       default:
         throw new AppError(400, `Unknown category: ${category}`)
     }
+  })
+
+  // GET /api/organizations/:orgId/data/:category/cascade — What will be deleted
+  fastify.get('/organizations/:orgId/data/:category/cascade', {
+    preHandler: [fastify.authenticate, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }) })],
+  }, async (request) => {
+    const { orgId, category } = request.params as { orgId: string; category: string }
+    await fastify.getMembership(request.userId!, orgId)
+
+    const agentIds = await getAgentIds(orgId)
+    const kbIds = await getKnowledgeBaseIds(orgId)
+
+    const items: { label: string; count: number }[] = []
+
+    switch (category) {
+      case 'agents': {
+        const count = await prisma.agent.count({ where: { organizationId: orgId } })
+        items.push({ label: 'agents', count })
+        if (agentIds.length > 0) {
+          const [convCount, deployCount, analyticsCount] = await Promise.all([
+            prisma.conversation.count({ where: { agentId: { in: agentIds } } }),
+            prisma.deployment.count({ where: { agentId: { in: agentIds } } }),
+            prisma.analytics.count({ where: { agentId: { in: agentIds } } }),
+          ])
+          if (convCount > 0) items.push({ label: 'conversations', count: convCount })
+          if (deployCount > 0) items.push({ label: 'deployments', count: deployCount })
+          if (analyticsCount > 0) items.push({ label: 'analytics records', count: analyticsCount })
+        }
+        break
+      }
+      case 'conversations': {
+        if (agentIds.length === 0) break
+        const convIds = await getConversationIds(agentIds)
+        if (convIds.length > 0) {
+          const msgCount = await prisma.message.count({ where: { conversationId: { in: convIds } } })
+          items.push({ label: 'conversations', count: convIds.length })
+          if (msgCount > 0) items.push({ label: 'messages', count: msgCount })
+        }
+        break
+      }
+      case 'knowledge-bases': {
+        const count = await prisma.knowledgeBase.count({ where: { organizationId: orgId } })
+        items.push({ label: 'knowledge bases', count })
+        if (kbIds.length > 0) {
+          const docCount = await prisma.document.count({ where: { knowledgeBaseId: { in: kbIds } } })
+          if (docCount > 0) items.push({ label: 'documents', count: docCount })
+        }
+        break
+      }
+      case 'documents': {
+        if (kbIds.length === 0) break
+        const docIds = await getDocumentIds(kbIds)
+        if (docIds.length > 0) {
+          items.push({ label: 'documents', count: docIds.length })
+          const chunkCount = await prisma.documentChunk.count({ where: { documentId: { in: docIds } } })
+          if (chunkCount > 0) items.push({ label: 'vector chunks', count: chunkCount })
+        }
+        break
+      }
+      case 'integrations': {
+        if (agentIds.length === 0) break
+        const count = await prisma.deployment.count({ where: { agentId: { in: agentIds } } })
+        items.push({ label: 'deployments', count })
+        break
+      }
+      case 'provider-keys': {
+        const count = await prisma.providerKey.count({ where: { organizationId: orgId } })
+        items.push({ label: 'provider keys', count })
+        break
+      }
+      case 'analytics': {
+        if (agentIds.length === 0) break
+        const count = await prisma.analytics.count({ where: { agentId: { in: agentIds } } })
+        items.push({ label: 'analytics records', count })
+        break
+      }
+    }
+
+    return { data: items }
   })
 
   // DELETE /api/organizations/:orgId/data/:category — Delete all data in a category

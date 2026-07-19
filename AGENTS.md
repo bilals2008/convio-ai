@@ -86,3 +86,24 @@ Rules for AI agents working on this codebase.
 - All AI providers accept optional `apiKey` in `GenerateParams`
 - Backend routes: `GET/POST/PATCH/DELETE /organizations/:orgId/provider-keys`
 - Models endpoint includes user-configured providers
+
+
+# UI & Production Standards
+
+Follow these rules for every feature and page:
+
+- Use consistent spacing (8px / 16px / 24px scale).
+- Keep border radius consistent across all UI components.
+- Always provide proper empty states.
+- Use loading skeletons instead of spinners where appropriate.
+- Handle errors gracefully with retry actions.
+- Show success and error toast notifications for user actions.
+- Support keyboard shortcuts and full keyboard navigation.
+- Ensure accessibility (ARIA labels, focus states, Tab navigation).
+- Make every page fully responsive.
+- Require confirmation dialogs for destructive actions.
+- Keep animations subtle (150–250ms) and purposeful.
+- Optimize performance (avoid unnecessary re-renders and heavy components).
+- Follow security best practices (protect API keys, validate permissions, apply rate limits, never expose secrets).
+
+These standards are mandatory for all new and existing features.

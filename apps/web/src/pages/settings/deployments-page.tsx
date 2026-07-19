@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Plus, Trash2, Loader2, Copy, Check, Globe } from 'lucide-react'
+import { Plus, Trash2, Loader2, Copy, Check, Globe, Calendar } from 'lucide-react'
 import { DeploymentForm } from '@/components/settings/deployment-form'
 import { DeploymentDetail } from '@/components/settings/deployment-detail'
 import { SearchFilterBar } from '@/components/shared/search-filter-bar'
@@ -155,12 +155,12 @@ export default function DeploymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight">Deployments</h1>
           <p className="text-sm text-muted-foreground">Connect agents to channels</p>
         </div>
-        <Button size="sm" onClick={() => setEditing({})}>
+        <Button size="sm" onClick={() => setEditing({})} className="self-start">
           <Plus className="size-4" />
           New
         </Button>
@@ -227,82 +227,93 @@ export default function DeploymentsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {filteredDeployments.map((deployment: DeploymentItem) => {
           const ch = channelLogos[deployment.channel] || channelLogos.web
+          const config = deployment.config || {}
+          const subtitle = (config.guildName || config.workspaceName || config.projectName || deployment.agentName || deployment.agentId) as string
           return (
             <div
               key={deployment.id}
-              className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/30"
+              className="group rounded-xl border border-border/60 bg-card cursor-pointer transition-all duration-200 hover:border-border hover:shadow-sm overflow-hidden"
               onClick={() => setSelectedDeployment(deployment)}
             >
-              <div className="flex size-8 items-center justify-center rounded-md bg-muted shrink-0">
-                {ch.logo ? (
-                  <img src={ch.logo} alt={deployment.channel} className="size-4" />
-                ) : (
-                  <span className="text-[10px] font-bold text-muted-foreground">{ch.fallback}</span>
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium capitalize truncate">{deployment.channel}</span>
-                  <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0 ${
-                    deployment.status === 'active'
-                      ? 'bg-success/10 text-success'
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {deployment.status}
-                  </span>
+              <div className="flex items-center gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3">
+                <div className="flex size-8 sm:size-9 items-center justify-center rounded-lg bg-muted shrink-0 transition-transform duration-200 group-hover:scale-105">
+                  {ch.logo ? (
+                    <img src={ch.logo} alt={deployment.channel} className="size-4" />
+                  ) : (
+                    <span className="text-[10px] sm:text-xs font-bold text-muted-foreground">{ch.fallback}</span>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{deployment.agentName || deployment.agentId}</p>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold capitalize truncate">{deployment.channel}</span>
+                    <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0 ${
+                      deployment.status === 'active'
+                        ? 'bg-success/10 text-success'
+                        : deployment.status === 'error'
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {deployment.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
+                </div>
+
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigator.clipboard.writeText(deployment.id)
+                            setCopiedId(deployment.id)
+                            setTimeout(() => setCopiedId(null), 1500)
+                          }}
+                        >
+                          {copiedId === deployment.id ? (
+                            <Check className="size-3.5 text-success" />
+                          ) : (
+                            <Copy className="size-3.5" />
+                          )}
+                        </button>
+                      }
+                    />
+                    <TooltipContent side="top" className="text-xs">
+                      {copiedId === deployment.id ? 'Copied!' : 'Copy ID'}
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          className="rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeletingId(deployment.id)
+                          }}
+                        >
+                          {deleteMutation.isPending && deletingId === deployment.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                        </button>
+                      }
+                    />
+                    <TooltipContent side="top" className="text-xs">
+                      Delete
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
 
-              <div className="flex items-center gap-0.5 shrink-0">
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        className="rounded p-1 text-muted-foreground hover:bg-muted transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigator.clipboard.writeText(deployment.id)
-                          setCopiedId(deployment.id)
-                          setTimeout(() => setCopiedId(null), 1500)
-                        }}
-                      >
-                        {copiedId === deployment.id ? (
-                          <Check className="size-3 text-success" />
-                        ) : (
-                          <Copy className="size-3" />
-                        )}
-                      </button>
-                    }
-                  />
-                  <TooltipContent side="top" className="text-xs">
-                    {copiedId === deployment.id ? 'Copied!' : 'Copy deployment ID'}
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setDeletingId(deployment.id)
-                        }}
-                      >
-                        {deleteMutation.isPending && deletingId === deployment.id ? (
-                          <Loader2 className="size-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-3" />
-                        )}
-                      </button>
-                    }
-                  />
-                  <TooltipContent side="top" className="text-xs">
-                    Delete deployment
-                  </TooltipContent>
-                </Tooltip>
+              <div className="flex items-center gap-1.5 border-t border-border/40 px-3 py-1.5 sm:px-4 sm:py-2 bg-muted/20">
+                <Calendar className="size-3 text-muted-foreground" />
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground">Created {new Date(deployment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
             </div>
           )
