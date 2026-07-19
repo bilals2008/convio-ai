@@ -64,7 +64,7 @@ function PlanCard({ plan }: { plan: PlanConfig }) {
         <div className="h-px bg-border mb-5" />
 
         {/* Features */}
-        <ul className="space-y-2.5 mb-6 flex-1">
+        <ul className="space-y-2.5 mb-6">
           {plan.features.map((feature) => (
             <li key={feature.text} className="flex items-start gap-2 text-[12px] md:text-[13px]">
               <span className="mt-0.5 size-4 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -78,7 +78,7 @@ function PlanCard({ plan }: { plan: PlanConfig }) {
         {/* CTA */}
         <Button
           variant={plan.variant}
-          className="w-full py-2.5 md:py-3 text-[13px] md:text-[14px] h-auto transition-transform duration-200 group-hover:scale-[1.02]"
+          className="w-full mt-auto py-2.5 md:py-3 text-[13px] md:text-[14px] h-auto transition-transform duration-200 group-hover:scale-[1.02]"
         >
           {plan.cta}
         </Button>

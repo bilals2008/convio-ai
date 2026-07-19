@@ -55,6 +55,7 @@ export const pricingConfig: PricingConfig = {
       href: '/signup',
       variant: 'outline',
       highlighted: false,
+      icon: 'zap',
     },
     {
       key: 'pro',
