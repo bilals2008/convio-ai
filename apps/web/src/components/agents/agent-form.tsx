@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { AgentModelPicker } from './agent-model-picker'
 import { AgentPromptEditor } from './agent-prompt-editor'
 import { AgentSettings } from './agent-settings'
@@ -12,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { providerKeys as keysApi, knowledge as knowledgeApi } from '@/lib/api'
+import { providerKeys as keysApi, knowledge as knowledgeApi, mcpServers as mcpApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
 interface ProviderKeyOption {
@@ -20,6 +21,12 @@ interface ProviderKeyOption {
   provider: string
   keyPreview: string
   label: string | null
+}
+
+interface McpServerOption {
+  id: string
+  name: string
+  type: string
 }
 
 interface AgentFormData {
@@ -31,6 +38,7 @@ interface AgentFormData {
   maxTokens: number
   providerKeyId?: string
   knowledgeBaseId?: string
+  mcpServerIds?: string[]
 }
 
 interface AgentFormProps {
@@ -57,6 +65,15 @@ export function AgentForm({ data, onChange, errors, disabled }: AgentFormProps) 
     queryFn: async () => {
       const res = await knowledgeApi.list(orgId!)
       return (res.data.data || []) as Array<{ id: string; name: string }>
+    },
+    enabled: !!orgId,
+  })
+
+  const { data: mcpServers } = useQuery<McpServerOption[]>({
+    queryKey: ['mcp-servers', orgId],
+    queryFn: async () => {
+      const res = await mcpApi.list(orgId!)
+      return (res.data.data || []) as McpServerOption[]
     },
     enabled: !!orgId,
   })
@@ -157,6 +174,50 @@ export function AgentForm({ data, onChange, errors, disabled }: AgentFormProps) 
         <p className="text-xs text-muted-foreground">
           Connect a knowledge base to enable RAG (Retrieval-Augmented Generation).
         </p>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <Label>MCP Servers (optional)</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Link MCP servers to give this agent access to external tools. Configure servers in{' '}
+            <a href="/settings/mcp-servers" className="underline underline-offset-2 hover:text-foreground transition-colors">
+              MCP Servers
+            </a>
+            .
+          </p>
+        </div>
+        {!mcpServers || mcpServers.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No MCP servers configured.</p>
+        ) : (
+          <div className="space-y-2">
+            {mcpServers.map((server) => {
+              const checked = (data.mcpServerIds || []).includes(server.id)
+              return (
+                <label
+                  key={server.id}
+                  className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50"
+                >
+                  <Checkbox
+                    checked={checked}
+                    disabled={disabled}
+                    onCheckedChange={(v) => {
+                      const current = data.mcpServerIds || []
+                      update(
+                        'mcpServerIds',
+                        v ? [...current, server.id] : current.filter((s) => s !== server.id)
+                      )
+                    }}
+                  />
+                  <div className="min-w-0">
+                    <span className="text-sm">{server.name}</span>
+                    <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">({server.type})</span>
+                  </div>
+                </label>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">

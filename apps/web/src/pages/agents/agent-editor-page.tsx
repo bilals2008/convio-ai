@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { AgentForm } from '@/components/agents/agent-form'
 import type { AgentFormData } from '@/components/agents/agent-form'
 import { AgentChatPanel } from '@/components/agents/agent-chat-panel'
-import { agents as agentsApi } from '@/lib/api'
+import { agents as agentsApi, mcpServers as mcpApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 
 const agentSchema = z.object({
@@ -23,6 +23,7 @@ const agentSchema = z.object({
   maxTokens: z.number().min(100).max(8192),
   providerKeyId: z.string().optional(),
   knowledgeBaseId: z.string().optional(),
+  mcpServerIds: z.array(z.string()).optional().default([]),
 })
 
 const defaultFormData: AgentFormData = {
@@ -34,6 +35,7 @@ const defaultFormData: AgentFormData = {
   maxTokens: 2048,
   providerKeyId: undefined,
   knowledgeBaseId: undefined,
+  mcpServerIds: [],
 }
 
 interface Agent {
@@ -70,6 +72,16 @@ export default function AgentEditorPage() {
     enabled: isEdit,
   })
 
+  const { data: linkedMcpServers } = useQuery({
+    queryKey: ['agent-mcp-servers', id],
+    queryFn: async () => {
+      const res = await mcpApi.listByAgent(id!)
+      const servers = res.data.data ?? res.data ?? []
+      return (Array.isArray(servers) ? servers : []) as Array<{ id: string; name: string }>
+    },
+    enabled: isEdit,
+  })
+
   useEffect(() => {
     if (existingAgent) {
       setFormData({
@@ -81,13 +93,26 @@ export default function AgentEditorPage() {
         maxTokens: existingAgent.maxTokens || 2048,
         providerKeyId: existingAgent.providerKeyId || undefined,
         knowledgeBaseId: existingAgent.knowledgeBaseId || undefined,
+        mcpServerIds: (linkedMcpServers || []).map((s) => s.id),
       })
     }
-  }, [existingAgent])
+  }, [existingAgent, linkedMcpServers])
 
   const createMutation = useMutation({
-    mutationFn: (data: AgentFormData) =>
-      agentsApi.create({ ...data, organizationId: orgId! } as Record<string, unknown>),
+    mutationFn: async (data: AgentFormData) => {
+      const { mcpServerIds, ...rest } = data
+      const res = await agentsApi.create({ ...rest, organizationId: orgId! } as Record<string, unknown>)
+      const agentId = (res.data as any)?.data?.id ?? (res.data as any)?.id
+      const selectedIds = mcpServerIds || []
+      if (agentId && selectedIds.length > 0) {
+        await Promise.all(
+          selectedIds.map((serverId) =>
+            (mcpApi.linkToAgent(agentId, serverId) as unknown as Promise<unknown>).catch(() => {})
+          )
+        )
+      }
+      return agentId
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       navigate('/agents')
@@ -95,7 +120,22 @@ export default function AgentEditorPage() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: (data: AgentFormData) => agentsApi.update(id!, data as unknown as Record<string, unknown>),
+    mutationFn: async (data: AgentFormData) => {
+      const { mcpServerIds, ...rest } = data
+      await agentsApi.update(id!, rest as unknown as Record<string, unknown>)
+      const selectedIds = mcpServerIds || []
+      const prevIds = (linkedMcpServers || []).map((s) => s.id)
+      const toLink = selectedIds.filter((s) => !prevIds.includes(s))
+      const toUnlink = prevIds.filter((s) => !selectedIds.includes(s))
+      await Promise.all([
+        ...toLink.map((serverId) =>
+          (mcpApi.linkToAgent(id!, serverId) as unknown as Promise<unknown>).catch(() => {})
+        ),
+        ...toUnlink.map((serverId) =>
+          (mcpApi.unlinkFromAgent(id!, serverId) as unknown as Promise<unknown>).catch(() => {})
+        ),
+      ])
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       navigate('/agents')
@@ -213,6 +253,7 @@ export default function AgentEditorPage() {
               maxTokens: formData.maxTokens,
               providerKeyId: formData.providerKeyId,
               knowledgeBaseId: formData.knowledgeBaseId || null,
+              mcpServerIds: formData.mcpServerIds || [],
             }}
             />
           </div>

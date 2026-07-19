@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { Brain, AlertCircle } from 'lucide-react'
+import { Brain, AlertCircle, Plug } from 'lucide-react'
 import { ChatPanel } from '@/components/shared/chat-panel'
 import { Badge } from '@/components/ui/badge'
 import { agents as agentsApi } from '@/lib/api'
@@ -22,6 +22,7 @@ interface AgentChatPanelProps {
     providerKeyId?: string
     knowledgeBaseId?: string | null
     tools?: string[]
+    mcpServerIds?: string[]
   }
   className?: string
 }
@@ -177,6 +178,15 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
               No Knowledge
             </Badge>
           )}
+          {agentConfig.mcpServerIds && agentConfig.mcpServerIds.length > 0 ? (
+            <Badge
+              variant="secondary"
+              className="border-primary/20 bg-primary/10 text-primary text-[10px] font-normal gap-1"
+            >
+              <Plug className="size-3" />
+              {agentConfig.mcpServerIds.length} MCP
+            </Badge>
+          ) : null}
           {!canSend && (
             <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">
               <AlertCircle className="size-3 mr-1" />

@@ -3,11 +3,18 @@ import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
 import { AgentCapabilities, type Capability } from '@/components/agents/agent-capabilities'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
 import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
+import { Plug } from 'lucide-react'
 
 interface ModelOption {
   id: string
   name: string
   provider?: string
+}
+
+interface McpServerOption {
+  id: string
+  name: string
+  type: string
 }
 
 interface AgentBuilderProps {
@@ -21,6 +28,9 @@ interface AgentBuilderProps {
   modelsErrorMessage?: string
   tools?: BuiltInTool[]
   onToolToggle?: (id: string, enabled: boolean) => void
+  mcpServers?: McpServerOption[]
+  linkedMcpServerIds?: string[]
+  onMcpServerToggle?: (serverId: string, checked: boolean) => void
 }
 
 export function AgentBuilder({
@@ -34,6 +44,9 @@ export function AgentBuilder({
   modelsErrorMessage,
   tools = builtInTools.map((t) => ({ ...t })),
   onToolToggle,
+  mcpServers,
+  linkedMcpServerIds = [],
+  onMcpServerToggle,
 }: AgentBuilderProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -73,6 +86,38 @@ export function AgentBuilder({
               onToggle={onToolToggle}
               disabled={disabled}
             />
+          </div>
+        )}
+
+        {mcpServers && mcpServers.length > 0 && onMcpServerToggle && (
+          <div className="rounded-lg border border-border/50 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="flex size-5 items-center justify-center rounded-md bg-primary/10">
+                <Plug className="size-3 text-primary" />
+              </div>
+              <span className="text-sm font-medium">MCP Servers</span>
+            </div>
+            <div className="space-y-1">
+              {mcpServers.map((server) => {
+                const checked = linkedMcpServerIds.includes(server.id)
+                return (
+                  <label
+                    key={server.id}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-muted/50 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={disabled}
+                      onChange={() => onMcpServerToggle(server.id, !checked)}
+                      className="size-3.5 accent-primary"
+                    />
+                    <span className="text-xs">{server.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">({server.type})</span>
+                  </label>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

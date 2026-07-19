@@ -26,8 +26,9 @@ import {
   AgentAnalytics,
   AgentSettings,
 } from '@/components/agents/agent-detail'
-import { agents as agentsApi, deployments as deploymentsApi, widgets } from '@/lib/api'
+import { agents as agentsApi, deployments as deploymentsApi, widgets, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
+import { useOrg } from '@/lib/org-context'
 
 interface Agent {
   id: string
@@ -66,9 +67,12 @@ export default function AgentDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
+  const { orgId } = useOrg()
+
   const [activeTab, setActiveTab] = useState('overview')
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
+  const [linkedMcpServerIds, setLinkedMcpServerIds] = useState<string[]>([])
 
   const form = useForm({
     resolver: zodResolver(agentDetailSchema),
@@ -124,6 +128,31 @@ export default function AgentDetailPage() {
     },
     enabled: !!agent?.organizationId,
   })
+
+  const { data: mcpServers } = useQuery({
+    queryKey: ['mcp-servers', orgId],
+    queryFn: async () => {
+      const res = await mcpApi.list(orgId!)
+      return (res.data.data || []) as Array<{ id: string; name: string; type: string }>
+    },
+    enabled: !!orgId,
+  })
+
+  const { data: linkedMcpServers } = useQuery({
+    queryKey: ['agent-mcp-servers', id],
+    queryFn: async () => {
+      const res = await mcpApi.listByAgent(id!)
+      const servers = res.data.data ?? res.data ?? []
+      return (Array.isArray(servers) ? servers : []) as Array<{ id: string; name: string }>
+    },
+    enabled: !!id,
+  })
+
+  useEffect(() => {
+    if (linkedMcpServers) {
+      setLinkedMcpServerIds(linkedMcpServers.map((s) => s.id))
+    }
+  }, [linkedMcpServers])
 
   const shareWidget = agentWidgets[0]
   const [shareLinkOptimistic, setShareLinkOptimistic] = useState<boolean | null>(null)
@@ -195,7 +224,20 @@ export default function AgentDetailPage() {
   }, [agent, form])
 
   const updateMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) => agentsApi.update(id!, data),
+    mutationFn: async (data: Record<string, unknown>) => {
+      await agentsApi.update(id!, data)
+      const prevIds = (linkedMcpServers || []).map((s) => s.id)
+      const toLink = linkedMcpServerIds.filter((s) => !prevIds.includes(s))
+      const toUnlink = prevIds.filter((s) => !linkedMcpServerIds.includes(s))
+      await Promise.all([
+        ...toLink.map((serverId) =>
+          (mcpApi.linkToAgent(id!, serverId) as unknown as Promise<unknown>).catch(() => {})
+        ),
+        ...toUnlink.map((serverId) =>
+          (mcpApi.unlinkFromAgent(id!, serverId) as unknown as Promise<unknown>).catch(() => {})
+        ),
+      ])
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       queryClient.invalidateQueries({ queryKey: ['agent', id] })
@@ -209,6 +251,12 @@ export default function AgentDetailPage() {
       navigate('/agents')
     },
   })
+
+  const handleMcpServerToggle = (serverId: string, checked: boolean) => {
+    setLinkedMcpServerIds((prev) =>
+      checked ? [...prev, serverId] : prev.filter((s) => s !== serverId)
+    )
+  }
 
   const handleSave = form.handleSubmit((data) => {
     updateMutation.mutate({
@@ -349,6 +397,9 @@ export default function AgentDetailPage() {
             modelsErrorMessage={modelsErrorObj instanceof Error ? modelsErrorObj.message : undefined}
             tools={tools}
             onToolToggle={handleToolToggle}
+            mcpServers={mcpServers}
+            linkedMcpServerIds={linkedMcpServerIds}
+            onMcpServerToggle={handleMcpServerToggle}
           />
         </TabsContent>
 

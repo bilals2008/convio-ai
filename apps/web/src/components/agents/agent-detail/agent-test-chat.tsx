@@ -17,6 +17,7 @@ import {
   Calculator,
   ExternalLink,
   Clock,
+  Plug,
 } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
@@ -791,7 +792,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                       {toolCalls.length > 0 && (
                         <div className="px-3 py-2 space-y-1.5 border-b border-border/40">
                           {toolCalls.map((tc, i) => {
-                            const Icon = toolIcons[tc.tool] || Bot
+                            const Icon = toolIcons[tc.tool] || Plug
                             const isDone = tc.status === 'done'
                             return (
                               <div

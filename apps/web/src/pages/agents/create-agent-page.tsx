@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Loader2, Plus, Globe, Link, Code, Lightbulb, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Globe, Link, Code, Lightbulb, ExternalLink, Plug } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
@@ -20,7 +20,7 @@ import { defaultCapabilities } from '@/components/agents/agent-capabilities'
 import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
 import { AgentKnowledgeSources } from '@/components/agents/agent-knowledge-sources'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
-import { agents as agentsApi } from '@/lib/api'
+import { agents as agentsApi, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
@@ -66,6 +66,17 @@ export default function CreateAgentPage() {
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
   const [deploymentOptions, setDeploymentOptions] = useState(DEFAULT_DEPLOYMENTS)
+  const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<string[]>([])
+
+  const { data: mcpServers } = useQuery({
+    queryKey: ['mcp-servers', orgId],
+    queryFn: async () => {
+      const res = await mcpApi.list(orgId!)
+      return (res.data.data || []) as Array<{ id: string; name: string; type: string }>
+    },
+    enabled: !!orgId,
+  })
+
   const form = useForm<CreateAgentValues>({
     resolver: zodResolver(createSchema),
     defaultValues: DEFAULT_FORM_VALUES,
@@ -93,7 +104,18 @@ export default function CreateAgentPage() {
   }
 
   const createMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) => agentsApi.create(data),
+    mutationFn: async (data: Record<string, unknown>) => {
+      const res = await agentsApi.create(data)
+      const agentId = (res.data as any)?.data?.id ?? (res.data as any)?.id
+      if (agentId && selectedMcpServerIds.length > 0) {
+        await Promise.all(
+          selectedMcpServerIds.map((serverId) =>
+            (mcpApi.linkToAgent(agentId, serverId) as unknown as Promise<unknown>).catch(() => {})
+          )
+        )
+      }
+      return agentId
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       toast.success('Agent created')
@@ -250,6 +272,51 @@ export default function CreateAgentPage() {
                     onToggle={handleToolToggle}
                     disabled={saving}
                   />
+                </CardContent>
+              </Card>
+
+              {/* MCP Servers */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>MCP Servers</CardTitle>
+                  <CardDescription>Link external tools via MCP.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!mcpServers || mcpServers.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No MCP servers configured.{' '}
+                      <a href="/settings/mcp-servers" className="underline underline-offset-2 hover:text-foreground">Add one</a>.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {mcpServers.map((server) => {
+                        const checked = selectedMcpServerIds.includes(server.id)
+                        return (
+                          <label
+                            key={server.id}
+                            className="flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={saving}
+                              onChange={() =>
+                                setSelectedMcpServerIds((prev) =>
+                                  checked ? prev.filter((s) => s !== server.id) : [...prev, server.id]
+                                )
+                              }
+                              className="size-4 accent-primary"
+                            />
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Plug className="size-3.5 shrink-0 text-muted-foreground" />
+                              <span className="text-xs">{server.name}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono">({server.type})</span>
+                            </div>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
