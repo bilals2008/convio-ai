@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
-
 import { Input } from '@/components/ui/input'
+import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from '@/components/ui/chart'
+import { ChartTooltipContent, ChartLegendContent } from '@/components/application/charts/charts-base'
+import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
 import { deployments as deploymentsApi, conversations as conversationsApi } from '@/lib/api'
 import { Copy, Check, Trash2, Loader2, Globe, Play, MessageSquare, Users, Hash, Bot, RefreshCw, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -45,45 +47,46 @@ interface DeploymentDetailProps {
   onDelete: (id: string) => void
 }
 
-function MiniBarChart({ data, color = 'currentColor', className }: { data: number[]; color?: string; className?: string }) {
-  if (data.length === 0) return null
-  const max = Math.max(...data, 1)
-  const w = 72
-  const h = 28
-  const gap = 2
-  const barW = Math.max((w - gap * (data.length - 1)) / data.length, 2)
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className={cn('shrink-0', className)}>
-      {data.map((v, i) => {
-        const barH = max > 0 ? (v / max) * (h - 2) : 0
-        return (
-          <rect
-            key={i}
-            x={i * (barW + gap)}
-            y={h - barH}
-            width={barW}
-            height={barH}
-            rx={1.5}
-            fill={color}
-            opacity={0.7 + (v / max) * 0.3}
-          />
-        )
-      })}
-    </svg>
-  )
-}
+const chartConfig = {
+  messages: {
+    label: 'Messages',
+    color: 'hsl(217, 91%, 60%)',
+  },
+  conversations: {
+    label: 'Conversations',
+    color: 'hsl(142, 71%, 45%)',
+  },
+  users: {
+    label: 'Users',
+    color: 'hsl(271, 91%, 65%)',
+  },
+} satisfies ChartConfig
 
-function buildDailySeries(
-  items: { createdAt: string }[],
+function buildDailyData(
+  conversations: { createdAt: string; messages?: { createdAt: string }[]; contactName?: string; userName?: string; id: string }[],
   days = 7,
-): number[] {
+) {
   const now = new Date()
-  const buckets: number[] = new Array(days).fill(0)
-  for (const item of items) {
-    const d = new Date(item.createdAt)
-    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
-    const idx = days - 1 - diffDays
-    if (idx >= 0 && idx < days) buckets[idx]++
+  const buckets: { date: string; conversations: number; messages: number; users: number }[] = []
+  for (let i = days - 1; i >= 0; i--) {
+    const dayStart = new Date(now)
+    dayStart.setDate(dayStart.getDate() - i)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(dayStart)
+    dayEnd.setHours(23, 59, 59, 999)
+    const label = dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const userSet = new Set<string>()
+    let msgs = 0
+    let convs = 0
+    for (const c of conversations) {
+      const d = new Date(c.createdAt)
+      if (d >= dayStart && d <= dayEnd) {
+        convs++
+        msgs += c.messages?.length || 0
+        userSet.add(c.contactName || c.userName || c.id)
+      }
+    }
+    buckets.push({ date: label, conversations: convs, messages: msgs, users: userSet.size })
   }
   return buckets
 }
@@ -158,6 +161,9 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
     (c: ConversationSummary) => c.channel === data?.channel
   )
 
+  const rawDailyData = buildDailyData(channelConversations, 7)
+  const dailyData = rawDailyData.some((d) => d.messages > 0) ? rawDailyData : []
+
   const filteredConvs = convFilter === 'all'
     ? channelConversations
     : channelConversations.filter((c: ConversationSummary) => c.status === convFilter)
@@ -166,14 +172,6 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
   const activeConvs = channelConversations.filter((c: ConversationSummary) => c.status === 'active').length
   const closedConvs = channelConversations.filter((c: ConversationSummary) => c.status === 'closed').length
   const uniqueUsers = new Set(channelConversations.map((c: ConversationSummary) => c.contactName || c.userName || c.id)).size
-
-  const dailyConvCounts = buildDailySeries(channelConversations, 7)
-  const dailyMsgCounts = buildDailySeries(
-    channelConversations.flatMap((c) => c.messages || []),
-    7,
-  )
-  const dailyUserDates = channelConversations.map((c) => ({ createdAt: c.createdAt }))
-  const dailyUserCounts = buildDailySeries(dailyUserDates, 7)
 
   return (
     <Dialog open={!!deploymentId} onOpenChange={(open) => { if (!open) onClose() }}>
@@ -374,26 +372,90 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                 </TabsContent>
 
                 <TabsContent value="analytics" className="space-y-3 mt-0">
-                  {/* Compact KPI Cards with Real Charts */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* KPI Numbers Row */}
+                  <div className="grid grid-cols-4 gap-1.5">
                     {[
-                      { icon: MessageSquare, label: 'Conversations', value: channelConversations.length, color: 'var(--color-primary)', barData: dailyConvCounts },
-                      { icon: Hash, label: 'Messages', value: totalMessages, color: 'var(--color-info)', barData: dailyMsgCounts },
-                      { icon: Users, label: 'Users', value: uniqueUsers, color: 'var(--color-success)', barData: dailyUserCounts },
-                      { icon: Bot, label: 'Active / Closed', value: `${activeConvs} / ${closedConvs}`, color: 'var(--color-warning)', barData: [activeConvs, closedConvs] },
+                      { label: 'Conversations', value: channelConversations.length, dot: 'bg-[hsl(142,71%,45%)]' },
+                      { label: 'Messages', value: totalMessages, dot: 'bg-[hsl(217,91%,60%)]' },
+                      { label: 'Users', value: uniqueUsers, dot: 'bg-[hsl(271,91%,65%)]' },
+                      { label: 'Active/Closed', value: `${activeConvs}/${closedConvs}`, dot: 'bg-[hsl(38,92%,50%)]' },
                     ].map((m) => (
-                      <div
-                        key={m.label}
-                        className="group flex items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-2.5 transition-all duration-200 hover:border-border hover:shadow-sm"
-                      >
-                        <div className="flex min-w-0 flex-col gap-0.5 flex-1 min-w-0">
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">{m.label}</span>
-                          <span className="text-lg font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
+                      <div key={m.label} className="rounded-lg border border-border/60 bg-card px-2 py-2 text-center">
+                        <div className="flex items-center justify-center gap-1.5 mb-1">
+                          <span className={cn('size-1.5 rounded-full', m.dot)} />
+                          <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground truncate">{m.label}</span>
                         </div>
-                        <MiniBarChart data={m.barData} color={m.color} className="w-[72px] h-7" />
+                        <span className="text-base font-semibold text-foreground">{m.value}</span>
                       </div>
                     ))}
                   </div>
+
+                  {/* Combined Chart */}
+                  {channelConversations.length > 0 && (
+                    <div className="rounded-xl border border-border/60 bg-card p-3">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2 block">Last 7 days</span>
+                      <ChartContainer config={chartConfig} className="h-[160px] w-full">
+                        <AreaChart data={dailyData}>
+                          <defs>
+                            <linearGradient id="fillConv" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="var(--color-conversations)" stopOpacity={0.8} />
+                              <stop offset="95%" stopColor="var(--color-conversations)" stopOpacity={0.05} />
+                            </linearGradient>
+                            <linearGradient id="fillMsg" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="var(--color-messages)" stopOpacity={0.8} />
+                              <stop offset="95%" stopColor="var(--color-messages)" stopOpacity={0.05} />
+                            </linearGradient>
+                            <linearGradient id="fillUsr" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="var(--color-users)" stopOpacity={0.8} />
+                              <stop offset="95%" stopColor="var(--color-users)" stopOpacity={0.05} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={4}
+                            tick={{ fontSize: 9, fill: 'var(--muted-foreground)' }}
+                          />
+                          <ChartTooltip
+                            cursor={false}
+                            content={
+                              <ChartTooltipContent
+                                indicator="dot"
+                                className="fill-card border-border/60"
+                              />
+                            }
+                          />
+                          <Area
+                            dataKey="messages"
+                            type="natural"
+                            fill="url(#fillMsg)"
+                            stroke="var(--color-messages)"
+                            strokeWidth={1.5}
+                            stackId="a"
+                          />
+                          <Area
+                            dataKey="conversations"
+                            type="natural"
+                            fill="url(#fillConv)"
+                            stroke="var(--color-conversations)"
+                            strokeWidth={1.5}
+                            stackId="a"
+                          />
+                          <Area
+                            dataKey="users"
+                            type="natural"
+                            fill="url(#fillUsr)"
+                            stroke="var(--color-users)"
+                            strokeWidth={1.5}
+                            stackId="a"
+                          />
+                          <ChartLegend content={<ChartLegendContent />} />
+                        </AreaChart>
+                      </ChartContainer>
+                    </div>
+                  )}
 
                   {/* Conversation Status Chart */}
                   {channelConversations.length > 0 && (
