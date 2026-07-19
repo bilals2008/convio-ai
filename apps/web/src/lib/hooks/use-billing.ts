@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { billing } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
+import { toast } from 'sonner'
 
 interface UsageData {
   month: number
@@ -45,10 +46,14 @@ export function useCheckout() {
   const { orgId } = useOrg()
 
   return useMutation({
-    mutationFn: (planKey: string) => billing.checkout(orgId!, planKey),
+    mutationFn: ({ planKey, billingPeriod }: { planKey: string; billingPeriod?: string }) =>
+      billing.checkout(orgId!, planKey, billingPeriod),
     onSuccess: (res) => {
-      const url = res?.data?.data?.url as string | undefined
+      const url = res?.data?.data?.checkoutUrl as string | undefined
       if (url) window.location.href = url
+    },
+    onError: () => {
+      toast.error('Failed to start checkout. Please try again.')
     },
   })
 }

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Navbar, Footer } from '@/components/landing'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,7 @@ import { Check, Zap, Shield, Crown, ShieldCheck, CreditCard, Headphones, Clock }
 import { pricingConfig } from '@/lib/pricing/config'
 import type { PlanConfig } from '@/lib/pricing/config'
 import { cn } from '@/lib/utils'
+import { useSession } from '@/lib/hooks/useAuth'
 
 const { plans, section, footer } = pricingConfig
 
@@ -62,9 +63,8 @@ const FAQS = [
   },
 ]
 
-function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
+function PlanCard({ plan, isYearly, onAction }: { plan: PlanConfig; isYearly: boolean; onAction?: (plan: PlanConfig) => void }) {
   const icon = plan.icon ? PLAN_ICONS[plan.icon] : null
-  const isLink = plan.href.startsWith('/')
   const monthlyPrice = isYearly && plan.yearlyPrice ? plan.yearlyPrice : plan.price
   const period = isYearly && plan.yearlyPrice ? '/month' : plan.period
   const yearlyTotal = isYearly && plan.yearlyPrice ? parseInt(plan.yearlyPrice.replace('$', '')) * 12 : null
@@ -135,6 +135,7 @@ function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
         <Button
           variant={plan.variant}
           className="w-full mt-auto py-2.5 md:py-3 text-[13px] md:text-[14px] h-auto transition-transform duration-200 group-hover:scale-[1.02]"
+          onClick={() => onAction?.(plan)}
         >
           {plan.cta}
         </Button>
@@ -142,15 +143,25 @@ function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
     </div>
   )
 
-  if (isLink) {
-    return <Link to={plan.href} className="h-full">{cardContent}</Link>
-  }
-
-  return <a href={plan.href} className="h-full">{cardContent}</a>
+  return <div className="h-full">{cardContent}</div>
 }
 
 export default function PricingPage() {
   const [isYearly, setIsYearly] = useState(false)
+  const navigate = useNavigate()
+  const { data: session } = useSession()
+
+  const handlePlanAction = useCallback((plan: PlanConfig) => {
+    if (plan.key === 'enterprise') {
+      window.location.href = plan.href
+      return
+    }
+    if (session?.user) {
+      navigate(`/settings/billing?plan=${plan.key}&billing=${isYearly ? 'yearly' : 'monthly'}`)
+    } else {
+      navigate(`/signup?plan=${plan.key}&billing=${isYearly ? 'yearly' : 'monthly'}`)
+    }
+  }, [session, isYearly, navigate])
 
   return (
     <div className="min-h-screen bg-background">
@@ -206,7 +217,7 @@ export default function PricingPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 items-stretch mt-10">
               {plans.map((plan, i) => (
                 <ScrollReveal key={plan.name} delay={i * 0.06} className="h-full">
-                  <PlanCard plan={plan} isYearly={isYearly} />
+                  <PlanCard plan={plan} isYearly={isYearly} onAction={handlePlanAction} />
                 </ScrollReveal>
               ))}
             </div>

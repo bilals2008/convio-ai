@@ -137,7 +137,7 @@ export function UsageAlert({
                 size="sm"
                 variant={isUrgent ? 'default' : 'outline'}
                 className="h-6 text-[10px] gap-1 shrink-0"
-                onClick={() => { if (!mock) checkout.mutate('pro') }}
+                onClick={() => { if (!mock) checkout.mutate({ planKey: 'pro', billingPeriod: 'monthly' }) }}
                 disabled={mock ? false : checkout.isPending}
               >
                 <ArrowUpRight className="size-2.5" />
@@ -184,7 +184,7 @@ export function UsageAlert({
             size="sm"
             variant={isUrgent ? 'default' : 'outline'}
             className="h-7 text-xs gap-1 shrink-0"
-            onClick={() => { if (!mock) checkout.mutate('pro') }}
+            onClick={() => { if (!mock) checkout.mutate({ planKey: 'pro', billingPeriod: 'monthly' }) }}
             disabled={mock ? false : checkout.isPending}
           >
             <ArrowUpRight className="size-3" />

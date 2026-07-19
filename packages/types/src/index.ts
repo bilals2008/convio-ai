@@ -179,7 +179,6 @@ export interface BillingPlan {
   limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
   price: string
   priceMonthly: number
-  providerProductId?: string
 }
 
 export interface BillingUsage {

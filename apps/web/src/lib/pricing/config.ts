@@ -16,8 +16,6 @@ export interface PlanConfig {
   href: string
   variant: 'default' | 'outline'
   highlighted: boolean
-  productId?: string
-  variantId?: string
   icon?: 'zap' | 'shield' | 'star' | 'crown'
   iconColor?: string
 }

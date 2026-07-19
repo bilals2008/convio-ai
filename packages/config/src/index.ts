@@ -34,7 +34,8 @@ export const PLANS: Record<string, {
   limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
   price: string
   priceMonthly: number
-  providerProductId?: string
+  providerMonthlyProductId?: string
+  providerYearlyProductId?: string
 }> = {
   free: {
     label: 'Free',
@@ -49,7 +50,8 @@ export const PLANS: Record<string, {
     limits: { agents: 5, messagesPerMonth: 25000, knowledgeBases: 10 },
     price: '$39/mo',
     priceMonthly: 39,
-    providerProductId: process.env.CREEM_PRO_PRODUCT_ID || '',
+    providerMonthlyProductId: process.env.CREEM_PRO_MONTHLY_PRODUCT_ID || '',
+    providerYearlyProductId: process.env.CREEM_PRO_YEARLY_PRODUCT_ID || '',
   },
   business: {
     label: 'Business',
@@ -57,7 +59,8 @@ export const PLANS: Record<string, {
     limits: { agents: Infinity, messagesPerMonth: 150000, knowledgeBases: 50 },
     price: '$99/mo',
     priceMonthly: 99,
-    providerProductId: process.env.CREEM_BUSINESS_PRODUCT_ID || '',
+    providerMonthlyProductId: process.env.CREEM_BUSINESS_MONTHLY_PRODUCT_ID || '',
+    providerYearlyProductId: process.env.CREEM_BUSINESS_YEARLY_PRODUCT_ID || '',
   },
   enterprise: {
     label: 'Enterprise',
@@ -65,7 +68,6 @@ export const PLANS: Record<string, {
     limits: { agents: Infinity, messagesPerMonth: Infinity, knowledgeBases: Infinity },
     price: 'Custom',
     priceMonthly: 0,
-    providerProductId: process.env.CREEM_ENTERPRISE_PRODUCT_ID || '',
   },
 }
 

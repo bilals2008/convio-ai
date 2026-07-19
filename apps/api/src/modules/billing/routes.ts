@@ -116,13 +116,21 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    const { plan: planKey } = request.body as { plan: string }
+    const { plan: planKey, billingPeriod } = request.body as { plan: string; billingPeriod?: string }
 
     await fastify.ensureAdmin(request.userId!, orgId)
 
     const planDef = PLANS[planKey]
-    if (!planDef || !planDef.providerProductId) {
+    if (!planDef) {
       throw new AppError(400, `Checkout not available for this plan`, 'CHECKOUT_UNAVAILABLE')
+    }
+
+    const productId = billingPeriod === 'yearly'
+      ? (planDef as any).providerYearlyProductId
+      : (planDef as any).providerMonthlyProductId
+
+    if (!productId) {
+      throw new AppError(400, `Checkout not available for this plan/period`, 'CHECKOUT_UNAVAILABLE')
     }
 
     const org = await prisma.organization.findUnique({
@@ -136,9 +144,9 @@ export default async function billingRoutes(fastify: FastifyInstance) {
       method: 'POST',
       headers: creemHeaders(),
       body: JSON.stringify({
-        product_id: planDef.providerProductId,
+        product_id: productId,
         success_url: `${APP_URL}/settings/billing?checkout=success`,
-        metadata: { orgId },
+        metadata: { orgId, billingPeriod },
       }),
     })
 
@@ -194,20 +202,19 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // POST /api/billing/webhook
-  fastify.addContentTypeParser(
-    'application/json',
-    { parseAs: 'string' },
-    (_req, body: string, done) => {
-      done(null, body)
-    },
-  )
+  // POST /api/billing/webhook — scoped plugin to isolate raw body parser
+  fastify.register(async (scoped) => {
+    scoped.addContentTypeParser(
+      'application/json',
+      { parseAs: 'string' },
+      (_req, body: string, done) => {
+        done(null, body)
+      },
+    )
 
-  fastify.post('/billing/webhook', {
-    preHandler: [],
-  }, async (request, reply) => {
-    const signature = request.headers['creem-signature'] as string | undefined
-    const body = request.body as string
+    scoped.post('/billing/webhook', {}, async (request, reply) => {
+      const body = request.body as string
+      const signature = (request.headers['creem-signature'] || request.headers['Creem-Signature']) as string | undefined
 
     if (!signature || !verifyWebhookSignature(body, signature)) {
       reply.code(401)
@@ -510,12 +517,14 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     }
 
     return { data: { received: true } }
+    })
   })
 }
 
 function getPlanFromProductId(productId: string): string {
   for (const [key, plan] of Object.entries(PLANS)) {
-    if (plan.providerProductId === productId) return key
+    const p = plan as any
+    if (p.providerMonthlyProductId === productId || p.providerYearlyProductId === productId) return key
   }
   return 'free'
 }

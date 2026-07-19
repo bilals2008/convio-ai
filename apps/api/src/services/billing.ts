@@ -20,7 +20,6 @@ export async function getOrgPlan(orgId: string): Promise<BillingPlan> {
     limits: planDef.limits,
     price: planDef.price,
     priceMonthly: planDef.priceMonthly,
-    providerProductId: planDef.providerProductId,
   }
 }
 

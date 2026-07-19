@@ -205,10 +205,25 @@ export const billing = {
     api.get(`/organizations/${orgId}/billing/usage`, { params }),
   plan: (orgId: string) => api.get(`/organizations/${orgId}/billing/plan`),
   subscription: (orgId: string) => api.get(`/organizations/${orgId}/billing/subscription`),
-  checkout: (orgId: string, plan: string) =>
-    api.post(`/organizations/${orgId}/billing/checkout`, { plan }),
+  checkout: (orgId: string, plan: string, billingPeriod?: string) =>
+    api.post(`/organizations/${orgId}/billing/checkout`, { plan, billingPeriod: billingPeriod || 'monthly' }),
   portal: (orgId: string) => api.post(`/organizations/${orgId}/billing/portal`),
   invoices: (orgId: string) => api.get(`/organizations/${orgId}/billing/invoices`),
+}
+
+export const mcpServers = {
+  list: (orgId: string) => api.get(`/organizations/${orgId}/mcp-servers`),
+  get: (id: string) => api.get(`/mcp-servers/${id}`),
+  create: (orgId: string, data: Record<string, unknown>) =>
+    api.post(`/organizations/${orgId}/mcp-servers`, data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/mcp-servers/${id}`, data),
+  delete: (id: string) => api.delete(`/mcp-servers/${id}`),
+  test: (id: string) => api.post(`/mcp-servers/${id}/test`),
+  listByAgent: (agentId: string) => api.get(`/agents/${agentId}/mcp-servers`),
+  linkToAgent: (agentId: string, serverId: string) =>
+    api.post(`/agents/${agentId}/mcp-servers/${serverId}`),
+  unlinkFromAgent: (agentId: string, serverId: string) =>
+    api.delete(`/agents/${agentId}/mcp-servers/${serverId}`),
 }
 
 export const dataManagement = {
