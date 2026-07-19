@@ -6,6 +6,7 @@
     "moduleDetection": "force",
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
+    "jsx": "react-jsx",
     "noEmit": true,
     "strict": true,
     "outDir": "dist",

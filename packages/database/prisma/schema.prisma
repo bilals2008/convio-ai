@@ -16,6 +16,7 @@ model Profile {
   updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
   createdAgents Agent[]      @relation("AgentCreator")
   memberships   Membership[]
+  invitedMe     Invitation[]
 
   @@index([email])
   @@map("profiles")
@@ -36,6 +37,7 @@ model Organization {
   tools            Tool[]
   widgets          Widget[]
   auditLogs        AuditLog[]
+  invitations      Invitation[]
   moderationConfig ModerationConfig?
   ssoConfigs       SsoConfig?
   billingCustomer  BillingCustomer?
@@ -257,6 +259,25 @@ model Analytics {
 
   @@unique([agentId, date])
   @@index([agentId])
+}
+
+model Invitation {
+  id             String       @id @default(uuid())
+  email          String
+  organizationId String
+  role           String       @default("member")
+  token          String       @unique
+  invitedById    String?
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  invitedBy      Profile?     @relation(fields: [invitedById], references: [id])
+
+  @@index([email])
+  @@index([token])
+  @@index([organizationId])
+  @@map("invitations")
 }
 
 model AuditLog {

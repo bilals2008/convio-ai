@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Download, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/page-header'
 import { Skeleton } from '@/components/shared/loading'
 import { Button } from '@/components/ui/button'
@@ -51,6 +52,10 @@ export default function TeamMembersPage() {
       orgsApi.updateMemberRole(orgId!, userId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members', orgId] })
+      toast.success('Role updated')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update role')
     },
   })
 
@@ -60,16 +65,27 @@ export default function TeamMembersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members', orgId] })
       setRemoveMember(null)
+      toast.success('Member removed')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to remove member')
     },
   })
 
   const inviteMutation = useMutation({
     mutationFn: (data: { members: Array<{ email: string; role: string }> }) =>
-      orgsApi.api.post(`/organizations/${orgId}/members/bulk`, data),
-    onSuccess: () => {
+      orgsApi.api.post(`/organizations/${orgId}/invitations`, data),
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['members', orgId] })
       queryClient.invalidateQueries({ queryKey: ['audit-logs', orgId] })
       setInviteOpen(false)
+      const result = res.data?.data as { succeeded?: number } | undefined
+      const count = result?.succeeded ?? 0
+      if (count > 0) toast.success(`${count} invitation${count > 1 ? 's' : ''} sent! They'll receive an email to join.`)
+      else toast.error('No invitations were sent. Some users may already be registered members.')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to send invites')
     },
   })
 

@@ -34,6 +34,7 @@ import billingRoutes from './modules/billing/routes.js'
 import widgetsRoutes from './modules/widgets/routes.js'
 import providerKeysRoutes from './modules/provider-keys/routes.js'
 import dataManagementRoutes from './modules/data-management/routes.js'
+import emailPlugin from './services/email.jsx'
 import { initDiscordGateway, shutdownDiscordGateway } from './services/discord-gateway.js'
 
 
@@ -53,6 +54,7 @@ async function buildServer() {
   await app.register(validationPlugin)
   await app.register(swaggerPlugin)
   await app.register(rateLimitPlugin)
+  await app.register(emailPlugin)
   await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024 } })
   await app.register(formbody)
 

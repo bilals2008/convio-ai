@@ -49,6 +49,7 @@ import MemoryPage from '@/pages/docs/memory'
 import MultiAgentPage from '@/pages/docs/multi-agent'
 import { DocsLayout } from '@/components/docs/docs-layout'
 import ComingSoonPage from '@/pages/coming-soon-page'
+import InvitePage from '@/pages/invite-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +74,7 @@ export function App() {
             <Route path="/login" element={<RedirectAuthenticated><LoginPage /></RedirectAuthenticated>} />
             <Route path="/signup" element={<RedirectAuthenticated><SignupPage /></RedirectAuthenticated>} />
             <Route path="/forgot-password" element={<RedirectAuthenticated><ForgotPasswordPage /></RedirectAuthenticated>} />
+            <Route path="/invite" element={<InvitePage />} />
             <Route path="/widget/demo" element={<WidgetDemoPage />} />
             <Route element={<DocsLayout />}>
               <Route path="/docs" element={<DocsOverviewPage />} />

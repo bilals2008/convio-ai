@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
+import crypto from 'node:crypto'
 import { validate } from '../../plugins/validate.js'
 import { createOrganizationSchema, updateOrganizationSchema, membershipRoleSchema } from '@convio/validation'
 import { AppError } from '../../plugins/error.js'
@@ -250,6 +251,22 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
       metadata: { userId, email: membership.profile.email, role },
     })
 
+    if (fastify.email) {
+      const [inviter, org] = await Promise.all([
+        prisma.profile.findUnique({ where: { id: request.userId } }),
+        prisma.organization.findUnique({ where: { id } }),
+      ])
+
+      fastify.email.sendInvite({
+        to: membership.profile.email,
+        inviterName: inviter?.name || 'A team member',
+        orgName: org?.name || 'an organization',
+        role,
+      }).catch((err) => {
+        request.log.error({ err, email: membership.profile.email }, 'Failed to send invite email')
+      })
+    }
+
     return {
       data: {
         id: membership.id,
@@ -277,7 +294,12 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
 
     await fastify.ensureAdmin(request.userId!, id)
 
-    const results: Array<{ email: string; status: string; error?: string; role?: string }> = []
+    const inviter = await prisma.profile.findUnique({ where: { id: request.userId } })
+    const org = await prisma.organization.findUnique({ where: { id } })
+    const inviterName = inviter?.name || 'A team member'
+    const orgName = org?.name || 'an organization'
+
+    const results: Array<{ email: string; status: string; error?: string; role?: string; emailSent?: boolean }> = []
 
     for (const member of members) {
       try {
@@ -309,7 +331,19 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
           metadata: { userId: profile.id, email: member.email, role: member.role },
         })
 
-        results.push({ email: member.email, status: 'added', role: member.role })
+        const emailSent = fastify.email
+          ? await fastify.email.sendInvite({
+              to: member.email,
+              inviterName,
+              orgName,
+              role: member.role,
+            }).then(() => true).catch((err) => {
+              request.log.error({ err, email: member.email }, 'Failed to send invite email')
+              return false
+            })
+          : false
+
+        results.push({ email: member.email, status: 'added', role: member.role, emailSent })
       } catch (err) {
         results.push({ email: member.email, status: 'error', error: (err as Error).message })
       }
@@ -365,6 +399,155 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     })
 
     reply.code(204).send()
+  })
+
+  // POST /api/organizations/:id/invitations — Create invitation (admin only)
+  fastify.post('/organizations/:id/invitations', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: orgParamsSchema, body: bulkInviteBodySchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { members } = request.body as { members: Array<{ email: string; role: string }> }
+
+    await fastify.ensureAdmin(request.userId!, id)
+
+    const inviter = await prisma.profile.findUnique({ where: { id: request.userId } })
+    const org = await prisma.organization.findUnique({ where: { id } })
+    const inviterName = inviter?.name || 'A team member'
+    const orgName = org?.name || 'an organization'
+
+    const results: Array<{ email: string; status: string; error?: string }> = []
+
+    for (const member of members) {
+      try {
+        const existingProfile = await prisma.profile.findFirst({ where: { email: member.email } })
+        if (existingProfile) {
+          results.push({ email: member.email, status: 'skipped', error: 'Already registered — add directly instead' })
+          continue
+        }
+
+        const existingInvite = await prisma.invitation.findFirst({
+          where: { email: member.email, organizationId: id, acceptedAt: null, expiresAt: { gt: new Date() } },
+        })
+        if (existingInvite) {
+          results.push({ email: member.email, status: 'skipped', error: 'Already invited' })
+          continue
+        }
+
+        const token = crypto.randomBytes(32).toString('hex')
+        const invitation = await prisma.invitation.create({
+          data: {
+            email: member.email,
+            organizationId: id,
+            role: member.role,
+            token,
+            invitedById: request.userId,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          },
+        })
+
+        await fastify.auditLog({
+          organizationId: id,
+          actorId: request.userId,
+          action: 'member.invited',
+          entityType: 'invitation',
+          entityId: invitation.id,
+          metadata: { email: member.email, role: member.role },
+        })
+
+        if (fastify.email) {
+          const inviteUrl = `${fastify.config.PUBLIC_URL}/invite?token=${token}`
+          fastify.email.sendInvite({
+            to: member.email,
+            inviterName,
+            orgName,
+            role: member.role,
+            inviteUrl,
+          }).catch((err) => {
+            request.log.error({ err, email: member.email }, 'Failed to send invite email')
+          })
+        }
+
+        results.push({ email: member.email, status: 'invited' })
+      } catch (err) {
+        results.push({ email: member.email, status: 'error', error: (err as Error).message })
+      }
+    }
+
+    return { data: { results, total: members.length, succeeded: results.filter((r) => r.status === 'invited').length } }
+  })
+
+  // GET /api/invitations/:token — Get invitation info (public)
+  fastify.get('/invitations/:token', {
+    preHandler: [validate({ params: z.object({ token: z.string() }) })],
+  }, async (request) => {
+    const { token } = request.params as { token: string }
+
+    const invitation = await prisma.invitation.findUnique({
+      where: { token },
+      include: { organization: { select: { id: true, name: true, logo: true } }, invitedBy: { select: { name: true } } },
+    })
+
+    if (!invitation) throw new AppError(404, 'Invitation not found')
+    if (invitation.acceptedAt) throw new AppError(400, 'Invitation already accepted')
+    if (invitation.expiresAt < new Date()) throw new AppError(410, 'Invitation expired')
+
+    return {
+      data: {
+        email: invitation.email,
+        role: invitation.role,
+        organization: invitation.organization,
+        invitedBy: invitation.invitedBy?.name || 'A team member',
+      },
+    }
+  })
+
+  // POST /api/invitations/:token/accept — Accept invitation (authenticated)
+  fastify.post('/invitations/:token/accept', {
+    preHandler: [fastify.authenticate, validate({ params: z.object({ token: z.string() }) })],
+  }, async (request) => {
+    const { token } = request.params as { token: string }
+
+    const invitation = await prisma.invitation.findUnique({
+      where: { token },
+    })
+
+    if (!invitation) throw new AppError(404, 'Invitation not found')
+    if (invitation.acceptedAt) throw new AppError(400, 'Invitation already accepted')
+    if (invitation.expiresAt < new Date()) throw new AppError(410, 'Invitation expired')
+
+    const profile = await prisma.profile.findUnique({ where: { id: request.userId } })
+    if (!profile) throw new AppError(404, 'User not found')
+    if (profile.email !== invitation.email) {
+      throw new AppError(403, 'This invitation was sent to a different email address')
+    }
+
+    const existingMember = await prisma.membership.findUnique({
+      where: { userId_organizationId: { userId: request.userId!, organizationId: invitation.organizationId } },
+    })
+    if (existingMember) {
+      await prisma.invitation.update({ where: { id: invitation.id }, data: { acceptedAt: new Date() } })
+      return { data: { organizationId: invitation.organizationId, alreadyMember: true } }
+    }
+
+    const membership = await prisma.membership.create({
+      data: { userId: request.userId!, organizationId: invitation.organizationId, role: invitation.role },
+    })
+
+    await prisma.invitation.update({ where: { id: invitation.id }, data: { acceptedAt: new Date() } })
+
+    await fastify.auditLog({
+      organizationId: invitation.organizationId,
+      actorId: request.userId,
+      action: 'member.invited',
+      entityType: 'membership',
+      entityId: membership.id,
+      metadata: { userId: request.userId, email: profile.email, role: invitation.role, viaInvite: true },
+    })
+
+    return { data: { organizationId: invitation.organizationId } }
   })
 
   // PATCH /api/organizations/:id/members/:userId/role — Update member role (owner only)
