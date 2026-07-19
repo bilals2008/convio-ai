@@ -179,7 +179,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     })
 
     if (!customer) {
-      throw new AppError(404, 'No billing customer found', 'NOT_FOUND')
+      throw new AppError(400, 'No active subscription found. Upgrade to a paid plan first.', 'NO_SUBSCRIPTION')
     }
 
     const portalResponse = await fetch(`${CREEM_API}/v1/customers/billing`, {

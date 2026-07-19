@@ -50,8 +50,8 @@ export const PLANS: Record<string, {
     limits: { agents: 5, messagesPerMonth: 25000, knowledgeBases: 10 },
     price: '$39/mo',
     priceMonthly: 39,
-    providerMonthlyProductId: process.env.CREEM_PRO_MONTHLY_PRODUCT_ID || '',
-    providerYearlyProductId: process.env.CREEM_PRO_YEARLY_PRODUCT_ID || '',
+    get providerMonthlyProductId() { return process.env.CREEM_PRO_MONTHLY_PRODUCT_ID || '' },
+    get providerYearlyProductId() { return process.env.CREEM_PRO_YEARLY_PRODUCT_ID || '' },
   },
   business: {
     label: 'Business',
@@ -59,8 +59,8 @@ export const PLANS: Record<string, {
     limits: { agents: Infinity, messagesPerMonth: 150000, knowledgeBases: 50 },
     price: '$99/mo',
     priceMonthly: 99,
-    providerMonthlyProductId: process.env.CREEM_BUSINESS_MONTHLY_PRODUCT_ID || '',
-    providerYearlyProductId: process.env.CREEM_BUSINESS_YEARLY_PRODUCT_ID || '',
+    get providerMonthlyProductId() { return process.env.CREEM_BUSINESS_MONTHLY_PRODUCT_ID || '' },
+    get providerYearlyProductId() { return process.env.CREEM_BUSINESS_YEARLY_PRODUCT_ID || '' },
   },
   enterprise: {
     label: 'Enterprise',

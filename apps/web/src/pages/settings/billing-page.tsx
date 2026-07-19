@@ -154,6 +154,9 @@ export default function BillingPage() {
       const url = res?.data?.data?.url
       if (url) window.location.href = url
     },
+    onError: () => {
+      toast.error('No active subscription found. Upgrade to a paid plan first.')
+    },
   })
 
   const currentPlan = plan.data
@@ -168,6 +171,7 @@ export default function BillingPage() {
   const messageLimit = usage.data?.limit ?? 0
   const isPaid = currentPlan?.name === 'pro' || currentPlan?.name === 'business' || currentPlan?.name === 'enterprise'
   const conversations = usage.data?.conversations ?? 0
+  const hasSubscription = !!sub
 
   const planIconName = currentPlanConfig?.icon ?? 'zap'
   const PlanIcon = planIcons[planIconName] ?? Zap
@@ -201,7 +205,7 @@ export default function BillingPage() {
         description="Manage your subscription, usage, and payment methods"
         action={
           <div className="flex items-center gap-2">
-            {isPaid && (
+            {isPaid && hasSubscription && (
               <Button
                 variant="outline"
                 size="sm"
@@ -478,7 +482,7 @@ export default function BillingPage() {
       )}
 
       {/* ── Payment & Invoices ────────────────────────────── */}
-      {isPaid && (
+      {isPaid && hasSubscription && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
@@ -548,7 +552,7 @@ export default function BillingPage() {
       )}
 
       {/* ── Danger Zone ───────────────────────────────────── */}
-      {isPaid && (
+      {isPaid && hasSubscription && (
         <Card className="border-destructive/50">
           <CardHeader>
             <CardTitle className="text-destructive flex items-center gap-2 text-sm">
