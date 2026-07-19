@@ -32,30 +32,28 @@ function PlanCard({ plan }: { plan: PlanConfig }) {
         <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/80 via-primary to-primary/80" />
       )}
 
-      <div className="relative flex flex-col h-full p-7">
+      <div className="relative flex flex-col h-full p-5 md:p-7">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            {icon && (
-              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
-                {icon}
-              </div>
-            )}
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-              <p className="text-[13px] text-muted-foreground mt-0.5">{plan.description}</p>
+        <div className="flex flex-col items-center text-center mb-5">
+          {icon && (
+            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 mb-3">
+              {icon}
             </div>
-          </div>
-          {plan.badge && (
-            <Badge className="bg-primary/15 text-primary border border-primary/20 hover:bg-primary/15 shrink-0">
-              {plan.badge}
-            </Badge>
           )}
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
+            {plan.badge && (
+              <Badge className="bg-primary/15 text-primary border border-primary/20 hover:bg-primary/15 shrink-0 text-[10px] px-1.5 py-0 h-4">
+                {plan.badge}
+              </Badge>
+            )}
+          </div>
+          <p className="text-[13px] text-muted-foreground">{plan.description}</p>
         </div>
 
         {/* Price */}
-        <div className="flex items-baseline gap-1.5 mb-6">
-          <span className="font-mono text-4xl font-bold tracking-tight text-foreground">
+        <div className="flex items-baseline justify-center gap-1.5 mb-5">
+          <span className="font-mono text-3xl md:text-4xl font-bold tracking-tight text-foreground">
             {plan.price}
           </span>
           {plan.period && (
@@ -63,14 +61,14 @@ function PlanCard({ plan }: { plan: PlanConfig }) {
           )}
         </div>
 
-        <div className="h-px bg-border mb-6" />
+        <div className="h-px bg-border mb-5" />
 
         {/* Features */}
-        <ul className="space-y-3 mb-8 flex-1">
+        <ul className="space-y-2.5 mb-6 flex-1">
           {plan.features.map((feature) => (
-            <li key={feature.text} className="flex items-start gap-2.5 text-[13px]">
-              <span className="mt-0.5 size-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Check className="size-3 text-primary" />
+            <li key={feature.text} className="flex items-start gap-2 text-[12px] md:text-[13px]">
+              <span className="mt-0.5 size-4 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Check className="size-2.5 text-primary" />
               </span>
               <span className="text-muted-foreground leading-snug">{feature.text}</span>
             </li>
@@ -80,7 +78,7 @@ function PlanCard({ plan }: { plan: PlanConfig }) {
         {/* CTA */}
         <Button
           variant={plan.variant}
-          className="w-full py-3 text-[14px] h-auto transition-transform duration-200 group-hover:scale-[1.02]"
+          className="w-full py-2.5 md:py-3 text-[13px] md:text-[14px] h-auto transition-transform duration-200 group-hover:scale-[1.02]"
         >
           {plan.cta}
         </Button>
