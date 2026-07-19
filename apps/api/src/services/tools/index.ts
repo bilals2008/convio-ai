@@ -35,8 +35,12 @@ export const toolRegistry: ToolRegistry = {
     async execute(args) {
       const query = args.query as string
       if (!query) return { error: 'No search query provided' }
-      const results = await webSearch(query)
-      return { results }
+      try {
+        const results = await webSearch(query)
+        return { results }
+      } catch (err) {
+        return { error: (err as Error).message, results: [] }
+      }
     },
   },
 

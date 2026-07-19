@@ -4,77 +4,58 @@ export interface WebSearchResult {
   snippet: string
 }
 
+const TAVILY_ENDPOINT = 'https://api.tavily.com/search'
+
 export async function webSearch(query: string): Promise<WebSearchResult[]> {
-  const apiKey = process.env.SEARCH_API_KEY
-  const engineId = process.env.SEARCH_ENGINE_ID
-
-  if (apiKey && engineId) {
-    return googleSearch(query, apiKey, engineId)
-  }
-
-  return fallbackSearch(query)
-}
-
-async function googleSearch(query: string, apiKey: string, engineId: string): Promise<WebSearchResult[]> {
-  const res = await fetch(
-    `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${engineId}&q=${encodeURIComponent(query)}&num=5`
-  )
-
-  if (!res.ok) {
-    throw new Error(`Google Search API error (${res.status})`)
-  }
-
-  const data = await res.json() as {
-    items?: Array<{ title: string; link: string; snippet: string }>
-  }
-
-  return (data.items ?? []).map((item) => ({
-    title: item.title,
-    url: item.link,
-    snippet: item.snippet,
-  }))
-}
-
-async function fallbackSearch(query: string): Promise<WebSearchResult[]> {
-  try {
-    const res = await fetch(
-      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`,
-      { headers: { 'User-Agent': 'Convio/1.0' } }
+  const apiKey = process.env.TAVILY_API_KEY
+  if (!apiKey) {
+    throw new Error(
+      'Web search is not configured. Set TAVILY_API_KEY in the environment (get a free key at https://tavily.com).'
     )
+  }
 
-    if (!res.ok) return []
+  return tavilySearch(query, apiKey)
+}
+
+async function tavilySearch(query: string, apiKey: string): Promise<WebSearchResult[]> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15_000)
+
+  try {
+    const res = await fetch(TAVILY_ENDPOINT, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        search_depth: 'basic',
+        max_results: 5,
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null) as { error?: string } | null
+      throw new Error(err?.error || `Tavily API error (${res.status})`)
+    }
 
     const data = await res.json() as {
-      AbstractText?: string
-      AbstractURL?: string
-      Heading?: string
-      RelatedTopics?: Array<{ Text?: string; FirstURL?: string; Result?: string }>
+      results?: Array<{ title?: string; url?: string; content?: string }>
     }
 
-    const results: WebSearchResult[] = []
-
-    if (data.AbstractText) {
-      results.push({
-        title: data.Heading || 'Result',
-        url: data.AbstractURL || '',
-        snippet: data.AbstractText,
-      })
+    return (data.results ?? []).map((item) => ({
+      title: item.title || 'Result',
+      url: item.url || '',
+      snippet: item.content || '',
+    }))
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Web search timed out after 15 seconds')
     }
-
-    if (data.RelatedTopics) {
-      for (const topic of data.RelatedTopics.slice(0, 4)) {
-        if (topic.Text) {
-          results.push({
-            title: topic.Text.split(' - ')[0] || 'Result',
-            url: topic.FirstURL || '',
-            snippet: topic.Text,
-          })
-        }
-      }
-    }
-
-    return results
-  } catch {
-    return []
+    throw err
+  } finally {
+    clearTimeout(timeout)
   }
 }

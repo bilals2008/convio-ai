@@ -28,6 +28,7 @@ const schema = Type.Object({
   TWILIO_NUMBER: Type.Optional(Type.String()),
   GITHUB_PAT: Type.Optional(Type.String()),
   OPENCODE_API_KEY: Type.Optional(Type.String()),
+  TAVILY_API_KEY: Type.Optional(Type.String()),
   RESEND_API_KEY: Type.Optional(Type.String()),
   RESEND_FROM: Type.Optional(Type.String()),
   RESEND_AUDIENCE_ID: Type.Optional(Type.String()),
