@@ -424,6 +424,7 @@ export default function AgentDetailPage() {
               providerKeyId: agent.providerKeyId || undefined,
               knowledgeBaseId: agent.knowledgeBaseId || null,
               tools: tools.filter((t) => t.enabled).map((t) => t.id),
+              mcpServerIds: linkedMcpServerIds,
             }}
           />
         </TabsContent>

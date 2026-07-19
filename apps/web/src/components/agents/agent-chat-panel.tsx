@@ -74,8 +74,9 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
         temperature: config.temperature,
         maxTokens: config.maxTokens,
         providerKeyId: config.providerKeyId,
-        knowledgeBaseId: config.knowledgeBaseId,
+        knowledgeBaseId: config.knowledgeBaseId || undefined,
         tools: config.tools,
+        mcpServerIds: config.mcpServerIds,
         history,
       })
 
@@ -118,6 +119,8 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
           }
         }
       }
+
+      setStreamingContent('')
 
       if (assistantContent) {
         setMessages((prev) => [

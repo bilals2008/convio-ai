@@ -62,6 +62,7 @@ export const agents = {
     providerKeyId?: string
     knowledgeBaseId?: string
     tools?: string[]
+    mcpServerIds?: string[]
     history?: Array<{ role: 'user' | 'assistant'; content: string }>
     signal?: AbortSignal
   }) => {

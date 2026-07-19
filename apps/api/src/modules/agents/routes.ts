@@ -48,6 +48,7 @@ const testStreamSchema = z.object({
   history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(12000) })).max(30).optional().default([]),
   tools: z.array(z.string()).optional().default([]),
   toolIds: z.array(z.string().uuid()).optional().default([]),
+  mcpServerIds: z.array(z.string().uuid()).optional().default([]),
 })
 
 const createAgentBodySchema = createAgentSchema.extend({
@@ -407,6 +408,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       history,
       tools: toolNames,
       toolIds,
+      mcpServerIds,
     } = request.body as z.infer<typeof testStreamSchema>
 
     const providerKey = providerKeyId
@@ -453,14 +455,63 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       }))
 
     // Load DB tools by ID and add to toolDefs
-    if (toolIds.length > 0) {
-      const dbHandlers = await loadDbToolHandlers(prisma, toolIds)
-      for (const handler of Object.values(dbHandlers)) {
-        toolDefs.push({
-          name: handler.schema.name,
-          description: handler.schema.description,
-          parameters: handler.schema.parameters,
-        })
+    const dbToolHandlers = toolIds.length > 0
+      ? await loadDbToolHandlers(prisma, toolIds)
+      : {}
+    for (const handler of Object.values(dbToolHandlers)) {
+      toolDefs.push({
+        name: handler.schema.name,
+        description: handler.schema.description,
+        parameters: handler.schema.parameters,
+      })
+    }
+
+    // Load MCP tools by server ID
+    const mcpToolHandlers: Record<string, { schema: { name: string; description: string; parameters: Record<string, unknown> }; execute: (args: Record<string, unknown>) => Promise<unknown> }> = {}
+    if (mcpServerIds.length > 0) {
+      const { McpClient } = await import('../../services/mcp/index.js')
+      const servers = await prisma.mcpServer.findMany({ where: { id: { in: mcpServerIds }, enabled: true } })
+      for (const server of servers) {
+        try {
+          const client = new McpClient({
+            id: server.id,
+            name: server.name,
+            type: server.type,
+            command: server.command,
+            args: server.args as string[],
+            url: server.url,
+            apiKey: server.apiKey,
+          })
+          const mcpTools = await client.listTools()
+          for (const tool of mcpTools) {
+            const namespacedName = `${server.name}:${tool.name}`
+            toolDefs.push({
+              name: namespacedName,
+              description: tool.description || `MCP tool from ${server.name}`,
+              parameters: (tool.inputSchema as Record<string, unknown>) || { type: 'object', properties: {} },
+            })
+            mcpToolHandlers[namespacedName] = {
+              schema: { name: namespacedName, description: tool.description || '', parameters: (tool.inputSchema as Record<string, unknown>) || { type: 'object', properties: {} } },
+              async execute(args: Record<string, unknown>) {
+                try {
+                  const execClient = new McpClient({
+                    id: server.id, name: server.name, type: server.type,
+                    command: server.command, args: server.args as string[],
+                    url: server.url, apiKey: server.apiKey,
+                  })
+                  const result = await execClient.callTool(tool.name, args)
+                  await execClient.disconnect().catch(() => {})
+                  return result
+                } catch (err) {
+                  return { error: `MCP tool ${tool.name} failed: ${(err as Error).message}` }
+                }
+              },
+            }
+          }
+          await client.disconnect().catch(() => {})
+        } catch (err) {
+          console.warn(`Failed to load MCP tools from ${server.name}: ${(err as Error).message}`)
+        }
       }
     }
 
@@ -531,10 +582,9 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
       // Execute tools from native tool calls and make second AI call for summarization
       if (toolCallsFromStream.length > 0) {
-        const dbToolHandlers = await loadDbToolHandlers(prisma, toolIds)
         const results: { tool: string; result: unknown }[] = []
         for (const tc of toolCallsFromStream) {
-          const handler = getToolHandler(tc.tool) || dbToolHandlers[tc.tool]
+          const handler = getToolHandler(tc.tool) || dbToolHandlers[tc.tool] || mcpToolHandlers[tc.tool]
           if (handler) {
             const result = await handler.execute(tc.args)
             reply.raw.write(`data: ${JSON.stringify({ type: 'tool_result', tool: tc.tool, result })}\n\n`)

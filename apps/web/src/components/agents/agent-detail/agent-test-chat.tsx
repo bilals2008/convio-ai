@@ -66,6 +66,7 @@ interface AgentTestChatProps {
     providerKeyId?: string
     knowledgeBaseId?: string | null
     tools?: string[]
+    mcpServerIds?: string[]
   }
   agentId: string
 }
@@ -179,11 +180,17 @@ function renderToolResultPreview(tool: string, result: unknown): string {
   if (tool === 'calculator') {
     return String(r.result ?? r)
   }
-  return truncate(JSON.stringify(r), 60)
-}
-
-function truncate(str: string, max: number): string {
-  return str.length > max ? str.slice(0, max) + '…' : str
+  // MCP tools return { result: stringified_json }
+  if (r.result && typeof r.result === 'string') {
+    try {
+      const parsed = JSON.parse(r.result)
+      if (parsed.total_count !== undefined) return `${parsed.total_count} results`
+      if (Array.isArray(parsed)) return `${parsed.length} items`
+      if (parsed.items && Array.isArray(parsed.items)) return `${parsed.items.length} items`
+    } catch { /* not JSON */ }
+    return 'Done'
+  }
+  return 'Done'
 }
 
 export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
@@ -374,6 +381,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
         providerKeyId: cfg.providerKeyId,
         knowledgeBaseId: cfg.knowledgeBaseId,
         tools: cfg.tools,
+        mcpServerIds: cfg.mcpServerIds,
         history,
         signal: controller.signal,
       })
@@ -436,6 +444,9 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
           }
         }
       }
+
+      setStreamingContent('')
+      setToolCalls([])
 
       if (assistantContent || completedToolCalls.length > 0) {
         const assistantMessage: MessageItem = {
@@ -821,11 +832,9 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                       <BubbleContent>
                         {streamingContent ? (
                           <AiResponse content={streamingContent} isStreaming showActions={false} />
-                        ) : toolCalls.length > 0 ? (
+                        ) : streaming ? (
                           <TypingIndicator />
-                        ) : (
-                          <TypingIndicator />
-                        )}
+                        ) : null}
                       </BubbleContent>
                     </Bubble>
                   </MessageContent>
