@@ -7,7 +7,7 @@ import { ScrollReveal } from '@/components/landing/scroll-reveal'
 import { SectionHeading } from '@/components/landing/section-heading'
 import { FloatingOrbs } from '@/components/landing/floating-orbs'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
-import { Check, Zap, Shield, Crown, Plus, ShieldCheck, CreditCard, Headphones, Clock } from 'lucide-react'
+import { Check, Zap, Shield, Crown, ShieldCheck, CreditCard, Headphones, Clock } from 'lucide-react'
 import { pricingConfig } from '@/lib/pricing/config'
 import type { PlanConfig } from '@/lib/pricing/config'
 import { cn } from '@/lib/utils'
@@ -274,17 +274,8 @@ export default function PricingPage() {
                   <Accordion defaultValue={[]} className="w-full">
                     {FAQS.map((faq) => (
                       <AccordionItem key={faq.q} value={faq.q} className="border-b border-border/50 last:border-0">
-                        <AccordionTrigger className="py-4 text-sm font-medium text-foreground hover:no-underline [&>svg]:hidden">
-                          <span className="flex items-center justify-between w-full">
-                            <span>{faq.q}</span>
-                            <span className={cn(
-                              'size-5 shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ml-2',
-                              'group-data-open:bg-primary/15 group-data-open:text-primary',
-                              'group-data-closed:bg-primary/5 group-data-closed:text-muted-foreground',
-                            )}>
-                              <Plus className="size-3 transition-transform duration-200 group-data-open:rotate-45" />
-                            </span>
-                          </span>
+                        <AccordionTrigger className="py-4 text-sm font-medium text-foreground hover:no-underline">
+                          {faq.q}
                         </AccordionTrigger>
                         <AccordionContent className="pb-4">
                           <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
