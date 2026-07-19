@@ -60,7 +60,7 @@ export const agents = {
     maxTokens: number
     reasoningEffort?: string
     providerKeyId?: string
-    knowledgeBaseId?: string
+    knowledgeBaseId?: string | null
     tools?: string[]
     mcpServerIds?: string[]
     history?: Array<{ role: 'user' | 'assistant'; content: string }>

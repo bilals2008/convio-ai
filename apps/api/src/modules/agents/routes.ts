@@ -8,7 +8,11 @@ import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { getTemplate, listTemplates } from './templates.js'
 import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
+import { getOrgPlan } from '../../services/billing.js'
 import { z } from 'zod'
+
+// Tools that consume server-side resources (e.g. Tavily web search) are Pro+ only.
+const GATED_TOOLS = new Set(['web-search'])
 
 const orgParamsSchema = z.object({
   orgId: z.string().uuid(),
@@ -422,6 +426,42 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       : null
     const apiKey = providerKey?.apiKey
 
+    // Plan-gate server-billed tools (e.g. web search). Resolve the caller's org
+    // via the provider key's org, falling back to their first membership.
+    let effectiveToolNames = toolNames
+    let gatedToolNote = ''
+    if (toolNames.some((name) => GATED_TOOLS.has(name))) {
+      const orgRef = providerKeyId
+        ? await prisma.providerKey.findFirst({
+            where: {
+              id: providerKeyId,
+              organization: { memberships: { some: { userId: request.userId! } } },
+            },
+            select: { organizationId: true },
+          })
+        : await prisma.membership.findFirst({
+            where: { userId: request.userId! },
+            orderBy: { createdAt: 'asc' },
+            select: { organizationId: true },
+          })
+
+      let planName: string | null = null
+      if (orgRef?.organizationId) {
+        try {
+          planName = (await getOrgPlan(orgRef.organizationId)).name
+        } catch {
+          planName = null
+        }
+      }
+
+      // Free plans (or an unresolvable org) cannot use gated tools.
+      if (planName === null || planName === 'free') {
+        effectiveToolNames = toolNames.filter((name) => !GATED_TOOLS.has(name))
+        gatedToolNote =
+          'Web search is a Pro feature and is disabled on the current plan. If asked to search the web, explain that upgrading to Pro enables it.'
+      }
+    }
+
     const corsHeaders = getCorsHeaders(fastify.config.CORS_ORIGIN, request)
 
     reply.hijack()
@@ -443,9 +483,12 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     }
 
     let systemContext = systemPrompt
+    if (gatedToolNote) {
+      systemContext = `${systemContext}\n\n${gatedToolNote}`
+    }
 
     // Convert tool names to native tool definitions for the AI provider
-    const toolDefs = toolNames
+    const toolDefs = effectiveToolNames
       .map((name) => getToolHandler(name))
       .filter((h): h is NonNullable<ReturnType<typeof getToolHandler>> => !!h)
       .map((h) => ({

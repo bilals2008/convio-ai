@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, Copy } from 'lucide-react'
+import { isValidElement, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Check, Copy, ExternalLink } from 'lucide-react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
 import { buttonVariants } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -63,16 +64,48 @@ function CopyButton({ value, label, className }: CopyButtonProps) {
   )
 }
 
-function CodeBlock({ language, value }: { language?: string; value: string }) {
+function nodeToString(node: ReactNode): string {
+  if (node == null || typeof node === 'boolean') return ''
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(nodeToString).join('')
+  if (isValidElement(node)) {
+    return nodeToString((node.props as { children?: ReactNode }).children)
+  }
+  return ''
+}
+
+function CodeBlock({
+  language,
+  rawValue,
+  children,
+}: {
+  language?: string
+  rawValue: string
+  children: ReactNode
+}) {
   return (
     <div className="my-3 overflow-hidden rounded-md border border-border bg-background">
       <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-1.5">
         <span className="text-xs font-medium text-muted-foreground">{language || 'Code'}</span>
-        <CopyButton value={value} label="Copy code" />
+        <CopyButton value={rawValue} label="Copy code" />
       </div>
-      <pre className="overflow-x-auto p-3 text-xs leading-5 text-foreground"><code>{value}</code></pre>
+      <pre className="overflow-x-auto p-3 text-xs leading-5 text-foreground"><code className="hljs bg-transparent p-0">{children}</code></pre>
     </div>
   )
+}
+
+// Turn a bare URL into a compact, readable label (host + trimmed path),
+// e.g. "https://www.python.org/downloads/" -> "python.org/downloads".
+function prettyUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    const host = u.hostname.replace(/^www\./, '')
+    let path = u.pathname.replace(/\/$/, '')
+    if (path.length > 24) path = path.slice(0, 24) + '…'
+    return `${host}${path}${u.search ? '…' : ''}`
+  } catch {
+    return url
+  }
 }
 
 const markdownComponents: Components = {
@@ -80,7 +113,31 @@ const markdownComponents: Components = {
   h2: ({ children }) => <h2 className="mb-2 mt-5 text-lg font-semibold tracking-tight first:mt-0">{children}</h2>,
   h3: ({ children }) => <h3 className="mb-2 mt-4 text-base font-semibold first:mt-0">{children}</h3>,
   p: ({ children }) => <p className="my-2 leading-6 first:mt-0 last:mb-0">{children}</p>,
-  a: ({ children, href }) => <a href={href} target="_blank" rel="noreferrer" className="font-medium text-primary underline underline-offset-4 hover:text-primary/80">{children}</a>,
+  a: ({ children, href }) => {
+    const text = nodeToString(children).trim()
+    // A "bare" URL is one whose visible text is just the href itself
+    // (autolinked). Those get a clean label + icon; real [text](url) links
+    // keep their author-provided text.
+    const isBareUrl = !!href && (text === href || text === href.replace(/\/$/, ''))
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        title={href}
+        className="font-medium text-primary underline underline-offset-4 hover:text-primary/80 break-words"
+      >
+        {isBareUrl ? (
+          <span className="inline-flex items-baseline gap-0.5">
+            {prettyUrl(href!)}
+            <ExternalLink className="size-3 shrink-0 self-center opacity-70" />
+          </span>
+        ) : (
+          children
+        )}
+      </a>
+    )
+  },
   ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-5 marker:text-muted-foreground">{children}</ul>,
   ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5 marker:text-muted-foreground">{children}</ol>,
   li: ({ children }) => <li className="pl-1 leading-6">{children}</li>,
@@ -91,9 +148,14 @@ const markdownComponents: Components = {
   td: ({ children }) => <td className="border border-border px-2 py-1.5 align-top">{children}</td>,
   pre: ({ children }) => <>{children}</>,
   code: ({ className, children }) => {
-    const value = String(children).replace(/\n$/, '')
-    const language = className?.replace('language-', '')
-    if (language) return <CodeBlock language={language} value={value} />
+    // rehype-highlight adds "hljs language-xxx" classes to fenced code blocks.
+    const classes = className || ''
+    const isBlock = /\bhljs\b/.test(classes) || /\blanguage-/.test(classes)
+    if (isBlock) {
+      const language = classes.match(/language-([\w-]+)/)?.[1]
+      const rawValue = nodeToString(children).replace(/\n$/, '')
+      return <CodeBlock language={language} rawValue={rawValue}>{children}</CodeBlock>
+    }
     return <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.9em] text-foreground">{children}</code>
   },
 }
@@ -144,7 +206,11 @@ export function AiResponse({ content, isStreaming = false, className, showAction
         </div>
       )}
       <div className="overflow-x-auto">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content}</ReactMarkdown>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+          components={markdownComponents}
+        >{content}</ReactMarkdown>
         {isStreaming && <span aria-label="Generating" className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-primary align-middle" />}
       </div>
     </div>

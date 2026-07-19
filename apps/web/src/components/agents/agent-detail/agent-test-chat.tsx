@@ -18,6 +18,8 @@ import {
   ExternalLink,
   Clock,
   Plug,
+  Pencil,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
@@ -39,6 +41,7 @@ import { cn } from '@/lib/utils'
 import { TypingIndicator } from '@/components/shared/typing-indicator'
 import { AiResponse } from '@/components/shared/ai-response'
 import { agents as agentsApi, conversations as conversationsApi, messages as messagesApi } from '@/lib/api'
+import { usePlan } from '@/lib/hooks/use-billing'
 import { getReasoningEfforts } from '../reasoning'
 
 interface ToolCallEntry {
@@ -206,6 +209,10 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const [showReasoning, setShowReasoning] = useState(true)
   const [reasoningOverride, setReasoningOverride] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [useKnowledge, setUseKnowledge] = useState(true)
+  const [useTools, setUseTools] = useState(true)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
   const abortRef = useRef<AbortController | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -213,6 +220,11 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const streamFrameRef = useRef<number | null>(null)
   const streamBufferRef = useRef('')
   const queryClient = useQueryClient()
+  const { data: plan } = usePlan()
+
+  // Web-search / tool execution is a Pro+ feature. Free plans can't use it.
+  const toolsAllowed = !!plan && plan.name !== 'free'
+  const agentHasTools = !!(agentConfig.tools && agentConfig.tools.length > 0)
 
   const { data: convsData, isLoading: convsLoading } = useQuery({
     queryKey: ['conversations', agentId],
@@ -328,45 +340,22 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     })
   }, [])
 
-  const handleSendMessage = useCallback(async () => {
-    const trimmed = inputValue.trim()
-    if (!trimmed || streaming) return
+  // Core streaming routine shared by send / regenerate / edit.
+  // `prompt` is the current user turn; `history` is everything before it.
+  const streamAssistant = useCallback(async (
+    prompt: string,
+    history: Array<{ role: 'user' | 'assistant'; content: string }>,
+  ) => {
     const cfg = configRef.current
     if (!cfg.systemPrompt || !cfg.model) return
 
     setError('')
-    setInputValue('')
     setStreaming(true)
     setStreamingContent('')
     setStreamingReasoning('')
     streamBufferRef.current = ''
 
-    const userMessage: MessageItem = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: trimmed,
-      createdAt: new Date().toISOString(),
-    }
-
-    updateActiveConversation((conv) => ({
-      ...conv,
-      messages: [...conv.messages, userMessage],
-      preview: trimmed,
-      timestamp: 'Just now',
-    }))
-
     const convId = activeConvId
-    if (convId) {
-      try {
-        await messagesApi.send(convId, trimmed, 'user')
-      } catch { /* non-blocking */ }
-    }
-
-    const history = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }))
-
     const controller = new AbortController()
     abortRef.current = controller
 
@@ -374,13 +363,13 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       const response = await agentsApi.testStream({
         model: cfg.model,
         systemPrompt: cfg.systemPrompt,
-        message: trimmed,
+        message: prompt,
         temperature: cfg.temperature,
         maxTokens: cfg.maxTokens,
         reasoningEffort: reasoningOverride || cfg.reasoningEffort,
         providerKeyId: cfg.providerKeyId,
-        knowledgeBaseId: cfg.knowledgeBaseId,
-        tools: cfg.tools,
+        knowledgeBaseId: useKnowledge ? cfg.knowledgeBaseId : null,
+        tools: useTools && toolsAllowed ? cfg.tools : [],
         mcpServerIds: cfg.mcpServerIds,
         history,
         signal: controller.signal,
@@ -478,7 +467,86 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       setToolCalls([])
       abortRef.current = null
     }
-  }, [inputValue, streaming, messages, queueStreamingContent, updateActiveConversation, reasoningOverride, activeConvId])
+  }, [queueStreamingContent, updateActiveConversation, reasoningOverride, activeConvId, useKnowledge, useTools, toolsAllowed])
+
+  const handleSendMessage = useCallback(async () => {
+    const trimmed = inputValue.trim()
+    if (!trimmed || streaming) return
+    const cfg = configRef.current
+    if (!cfg.systemPrompt || !cfg.model) return
+
+    setInputValue('')
+
+    const userMessage: MessageItem = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: trimmed,
+      createdAt: new Date().toISOString(),
+    }
+
+    const history = messages.map((m) => ({ role: m.role, content: m.content }))
+
+    updateActiveConversation((conv) => ({
+      ...conv,
+      messages: [...conv.messages, userMessage],
+      preview: trimmed,
+      timestamp: 'Just now',
+    }))
+
+    if (activeConvId) {
+      try {
+        await messagesApi.send(activeConvId, trimmed, 'user')
+      } catch { /* non-blocking */ }
+    }
+
+    await streamAssistant(trimmed, history)
+  }, [inputValue, streaming, messages, updateActiveConversation, activeConvId, streamAssistant])
+
+  // Re-run the last user turn, replacing the last assistant reply.
+  const handleRegenerate = useCallback(async () => {
+    if (streaming) return
+    const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === 'user')
+    if (lastUserIdx === -1) return
+    const idx = messages.length - 1 - lastUserIdx
+    const prompt = messages[idx].content
+    const history = messages.slice(0, idx).map((m) => ({ role: m.role, content: m.content }))
+
+    // Drop everything after (and including) the assistant reply that followed.
+    updateActiveConversation((conv) => ({
+      ...conv,
+      messages: conv.messages.slice(0, idx + 1),
+    }))
+
+    await streamAssistant(prompt, history)
+  }, [streaming, messages, updateActiveConversation, streamAssistant])
+
+  // Edit a past user message: truncate the conversation after it and resend.
+  const handleEditResend = useCallback(async (messageId: string, newContent: string) => {
+    if (streaming) return
+    const trimmed = newContent.trim()
+    if (!trimmed) return
+    const idx = messages.findIndex((m) => m.id === messageId)
+    if (idx === -1) return
+
+    const history = messages.slice(0, idx).map((m) => ({ role: m.role, content: m.content }))
+    const editedMessage: MessageItem = { ...messages[idx], content: trimmed }
+
+    updateActiveConversation((conv) => ({
+      ...conv,
+      messages: [...conv.messages.slice(0, idx), editedMessage],
+      preview: trimmed,
+      timestamp: 'Just now',
+    }))
+
+    if (activeConvId) {
+      try {
+        await messagesApi.send(activeConvId, trimmed, 'user')
+      } catch { /* non-blocking */ }
+    }
+
+    setEditingId(null)
+    await streamAssistant(trimmed, history)
+  }, [streaming, messages, updateActiveConversation, activeConvId, streamAssistant])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -655,6 +723,46 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                         onCheckedChange={setShowReasoning}
                       />
                     </div>
+                    {agentConfig.knowledgeBaseId && (
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium">Knowledge base</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Use retrieved context (RAG)
+                          </p>
+                        </div>
+                        <Switch
+                          size="sm"
+                          checked={useKnowledge}
+                          onCheckedChange={setUseKnowledge}
+                        />
+                      </div>
+                    )}
+                    {agentHasTools && (
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-medium">Tools</p>
+                            {!toolsAllowed && (
+                              <span className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                                Pro
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {toolsAllowed
+                              ? 'Web search, calculator, and more'
+                              : 'Upgrade to Pro to enable tools'}
+                          </p>
+                        </div>
+                        <Switch
+                          size="sm"
+                          checked={useTools && toolsAllowed}
+                          disabled={!toolsAllowed}
+                          onCheckedChange={setUseTools}
+                        />
+                      </div>
+                    )}
                     {reasoningOptions && (
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium">Reasoning effort</Label>
@@ -707,9 +815,11 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                 </div>
               )}
 
-              {messages.map((msg) => {
+              {messages.map((msg, msgIndex) => {
                 const isUser = msg.role === 'user'
                 const isCopied = copiedId === msg.id
+                const isEditing = editingId === msg.id
+                const isLast = msgIndex === messages.length - 1
                 return (
                   <Message key={msg.id} align={isUser ? 'end' : 'start'}>
                     <MessageAvatar>
@@ -741,22 +851,59 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                           </details>
                         )}
                         <BubbleContent>
-                          {isUser ? <span className="whitespace-pre-wrap">{msg.content}</span> : <AiResponse content={msg.content} showActions={false} />}
+                          {isUser ? (
+                            isEditing ? (
+                              <div className="space-y-2">
+                                <textarea
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault()
+                                      handleEditResend(msg.id, editValue)
+                                    } else if (e.key === 'Escape') {
+                                      setEditingId(null)
+                                    }
+                                  }}
+                                  rows={2}
+                                  autoFocus
+                                  className="block w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                                  style={{ fieldSizing: 'content' } as React.CSSProperties}
+                                />
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Button variant="ghost" size="xs" onClick={() => setEditingId(null)}>
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="xs"
+                                    onClick={() => handleEditResend(msg.id, editValue)}
+                                    disabled={!editValue.trim() || streaming}
+                                  >
+                                    Send
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="whitespace-pre-wrap">{msg.content}</span>
+                            )
+                          ) : (
+                            <AiResponse content={msg.content} showActions={false} />
+                          )}
                         </BubbleContent>
                       </Bubble>
-                      <MessageFooter className="gap-2">
-                        <span>{formatTime(msg.createdAt)}</span>
-                        {!isUser && msg.usage && (
-                          <span className="text-muted-foreground/60 text-[11px]" title={`Prompt: ${msg.usage.promptTokens}, Completion: ${msg.usage.completionTokens}`}>
-                            {msg.usage.totalTokens} tokens
-                          </span>
-                        )}
-                        {!isUser && (
+                      {!isEditing && (
+                        <MessageFooter className="gap-2">
+                          <span>{formatTime(msg.createdAt)}</span>
+                          {!isUser && msg.usage && (
+                            <span className="text-muted-foreground/60 text-[11px]" title={`Prompt: ${msg.usage.promptTokens}, Completion: ${msg.usage.completionTokens}`}>
+                              {msg.usage.totalTokens} tokens
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleCopy(msg.id, msg.content)}
                             className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            aria-label={isCopied ? 'Copied' : 'Copy response'}
+                            aria-label={isCopied ? 'Copied' : isUser ? 'Copy message' : 'Copy response'}
                           >
                             <span className="relative flex size-3.5 items-center justify-center">
                               <Copy
@@ -773,8 +920,33 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                               />
                             </span>
                           </button>
-                        )}
-                      </MessageFooter>
+                          {isUser && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditValue(msg.content)
+                                setEditingId(msg.id)
+                              }}
+                              disabled={streaming}
+                              className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                              aria-label="Edit message"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          )}
+                          {!isUser && isLast && (
+                            <button
+                              type="button"
+                              onClick={handleRegenerate}
+                              disabled={streaming}
+                              className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                              aria-label="Regenerate response"
+                            >
+                              <RefreshCw className="size-3.5" />
+                            </button>
+                          )}
+                        </MessageFooter>
+                      )}
                     </MessageContent>
                   </Message>
                 )
@@ -873,16 +1045,30 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                     <Bot className="size-3 shrink-0 text-primary/70" />
                     <span className="truncate">{formatModelLabel(agentConfig.model)}</span>
                   </span>
-                  <span
-                    className={cn(
-                      'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
-                      agentConfig.knowledgeBaseId
-                        ? 'border-success/20 bg-success/10 text-success'
-                        : 'border-border bg-muted/40 text-muted-foreground'
-                    )}
-                  >
-                    {agentConfig.knowledgeBaseId ? 'Knowledge: On' : 'Knowledge: Off'}
-                  </span>
+                  {agentConfig.knowledgeBaseId && (
+                    <span
+                      className={cn(
+                        'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
+                        useKnowledge
+                          ? 'border-success/20 bg-success/10 text-success'
+                          : 'border-border bg-muted/40 text-muted-foreground'
+                      )}
+                    >
+                      {useKnowledge ? 'Knowledge: On' : 'Knowledge: Off'}
+                    </span>
+                  )}
+                  {agentHasTools && (
+                    <span
+                      className={cn(
+                        'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
+                        useTools && toolsAllowed
+                          ? 'border-success/20 bg-success/10 text-success'
+                          : 'border-border bg-muted/40 text-muted-foreground'
+                      )}
+                    >
+                      {toolsAllowed ? (useTools ? 'Tools: On' : 'Tools: Off') : 'Tools: Pro'}
+                    </span>
+                  )}
                 </div>
                 <Button
                   onClick={handleSendMessage}
