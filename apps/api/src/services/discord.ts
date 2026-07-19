@@ -11,6 +11,7 @@ const INTERACTION_TYPE_APPLICATION_COMMAND = 2
 // Discord interaction response types
 const RESPONSE_TYPE_PONG = 1
 const RESPONSE_TYPE_CHANNEL_MESSAGE = 4
+const RESPONSE_TYPE_DEFERRED_CHANNEL_MESSAGE = 5
 
 interface DiscordInteractionOption {
   name: string
@@ -24,6 +25,7 @@ interface DiscordInteractionMember {
 
 export interface DiscordInteraction {
   id: string
+  application_id: string
   type: number
   token?: string
   channel_id?: string
@@ -33,6 +35,117 @@ export interface DiscordInteraction {
   data?: {
     name?: string
     options?: DiscordInteractionOption[]
+  }
+}
+
+const CHAT_COMMAND = {
+  name: 'chat',
+  description: 'Chat with this agent',
+  options: [{
+    type: 3,
+    name: 'message',
+    description: 'Your message',
+    required: true,
+  }],
+}
+
+const RESET_COMMAND = {
+  name: 'reset',
+  description: 'Start a new conversation (clears chat history)',
+}
+
+/**
+ * Register (upsert) the /chat and /reset slash commands with Discord.
+ * When guildId is provided the command is registered at the guild level
+ * (updates instantly), otherwise globally (takes up to an hour to propagate).
+ */
+export async function registerDiscordCommands(
+  botToken: string,
+  applicationId: string,
+  guildId?: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const url = guildId
+      ? `${DISCORD_API}/applications/${applicationId}/guilds/${guildId}/commands`
+      : `${DISCORD_API}/applications/${applicationId}/commands`
+
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bot ${botToken}`,
+      },
+      body: JSON.stringify([CHAT_COMMAND, RESET_COMMAND]),
+    })
+
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { message?: string }
+      return { success: false, error: body.message || `Discord API error (${res.status})` }
+    }
+
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to register commands' }
+  }
+}
+
+/**
+ * Remove all global slash commands for the application.
+ */
+export async function removeDiscordCommands(
+  botToken: string,
+  applicationId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${DISCORD_API}/applications/${applicationId}/commands`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bot ${botToken}`,
+      },
+      body: '[]',
+    })
+
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { message?: string }
+      return { success: false, error: body.message || `Discord API error (${res.status})` }
+    }
+
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to remove commands' }
+  }
+}
+
+/**
+ * Set the bot's nickname in a Discord guild (server).
+ * Discord API: PATCH /guilds/{guildId}/members/{botUserId}
+ * Bot user ID is typically the same as the application/client ID.
+ */
+export async function setBotNickname(
+  botToken: string,
+  guildId: string,
+  botUserId: string,
+  nickname: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${botUserId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bot ${botToken}`,
+      },
+      body: JSON.stringify({ nick: nickname }),
+    })
+
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { message?: string }
+      return { success: false, error: body.message || `Discord API error (${res.status})` }
+    }
+
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to set nickname' }
   }
 }
 
@@ -107,12 +220,15 @@ function extractUserMessage(interaction: DiscordInteraction): string | undefined
 
 /**
  * Process a verified Discord interaction. Returns the interaction response body
- * to be sent back synchronously (PONG for pings, message for slash commands).
+ * to be sent back synchronously (PONG for pings, deferred for slash commands).
+ *
+ * Slash commands use a deferred response (type 5) to get past Discord's 3-second
+ * timeout, then the AI reply is patched in via the webhook endpoint.
  */
 export async function processDiscordInteraction(
   deploymentId: string,
   interaction: DiscordInteraction
-): Promise<{ type: number; data?: { content: string } }> {
+): Promise<{ type: number; data?: { content?: string; flags?: number } }> {
   // Respond to Discord's PING handshake
   if (interaction.type === INTERACTION_TYPE_PING) {
     return { type: RESPONSE_TYPE_PONG }
@@ -122,24 +238,94 @@ export async function processDiscordInteraction(
     return { type: RESPONSE_TYPE_CHANNEL_MESSAGE, data: { content: 'Unsupported interaction.' } }
   }
 
+  const commandName = interaction.data?.name
+
+  // Handle /reset — close active conversation, start fresh
+  if (commandName === 'reset') {
+    void handleDiscordReset(deploymentId, interaction)
+    return { type: RESPONSE_TYPE_DEFERRED_CHANNEL_MESSAGE }
+  }
+
   const text = extractUserMessage(interaction)
   if (!text) {
     return { type: RESPONSE_TYPE_CHANNEL_MESSAGE, data: { content: 'Please provide a message.' } }
   }
 
+  const discordUser = interaction.member?.user ?? interaction.user
+  const contactId = discordUser?.id || interaction.channel_id || interaction.id
+  const contactName = discordUser?.global_name || discordUser?.username || undefined
+  const interactionToken = interaction.token
+
+  // Return deferred response immediately (Discord gives us 15 minutes to follow up)
+  void handleDiscordAiReply(deploymentId, text, contactId, contactName, interaction)
+    .catch((err) => {
+      console.error('[Discord] background processing error:', err)
+    })
+
+  return { type: RESPONSE_TYPE_DEFERRED_CHANNEL_MESSAGE }
+}
+
+async function handleDiscordReset(
+  deploymentId: string,
+  interaction: DiscordInteraction,
+): Promise<void> {
+  try {
+    const deployment = await prisma.deployment.findUnique({ where: { id: deploymentId } })
+    if (!deployment) {
+      await patchDiscordReply(interaction, 'Deployment not found.')
+      return
+    }
+
+    const discordUser = interaction.member?.user ?? interaction.user
+    const contactId = discordUser?.id || interaction.channel_id || interaction.id
+
+    // Close any active conversation for this user
+    await prisma.conversation.updateMany({
+      where: {
+        agentId: deployment.agentId,
+        channel: 'discord',
+        contactPhone: contactId,
+        status: { notIn: ['closed', 'archived'] },
+      },
+      data: { status: 'closed' },
+    })
+
+    await patchDiscordReply(interaction, '✅ Conversation reset! New chat started. Use `/chat message:...` to begin.')
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('[Discord] handleDiscordReset error:', message)
+    await patchDiscordReply(interaction, `Sorry, an error occurred: ${message}`)
+  }
+}
+
+async function handleDiscordAiReply(
+  deploymentId: string,
+  text: string,
+  contactId: string,
+  contactName: string | undefined,
+  interaction: DiscordInteraction,
+): Promise<void> {
   try {
     const deployment = await prisma.deployment.findUnique({
       where: { id: deploymentId },
       include: { agent: true },
     })
     if (!deployment) {
-      return { type: RESPONSE_TYPE_CHANNEL_MESSAGE, data: { content: 'Deployment not found.' } }
+      await patchDiscordReply(interaction, 'Deployment not found.')
+      return
+    }
+
+    const config = deployment.config as Record<string, unknown>
+    const applicationId = config.applicationId as string | undefined
+    const interactionToken = interaction.token
+
+    if (!applicationId || !interactionToken) {
+      await patchDiscordReply(interaction, 'Missing Discord configuration.')
+      return
     }
 
     const agentId = deployment.agentId
     const discordUser = interaction.member?.user ?? interaction.user
-    const contactId = discordUser?.id || interaction.channel_id || interaction.id
-    const contactName = discordUser?.global_name || discordUser?.username || undefined
 
     let conversation = await prisma.conversation.findFirst({
       where: { agentId, channel: 'discord', contactPhone: contactId, status: { not: 'closed' } },
@@ -192,10 +378,31 @@ export async function processDiscordInteraction(
       },
     })
 
-    return { type: RESPONSE_TYPE_CHANNEL_MESSAGE, data: { content: reply } }
+    await patchDiscordReply(interaction, reply)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[Discord] processDiscordInteraction error:', message)
-    return { type: RESPONSE_TYPE_CHANNEL_MESSAGE, data: { content: `Sorry, an error occurred: ${message}` } }
+    console.error('[Discord] handleDiscordAiReply error:', message)
+    await patchDiscordReply(interaction, `Sorry, an error occurred: ${message}`)
+  }
+}
+
+/**
+ * Update the deferred Discord interaction response with the actual reply.
+ * Uses the interaction token which doesn't require bot auth.
+ */
+async function patchDiscordReply(
+  interaction: DiscordInteraction,
+  content: string,
+): Promise<void> {
+  if (!interaction.token) return
+  try {
+    const url = `${DISCORD_API}/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`
+    await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    })
+  } catch (err) {
+    console.error('[Discord] failed to patch reply:', err)
   }
 }

@@ -165,6 +165,12 @@ export const deployments = {
   delete: (id: string) => api.delete(`/deployments/${id}`),
   test: (id: string) => api.post(`/deployments/${id}/test`),
   kapsoNumbers: () => api.get('/kapso/phone-numbers'),
+  updateNickname: (id: string, nickname: string) =>
+    api.patch(`/deployments/${id}/discord-nickname`, { nickname }),
+  discordInviteUrl: (agentId: string) => api.get(`/discord/invite-url`, { params: { agentId } }),
+  discordGuilds: () => api.get('/discord/guilds'),
+  discordConnect: (agentId: string, guildId: string, guildName?: string) =>
+    api.post('/discord/connect', { agentId, guildId, guildName }),
 }
 
 export const organizations = {
@@ -203,6 +209,13 @@ export const billing = {
     api.post(`/organizations/${orgId}/billing/checkout`, { plan }),
   portal: (orgId: string) => api.post(`/organizations/${orgId}/billing/portal`),
   invoices: (orgId: string) => api.get(`/organizations/${orgId}/billing/invoices`),
+}
+
+export const dataManagement = {
+  summary: (orgId: string) => api.get(`/organizations/${orgId}/data-summary`),
+  deleteCategory: (orgId: string, category: string) =>
+    api.delete(`/organizations/${orgId}/data/${category}`),
+  wipeAll: (orgId: string) => api.delete(`/organizations/${orgId}/data/wipe`),
 }
 
 export const publicApi = axios.create({

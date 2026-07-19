@@ -9,6 +9,8 @@ import { processTelegramUpdate, type TelegramUpdate } from '../../services/teleg
 import {
   processDiscordInteraction,
   verifyDiscordSignature,
+  registerDiscordCommands,
+  setBotNickname,
   type DiscordInteraction,
 } from '../../services/discord.js'
 import { processSlackEvent } from '../../services/slack.js'
@@ -291,6 +293,25 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       data: { agentId, channel, config: finalConfig as any, status: 'pending' },
     })
 
+    // Auto-register Discord slash commands
+    if (channel === 'discord') {
+      const botToken = finalConfig.botToken as string | undefined
+      const applicationId = finalConfig.applicationId as string | undefined
+      const guildId = finalConfig.guildId as string | undefined
+      if (botToken && applicationId) {
+        const result = await registerDiscordCommands(botToken, applicationId, guildId || undefined)
+        if (result.success) {
+          await prisma.deployment.update({
+            where: { id: deployment.id },
+            data: { status: 'active' },
+          })
+          request.log.info({ deploymentId: deployment.id }, 'Discord slash commands registered')
+        } else {
+          request.log.warn({ deploymentId: deployment.id, error: result.error }, 'Failed to register Discord commands')
+        }
+      }
+    }
+
     return { data: maskSensitive(deployment) }
   })
 
@@ -503,6 +524,182 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     return reply.code(302).redirect(`${frontendUrl}/settings?tab=deployments&error=${errorCode}`)
   })
 
+  // GET /api/discord/invite-url — Generate Discord bot invite URL (no callback needed)
+  fastify.get('/discord/invite-url', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
+    const { agentId } = request.query as { agentId?: string }
+    if (!agentId) {
+      throw new AppError(400, 'agentId is required')
+    }
+
+    const botToken = fastify.config.DISCORD_BOT_TOKEN
+    const applicationId = fastify.config.DISCORD_APPLICATION_ID
+
+    if (!botToken || !applicationId) {
+      throw new AppError(503, 'Discord one-click setup is not configured. Contact the admin.')
+    }
+
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+    if (!agent) throw new AppError(404, 'Agent not found')
+    await fastify.getMembership(request.userId!, agent.organizationId)
+
+    // Permissions: Send Messages, Use Slash Commands, Read Message History, Embed Links
+    const permissions = '274877975552'
+    const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${applicationId}&scope=bot%20applications.commands&permissions=${permissions}`
+
+    return { data: { inviteUrl, applicationId } }
+  })
+
+  // GET /api/discord/guilds — List Discord servers the bot is in (member only)
+  fastify.get('/discord/guilds', {
+    preHandler: [fastify.authenticate],
+  }, async (request) => {
+    const botToken = fastify.config.DISCORD_BOT_TOKEN
+    const applicationId = fastify.config.DISCORD_APPLICATION_ID
+
+    if (!botToken || !applicationId) {
+      throw new AppError(503, 'Discord one-click setup is not configured')
+    }
+
+    const res = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+      headers: { Authorization: `Bot ${botToken}` },
+    })
+
+    if (!res.ok) {
+      throw new AppError(502, 'Failed to fetch guilds from Discord')
+    }
+
+    const guilds = (await res.json()) as Array<{ id: string; name: string; icon: string | null }>
+
+    // Get guilds that already have a deployment
+    const deployedGuildIds = new Set(
+      (await prisma.deployment.findMany({
+        where: { channel: 'discord' },
+        select: { config: true },
+      }))
+        .map((d) => (d.config as Record<string, unknown>)?.guildId as string | undefined)
+        .filter(Boolean)
+    )
+
+    const data = guilds.map((g) => ({
+      id: g.id,
+      name: g.name,
+      icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : null,
+      deployed: deployedGuildIds.has(g.id),
+    }))
+
+    return { data }
+  })
+
+  // POST /api/discord/connect — Create deployment for a selected guild (member only)
+  fastify.post('/discord/connect', {
+    preHandler: [
+      fastify.authenticate,
+      validate({
+        body: z.object({
+          agentId: z.string().uuid(),
+          guildId: z.string().min(1),
+          guildName: z.string().optional(),
+        }),
+      }),
+    ],
+  }, async (request) => {
+    const { agentId, guildId, guildName } = request.body as {
+      agentId: string
+      guildId: string
+      guildName?: string
+    }
+
+    const botToken = fastify.config.DISCORD_BOT_TOKEN
+    const applicationId = fastify.config.DISCORD_APPLICATION_ID
+    const publicKey = fastify.config.DISCORD_PUBLIC_KEY
+
+    if (!botToken || !applicationId || !publicKey) {
+      throw new AppError(503, 'Discord one-click setup is not configured')
+    }
+
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
+    if (!agent) throw new AppError(404, 'Agent not found')
+    await fastify.getMembership(request.userId!, agent.organizationId)
+
+    const existing = await prisma.deployment.findFirst({
+      where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
+    })
+    if (existing) {
+      throw new AppError(409, 'This Discord server already has a deployment', 'CONFLICT')
+    }
+
+    const config = {
+      botToken,
+      applicationId,
+      publicKey,
+      guildId,
+      setupMode: 'oauth2',
+      guildName: guildName || null,
+    }
+
+    const deployment = await prisma.deployment.create({
+      data: { agentId, channel: 'discord', config: config as any, status: 'pending' },
+    })
+
+    const result = await registerDiscordCommands(botToken, applicationId, guildId)
+    if (result.success) {
+      await prisma.deployment.update({
+        where: { id: deployment.id },
+        data: { status: 'active' },
+      })
+    }
+
+    return { data: { id: deployment.id, status: result.success ? 'active' : 'pending' } }
+  })
+
+  // PATCH /api/deployments/:id/discord-nickname — Set the bot's nickname in the Discord guild (member only)
+  fastify.patch('/deployments/:id/discord-nickname', {
+    preHandler: [
+      fastify.authenticate,
+      validate({
+        params: deploymentParamsSchema,
+        body: z.object({ nickname: z.string().min(1).max(100) }),
+      }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { nickname } = request.body as { nickname: string }
+
+    const deployment = await prisma.deployment.findUnique({
+      where: { id },
+      include: { agent: { select: { organizationId: true } } },
+    })
+    if (!deployment) throw new AppError(404, 'Deployment not found')
+    if (deployment.channel !== 'discord') throw new AppError(400, 'Not a Discord deployment')
+
+    await fastify.getMembership(request.userId!, deployment.agent.organizationId)
+
+    const config = deployment.config as Record<string, unknown>
+    const botToken = config.botToken as string | undefined
+    const guildId = config.guildId as string | undefined
+    const applicationId = config.applicationId as string | undefined
+
+    if (!botToken || !guildId || !applicationId) {
+      throw new AppError(400, 'Discord deployment is missing bot credentials or guild ID')
+    }
+
+    const result = await setBotNickname(botToken, guildId, applicationId, nickname)
+    if (!result.success) {
+      throw new AppError(502, result.error || 'Failed to set nickname')
+    }
+
+    // Store nickname in config for reference
+    const updatedConfig = { ...config, botNickname: nickname }
+    await prisma.deployment.update({
+      where: { id },
+      data: { config: updatedConfig as any },
+    })
+
+    return { data: { success: true, nickname } }
+  })
+
   // POST /api/deployments/:id/whatsapp-webhook — Twilio incoming message webhook
   fastify.post('/deployments/:id/whatsapp-webhook', {
     config: { rawBody: true },
@@ -634,6 +831,54 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     }
 
     return reply.code(200).send('OK')
+  })
+
+  // POST /api/discord/interactions — Generic Discord interactions endpoint (one-click OAuth2 flow)
+  // Discord's Interactions Endpoint URL points here once. This endpoint looks up
+  // the deployment by guild_id so users don't have to configure per-deployment URLs.
+  fastify.post('/discord/interactions', async (request, reply) => {
+    const publicKey = fastify.config.DISCORD_PUBLIC_KEY
+    if (!publicKey) {
+      return reply.code(503).send({ error: 'Discord integration not configured' })
+    }
+
+    const signature = request.headers['x-signature-ed25519'] as string | undefined
+    const timestamp = request.headers['x-signature-timestamp'] as string | undefined
+    const rawBody = (request as unknown as { rawBody?: string }).rawBody ?? ''
+
+    if (!signature || !timestamp) {
+      return reply.code(401).send({ error: 'Missing signature headers' })
+    }
+
+    if (!verifyDiscordSignature(publicKey, signature, timestamp, rawBody)) {
+      return reply.code(401).send({ error: 'Invalid request signature' })
+    }
+
+    const interaction = request.body as DiscordInteraction
+
+    // PING — always respond with PONG
+    if (interaction.type === 1) {
+      return reply.code(200).send({ type: 1 })
+    }
+
+    // Look up deployment by guild_id
+    const guildId = interaction.guild_id
+    if (!guildId) {
+      return reply.code(400).send({ error: 'Missing guild_id' })
+    }
+
+    const deployment = await prisma.deployment.findFirst({
+      where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
+      select: { id: true },
+    })
+
+    if (!deployment) {
+      request.log.warn({ guildId }, 'No Discord deployment found for guild')
+      return reply.code(200).send({ type: 4, data: { content: 'This bot is not configured for this server.', flags: 64 } })
+    }
+
+    const response = await processDiscordInteraction(deployment.id, interaction)
+    return reply.code(200).send(response)
   })
 
   // POST /api/deployments/:id/discord-webhook — Receive Discord interactions

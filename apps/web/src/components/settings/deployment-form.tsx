@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Loader2, ExternalLink, Copy, Check } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Loader2, ExternalLink, Copy, Check, ArrowUpRight, Settings2, RefreshCw } from 'lucide-react'
 import { deployments as deploymentsApi } from '@/lib/api'
 import {
   Dialog,
@@ -22,6 +23,7 @@ import {
   SelectLabel,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
 
@@ -31,6 +33,13 @@ interface KapsoNumber {
   displayPhone: string | null
   kind: string | null
   inUse?: boolean
+}
+
+interface Guild {
+  id: string
+  name: string
+  icon: string | null
+  deployed: boolean
 }
 
 interface DeploymentFormProps {
@@ -68,7 +77,8 @@ const channelFields: Record<Channel, { label: string; key: string; placeholder: 
   discord: [
     { label: 'Bot Token', key: 'botToken', placeholder: 'Bot token' },
     { label: 'Application ID', key: 'applicationId', placeholder: 'Application ID' },
-    { label: 'Guild ID', key: 'guildId', placeholder: 'Guild ID (optional)' },
+    { label: 'Public Key', key: 'publicKey', placeholder: 'Public key from Discord Developer Portal' },
+    { label: 'Guild ID (optional)', key: 'guildId', placeholder: 'Guild ID' },
   ],
   telegram: [
     { label: 'Bot Token', key: 'botToken', placeholder: 'Bot token from BotFather' },
@@ -87,10 +97,18 @@ const twilioFields = [
 ]
 
 export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps) {
+  const queryClient = useQueryClient()
   const [agentId, setAgentId] = useState('')
   const [channel, setChannel] = useState<Channel>('web')
   const [config, setConfig] = useState<Record<string, string>>({})
   const [whatsappProvider, setWhatsappProvider] = useState('meta')
+  const [discordAdvanced, setDiscordAdvanced] = useState(false)
+  const [discordInviteLoading, setDiscordInviteLoading] = useState(false)
+  const [discordStep, setDiscordStep] = useState<'invite' | 'guilds'>('invite')
+  const [guilds, setGuilds] = useState<Guild[]>([])
+  const [guildsLoading, setGuildsLoading] = useState(false)
+  const [selectedGuildId, setSelectedGuildId] = useState('')
+  const [connecting, setConnecting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [setupLinkUrl, setSetupLinkUrl] = useState('')
   const [createdDeploymentId, setCreatedDeploymentId] = useState<string | null>(null)
@@ -103,19 +121,17 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
       deploymentsApi.delete(createdDeploymentId).catch(() => {})
     }
     setCreatedDeploymentId(null)
+    setDiscordStep('invite')
     onCancel()
   }
   const [kapsoNumbers, setKapsoNumbers] = useState<KapsoNumber[]>([])
   const [kapsoNumbersLoading, setKapsoNumbersLoading] = useState(false)
-  // '' = connect a new number (setup link), otherwise an existing phoneNumberId
   const [kapsoNumberChoice, setKapsoNumberChoice] = useState('')
 
   const fields = channelFields[channel]
   const useTwilio = channel === 'whatsapp' && whatsappProvider === 'twilio'
   const useKapso = channel === 'whatsapp' && whatsappProvider === 'kapso'
 
-  // Load already-connected Kapso numbers so the user can reuse one instead of
-  // hitting the free-plan "one number" limit with a second setup link.
   useEffect(() => {
     if (!useKapso) return
     let cancelled = false
@@ -138,6 +154,52 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
     }
   }, [useKapso])
 
+  const handleDiscordOneClick = async () => {
+    if (!agentId) return
+    setDiscordInviteLoading(true)
+    try {
+      const res = await deploymentsApi.discordInviteUrl(agentId)
+      const inviteUrl = res.data?.data?.inviteUrl
+      if (inviteUrl) {
+        window.open(inviteUrl, '_blank', 'width=500,height=700')
+        setDiscordStep('guilds')
+        loadGuilds()
+      }
+    } catch {
+      setDiscordAdvanced(true)
+    } finally {
+      setDiscordInviteLoading(false)
+    }
+  }
+
+  const loadGuilds = async () => {
+    setGuildsLoading(true)
+    try {
+      const res = await deploymentsApi.discordGuilds()
+      const raw = res.data?.data ?? res.data ?? []
+      setGuilds(Array.isArray(raw) ? raw : [])
+    } catch {
+      setGuilds([])
+    } finally {
+      setGuildsLoading(false)
+    }
+  }
+
+  const handleDiscordConnect = async () => {
+    if (!agentId || !selectedGuildId) return
+    setConnecting(true)
+    try {
+      const guild = guilds.find((g) => g.id === selectedGuildId)
+      await deploymentsApi.discordConnect(agentId, selectedGuildId, guild?.name)
+      queryClient.invalidateQueries({ queryKey: ['all-deployments'] })
+      onCancel()
+    } catch {
+      // stay open on error
+    } finally {
+      setConnecting(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -145,8 +207,6 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
     if (useTwilio) finalConfig.provider = 'twilio'
     else if (useKapso) {
       finalConfig.provider = 'kapso'
-      // Reuse an existing connected number when chosen; otherwise leave
-      // phoneNumberId unset so the backend runs the setup-link flow.
       if (kapsoNumberChoice) finalConfig.phoneNumberId = kapsoNumberChoice
       else delete finalConfig.phoneNumberId
     } else delete finalConfig.provider
@@ -238,7 +298,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
 
               <div className="space-y-2">
                 <Label>Channel</Label>
-                <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}); setWhatsappProvider('meta') }}>
+                <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}); setWhatsappProvider('meta'); setDiscordStep('invite') }}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -333,6 +393,131 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                     })()}
                   </p>
                 </div>
+              ) : channel === 'discord' && !discordAdvanced ? (
+                <div className="space-y-3">
+                  {discordStep === 'invite' ? (
+                    <div className="rounded-lg border bg-card p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="size-8 rounded-md bg-[#5865F2]/10 flex items-center justify-center">
+                          <img src={channelMeta.discord.logo!} alt="Discord" className="size-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">One-click setup</p>
+                          <p className="text-xs text-muted-foreground">No credentials needed</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Click below to add our bot to your Discord server. Then select the server from the list.
+                      </p>
+                      <Button
+                        type="button"
+                        className="w-full gap-2 bg-[#5865F2] hover:bg-[#4752C4] text-white"
+                        disabled={!agentId || discordInviteLoading}
+                        onClick={handleDiscordOneClick}
+                      >
+                        {discordInviteLoading ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <ArrowUpRight className="size-3.5" />
+                        )}
+                        Add to Discord
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="rounded-lg border bg-card p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="size-8 rounded-md bg-[#5865F2]/10 flex items-center justify-center">
+                            <img src={channelMeta.discord.logo!} alt="Discord" className="size-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Select a server</p>
+                            <p className="text-xs text-muted-foreground">Choose where to install the bot</p>
+                          </div>
+                        </div>
+                        <Select value={selectedGuildId} onValueChange={setSelectedGuildId}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder={guildsLoading ? 'Loading servers...' : 'Select a server'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {guildsLoading ? (
+                              <SelectItem value="" disabled>Loading...</SelectItem>
+                            ) : guilds.length === 0 ? (
+                              <SelectItem value="" disabled>No servers found. Add the bot to a server first.</SelectItem>
+                            ) : (
+                              guilds.map((g) => (
+                                <SelectItem key={g.id} value={g.id} disabled={g.deployed}>
+                                  <div className="flex items-center gap-2">
+                                    {g.icon && <img src={g.icon} alt="" className="size-4 rounded-full" />}
+                                    <span>{g.name}</span>
+                                    {g.deployed && <Badge variant="secondary" className="text-[9px]">Deployed</Badge>}
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={loadGuilds}
+                            disabled={guildsLoading}
+                          >
+                            <RefreshCw className={cn('size-3', guildsLoading && 'animate-spin')} />
+                            Refresh
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="flex-1 gap-1.5 bg-[#5865F2] hover:bg-[#4752C4] text-white"
+                            disabled={!selectedGuildId || connecting}
+                            onClick={handleDiscordConnect}
+                          >
+                            {connecting ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <Check className="size-3.5" />
+                            )}
+                            Connect to Server
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setDiscordAdvanced(true)}
+                  >
+                    <Settings2 className="size-3" />
+                    Use your own Discord app
+                  </button>
+                </div>
+              ) : channel === 'discord' && discordAdvanced ? (
+                <div className="space-y-3">
+                  {channelFields.discord.map((field) => (
+                    <div key={field.key} className="space-y-2">
+                      <Label htmlFor={field.key}>{field.label}</Label>
+                      <Input
+                        id={field.key}
+                        value={config[field.key] || ''}
+                        onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
+                        placeholder={field.placeholder}
+                      />
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => { setDiscordAdvanced(false); setDiscordStep('invite') }}
+                  >
+                    <ArrowUpRight className="size-3" />
+                    Use one-click setup instead
+                  </button>
+                </div>
               ) : useTwilio ? twilioFields.map((field) => (
                 <div key={field.key} className="space-y-2">
                   <Label htmlFor={field.key}>{field.label}</Label>
@@ -359,10 +544,12 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                 <Button type="button" variant="ghost" onClick={handleClose}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={!agentId || saving}>
-                  {saving ? <Loader2 className="size-3 animate-spin" /> : null}
-                  Create Deployment
-                </Button>
+                {!(channel === 'discord' && !discordAdvanced) && (
+                  <Button type="submit" disabled={!agentId || saving}>
+                    {saving ? <Loader2 className="size-3 animate-spin" /> : null}
+                    Create Deployment
+                  </Button>
+                )}
               </DialogFooter>
             </form>
           </>
@@ -371,3 +558,5 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
     </Dialog>
   )
 }
+
+

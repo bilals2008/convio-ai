@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { deployments as deploymentsApi, agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -50,6 +50,29 @@ export default function DeploymentsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedDeployment, setSelectedDeployment] = useState<DeploymentItem | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // Handle Discord OAuth2 callback params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const connected = params.get('connected')
+    const error = params.get('error')
+    if (connected === 'discord') {
+      toast.success('Discord bot added to your server!')
+      queryClient.invalidateQueries({ queryKey: ['all-deployments'] })
+    } else if (error) {
+      const messages: Record<string, string> = {
+        discord_already_deployed: 'This agent already has a Discord deployment.',
+        discord_missing_params: 'Discord setup failed — missing parameters.',
+        discord_not_configured: 'Discord one-click setup is not configured.',
+        agent_not_found: 'Agent not found.',
+        discord_callback_failed: 'Discord setup failed. Please try again.',
+      }
+      toast.error(messages[error] || 'Something went wrong with Discord setup.')
+    }
+    if (connected || error) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [queryClient])
 
   const agentsQuery = useQuery({
     queryKey: ['agents-for-deployments', orgId],
