@@ -624,10 +624,10 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, agent.organizationId)
 
     const existing = await prisma.deployment.findFirst({
-      where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
+      where: { agentId, channel: 'discord', config: { path: ['guildId'], equals: guildId } },
     })
     if (existing) {
-      throw new AppError(409, 'This Discord server already has a deployment', 'CONFLICT')
+      throw new AppError(409, 'This agent already has a deployment in this Discord server', 'CONFLICT')
     }
 
     const config = {
