@@ -101,6 +101,23 @@ export class KIEProvider implements AIProvider {
     const decoder = new TextDecoder()
     let buffer = ''
     const toolCallAccum: Record<number, { id: string; name: string; arguments: string }> = {}
+    let usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
+
+    // Emit any accumulated tool calls. Must run before yielding `done` so tool
+    // calls aren't dropped when the stream terminates with `[DONE]`.
+    const flushToolCalls = function* (): Generator<StreamChunk> {
+      for (const tc of Object.values(toolCallAccum)) {
+        if (!tc.name) continue
+        let args: Record<string, unknown> = {}
+        try {
+          args = tc.arguments ? JSON.parse(tc.arguments) as Record<string, unknown> : {}
+        } catch { /* keep empty args for malformed tool call JSON */ }
+        yield {
+          type: 'tool_call',
+          toolCall: { id: tc.id, name: tc.name, arguments: args },
+        }
+      }
+    }
 
     while (true) {
       const { done, value } = await reader.read()
@@ -114,12 +131,21 @@ export class KIEProvider implements AIProvider {
         if (line.startsWith('data: ')) {
           const data = line.slice(6)
           if (data === '[DONE]') {
-            yield { type: 'done' }
+            yield* flushToolCalls()
+            yield { type: 'done', usage }
             return
           }
           try {
             const parsed = JSON.parse(data) as {
               choices: Array<{ delta: { content?: string; tool_calls?: Array<{ index: number; id?: string; type?: string; function?: { name?: string; arguments?: string } }> } }>
+              usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }
+            }
+            if (parsed.usage) {
+              usage = {
+                promptTokens: parsed.usage.prompt_tokens ?? 0,
+                completionTokens: parsed.usage.completion_tokens ?? 0,
+                totalTokens: parsed.usage.total_tokens ?? 0,
+              }
             }
             const delta = parsed.choices[0]?.delta
             if (delta?.content) {
@@ -128,9 +154,14 @@ export class KIEProvider implements AIProvider {
             if (delta?.tool_calls) {
               for (const tc of delta.tool_calls) {
                 const idx = tc.index
-                if (tc.id) {
-                  toolCallAccum[idx] = { id: tc.id, name: tc.function?.name || '', arguments: tc.function?.arguments || '' }
-                } else if (toolCallAccum[idx]) {
+                if (tc.id || !toolCallAccum[idx]) {
+                  toolCallAccum[idx] = {
+                    id: tc.id || toolCallAccum[idx]?.id || `call_${idx}`,
+                    name: tc.function?.name || toolCallAccum[idx]?.name || '',
+                    arguments: (toolCallAccum[idx]?.arguments || '') + (tc.function?.arguments || ''),
+                  }
+                } else {
+                  if (tc.function?.name) toolCallAccum[idx].name = tc.function.name
                   toolCallAccum[idx].arguments += tc.function?.arguments || ''
                 }
               }
@@ -140,17 +171,9 @@ export class KIEProvider implements AIProvider {
       }
     }
 
-    for (const tc of Object.values(toolCallAccum)) {
-      try {
-        const args = JSON.parse(tc.arguments) as Record<string, unknown>
-        yield {
-          type: 'tool_call',
-          toolCall: { id: tc.id, name: tc.name, arguments: args },
-        }
-      } catch { /* skip malformed tool call JSON */ }
-    }
-
-    yield { type: 'done' }
+    // Stream ended without an explicit `[DONE]` marker.
+    yield* flushToolCalls()
+    yield { type: 'done', usage }
   }
 
   async embed(_text: string): Promise<number[]> {
