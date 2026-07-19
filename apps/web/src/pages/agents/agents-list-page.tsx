@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Brain, Clock, Pencil, Trash2, MoreVertical, AlertCircle } from 'lucide-react'
+import { Plus, Brain, Clock, Pencil, Trash2, MoreVertical, AlertCircle, CheckSquare, Square, X } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,6 +22,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { toast } from '@/lib/toast'
 import { AgentDeleteDialog } from '@/components/agents/agent-delete-dialog'
 import { ProviderLogo } from '@/components/agents/provider-logos'
@@ -106,27 +116,52 @@ function AgentCard({
   onOpen,
   onEdit,
   onDelete,
+  selectionMode,
+  isSelected,
+  onToggleSelect,
 }: {
   agent: Agent
   onOpen: () => void
   onEdit: () => void
   onDelete: () => void
+  selectionMode: boolean
+  isSelected: boolean
+  onToggleSelect: () => void
 }) {
+  const handleClick = selectionMode ? onToggleSelect : onOpen
+
   return (
     <Card
       role="button"
       tabIndex={0}
-      onClick={onOpen}
+      onClick={handleClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          onOpen()
+          handleClick()
         }
       }}
-      className="group [--card-spacing:0px] cursor-pointer rounded-xl border border-border bg-card p-0 outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "group [--card-spacing:0px] cursor-pointer rounded-xl border bg-card p-0 outline-none transition-all duration-200",
+        isSelected && "border-primary/60 bg-primary/5 ring-1 ring-primary/20",
+        !isSelected && "border-border hover:-translate-y-0.5 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
+      )}
     >
       <CardContent className="flex h-full flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
+          {selectionMode ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggleSelect() }}
+              className="mt-0.5 shrink-0"
+            >
+              {isSelected ? (
+                <CheckSquare className="size-5 text-primary" />
+              ) : (
+                <Square className="size-5 text-muted-foreground/50" />
+              )}
+            </button>
+          ) : null}
           <Avatar className="size-11 rounded-xl">
             {agent.avatar ? (
               <AvatarImage src={agent.avatar} alt={agent.name} className="object-cover" />
@@ -141,7 +176,7 @@ function AgentCard({
               {agent.description || 'No description'}
             </p>
           </div>
-          <StatusBadge status={agent.status} />
+          {!selectionMode && <StatusBadge status={agent.status} />}
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -157,27 +192,29 @@ function AgentCard({
             <Clock className="size-3" />
             {formatDate(agent.updatedAt || agent.createdAt)}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              onClick={(e) => e.stopPropagation()}
-              className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "text-muted-foreground hover:text-foreground")}
-            >
-              <MoreVertical className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit() }}>
-                <Pencil className="size-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={(e) => { e.stopPropagation(); onDelete() }}
+          {!selectionMode && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                onClick={(e) => e.stopPropagation()}
+                className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "text-muted-foreground hover:text-foreground")}
               >
-                <Trash2 className="size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <MoreVertical className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit() }}>
+                  <Pencil className="size-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={(e) => { e.stopPropagation(); onDelete() }}
+                >
+                  <Trash2 className="size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -219,6 +256,9 @@ export default function AgentsListPage() {
   const [modelFilter, setModelFilter] = useState('all')
   const [sortBy, setSortBy] = useState('recent')
   const [deleteAgent, setDeleteAgent] = useState<Agent | null>(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
 
   const { data: agentsData, isLoading, isError, refetch } = useQuery({
     queryKey: ['agents', orgId],
@@ -238,6 +278,22 @@ export default function AgentsListPage() {
     },
     onError: () => {
       toast.error('Failed to delete agent')
+    },
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => agentsApi.delete(id)))
+    },
+    onSuccess: (_, ids) => {
+      toast.success(`${ids.length} agent${ids.length !== 1 ? 's' : ''} deleted`)
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      setSelectedIds(new Set())
+      setSelectionMode(false)
+      setBulkDeleteOpen(false)
+    },
+    onError: () => {
+      toast.error('Failed to delete some agents')
     },
   })
 
@@ -289,6 +345,28 @@ export default function AgentsListPage() {
     setModelFilter('all')
   }
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === displayAgents.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(displayAgents.map((a) => a.id)))
+    }
+  }, [selectedIds.size, displayAgents])
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false)
+    setSelectedIds(new Set())
+  }, [])
+
   const loading = orgLoading || isLoading
 
   return (
@@ -306,10 +384,36 @@ export default function AgentsListPage() {
             Create, manage, and deploy your AI agents.
           </p>
         </div>
-        <Button onClick={() => navigate('/agents/new')} className="shrink-0">
-          <Plus className="size-4" />
-          Create Agent
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {selectionMode ? (
+            <>
+              <Button variant="outline" size="sm" onClick={exitSelectionMode}>
+                <X className="size-4" />
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={selectedIds.size === 0}
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                <Trash2 className="size-4" />
+                Delete {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+                <CheckSquare className="size-4" />
+                Select
+              </Button>
+              <Button onClick={() => navigate('/agents/new')} className="shrink-0">
+                <Plus className="size-4" />
+                Create Agent
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -427,6 +531,23 @@ export default function AgentsListPage() {
             )}
           </div>
 
+          {selectionMode && (
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {selectedIds.size === displayAgents.length ? (
+                  <CheckSquare className="size-4 text-primary" />
+                ) : (
+                  <Square className="size-4" />
+                )}
+                {selectedIds.size === displayAgents.length ? 'Deselect all' : 'Select all'}
+              </button>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {displayAgents.map((agent) => (
               <AgentCard
@@ -435,6 +556,9 @@ export default function AgentsListPage() {
                 onOpen={() => navigate(`/agents/${agent.id}/edit`)}
                 onEdit={() => navigate(`/agents/${agent.id}/edit`)}
                 onDelete={() => setDeleteAgent(agent)}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(agent.id)}
+                onToggleSelect={() => toggleSelect(agent.id)}
               />
             ))}
           </div>
@@ -456,6 +580,27 @@ export default function AgentsListPage() {
           isPending={deleteMutation.isPending}
         />
       )}
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} agent{selectedIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedIds.size} agent{selectedIds.size !== 1 ? 's' : ''} and all their conversations. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={bulkDeleteMutation.isPending}
+              onClick={() => bulkDeleteMutation.mutate(Array.from(selectedIds))}
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete ${selectedIds.size} agent${selectedIds.size !== 1 ? 's' : ''}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   )
 }
