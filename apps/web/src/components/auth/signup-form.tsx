@@ -24,7 +24,7 @@ function passwordStrength(password: string): { label: string; color: string; wid
   return { label: 'Strong', color: 'bg-success', width: '100%', segments: 4 }
 }
 
-export function SignupForm() {
+export function SignupForm({ plan, billing }: { plan?: string; billing?: string }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -72,6 +72,14 @@ export function SignupForm() {
         onError: (err) => {
           const msg = (err as { response?: { data?: { error?: string; message?: string } } }).response?.data
           setError(msg?.error || msg?.message || 'Failed to create account')
+        },
+        onSuccess: () => {
+          if (plan) {
+            const params = new URLSearchParams()
+            params.set('plan', plan)
+            if (billing) params.set('billing', billing)
+            sessionStorage.setItem('pendingBillingRedirect', params.toString())
+          }
         },
       }
     )

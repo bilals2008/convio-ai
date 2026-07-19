@@ -53,13 +53,20 @@ export function useLogin() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['auth', 'session'] })
-      navigate('/dashboard', { replace: true })
+      const pendingRedirect = sessionStorage.getItem('pendingBillingRedirect')
+      if (pendingRedirect) {
+        sessionStorage.removeItem('pendingBillingRedirect')
+        navigate(`/settings/billing?${pendingRedirect}`, { replace: true })
+      } else {
+        navigate('/dashboard', { replace: true })
+      }
     },
     onError: () => {},
   })
 }
 
 export function useSignup() {
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
 
   return useMutation({
@@ -71,8 +78,19 @@ export function useSignup() {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
-      navigate('/login', { replace: true })
+    onSuccess: (data) => {
+      if (data.session) {
+        queryClient.invalidateQueries({ queryKey: ['auth', 'session'] })
+        const pendingRedirect = sessionStorage.getItem('pendingBillingRedirect')
+        if (pendingRedirect) {
+          sessionStorage.removeItem('pendingBillingRedirect')
+          navigate(`/settings/billing?${pendingRedirect}`, { replace: true })
+        } else {
+          navigate('/login', { replace: true })
+        }
+      } else {
+        navigate('/login', { replace: true })
+      }
     },
   })
 }
