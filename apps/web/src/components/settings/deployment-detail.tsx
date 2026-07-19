@@ -45,27 +45,47 @@ interface DeploymentDetailProps {
   onDelete: (id: string) => void
 }
 
-function MiniSparkline({ data, className }: { data: number[]; className?: string }) {
-  if (data.length < 2) return null
+function MiniBarChart({ data, color = 'currentColor', className }: { data: number[]; color?: string; className?: string }) {
+  if (data.length === 0) return null
   const max = Math.max(...data, 1)
-  const min = Math.min(...data, 0)
-  const range = max - min || 1
-  const w = 80
-  const h = 24
-  const points = data
-    .map((v, i) => {
-      const x = (i / (data.length - 1)) * w
-      const y = h - ((v - min) / range) * h
-      return `${x},${y}`
-    })
-    .join(' ')
-  const areaPoints = `0,${h} ${points} ${w},${h}`
+  const w = 72
+  const h = 28
+  const gap = 2
+  const barW = Math.max((w - gap * (data.length - 1)) / data.length, 2)
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className={cn('shrink-0', className)} preserveAspectRatio="none">
-      <polygon points={areaPoints} fill="currentColor" className="text-primary/10" />
-      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary" />
+    <svg viewBox={`0 0 ${w} ${h}`} className={cn('shrink-0', className)}>
+      {data.map((v, i) => {
+        const barH = max > 0 ? (v / max) * (h - 2) : 0
+        return (
+          <rect
+            key={i}
+            x={i * (barW + gap)}
+            y={h - barH}
+            width={barW}
+            height={barH}
+            rx={1.5}
+            fill={color}
+            opacity={0.7 + (v / max) * 0.3}
+          />
+        )
+      })}
     </svg>
   )
+}
+
+function buildDailySeries(
+  items: { createdAt: string }[],
+  days = 7,
+): number[] {
+  const now = new Date()
+  const buckets: number[] = new Array(days).fill(0)
+  for (const item of items) {
+    const d = new Date(item.createdAt)
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
+    const idx = days - 1 - diffDays
+    if (idx >= 0 && idx < days) buckets[idx]++
+  }
+  return buckets
 }
 
 export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }: DeploymentDetailProps) {
@@ -146,6 +166,14 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
   const activeConvs = channelConversations.filter((c: ConversationSummary) => c.status === 'active').length
   const closedConvs = channelConversations.filter((c: ConversationSummary) => c.status === 'closed').length
   const uniqueUsers = new Set(channelConversations.map((c: ConversationSummary) => c.contactName || c.userName || c.id)).size
+
+  const dailyConvCounts = buildDailySeries(channelConversations, 7)
+  const dailyMsgCounts = buildDailySeries(
+    channelConversations.flatMap((c) => c.messages || []),
+    7,
+  )
+  const dailyUserDates = channelConversations.map((c) => ({ createdAt: c.createdAt }))
+  const dailyUserCounts = buildDailySeries(dailyUserDates, 7)
 
   return (
     <Dialog open={!!deploymentId} onOpenChange={(open) => { if (!open) onClose() }}>
@@ -346,13 +374,13 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                 </TabsContent>
 
                 <TabsContent value="analytics" className="space-y-3 mt-0">
-                  {/* Compact KPI Cards */}
+                  {/* Compact KPI Cards with Real Charts */}
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { icon: MessageSquare, label: 'Conversations', value: channelConversations.length, color: 'text-primary', sparkData: [3, 5, 2, 8, channelConversations.length] },
-                      { icon: Hash, label: 'Messages', value: totalMessages, color: 'text-info', sparkData: [10, 15, 8, 20, totalMessages] },
-                      { icon: Users, label: 'Users', value: uniqueUsers, color: 'text-success', sparkData: [1, 2, 1, 3, uniqueUsers] },
-                      { icon: Bot, label: 'Active / Closed', value: `${activeConvs} / ${closedConvs}`, color: 'text-warning', sparkData: [activeConvs, closedConvs] },
+                      { icon: MessageSquare, label: 'Conversations', value: channelConversations.length, color: 'var(--color-primary)', barData: dailyConvCounts },
+                      { icon: Hash, label: 'Messages', value: totalMessages, color: 'var(--color-info)', barData: dailyMsgCounts },
+                      { icon: Users, label: 'Users', value: uniqueUsers, color: 'var(--color-success)', barData: dailyUserCounts },
+                      { icon: Bot, label: 'Active / Closed', value: `${activeConvs} / ${closedConvs}`, color: 'var(--color-warning)', barData: [activeConvs, closedConvs] },
                     ].map((m) => (
                       <div
                         key={m.label}
@@ -362,7 +390,7 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
                           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">{m.label}</span>
                           <span className="text-lg font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
                         </div>
-                        <MiniSparkline data={m.sparkData} className={cn('w-12 h-6', m.color)} />
+                        <MiniBarChart data={m.barData} color={m.color} className="w-[72px] h-7" />
                       </div>
                     ))}
                   </div>
