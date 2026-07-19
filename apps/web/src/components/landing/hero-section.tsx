@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { ArrowRight, ArrowUpRight, Zap, Check, MessageSquare, BarChart3, Globe } from 'lucide-react'
+import { HeroBackground } from './hero-background'
 
 function ProductPreview() {
   return (
@@ -21,24 +22,7 @@ function ProductPreview() {
 export function HeroSection() {
   return (
     <section id="top" className="relative overflow-hidden">
-      {/* Gradient orbs */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-[30%] left-1/2 h-[600px] w-[800px] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-[120px]" />
-        <div className="absolute -bottom-[20%] left-[15%] h-[400px] w-[500px] rounded-full bg-primary/[0.04] blur-[100px]" />
-        <div className="absolute top-[20%] right-[5%] h-[300px] w-[400px] rounded-full bg-primary/[0.03] blur-[80px]" />
-      </div>
-
-      {/* Grid overlay */}
-      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.04] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)]" />
-
-      {/* Dot pattern */}
-      <div className="pointer-events-none absolute inset-0 bg-dot-pattern opacity-30 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
-
-      {/* Top edge glow line */}
-      <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-
-      {/* Noise texture */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.03] [background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20viewBox%3D%220%200%20256%20256%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22n%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%220.9%22%20numOctaves%3D%224%22%20stitchTiles%3D%22stitch%22%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%22256%22%20height%3D%22256%22%20filter%3D%22url(%23n)%22%20opacity%3D%221%22%2F%3E%3C%2Fsvg%3E')] [background-size:128px_128px]" />
+      <HeroBackground />
 
       <div className="relative mx-auto max-w-[1160px] px-5 md:px-10 pb-16 pt-28 md:pb-24 md:pt-36">
         <div className="flex flex-col items-center text-center">
