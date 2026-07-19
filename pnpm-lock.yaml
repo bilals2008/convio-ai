@@ -80,6 +80,9 @@ importers:
       '@kapso/whatsapp-cloud-api':
         specifier: ^0.2.2
         version: 0.2.2
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@3.25.76)
       '@opendataloader/pdf':
         specifier: ^2.4.7
         version: 2.4.7

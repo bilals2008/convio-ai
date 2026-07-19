@@ -34,6 +34,7 @@ import billingRoutes from './modules/billing/routes.js'
 import widgetsRoutes from './modules/widgets/routes.js'
 import providerKeysRoutes from './modules/provider-keys/routes.js'
 import dataManagementRoutes from './modules/data-management/routes.js'
+import mcpRoutes from './modules/mcp/routes.js'
 import emailPlugin from './services/email.jsx'
 import { initDiscordGateway, shutdownDiscordGateway } from './services/discord-gateway.js'
 
@@ -78,6 +79,7 @@ async function buildServer() {
   await app.register(widgetsRoutes, { prefix: '/api' })
   await app.register(providerKeysRoutes, { prefix: '/api' })
   await app.register(dataManagementRoutes, { prefix: '/api' })
+  await app.register(mcpRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {

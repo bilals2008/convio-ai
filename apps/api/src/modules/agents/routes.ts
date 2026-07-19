@@ -7,7 +7,7 @@ import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { getTemplate, listTemplates } from './templates.js'
-import { getToolHandler } from '../../services/tools/index.js'
+import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
 import { z } from 'zod'
 
 const orgParamsSchema = z.object({
@@ -45,11 +45,9 @@ const testStreamSchema = z.object({
   reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
   providerKeyId: z.string().uuid().optional(),
   knowledgeBaseId: z.string().uuid().optional().nullable(),
-  history: z.array(z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string().min(1).max(12000),
-  })).max(30).optional().default([]),
+  history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(12000) })).max(30).optional().default([]),
   tools: z.array(z.string()).optional().default([]),
+  toolIds: z.array(z.string().uuid()).optional().default([]),
 })
 
 const createAgentBodySchema = createAgentSchema.extend({
@@ -266,6 +264,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
+    await prisma.widget.deleteMany({ where: { agentId: id } })
     await prisma.agent.delete({ where: { id } })
     reply.code(204).send()
   })
@@ -407,6 +406,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       knowledgeBaseId,
       history,
       tools: toolNames,
+      toolIds,
     } = request.body as z.infer<typeof testStreamSchema>
 
     const providerKey = providerKeyId
@@ -451,6 +451,18 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         description: h.schema.description,
         parameters: h.schema.parameters,
       }))
+
+    // Load DB tools by ID and add to toolDefs
+    if (toolIds.length > 0) {
+      const dbHandlers = await loadDbToolHandlers(prisma, toolIds)
+      for (const handler of Object.values(dbHandlers)) {
+        toolDefs.push({
+          name: handler.schema.name,
+          description: handler.schema.description,
+          parameters: handler.schema.parameters,
+        })
+      }
+    }
 
     if (knowledgeBaseId) {
       const context = await retrieveContext(message, knowledgeBaseId).catch(() => null)
@@ -519,9 +531,10 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
       // Execute tools from native tool calls and make second AI call for summarization
       if (toolCallsFromStream.length > 0) {
+        const dbToolHandlers = await loadDbToolHandlers(prisma, toolIds)
         const results: { tool: string; result: unknown }[] = []
         for (const tc of toolCallsFromStream) {
-          const handler = getToolHandler(tc.tool)
+          const handler = getToolHandler(tc.tool) || dbToolHandlers[tc.tool]
           if (handler) {
             const result = await handler.execute(tc.args)
             reply.raw.write(`data: ${JSON.stringify({ type: 'tool_result', tool: tc.tool, result })}\n\n`)

@@ -3,12 +3,13 @@ export function calculate(expression: string): { result?: number; error?: string
     return { error: 'No expression provided' }
   }
 
-  const sanitized = expression
+  let sanitized = expression
     .replace(/\s/g, '')
     .replace(/×/g, '*')
     .replace(/÷/g, '/')
+    .replace(/\^/g, '**')
 
-  if (!/^[\d+\-*/().,%^]+$/.test(sanitized)) {
+  if (!/^[\d+\-*/().,%*]+$/.test(sanitized)) {
     return { error: 'Invalid characters in expression' }
   }
 

@@ -7,6 +7,7 @@ import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { moderateForOrg, type ModerationFlag } from '../../services/moderation.js'
 import { checkMessageLimit } from '../../services/billing.js'
+import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { z } from 'zod'
 
 // User-facing message shown when a message is blocked by moderation.
@@ -134,6 +135,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       select: {
         agent: {
           select: {
+            id: true,
             organizationId: true,
             model: true,
             systemPrompt: true,
@@ -141,6 +143,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             maxTokens: true,
             providerKeyId: true,
             knowledgeBaseId: true,
+            widgetConfig: true,
           },
         },
       },
@@ -218,11 +221,13 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           select: { apiKey: true },
         })
       : Promise.resolve(null)
+    const toolsPromise = loadAgentToolHandlers(agent.id, prisma)
 
-    const [historyDesc, context, providerKey] = await Promise.all([
+    const [historyDesc, context, providerKey, toolHandlers] = await Promise.all([
       historyPromise,
       contextPromise,
       providerKeyPromise,
+      toolsPromise,
     ])
     const history = historyDesc.reverse()
     const systemContext = context
@@ -233,6 +238,12 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       { role: 'system' as const, content: systemContext },
       ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     ]
+
+    const toolDefs = toolHandlers.map((h) => ({
+      name: h.schema.name,
+      description: h.schema.description,
+      parameters: h.schema.parameters,
+    }))
 
     let provider
     try {
@@ -268,17 +279,65 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         temperature: agent.temperature ?? 0.7,
         maxTokens: agent.maxTokens ?? 2048,
         apiKey,
+        tools: toolDefs.length > 0 ? toolDefs : undefined,
       })
+
+      let firstResponseText = ''
+      const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
 
       for await (const chunk of stream) {
         if (clientDisconnected) break
         if (chunk.type === 'reasoning' && chunk.content) {
           reply.raw.write(`data: ${JSON.stringify({ type: 'reasoning', content: chunk.content })}\n\n`)
+        } else if (chunk.type === 'text' && chunk.content) {
+          firstResponseText += chunk.content
+          reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+        } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+          toolCallsFromStream.push({ tool: chunk.toolCall.name, args: chunk.toolCall.arguments })
+          reply.raw.write(`data: ${JSON.stringify({ type: 'tool_call', tool: chunk.toolCall.name, args: chunk.toolCall.arguments })}\n\n`)
         } else if (chunk.content) {
-          fullResponse += chunk.content
+          firstResponseText += chunk.content
           reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
         }
         if (chunk.type === 'done') break
+      }
+
+      // Execute tools and make second AI call for summarization
+      if (toolCallsFromStream.length > 0) {
+        const results: { tool: string; result: unknown }[] = []
+        for (const tc of toolCallsFromStream) {
+          const handler = toolHandlers.find((h) => h.schema.name === tc.tool)
+          if (handler) {
+            const result = await handler.execute(tc.args)
+            reply.raw.write(`data: ${JSON.stringify({ type: 'tool_result', tool: tc.tool, result })}\n\n`)
+            results.push({ tool: tc.tool, result })
+          }
+        }
+
+        const resultsSummary = results
+          .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
+          .join('\n\n')
+
+        const finalStream = provider.stream({
+          model: agent.model,
+          messages: [
+            ...aiMessages,
+            { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
+            { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
+          ],
+          temperature: agent.temperature ?? 0.7,
+          maxTokens: agent.maxTokens ?? 2048,
+          apiKey,
+        })
+        for await (const chunk of finalStream) {
+          if (clientDisconnected) break
+          if (chunk.type === 'text' && chunk.content) {
+            fullResponse += chunk.content
+            reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+          }
+        }
+      } else {
+        fullResponse = firstResponseText
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'AI generation failed'
@@ -511,6 +570,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       select: {
         agent: {
           select: {
+            id: true,
             organizationId: true,
             status: true,
             model: true,
@@ -519,6 +579,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             maxTokens: true,
             providerKeyId: true,
             knowledgeBaseId: true,
+            widgetConfig: true,
           },
         },
       },
@@ -569,11 +630,13 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           select: { apiKey: true },
         })
       : Promise.resolve(null)
+    const toolsPromise = loadAgentToolHandlers(agent.id, prisma)
 
-    const [historyDesc, context, providerKey] = await Promise.all([
+    const [historyDesc, context, providerKey, toolHandlers] = await Promise.all([
       historyPromise,
       contextPromise,
       providerKeyPromise,
+      toolsPromise,
     ])
     const history = historyDesc.reverse()
     const apiKey = providerKey?.apiKey
@@ -585,6 +648,12 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       { role: 'system' as const, content: systemContext },
       ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     ]
+
+    const toolDefs = toolHandlers.map((h) => ({
+      name: h.schema.name,
+      description: h.schema.description,
+      parameters: h.schema.parameters,
+    }))
 
     reply.hijack()
     reply.raw.writeHead(200, {
@@ -608,16 +677,62 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         temperature: agent.temperature ?? 0.7,
         maxTokens: agent.maxTokens ?? 2048,
         apiKey,
+        tools: toolDefs.length > 0 ? toolDefs : undefined,
       })
+
+      let firstResponseText = ''
+      const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
 
       for await (const chunk of stream) {
         if (clientDisconnected) break
         if (chunk.type === 'reasoning') continue
-        if (chunk.content) {
-          fullResponse += chunk.content
+        if (chunk.type === 'text' && chunk.content) {
+          firstResponseText += chunk.content
+          reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+        } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+          toolCallsFromStream.push({ tool: chunk.toolCall.name, args: chunk.toolCall.arguments })
+        } else if (chunk.content) {
+          firstResponseText += chunk.content
           reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
         }
         if (chunk.type === 'done') break
+      }
+
+      // Execute tools and make second AI call for summarization
+      if (toolCallsFromStream.length > 0) {
+        const results: { tool: string; result: unknown }[] = []
+        for (const tc of toolCallsFromStream) {
+          const handler = toolHandlers.find((h) => h.schema.name === tc.tool)
+          if (handler) {
+            const result = await handler.execute(tc.args)
+            results.push({ tool: tc.tool, result })
+          }
+        }
+
+        const resultsSummary = results
+          .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
+          .join('\n\n')
+
+        const finalStream = provider.stream({
+          model: agent.model,
+          messages: [
+            ...aiMessages,
+            { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
+            { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
+          ],
+          temperature: agent.temperature ?? 0.7,
+          maxTokens: agent.maxTokens ?? 2048,
+          apiKey,
+        })
+        for await (const chunk of finalStream) {
+          if (clientDisconnected) break
+          if (chunk.type === 'text' && chunk.content) {
+            fullResponse += chunk.content
+            reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+          }
+        }
+      } else {
+        fullResponse = firstResponseText
       }
     } catch {
       if (!clientDisconnected) {

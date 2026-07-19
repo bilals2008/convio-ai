@@ -337,7 +337,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
 
     return {
       data: deployments.map((d) => ({
-        ...maskSensitive(d),
+        ...(maskSensitive(d) as Record<string, unknown>),
         agentName: d.agent.name,
       })),
     }

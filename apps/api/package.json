@@ -5,6 +5,8 @@
   "type": "module",
   "main": "./src/server.ts",
   "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
     "dev": "tsx watch src/server.ts",
     "build": "tsup",
     "start": "node dist/server.js",
@@ -26,6 +28,7 @@
     "@fastify/swagger-ui": "^5.0.0",
     "@fastify/type-provider-typebox": "^5.0.0",
     "@kapso/whatsapp-cloud-api": "^0.2.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@opendataloader/pdf": "^2.4.7",
     "@react-email/components": "^1.0.12",
     "@sinclair/typebox": "^0.34.0",
