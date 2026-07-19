@@ -8,6 +8,7 @@ export interface PlanConfig {
   name: string
   description: string
   price: string
+  yearlyPrice?: string
   period: string
   badge?: string
   features: PlanFeature[]
@@ -17,7 +18,8 @@ export interface PlanConfig {
   highlighted: boolean
   productId?: string
   variantId?: string
-  icon?: 'zap' | 'shield' | 'star'
+  icon?: 'zap' | 'shield' | 'star' | 'crown'
+  iconColor?: string
 }
 
 export interface PricingConfig {
@@ -43,6 +45,7 @@ export const pricingConfig: PricingConfig = {
       name: 'Free',
       description: 'Perfect for getting started',
       price: '$0',
+      yearlyPrice: '$0',
       period: 'forever',
       features: [
         { text: '1 AI agent' },
@@ -56,12 +59,14 @@ export const pricingConfig: PricingConfig = {
       variant: 'outline',
       highlighted: false,
       icon: 'zap',
+      iconColor: 'text-muted-foreground',
     },
     {
       key: 'pro',
       name: 'Pro',
       description: 'For growing businesses',
       price: '$39',
+      yearlyPrice: '$31',
       period: '/month',
       badge: 'Most Popular',
       features: [
@@ -76,12 +81,14 @@ export const pricingConfig: PricingConfig = {
       variant: 'default',
       highlighted: true,
       icon: 'zap',
+      iconColor: 'text-emerald-500',
     },
     {
       key: 'business',
       name: 'Business',
       description: 'For scaling teams',
       price: '$99',
+      yearlyPrice: '$79',
       period: '/month',
       badge: 'Best Value',
       features: [
@@ -92,11 +99,12 @@ export const pricingConfig: PricingConfig = {
         { text: 'Custom branding' },
         { text: 'Priority support' },
       ],
-      cta: 'Get Started',
+      cta: 'Start Business Trial',
       href: '/signup',
       variant: 'outline',
       highlighted: false,
-      icon: 'star',
+      icon: 'crown',
+      iconColor: 'text-amber-500',
     },
     {
       key: 'enterprise',
@@ -109,7 +117,8 @@ export const pricingConfig: PricingConfig = {
         { text: 'Unlimited knowledge bases' },
         { text: 'Unlimited messages' },
         { text: 'SSO / SAML' },
-        { text: 'Dedicated support' },
+        { text: 'Dedicated onboarding' },
+        { text: 'Volume discounts' },
         { text: 'SLA guarantee' },
       ],
       cta: 'Contact Sales',
@@ -117,6 +126,7 @@ export const pricingConfig: PricingConfig = {
       variant: 'outline',
       highlighted: false,
       icon: 'shield',
+      iconColor: 'text-violet-500',
     },
   ],
   footer: 'All plans include RAG and community access. Prices in USD.',

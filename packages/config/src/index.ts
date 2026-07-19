@@ -61,7 +61,7 @@ export const PLANS: Record<string, {
   },
   enterprise: {
     label: 'Enterprise',
-    features: ['Everything in Business', 'Unlimited messages', 'Unlimited knowledge bases', 'SSO/SAML', 'Dedicated support', 'SLA guarantee'],
+    features: ['Everything in Business', 'Unlimited messages', 'Unlimited knowledge bases', 'SSO/SAML', 'Dedicated onboarding', 'Volume discounts', 'SLA guarantee'],
     limits: { agents: Infinity, messagesPerMonth: Infinity, knowledgeBases: Infinity },
     price: 'Custom',
     priceMonthly: 0,
