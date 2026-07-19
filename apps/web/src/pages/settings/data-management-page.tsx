@@ -7,7 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Trash2, AlertTriangle, Brain, MessageSquare, BookOpen, FileText, Link as LinkIcon, Shield, BarChart3 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import {
+  Loader2,
+  Trash2,
+  AlertTriangle,
+  Brain,
+  MessageSquare,
+  BookOpen,
+  FileText,
+  Link as LinkIcon,
+  Shield,
+  BarChart3,
+} from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,45 +52,45 @@ const categories: {
   {
     key: 'agents',
     label: 'Agents',
-    description: 'All AI agents and their configurations. Conversations, deployments, and analytics linked to agents will also be deleted.',
+    description: 'AI agents, configs, deployments & analytics',
     icon: Brain,
-    warning: 'This will also delete all conversations, deployments, and analytics for these agents.',
+    warning: 'Cascading delete: conversations, deployments, analytics',
   },
   {
     key: 'conversations',
     label: 'Conversations',
-    description: 'All chat conversations and messages across all agents.',
+    description: 'Chat conversations and messages across agents',
     icon: MessageSquare,
   },
   {
     key: 'knowledge-bases',
     label: 'Knowledge Bases',
-    description: 'All knowledge bases and their associated documents and embeddings.',
+    description: 'Knowledge bases, documents & embeddings',
     icon: BookOpen,
-    warning: 'Agents referencing these knowledge bases will lose their knowledge source.',
+    warning: 'Agents lose their knowledge source',
   },
   {
     key: 'documents',
     label: 'Documents',
-    description: 'All uploaded documents and their vector embeddings. Knowledge bases will remain but be empty.',
+    description: 'Uploaded docs & vector embeddings',
     icon: FileText,
   },
   {
     key: 'integrations',
     label: 'Integrations',
-    description: 'All channel deployments (WhatsApp, Slack, Discord, Telegram, etc.).',
+    description: 'Channel deployments (WhatsApp, Slack, etc.)',
     icon: LinkIcon,
   },
   {
     key: 'provider-keys',
     label: 'Provider Keys',
-    description: 'All BYOK API keys (OpenAI, Anthropic, Google, etc.).',
+    description: 'BYOK API keys (OpenAI, Anthropic, etc.)',
     icon: Shield,
   },
   {
     key: 'analytics',
     label: 'Analytics',
-    description: 'All analytics data and performance metrics.',
+    description: 'Analytics data & performance metrics',
     icon: BarChart3,
   },
 ]
@@ -118,9 +130,7 @@ export default function DataManagementPage() {
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to delete data')
     },
-    onSettled: () => {
-      setDeletingCategory(null)
-    },
+    onSettled: () => setDeletingCategory(null),
   })
 
   const wipeMutation = useMutation({
@@ -145,7 +155,8 @@ export default function DataManagementPage() {
   const getCategoryLabel = (key: string) =>
     categories.find((c) => c.key === key)?.label || key
 
-  const hasAnyData = Object.values(summary).some((count) => count > 0)
+  const totalItems = Object.values(summary).reduce((sum, count) => sum + count, 0)
+  const hasAnyData = totalItems > 0
 
   if (summaryQuery.isLoading) {
     return (
@@ -159,69 +170,92 @@ export default function DataManagementPage() {
     <div className="space-y-6">
       <PageHeader
         title="Data Management"
-        description="Manage and delete data in your workspace. These actions are permanent."
+        description="Manage and delete workspace data. These actions are permanent."
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {categories.map((cat) => {
-          const count = summary[cat.key]
-          const Icon = cat.icon
-          return (
-            <div
-              key={cat.key}
-              className="flex items-start gap-3 rounded-lg border bg-card p-4"
-            >
-              <div className="size-9 rounded-md bg-muted flex items-center justify-center shrink-0">
-                <Icon className="size-4 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{cat.label}</span>
-                  <span className="text-sm tabular-nums text-muted-foreground">
-                    {count.toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                  {cat.description}
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 w-full justify-start gap-1.5"
-                  disabled={count === 0 || deleteCategoryMutation.isPending}
-                  onClick={() => setDeletingCategory(cat.key)}
-                >
-                  {deleteCategoryMutation.isPending && deletingCategory === cat.key ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <Trash2 className="size-3" />
-                  )}
-                  Delete {cat.label.toLowerCase()}
-                </Button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Wipe All Data */}
-      <Card className="border-destructive/50">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2 text-base">
-            <AlertTriangle className="size-5" />
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <div className="flex size-7 items-center justify-center rounded-md bg-primary/10">
+              <Brain className="size-3.5 text-primary" />
+            </div>
+            Workspace Data
+          </CardTitle>
+          <CardDescription>
+            {totalItems.toLocaleString()} items across {Object.values(summary).filter((c) => c > 0).length} categories
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {categories.map((cat) => {
+              const count = summary[cat.key]
+              const Icon = cat.icon
+              return (
+                <div
+                  key={cat.key}
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Icon className="size-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{cat.label}</span>
+                        {cat.warning && count > 0 && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-warning/30 text-warning">
+                            Cascade
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{cat.description}</p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="text-sm font-semibold tabular-nums">{count.toLocaleString()}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                      disabled={count === 0 || deleteCategoryMutation.isPending}
+                      onClick={() => setDeletingCategory(cat.key)}
+                    >
+                      {deleteCategoryMutation.isPending && deletingCategory === cat.key ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-3" />
+                      )}
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Wipe All */}
+      <Card className="border-destructive/30">
+        <CardHeader>
+          <CardTitle className="text-destructive flex items-center gap-2 text-sm">
+            <div className="flex size-7 items-center justify-center rounded-md bg-destructive/10">
+              <AlertTriangle className="size-3.5 text-destructive" />
+            </div>
             Wipe All Data
           </CardTitle>
           <CardDescription>
-            Permanently delete all data in this workspace including agents, conversations,
-            knowledge bases, documents, integrations, provider keys, analytics, widgets, and tools.
-            This action cannot be undone.
+            Permanently delete all data in <strong>{org?.name || 'this workspace'}</strong> including agents,
+            conversations, knowledge bases, documents, integrations, provider keys, and analytics.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button
             variant="destructive"
+            size="sm"
             disabled={!hasAnyData || wipeMutation.isPending}
             onClick={() => setWipeDialogOpen(true)}
+            className="gap-1.5"
           >
             {wipeMutation.isPending ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -233,31 +267,31 @@ export default function DataManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Category delete confirmation */}
+      {/* Category delete dialog */}
       <AlertDialog
         open={deletingCategory !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeletingCategory(null)
-        }}
+        onOpenChange={(open) => { if (!open) setDeletingCategory(null) }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="size-5 text-destructive" />
+              <AlertTriangle className="size-4 text-destructive" />
               Delete {deletingCategory ? getCategoryLabel(deletingCategory) : ''}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <span className="block">
-                Are you sure you want to delete all {deletingCategory ? getCategoryLabel(deletingCategory).toLowerCase() : ''}?
-                This action is permanent and cannot be undone.
+                Are you sure you want to delete all{' '}
+                <strong>{deletingCategory ? getCategoryLabel(deletingCategory).toLowerCase() : ''}</strong>?
+                This cannot be undone.
               </span>
               {deletingCategory && categories.find((c) => c.key === deletingCategory)?.warning && (
-                <span className="block text-destructive font-medium">
+                <span className="flex items-center gap-1 text-destructive font-medium text-xs">
+                  <AlertTriangle className="size-3 shrink-0" />
                   {categories.find((c) => c.key === deletingCategory)?.warning}
                 </span>
               )}
               {deletingCategory && (
-                <span className="block text-sm">
+                <span className="block text-xs text-muted-foreground">
                   {summary[deletingCategory].toLocaleString()} {summary[deletingCategory] === 1 ? 'item' : 'items'} will be deleted.
                 </span>
               )}
@@ -266,93 +300,78 @@ export default function DataManagementPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (deletingCategory) {
-                  deleteCategoryMutation.mutate(deletingCategory)
-                }
-              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5"
+              onClick={() => { if (deletingCategory) deleteCategoryMutation.mutate(deletingCategory) }}
             >
-              Delete {deletingCategory ? getCategoryLabel(deletingCategory) : ''}
+              {deleteCategoryMutation.isPending && deletingCategory && (
+                <Loader2 className="size-3 animate-spin" />
+              )}
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Wipe all confirmation with type-to-confirm */}
+      {/* Wipe all dialog */}
       <AlertDialog
         open={wipeDialogOpen}
         onOpenChange={(open) => {
-          if (!open) {
-            setWipeDialogOpen(false)
-            setWipeConfirmText('')
-            setWipeError('')
-          }
+          if (!open) { setWipeDialogOpen(false); setWipeConfirmText(''); setWipeError('') }
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="size-5 text-destructive" />
+              <AlertTriangle className="size-4 text-destructive" />
               Wipe All Data
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <span className="block">
-                This will permanently delete <strong>all data</strong> in the <strong>{org?.name || 'workspace'}</strong> workspace, including:
+                This will permanently delete <strong>all data</strong> in{' '}
+                <strong>{org?.name || 'the workspace'}</strong>.
               </span>
-              <span className="block text-sm space-y-1">
+              <span className="block text-xs text-muted-foreground space-y-0.5 rounded-md bg-muted/50 p-2.5">
                 {Object.entries(summary)
                   .filter(([, count]) => count > 0)
                   .map(([key, count]) => (
                     <span key={key} className="block">
-                      &bull; {count.toLocaleString()} {getCategoryLabel(key).toLowerCase()}
+                      {count.toLocaleString()} {getCategoryLabel(key).toLowerCase()}
                     </span>
                   ))}
               </span>
-              <span className="block text-destructive font-medium">
+              <span className="flex items-center gap-1 text-destructive font-medium text-xs">
+                <AlertTriangle className="size-3 shrink-0" />
                 This action cannot be undone.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-
-          <div className="space-y-2 py-2">
-            <Label htmlFor="wipe-confirm" className="text-sm">
+          <div className="space-y-2">
+            <Label htmlFor="wipe-confirm" className="text-xs">
               Type <span className="font-mono font-semibold">DELETE</span> to confirm
             </Label>
             <Input
               id="wipe-confirm"
               value={wipeConfirmText}
-              onChange={(e) => {
-                setWipeConfirmText(e.target.value)
-                setWipeError('')
-              }}
+              onChange={(e) => { setWipeConfirmText(e.target.value); setWipeError('') }}
               placeholder="DELETE"
               className={wipeError ? 'border-destructive' : ''}
               autoComplete="off"
             />
-            {wipeError && (
-              <p className="text-xs text-destructive">{wipeError}</p>
-            )}
+            {wipeError && <p className="text-xs text-destructive">{wipeError}</p>}
           </div>
-
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <Button
               variant="destructive"
+              size="sm"
               disabled={wipeConfirmText !== 'DELETE' || wipeMutation.isPending}
               onClick={() => {
-                if (wipeConfirmText !== 'DELETE') {
-                  setWipeError('Please type DELETE to confirm')
-                  return
-                }
+                if (wipeConfirmText !== 'DELETE') { setWipeError('Please type DELETE to confirm'); return }
                 wipeMutation.mutate()
               }}
+              className="gap-1.5"
             >
-              {wipeMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="size-3.5" />
-              )}
+              {wipeMutation.isPending && <Loader2 className="size-3 animate-spin" />}
               Wipe All Data
             </Button>
           </AlertDialogFooter>
