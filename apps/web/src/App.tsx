@@ -32,6 +32,7 @@ import DeploymentsPage from '@/pages/settings/deployments-page'
 import ProviderKeysPage from '@/pages/settings/provider-keys-page'
 import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
+import DataManagementPage from '@/pages/settings/data-management-page'
 import DocsPage from '@/pages/docs-page'
 import ComingSoonPage from '@/pages/coming-soon-page'
 
@@ -80,6 +81,7 @@ export function App() {
                 <Route path="deployments" element={<DeploymentsPage />} />
                 <Route path="provider-keys" element={<ProviderKeysPage />} />
                 <Route path="billing" element={<BillingPage />} />
+                <Route path="data" element={<DataManagementPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
