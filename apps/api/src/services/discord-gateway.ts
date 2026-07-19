@@ -36,6 +36,29 @@ async function sendEmbedMessage(channelId: string, text: string, botToken: strin
   return data.id
 }
 
+async function createThread(
+  botToken: string,
+  channelId: string,
+  messageId: string,
+  name: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}/threads`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bot ${botToken}`,
+      },
+      body: JSON.stringify({ name, auto_archive_duration: 60, type: 12 }),
+    })
+    if (!res.ok) return null
+    const thread = await res.json() as { id: string }
+    return thread.id
+  } catch {
+    return null
+  }
+}
+
 async function handleMessageCreate(data: any, botToken: string) {
   if (!botUserId || data.author?.id === botUserId) return
   if (data.guild_id === undefined) return
@@ -60,6 +83,8 @@ async function handleMessageCreate(data: any, botToken: string) {
     where: { agentId: deployment.agentId, channel: 'discord', contactPhone: contactId, status: { not: 'closed' } },
     orderBy: { createdAt: 'desc' },
   })
+
+  const isNewConversation = !conversation
 
   if (!conversation) {
     conversation = await prisma.conversation.create({
@@ -102,9 +127,73 @@ async function handleMessageCreate(data: any, botToken: string) {
     const mention = `<@${contactId}>`
     const messageId = await sendEmbedMessage(data.channel_id, `${mention} ${reply}`, botToken)
 
+    const convMeta = (conversation.metadata || {}) as Record<string, unknown>
+    if (messageId && !convMeta.threadId) {
+      const threadName = `Chat with ${deployment.agent?.name || 'ai'}`
+      const threadId = await createThread(botToken, data.channel_id, messageId, threadName)
+      if (threadId) {
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { metadata: { ...convMeta, threadId } },
+        })
+      }
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Discord Gateway] AI reply error:', message)
+  }
+}
+
+async function sendWelcomeMessage(guild: any, botToken: string) {
+  try {
+    const guildId = guild.id
+    if (!guildId) return
+
+    const deployment = await prisma.deployment.findFirst({
+      where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
+      include: { agent: true },
+    })
+    if (!deployment) return
+
+    const conversations = await prisma.conversation.count({
+      where: { agentId: deployment.agentId, channel: 'discord', metadata: { path: ['guildId'], equals: guildId } },
+    })
+    if (conversations > 0) return
+
+    const channels = guild.channels as any[] | undefined
+    if (!channels || !Array.isArray(channels)) return
+
+    const textChannel = channels.find(
+      (c: any) => c.type === 0 && c.permissions && (BigInt(c.permissions) & BigInt(2048)) === BigInt(2048)
+    )
+    if (!textChannel) return
+
+    const url = `${DISCORD_API}/channels/${textChannel.id}/messages`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bot ${botToken}`,
+      },
+      body: JSON.stringify({
+        embeds: [{
+          title: '👋 Hi, I\'m your Convio AI assistant!',
+          description: 'I\'m here to help. Here\'s how to use me:\n\n' +
+            '• **@mention me** — Send a message and I\'ll reply\n' +
+            '• **`/chat`** — Start a conversation with a message\n' +
+            '• **`/reset`** — Clear your chat history and start fresh\n' +
+            '• **`/session`** — View your chat details (messages, duration)\n\n' +
+            'Every conversation is private and scoped to you. Try saying hi!',
+          color: BOT_COLOR,
+          footer: { text: 'Convio AI' },
+        }],
+      }),
+    })
+    if (!res.ok) {
+      console.error('[Discord Gateway] Failed to send welcome message:', await res.text().catch(() => 'unknown'))
+    }
+  } catch (err) {
+    console.error('[Discord Gateway] Welcome message error:', err)
   }
 }
 
@@ -152,6 +241,9 @@ function startGateway(botToken: string) {
           }
           if (t === 'MESSAGE_CREATE') {
             void handleMessageCreate(d, botToken)
+          }
+          if (t === 'GUILD_CREATE') {
+            void sendWelcomeMessage(d, botToken)
           }
           break
         }

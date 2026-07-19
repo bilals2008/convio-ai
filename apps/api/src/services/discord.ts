@@ -54,6 +54,11 @@ const RESET_COMMAND = {
   description: 'Start a new conversation (clears chat history)',
 }
 
+const SESSION_COMMAND = {
+  name: 'session',
+  description: 'View your current chat session details (messages, duration)',
+}
+
 /**
  * Register (upsert) the /chat and /reset slash commands with Discord.
  * When guildId is provided the command is registered at the guild level
@@ -75,7 +80,7 @@ export async function registerDiscordCommands(
         'Content-Type': 'application/json',
         Authorization: `Bot ${botToken}`,
       },
-      body: JSON.stringify([CHAT_COMMAND, RESET_COMMAND]),
+      body: JSON.stringify([CHAT_COMMAND, RESET_COMMAND, SESSION_COMMAND]),
     })
 
     if (!res.ok) {
@@ -246,6 +251,12 @@ export async function processDiscordInteraction(
     return { type: RESPONSE_TYPE_DEFERRED_CHANNEL_MESSAGE }
   }
 
+  // Handle /session — show chat metadata
+  if (commandName === 'session') {
+    void handleDiscordSession(deploymentId, interaction)
+    return { type: RESPONSE_TYPE_DEFERRED_CHANNEL_MESSAGE }
+  }
+
   const text = extractUserMessage(interaction)
   if (!text) {
     return { type: RESPONSE_TYPE_CHANNEL_MESSAGE, data: { content: 'Please provide a message.' } }
@@ -294,6 +305,67 @@ async function handleDiscordReset(
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Discord] handleDiscordReset error:', message)
+    await patchDiscordEmbed(interaction, `Sorry, an error occurred: ${message}`)
+  }
+}
+
+async function handleDiscordSession(
+  deploymentId: string,
+  interaction: DiscordInteraction,
+): Promise<void> {
+  try {
+    const deployment = await prisma.deployment.findUnique({ where: { id: deploymentId } })
+    if (!deployment) {
+      await patchDiscordEmbed(interaction, 'Deployment not found.')
+      return
+    }
+
+    const discordUser = interaction.member?.user ?? interaction.user
+    const contactId = discordUser?.id || interaction.channel_id || interaction.id
+
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        agentId: deployment.agentId,
+        channel: 'discord',
+        contactPhone: contactId,
+        status: { notIn: ['closed', 'archived'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { messages: true } },
+      },
+    })
+
+    if (!conversation) {
+      await patchDiscordEmbed(
+        interaction,
+        '📭 No active chat session found. Send a message with `/chat message:...` or @mention me to start one!',
+      )
+      return
+    }
+
+    const createdAt = conversation.createdAt.toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    })
+    const messageCount = conversation._count.messages
+    const lastActivity = conversation.updatedAt.toLocaleString('en-US', {
+      month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    })
+
+    await patchDiscordEmbed(
+      interaction,
+      `📊 **Chat Session**\n\n` +
+      `**Started:** ${createdAt}\n` +
+      `**Last message:** ${lastActivity}\n` +
+      `**Total messages:** ${messageCount}\n` +
+      `**Status:** ${conversation.status}\n\n` +
+      `Use \`/reset\` to start a fresh conversation.`,
+    )
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('[Discord] handleDiscordSession error:', message)
     await patchDiscordEmbed(interaction, `Sorry, an error occurred: ${message}`)
   }
 }

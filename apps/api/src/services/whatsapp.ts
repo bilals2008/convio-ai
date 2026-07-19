@@ -117,6 +117,18 @@ export async function processIncomingMessage(
           contactPhone: fromNumber,
         },
       })
+
+      const existingCount = await prisma.conversation.count({
+        where: { agentId, channel: 'whatsapp', contactPhone: fromNumber },
+      })
+
+      if (existingCount <= 1) {
+        const welcome = `👋 Hi! I'm **${deployment.agent.name || 'your AI assistant'}**. How can I help you today?\n\n` +
+          `📌 *Tip:* Send "clear" or "reset" anytime to start a fresh conversation.`
+        sendWhatsAppMessage(deploymentId, fromNumber, welcome).catch((err) => {
+          console.error('[WhatsApp] Failed to send welcome message:', err)
+        })
+      }
     } else if (contactName && !conversation.contactName) {
       conversation = await prisma.conversation.update({
         where: { id: conversation.id },
