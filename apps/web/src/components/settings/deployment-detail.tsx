@@ -161,8 +161,7 @@ export function DeploymentDetail({ deploymentId, agentName, onClose, onDelete }:
     (c: ConversationSummary) => c.channel === data?.channel
   )
 
-  const rawDailyData = buildDailyData(channelConversations, 7)
-  const dailyData = rawDailyData.some((d) => d.messages > 0) ? rawDailyData : []
+  const dailyData = buildDailyData(channelConversations, 7)
 
   const filteredConvs = convFilter === 'all'
     ? channelConversations
