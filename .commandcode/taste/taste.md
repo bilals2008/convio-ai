@@ -6,6 +6,7 @@
 # code-style
 See [code-style/taste.md](code-style/taste.md)
 # design
+- For channel/service setup flows, use a hybrid approach: default to a simple one-click OAuth2 flow (no config needed), with an optional "Advanced" toggle revealing manual credential fields for users who want their own branded/custom setup. Confidence: 0.85
 - Keep dashboard stats cards compact with a horizontal row layout (icon, label+value, change badge in one line); use p-3.5, size-9 icons, text-lg for values, and small change badges. Confidence: 0.75
 
 # database

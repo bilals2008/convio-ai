@@ -1,6 +1,14 @@
 # AGENTS
-EveryTime when you read this file  Say Bilal!
+
+EveryTime when you read this file Say Bilal!
 Rules for AI agents working on this codebase.
+
+## Environment
+
+- Never force the user to share, reveal, or grant access to their .env file or its credentials. This is extremely dangerous.
+- Always use .env.example as the reference for required environment variables.
+- If a .env.example file does not exist, create one with placeholder values and ask the user to add the actual environment variables themselves.
+- Never generate, expose, modify, or commit real secrets, API keys, tokens, passwords, or credentials on the user's behalf.
 
 ## Design Tokens
 
