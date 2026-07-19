@@ -5,6 +5,7 @@ import { useOrg } from '@/lib/org-context'
 import { pricingConfig } from '@/lib/pricing/config'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/shared/page-header'
+import { UsageAlert } from '@/components/shared/usage-alert'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/shared/loading'
@@ -122,7 +123,7 @@ export default function BillingPage() {
   const usagePercent = usage.data?.messagesPercent ?? 0
   const messageUsage = usage.data?.messages ?? 0
   const messageLimit = usage.data?.limit ?? 0
-  const isPaid = currentPlan?.name && currentPlan.name !== 'free'
+  const isPaid = currentPlan?.name === 'pro' || currentPlan?.name === 'business' || currentPlan?.name === 'enterprise'
 
   if (plan.isLoading || usage.isLoading) {
     return (
@@ -140,6 +141,8 @@ export default function BillingPage() {
         title="Billing"
         description="Manage your subscription, usage, and payment methods"
       />
+
+      <UsageAlert variant="banner" />
 
       {/* Main Plan + Usage — single section */}
       <div className="rounded-lg border bg-card p-5 space-y-5">
@@ -169,10 +172,10 @@ export default function BillingPage() {
               </div>
             </div>
           </div>
-          {currentPlan?.name === 'free' ? (
+          {currentPlan?.name === 'free' || currentPlan?.name === 'pro' || currentPlan?.name === 'business' ? (
             <Button size="sm" className="h-8 text-xs gap-1" onClick={() => setShowUpgradeDialog(true)}>
               <ArrowUpRight className="size-3.5" />
-              Upgrade
+              {currentPlan?.name === 'free' ? 'Upgrade' : 'Change plan'}
             </Button>
           ) : (
             <Button
@@ -285,8 +288,9 @@ export default function BillingPage() {
           <div className="rounded-lg border divide-y divide-border/50 bg-card overflow-hidden">
             {pricingConfig.plans
               .filter((p) => {
-                if (currentPlan?.name === 'free') return p.key === 'pro' || p.key === 'enterprise'
-                if (currentPlan?.name === 'pro') return p.key === 'enterprise'
+                if (currentPlan?.name === 'free') return p.key === 'pro' || p.key === 'business' || p.key === 'enterprise'
+                if (currentPlan?.name === 'pro') return p.key === 'business' || p.key === 'enterprise'
+                if (currentPlan?.name === 'business') return p.key === 'enterprise'
                 return false
               })
               .map((plan) => {

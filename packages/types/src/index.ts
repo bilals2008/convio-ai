@@ -14,7 +14,7 @@ export interface Organization {
   name: string
   slug: string
   logo?: string
-  plan: 'free' | 'pro' | 'enterprise'
+  plan: 'free' | 'pro' | 'business' | 'enterprise'
   createdAt: Date
   updatedAt: Date
 }
@@ -168,7 +168,7 @@ export interface ApiError {
 }
 
 // Billing types
-export type PlanName = 'free' | 'pro' | 'enterprise'
+export type PlanName = 'free' | 'pro' | 'business' | 'enterprise'
 export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'past_due' | 'on_trial' | 'unpaid'
 export type InvoiceStatus = 'paid' | 'pending' | 'refunded' | 'void'
 

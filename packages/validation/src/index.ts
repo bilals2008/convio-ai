@@ -24,7 +24,7 @@ export const organizationSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
   logo: z.string().url().optional(),
-  plan: z.enum(['free', 'pro', 'enterprise']).default('free'),
+  plan: z.enum(['free', 'pro', 'business', 'enterprise']).default('free'),
   createdAt: z.date(),
   updatedAt: z.date(),
 })
@@ -308,7 +308,7 @@ export const bulkInviteSchema = z.object({
 })
 
 // Billing schemas
-export const billingPlanSchema = z.enum(['free', 'pro', 'enterprise'])
+export const billingPlanSchema = z.enum(['free', 'pro', 'business', 'enterprise'])
 
 export const checkoutBodySchema = z.object({
   plan: billingPlanSchema,

@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollReveal } from './scroll-reveal'
 import { SectionHeading } from './section-heading'
-import { Check, Zap, Shield } from 'lucide-react'
+import { FloatingOrbs } from './floating-orbs'
+import { Check, Zap, Shield, Star } from 'lucide-react'
 import { pricingConfig } from '@/lib/pricing/config'
 import type { PlanConfig } from '@/lib/pricing/config'
 
@@ -12,7 +13,7 @@ const { plans, section, footer } = pricingConfig
 const PLAN_ICONS: Record<string, React.ReactNode> = {
   zap: <Zap className="size-5 text-primary" />,
   shield: <Shield className="size-5 text-muted-foreground" />,
-  star: <Check className="size-5 text-muted-foreground" />,
+  star: <Star className="size-5 text-amber-500" />,
 }
 
 function PlanCard({ plan }: { plan: PlanConfig }) {
@@ -96,14 +97,16 @@ function PlanCard({ plan }: { plan: PlanConfig }) {
 
 export function Pricing() {
   return (
-    <section id="pricing" className="relative">
+    <section id="pricing" className="relative overflow-hidden">
+      <FloatingOrbs />
+
       {/* Background glow */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 bg-glow-green opacity-20"
       />
 
-      <div className="max-w-[1160px] mx-auto px-5 md:px-10 py-20 md:py-28">
+      <div className="max-w-[1320px] mx-auto px-5 md:px-10 py-20 md:py-28">
         <ScrollReveal>
           <SectionHeading
             eyebrow={section.eyebrow}
@@ -112,7 +115,7 @@ export function Pricing() {
           />
         </ScrollReveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-[14px] items-stretch mt-14">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 items-stretch mt-14">
           {plans.map((plan, i) => (
             <ScrollReveal key={plan.name} delay={i * 0.06} className="h-full">
               <PlanCard plan={plan} />
