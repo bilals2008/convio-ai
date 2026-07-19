@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { dataManagement as dataManagementApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -8,6 +8,23 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/shared/loading'
+import { Search, X } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Loader2,
   Trash2,
@@ -32,6 +49,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 
+const PAGE_SIZE = 10
+
 interface DataSummary {
   agents: number
   conversations: number
@@ -42,18 +61,42 @@ interface DataSummary {
   analytics: number
 }
 
-const categories: {
-  key: keyof DataSummary
+type CategoryKey = keyof DataSummary
+
+interface CategoryDef {
+  key: CategoryKey
   label: string
   description: string
   icon: typeof Brain
+  columns: string[]
+  renderRow: (item: Record<string, unknown>) => React.ReactNode
+  filterOptions?: { value: string; label: string }[]
+  searchPlaceholder?: string
   warning?: string
-}[] = [
+}
+
+const categories: CategoryDef[] = [
   {
     key: 'agents',
     label: 'Agents',
     description: 'AI agents, configs, deployments & analytics',
     icon: Brain,
+    columns: ['Name', 'Model', 'Status', 'Created'],
+    searchPlaceholder: 'Search agents...',
+    filterOptions: [
+      { value: 'active', label: 'Active' },
+      { value: 'draft', label: 'Draft' },
+    ],
+    renderRow: (item) => (
+      <>
+        <td className="py-2 pr-4 text-sm font-medium">{String(item.name)}</td>
+        <td className="py-2 pr-4 text-xs text-muted-foreground font-mono">{String(item.model)}</td>
+        <td className="py-2 pr-4">
+          <Badge variant={String(item.status) as 'active' | 'draft'} className="h-4 px-1.5 text-[10px] capitalize">{String(item.status)}</Badge>
+        </td>
+        <td className="py-2 text-xs text-muted-foreground">{new Date(String(item.createdAt)).toLocaleDateString()}</td>
+      </>
+    ),
     warning: 'Cascading delete: conversations, deployments, analytics',
   },
   {
@@ -61,12 +104,38 @@ const categories: {
     label: 'Conversations',
     description: 'Chat conversations and messages across agents',
     icon: MessageSquare,
+    columns: ['Channel', 'Agent', 'Status', 'Created'],
+    searchPlaceholder: 'Search by name or channel...',
+    filterOptions: [
+      { value: 'active', label: 'Active' },
+      { value: 'archived', label: 'Archived' },
+    ],
+    renderRow: (item) => (
+      <>
+        <td className="py-2 pr-4 text-sm font-medium capitalize">{String(item.channel)}</td>
+        <td className="py-2 pr-4 text-xs text-muted-foreground">{String((item.agent as Record<string, unknown>)?.name ?? '—')}</td>
+        <td className="py-2 pr-4">
+          <Badge variant={item.status as 'active' | 'archived'} className="h-4 px-1.5 text-[10px] capitalize">{String(item.status)}</Badge>
+        </td>
+        <td className="py-2 text-xs text-muted-foreground">{new Date(String(item.createdAt)).toLocaleDateString()}</td>
+      </>
+    ),
   },
   {
     key: 'knowledge-bases',
     label: 'Knowledge Bases',
     description: 'Knowledge bases, documents & embeddings',
     icon: BookOpen,
+    columns: ['Name', 'Description', 'Docs', 'Created'],
+    searchPlaceholder: 'Search knowledge bases...',
+    renderRow: (item) => (
+      <>
+        <td className="py-2 pr-4 text-sm font-medium">{String(item.name)}</td>
+        <td className="py-2 pr-4 text-xs text-muted-foreground truncate max-w-[200px]">{String(item.description || '—')}</td>
+        <td className="py-2 pr-4 text-xs text-muted-foreground">{String((item._count as Record<string, unknown>)?.documents ?? 0)}</td>
+        <td className="py-2 text-xs text-muted-foreground">{new Date(String(item.createdAt)).toLocaleDateString()}</td>
+      </>
+    ),
     warning: 'Agents lose their knowledge source',
   },
   {
@@ -74,34 +143,115 @@ const categories: {
     label: 'Documents',
     description: 'Uploaded docs & vector embeddings',
     icon: FileText,
+    columns: ['Name', 'Type', 'Status', 'Created'],
+    searchPlaceholder: 'Search documents...',
+    filterOptions: [
+      { value: 'pending', label: 'Pending' },
+      { value: 'processed', label: 'Processed' },
+      { value: 'failed', label: 'Failed' },
+    ],
+    renderRow: (item) => (
+      <>
+        <td className="py-2 pr-4 text-sm font-medium">{String(item.name)}</td>
+        <td className="py-2 pr-4 text-xs text-muted-foreground font-mono uppercase">{String(item.type)}</td>
+        <td className="py-2 pr-4">
+          <Badge variant={item.status as 'pending' | 'processed' | 'failed'} className="h-4 px-1.5 text-[10px] capitalize">{String(item.status)}</Badge>
+        </td>
+        <td className="py-2 text-xs text-muted-foreground">{new Date(String(item.createdAt)).toLocaleDateString()}</td>
+      </>
+    ),
   },
   {
     key: 'integrations',
     label: 'Integrations',
     description: 'Channel deployments (WhatsApp, Slack, etc.)',
     icon: LinkIcon,
+    columns: ['Channel', 'Agent', 'Status', 'Created'],
+    searchPlaceholder: 'Search by channel...',
+    filterOptions: [
+      { value: 'active', label: 'Active' },
+      { value: 'inactive', label: 'Inactive' },
+    ],
+    renderRow: (item) => (
+      <>
+        <td className="py-2 pr-4 text-sm font-medium capitalize">{String(item.channel)}</td>
+        <td className="py-2 pr-4 text-xs text-muted-foreground">{String((item.agent as Record<string, unknown>)?.name ?? '—')}</td>
+        <td className="py-2 pr-4">
+          <Badge variant={item.status as 'active' | 'inactive'} className="h-4 px-1.5 text-[10px] capitalize">{String(item.status)}</Badge>
+        </td>
+        <td className="py-2 text-xs text-muted-foreground">{new Date(String(item.createdAt)).toLocaleDateString()}</td>
+      </>
+    ),
   },
   {
     key: 'provider-keys',
     label: 'Provider Keys',
     description: 'BYOK API keys (OpenAI, Anthropic, etc.)',
     icon: Shield,
+    columns: ['Provider', 'Label', 'Key Preview', 'Created'],
+    searchPlaceholder: 'Search by provider or label...',
+    renderRow: (item) => (
+      <>
+        <td className="py-2 pr-4 text-sm font-medium capitalize">{String(item.provider)}</td>
+        <td className="py-2 pr-4 text-xs text-muted-foreground">{String(item.label || '—')}</td>
+        <td className="py-2 pr-4 text-xs font-mono text-muted-foreground">{String(item.keyPreview)}</td>
+        <td className="py-2 text-xs text-muted-foreground">{new Date(String(item.createdAt)).toLocaleDateString()}</td>
+      </>
+    ),
   },
   {
     key: 'analytics',
     label: 'Analytics',
     description: 'Analytics data & performance metrics',
     icon: BarChart3,
+    columns: ['Date', 'Agent', 'Conversations', 'Messages'],
+    searchPlaceholder: 'Search analytics...',
+    renderRow: (item) => (
+      <>
+        <td className="py-2 pr-4 text-sm font-medium">{new Date(String(item.date)).toLocaleDateString()}</td>
+        <td className="py-2 pr-4 text-xs text-muted-foreground">{String((item.agent as Record<string, unknown>)?.name ?? '—')}</td>
+        <td className="py-2 pr-4 text-xs tabular-nums">{String(item.totalConversations)}</td>
+        <td className="py-2 text-xs tabular-nums">{String(item.totalMessages)}</td>
+      </>
+    ),
   },
 ]
 
 export default function DataManagementPage() {
   const { orgId, org } = useOrg()
   const queryClient = useQueryClient()
-  const [deletingCategory, setDeletingCategory] = useState<keyof DataSummary | null>(null)
+  const [deletingCategory, setDeletingCategory] = useState<CategoryKey | null>(null)
+  const [viewingCategory, setViewingCategory] = useState<CategoryKey | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [offset, setOffset] = useState(0)
   const [wipeDialogOpen, setWipeDialogOpen] = useState(false)
   const [wipeConfirmText, setWipeConfirmText] = useState('')
   const [wipeError, setWipeError] = useState('')
+
+  const viewingCat = categories.find((c) => c.key === viewingCategory)
+  const categoryRef = useRef(viewingCategory)
+  const [loadedItems, setLoadedItems] = useState<Record<string, unknown>[]>([])
+
+  const resetDialogState = useCallback(() => {
+    setViewingCategory(null)
+    setSearch('')
+    setStatusFilter('all')
+    setOffset(0)
+    setLoadedItems([])
+  }, [])
+
+  useEffect(() => {
+    setOffset(0)
+    setLoadedItems([])
+  }, [search, statusFilter])
+
+  useEffect(() => {
+    if (viewingCategory !== categoryRef.current) {
+      setLoadedItems([])
+      categoryRef.current = viewingCategory
+    }
+  }, [viewingCategory])
 
   const summaryQuery = useQuery({
     queryKey: ['data-summary', orgId],
@@ -119,6 +269,32 @@ export default function DataManagementPage() {
     analytics: 0,
   }
 
+  const itemsQuery = useQuery({
+    queryKey: ['data-items', orgId, viewingCategory, search, statusFilter, offset],
+    queryFn: () =>
+      dataManagementApi.listCategory(orgId!, viewingCategory!, {
+        search: search || undefined,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        limit: PAGE_SIZE,
+        offset,
+      }),
+    enabled: !!orgId && !!viewingCategory,
+  })
+
+  useEffect(() => {
+    if (itemsQuery.data?.data?.data) {
+      if (offset === 0) {
+        setLoadedItems(itemsQuery.data.data.data)
+      } else {
+        setLoadedItems((prev) => [...prev, ...itemsQuery.data.data.data])
+      }
+    }
+  }, [itemsQuery.data, offset])
+
+  const items = loadedItems
+  const total: number = itemsQuery.data?.data?.total ?? 0
+  const hasMore = offset + PAGE_SIZE < total
+
   const deleteCategoryMutation = useMutation({
     mutationFn: (category: string) => dataManagementApi.deleteCategory(orgId!, category),
     onSuccess: (_res, category) => {
@@ -126,6 +302,7 @@ export default function DataManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['data-summary', orgId] })
       queryClient.invalidateQueries({ queryKey: ['all-deployments'] })
       queryClient.invalidateQueries({ queryKey: ['agents'] })
+      resetDialogState()
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to delete data')
@@ -193,9 +370,12 @@ export default function DataManagementPage() {
               return (
                 <div
                   key={cat.key}
-                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  <button
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    onClick={() => { setViewingCategory(cat.key); setSearch(''); setStatusFilter('all'); setOffset(0) }}
+                  >
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                       <Icon className="size-4 text-primary" />
                     </div>
@@ -210,7 +390,7 @@ export default function DataManagementPage() {
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{cat.description}</p>
                     </div>
-                  </div>
+                  </button>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className="text-sm font-semibold tabular-nums">{count.toLocaleString()}</span>
                     <Button
@@ -235,7 +415,6 @@ export default function DataManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Wipe All */}
       <Card className="border-destructive/30">
         <CardHeader>
           <CardTitle className="text-destructive flex items-center gap-2 text-sm">
@@ -266,6 +445,113 @@ export default function DataManagementPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* View items dialog */}
+      <Dialog open={!!viewingCategory} onOpenChange={(open) => { if (!open) resetDialogState() }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {viewingCat && <viewingCat.icon className="size-4 text-primary" />}
+              {viewingCat?.label}
+            </DialogTitle>
+            <DialogDescription>
+              {total} total{search || statusFilter !== 'all' ? ` (filtered)` : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Search & Filter */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={viewingCat?.searchPlaceholder ?? 'Search...'}
+                className="h-8 pl-8 text-xs"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+            {viewingCat?.filterOptions && (
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger size="sm" className="h-8 w-auto text-xs">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {viewingCat.filterOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Items list */}
+          <div className="max-h-[480px] overflow-auto -mx-1">
+            {itemsQuery.isLoading && items.length === 0 ? (
+              <div className="space-y-2 px-1">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                  {viewingCat && <viewingCat.icon className="size-5 text-muted-foreground" />}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {search || statusFilter !== 'all' ? 'No matching items' : `No ${viewingCat?.label.toLowerCase()} found`}
+                </p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b text-left">
+                    {viewingCat?.columns.map((col) => (
+                      <th key={col} className="pb-2 pr-4 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {items.map((item: Record<string, unknown>, i: number) => (
+                    <tr key={String(item.id ?? i)} className="text-sm">
+                      {viewingCat?.renderRow(item)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Load more */}
+          {hasMore && (
+            <div className="flex justify-center pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                disabled={itemsQuery.isFetching}
+                onClick={() => setOffset((o) => o + PAGE_SIZE)}
+              >
+                {itemsQuery.isFetching ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : null}
+                Load more ({offset + PAGE_SIZE} of {total})
+              </Button>
+            </div>
+          )}
+
+          <DialogFooter showCloseButton />
+        </DialogContent>
+      </Dialog>
 
       {/* Category delete dialog */}
       <AlertDialog

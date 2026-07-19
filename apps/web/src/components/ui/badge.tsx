@@ -43,6 +43,16 @@ const badgeVariants = cva(
           "bg-muted text-muted-foreground border-border",
         archived:
           "bg-muted text-muted-foreground border-border",
+        draft:
+          "bg-warning/10 text-warning border-warning/20",
+        inactive:
+          "bg-muted text-muted-foreground border-border",
+        processed:
+          "bg-success/10 text-success border-success/20",
+        failed:
+          "bg-destructive/10 text-destructive border-destructive/20",
+        pending:
+          "bg-warning/10 text-warning border-warning/20",
       },
     },
     defaultVariants: {

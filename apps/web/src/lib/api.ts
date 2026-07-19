@@ -213,6 +213,8 @@ export const billing = {
 
 export const dataManagement = {
   summary: (orgId: string) => api.get(`/organizations/${orgId}/data-summary`),
+  listCategory: (orgId: string, category: string, params?: { search?: string; status?: string; limit?: number; offset?: number }) =>
+    api.get(`/organizations/${orgId}/data/${category}`, { params }),
   deleteCategory: (orgId: string, category: string) =>
     api.delete(`/organizations/${orgId}/data/${category}`),
   wipeAll: (orgId: string) => api.delete(`/organizations/${orgId}/data/wipe`),

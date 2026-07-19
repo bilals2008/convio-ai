@@ -20,6 +20,13 @@ const deleteCategorySchema = z.object({
   ]),
 })
 
+const listCategoryQuerySchema = z.object({
+  search: z.string().optional(),
+  status: z.string().optional(),
+  limit: z.coerce.number().min(1).max(100).default(10),
+  offset: z.coerce.number().min(0).default(0),
+})
+
 async function getAgentIds(orgId: string): Promise<string[]> {
   const agents = await prisma.agent.findMany({
     where: { organizationId: orgId },
@@ -101,6 +108,96 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
         'provider-keys': providerKeysCount,
         analytics: analyticsCount,
       },
+    }
+  })
+
+  // GET /api/organizations/:orgId/data/:category — List items in a category
+  fastify.get('/organizations/:orgId/data/:category', {
+    preHandler: [fastify.authenticate, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }), query: listCategoryQuerySchema })],
+  }, async (request) => {
+    const { orgId, category } = request.params as { orgId: string; category: string }
+    const { search, status, limit, offset } = request.query as z.infer<typeof listCategoryQuerySchema>
+    await fastify.getMembership(request.userId!, orgId)
+
+    const agentIds = await getAgentIds(orgId)
+    const kbIds = await getKnowledgeBaseIds(orgId)
+
+    const take = limit
+    const skip = offset
+
+    switch (category) {
+      case 'agents': {
+        const where: Record<string, unknown> = { organizationId: orgId }
+        if (search) where.name = { contains: search, mode: 'insensitive' }
+        if (status) where.status = status
+        const [items, total] = await Promise.all([
+          prisma.agent.findMany({ where, select: { id: true, name: true, model: true, status: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take, skip }),
+          prisma.agent.count({ where }),
+        ])
+        return { data: items, total }
+      }
+      case 'conversations': {
+        if (agentIds.length === 0) return { data: [], total: 0 }
+        const where: Record<string, unknown> = { agentId: { in: agentIds } }
+        if (search) where.OR = [{ contactName: { contains: search, mode: 'insensitive' } }, { channel: { contains: search, mode: 'insensitive' } }]
+        if (status) where.status = status
+        const [items, total] = await Promise.all([
+          prisma.conversation.findMany({ where, select: { id: true, channel: true, status: true, contactName: true, createdAt: true, agent: { select: { name: true } } }, orderBy: { createdAt: 'desc' }, take, skip }),
+          prisma.conversation.count({ where }),
+        ])
+        return { data: items, total }
+      }
+      case 'knowledge-bases': {
+        const where: Record<string, unknown> = { organizationId: orgId }
+        if (search) where.name = { contains: search, mode: 'insensitive' }
+        const [items, total] = await Promise.all([
+          prisma.knowledgeBase.findMany({ where, select: { id: true, name: true, description: true, createdAt: true, _count: { select: { documents: true } } }, orderBy: { createdAt: 'desc' }, take, skip }),
+          prisma.knowledgeBase.count({ where }),
+        ])
+        return { data: items, total }
+      }
+      case 'documents': {
+        if (kbIds.length === 0) return { data: [], total: 0 }
+        const where: Record<string, unknown> = { knowledgeBaseId: { in: kbIds } }
+        if (search) where.name = { contains: search, mode: 'insensitive' }
+        if (status) where.status = status
+        const [items, total] = await Promise.all([
+          prisma.document.findMany({ where, select: { id: true, name: true, type: true, status: true, createdAt: true, knowledgeBase: { select: { name: true } } }, orderBy: { createdAt: 'desc' }, take, skip }),
+          prisma.document.count({ where }),
+        ])
+        return { data: items, total }
+      }
+      case 'integrations': {
+        if (agentIds.length === 0) return { data: [], total: 0 }
+        const where: Record<string, unknown> = { agentId: { in: agentIds } }
+        if (search) where.channel = { contains: search, mode: 'insensitive' }
+        if (status) where.status = status
+        const [items, total] = await Promise.all([
+          prisma.deployment.findMany({ where, select: { id: true, channel: true, status: true, createdAt: true, agent: { select: { name: true } } }, orderBy: { createdAt: 'desc' }, take, skip }),
+          prisma.deployment.count({ where }),
+        ])
+        return { data: items, total }
+      }
+      case 'provider-keys': {
+        const where: Record<string, unknown> = { organizationId: orgId }
+        if (search) where.OR = [{ provider: { contains: search, mode: 'insensitive' } }, { label: { contains: search, mode: 'insensitive' } }]
+        const [items, total] = await Promise.all([
+          prisma.providerKey.findMany({ where, select: { id: true, provider: true, keyPreview: true, label: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take, skip }),
+          prisma.providerKey.count({ where }),
+        ])
+        return { data: items, total }
+      }
+      case 'analytics': {
+        if (agentIds.length === 0) return { data: [], total: 0 }
+        const where: Record<string, unknown> = { agentId: { in: agentIds } }
+        const [items, total] = await Promise.all([
+          prisma.analytics.findMany({ where, select: { id: true, date: true, totalConversations: true, totalMessages: true, uniqueUsers: true, agent: { select: { name: true } } }, orderBy: { date: 'desc' }, take, skip }),
+          prisma.analytics.count({ where }),
+        ])
+        return { data: items, total }
+      }
+      default:
+        throw new AppError(400, `Unknown category: ${category}`)
     }
   })
 
