@@ -35,6 +35,7 @@ model Organization {
   memberships      Membership[]
   providerKeys     ProviderKey[]
   tools            Tool[]
+  mcpServers       McpServer[]
   widgets          Widget[]
   auditLogs        AuditLog[]
   invitations      Invitation[]
@@ -84,6 +85,7 @@ model Agent {
   organization    Organization   @relation(fields: [organizationId], references: [id])
   providerKey     ProviderKey?   @relation(fields: [providerKeyId], references: [id])
   tools           AgentTool[]
+  mcpServers      AgentMcpServer[]
   analytics       Analytics[]
   conversations   Conversation[]
   deployments     Deployment[]
@@ -233,6 +235,35 @@ model Tool {
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
+}
+
+model McpServer {
+  id             String       @id @default(uuid())
+  organizationId String
+  name           String
+  type           String       @default("stdio")
+  command        String?
+  args           Json         @default("[]")
+  url            String?
+  apiKey         String?
+  enabled        Boolean      @default(true)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  agents         AgentMcpServer[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model AgentMcpServer {
+  agentId       String
+  mcpServerId   String
+  agent         Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  mcpServer     McpServer  @relation(fields: [mcpServerId], references: [id])
+
+  @@id([agentId, mcpServerId])
+  @@index([mcpServerId])
 }
 
 model AgentTool {

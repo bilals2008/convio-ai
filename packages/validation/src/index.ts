@@ -307,11 +307,40 @@ export const bulkInviteSchema = z.object({
   })).min(1).max(50),
 })
 
+// MCP Server schemas
+export const mcpServerTypeSchema = z.enum(['stdio', 'sse', 'streamable-http'])
+
+export const mcpServerSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  name: z.string().min(1).max(100),
+  type: mcpServerTypeSchema.default('stdio'),
+  command: z.string().optional(),
+  args: z.array(z.string()).default([]),
+  url: z.string().optional(),
+  apiKey: z.string().optional(),
+  enabled: z.boolean().default(true),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+})
+
+export const createMcpServerSchema = mcpServerSchema.omit({
+  id: true,
+  organizationId: true,
+  createdAt: true,
+  updatedAt: true,
+})
+
+export const updateMcpServerSchema = createMcpServerSchema.partial()
+
 // Billing schemas
 export const billingPlanSchema = z.enum(['free', 'pro', 'business', 'enterprise'])
 
+export const billingPeriodSchema = z.enum(['monthly', 'yearly'])
+
 export const checkoutBodySchema = z.object({
   plan: billingPlanSchema,
+  billingPeriod: billingPeriodSchema.optional().default('monthly'),
 })
 
 export const billingUsageQuerySchema = z.object({
