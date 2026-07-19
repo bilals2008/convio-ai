@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollReveal } from '@/components/landing/scroll-reveal'
 import { SectionHeading } from '@/components/landing/section-heading'
 import { FloatingOrbs } from '@/components/landing/floating-orbs'
-import { Check, Zap, Shield, Crown, ChevronDown, ShieldCheck, CreditCard, Headphones, Clock } from 'lucide-react'
+import { Check, Zap, Shield, Crown, Plus, Minus, ShieldCheck, CreditCard, Headphones, Clock } from 'lucide-react'
 import { pricingConfig } from '@/lib/pricing/config'
 import type { PlanConfig } from '@/lib/pricing/config'
 import { cn } from '@/lib/utils'
@@ -158,10 +158,9 @@ function FAQ({ q, a }: { q: string; a: string }) {
         className="flex items-center justify-between w-full py-4 text-left cursor-pointer"
       >
         <span className="text-sm font-medium text-foreground pr-4">{q}</span>
-        <ChevronDown className={cn(
-          'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
-          open && 'rotate-180',
-        )} />
+        <span className="size-5 shrink-0 flex items-center justify-center rounded-full bg-muted text-muted-foreground">
+          {open ? <Minus className="size-3" /> : <Plus className="size-3" />}
+        </span>
       </button>
       <div
         className={cn(
