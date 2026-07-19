@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { billing } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
+import { useCheckout } from '@/lib/hooks/use-billing'
 import { pricingConfig } from '@/lib/pricing/config'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/shared/page-header'
@@ -9,6 +11,7 @@ import { UsageAlert } from '@/components/shared/usage-alert'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/shared/loading'
+import { toast } from 'sonner'
 import {
   AlertTriangle,
   Zap,
@@ -32,7 +35,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-const planIcons = { zap: Zap, shield: Shield, star: Star } as const
+const planIcons = { zap: Zap, shield: Shield, star: Star, crown: Crown } as const
 
 function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount / 100)
@@ -71,7 +74,40 @@ const subStatusBadge: Record<string, 'active' | 'past_due' | 'trialing' | 'cance
 
 export default function BillingPage() {
   const { orgId } = useOrg()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
+  const [isYearly, setIsYearly] = useState(false)
+  const checkout = useCheckout()
+  const triggeredRef = useRef(false)
+
+  useEffect(() => {
+    const planParam = searchParams.get('plan')
+    const billingParam = searchParams.get('billing')
+    const checkoutSuccess = searchParams.get('checkout')
+
+    if (checkoutSuccess === 'success') {
+      toast.success('Payment successful! Your plan has been updated.')
+      plan.refetch()
+      subscription.refetch()
+      setSearchParams({}, { replace: true })
+      return
+    }
+
+    if (planParam && orgId && !triggeredRef.current) {
+      triggeredRef.current = true
+      checkout.mutate(
+        { planKey: planParam, billingPeriod: billingParam || 'monthly' },
+        {
+          onError: () => {
+            triggeredRef.current = false
+            toast.error('Failed to start checkout. Please try again.')
+          },
+        },
+      )
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, searchParams])
 
   const plan = useQuery({
     queryKey: ['billing', 'plan', orgId],
@@ -97,14 +133,6 @@ export default function BillingPage() {
     enabled: !!orgId,
   })
 
-  const checkout = useMutation({
-    mutationFn: (planKey: string) => billing.checkout(orgId!, planKey),
-    onSuccess: (res) => {
-      const url = res?.data?.data?.url
-      if (url) window.location.href = url
-    },
-  })
-
   const portal = useMutation({
     mutationFn: () => billing.portal(orgId!),
     onSuccess: (res) => {
@@ -125,7 +153,7 @@ export default function BillingPage() {
   const messageLimit = usage.data?.limit ?? 0
   const isPaid = currentPlan?.name === 'pro' || currentPlan?.name === 'business' || currentPlan?.name === 'enterprise'
 
-  if (plan.isLoading || usage.isLoading) {
+  if (plan.isPending || usage.isPending || !plan.data || !usage.data) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-16 w-full" />
@@ -284,8 +312,20 @@ export default function BillingPage() {
       {/* Upgrade Options — flat list, no card */}
       {currentPlan?.name !== 'enterprise' && (
         <div className="space-y-3">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Available Plans</h3>
-          <div className="rounded-lg border divide-y divide-border/50 bg-card overflow-hidden">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Available Plans</h3>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground">Monthly</span>
+              <button
+                onClick={() => setIsYearly(!isYearly)}
+                className="relative inline-flex h-4 w-8 items-center rounded-full transition-colors bg-muted"
+              >
+                <span className={`inline-block size-3 rounded-full bg-white transition-transform ${isYearly ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </button>
+              <span className="text-[10px] text-muted-foreground">Yearly</span>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {pricingConfig.plans
               .filter((p) => {
                 if (currentPlan?.name === 'free') return p.key === 'pro' || p.key === 'business' || p.key === 'enterprise'
@@ -295,27 +335,42 @@ export default function BillingPage() {
               })
               .map((plan) => {
                 const Icon = plan.icon ? planIcons[plan.icon] : Zap
+                const price = isYearly ? (plan.yearlyPrice || plan.price) : plan.price
                 return (
-                  <div key={plan.key} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                      <Icon className="size-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-medium">{plan.name}</span>
-                        {plan.badge && <Badge className="h-3.5 px-1 text-[9px]">{plan.badge}</Badge>}
+                  <div key={plan.key} className="flex flex-col rounded-lg border bg-card p-4 gap-3 hover:border-primary/40 transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <Icon className="size-4 text-primary" />
                       </div>
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {plan.features.map((f) => f.text).join(' · ')}
-                      </p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-sm font-semibold truncate">{plan.name}</span>
+                        {plan.badge && (
+                          <Badge variant="secondary" className="h-4 px-1.5 text-[9px] shrink-0">{plan.badge}</Badge>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-sm font-semibold shrink-0">{plan.price}</span>
-                    {plan.period && <span className="text-[10px] text-muted-foreground shrink-0">{plan.period}</span>}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-bold">{price}</span>
+                      {plan.period && <span className="text-xs text-muted-foreground">{plan.period}</span>}
+                    </div>
+                    <ul className="space-y-1 flex-1">
+                      {plan.features.slice(0, 4).map((f, i) => (
+                        <li key={i} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Check className="size-3 text-success shrink-0" />
+                          <span className="truncate">{f.text}</span>
+                        </li>
+                      ))}
+                      {plan.features.length > 4 && (
+                        <li className="text-[10px] text-muted-foreground pl-4.5">
+                          +{plan.features.length - 4} more
+                        </li>
+                      )}
+                    </ul>
                     <Button
                       size="sm"
                       variant={plan.variant}
-                      className="h-7 text-xs gap-1 shrink-0"
-                      onClick={() => checkout.mutate(plan.key)}
+                      className="h-8 text-xs gap-1 w-full"
+                      onClick={() => checkout.mutate({ planKey: plan.key, billingPeriod: isYearly ? 'yearly' : 'monthly' })}
                       disabled={checkout.isPending}
                     >
                       {plan.cta}
@@ -399,24 +454,34 @@ export default function BillingPage() {
 
       {/* Upgrade Dialog */}
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Crown className="size-4 text-primary" />
-              Upgrade Your Plan
-            </DialogTitle>
-            <DialogDescription>Choose the plan that fits your needs</DialogDescription>
-          </DialogHeader>
-          <div className="divide-y divide-border/50">
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Crown className="size-4 text-primary" />
+                Upgrade Your Plan
+              </DialogTitle>
+              <DialogDescription>Choose the plan that fits your needs</DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center justify-center gap-2 pb-3 border-b border-border/50">
+              <span className="text-xs text-muted-foreground">Monthly</span>
+              <button
+                onClick={() => setIsYearly(!isYearly)}
+                className="relative inline-flex h-4 w-8 items-center rounded-full transition-colors bg-muted"
+              >
+                <span className={`inline-block size-3 rounded-full bg-white transition-transform ${isYearly ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </button>
+              <span className="text-xs text-muted-foreground">Yearly</span>
+            </div>
+            <div className="divide-y divide-border/50">
             {pricingConfig.plans.filter((p) => p.key !== 'free').map((plan) => {
               const Icon = plan.icon ? planIcons[plan.icon] : Zap
               return (
-                <button
-                  key={plan.key}
-                  className="w-full text-left flex items-center gap-3 py-3 first:pt-0 last:pb-0 transition-colors hover:bg-muted/50"
-                  onClick={() => { setShowUpgradeDialog(false); checkout.mutate(plan.key) }}
-                  disabled={checkout.isPending}
-                >
+                  <button
+                    key={plan.key}
+                    className="w-full text-left flex items-center gap-3 py-3 first:pt-0 last:pb-0 transition-colors hover:bg-muted/50"
+                    onClick={() => { setShowUpgradeDialog(false); checkout.mutate({ planKey: plan.key, billingPeriod: isYearly ? 'yearly' : 'monthly' }) }}
+                    disabled={checkout.isPending}
+                  >
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                     <Icon className="size-4 text-primary" />
                   </div>
