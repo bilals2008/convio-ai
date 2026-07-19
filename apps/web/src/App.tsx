@@ -34,6 +34,7 @@ import ProviderKeysPage from '@/pages/settings/provider-keys-page'
 import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
 import DataManagementPage from '@/pages/settings/data-management-page'
+import McpServersPage from '@/pages/settings/mcp-servers-page'
 import DocsOverviewPage from '@/pages/docs/index'
 import DocsPlanPage from '@/pages/docs/plan'
 import CorrectiveRagPage from '@/pages/docs/corrective-rag'
@@ -112,6 +113,7 @@ export function App() {
                 <Route path="team" element={<TeamMembersPage />} />
                 <Route path="deployments" element={<DeploymentsPage />} />
                 <Route path="provider-keys" element={<ProviderKeysPage />} />
+                <Route path="mcp-servers" element={<McpServersPage />} />
                 <Route path="billing" element={<BillingPage />} />
                 <Route path="data" element={<DataManagementPage />} />
               </Route>

@@ -18,6 +18,7 @@ import {
   X,
   CreditCard,
   Database,
+  Plug,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -37,6 +38,7 @@ import { cn } from '@/lib/utils'
 
 const settingsGeneral = [
   { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
+  { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
   { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
   { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
   { icon: Database, label: 'Data', href: '/settings/data' },
@@ -346,6 +348,7 @@ const mobileNavGroups = [
     label: 'Settings',
     items: [
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
+      { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
       { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
       { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
       { icon: Database, label: 'Data', href: '/settings/data' },
