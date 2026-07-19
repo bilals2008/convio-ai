@@ -7,6 +7,7 @@ import { RedirectAuthenticated } from '@/components/auth/redirect-authenticated'
 import { OrgProvider } from '@/lib/org-context'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import Landing from '@/pages/landing'
+import PricingPage from '@/pages/pricing-page'
 import LoginPage from '@/pages/auth/login-page'
 import SignupPage from '@/pages/auth/signup-page'
 import ForgotPasswordPage from '@/pages/auth/forgot-password-page'
@@ -68,6 +69,7 @@ export function App() {
             <OrgProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/login" element={<RedirectAuthenticated><LoginPage /></RedirectAuthenticated>} />
             <Route path="/signup" element={<RedirectAuthenticated><SignupPage /></RedirectAuthenticated>} />
             <Route path="/forgot-password" element={<RedirectAuthenticated><ForgotPasswordPage /></RedirectAuthenticated>} />

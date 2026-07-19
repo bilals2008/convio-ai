@@ -5,12 +5,12 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollReveal } from './scroll-reveal'
 import { SectionHeading } from './section-heading'
 import { FloatingOrbs } from './floating-orbs'
-import { Check, Zap, Shield, Crown, ChevronDown, ShieldCheck, CreditCard, Headphones, Clock } from 'lucide-react'
+import { Check, Zap, Shield, Crown } from 'lucide-react'
 import { pricingConfig } from '@/lib/pricing/config'
 import type { PlanConfig } from '@/lib/pricing/config'
 import { cn } from '@/lib/utils'
 
-const { plans, section, footer } = pricingConfig
+const { plans, section } = pricingConfig
 
 const PLAN_ICONS: Record<string, React.ReactNode> = {
   zap: <Zap className="size-5" />,
@@ -18,47 +18,6 @@ const PLAN_ICONS: Record<string, React.ReactNode> = {
   star: <Zap className="size-5" />,
   crown: <Crown className="size-5" />,
 }
-
-const COMPARISON_FEATURES = [
-  { name: 'AI Agents', free: '1', pro: '5', business: 'Unlimited', enterprise: 'Unlimited' },
-  { name: 'Messages/mo', free: '500', pro: '25,000', business: '150,000', enterprise: 'Unlimited' },
-  { name: 'Knowledge Bases', free: '1', pro: '10', business: '50', enterprise: 'Unlimited' },
-  { name: 'Channels', free: 'Web', pro: 'All', business: 'All', enterprise: 'All' },
-  { name: 'RAG', free: true, pro: true, business: true, enterprise: true },
-  { name: 'API Access', free: false, pro: true, business: true, enterprise: true },
-  { name: 'Custom Branding', free: false, pro: false, business: true, enterprise: true },
-  { name: 'Priority Support', free: false, pro: false, business: true, enterprise: true },
-  { name: 'SSO / SAML', free: false, pro: false, business: false, enterprise: true },
-  { name: 'Dedicated Onboarding', free: false, pro: false, business: false, enterprise: true },
-  { name: 'SLA Guarantee', free: false, pro: false, business: false, enterprise: true },
-]
-
-const FAQS = [
-  {
-    q: 'Can I cancel anytime?',
-    a: 'Yes, you can cancel your subscription at any time. Your plan will remain active until the end of the current billing period.',
-  },
-  {
-    q: 'What happens if I exceed my message limit?',
-    a: 'Once you reach your monthly message limit, your AI agents will stop responding to new messages. You can upgrade your plan at any time to continue.',
-  },
-  {
-    q: 'Do unused messages roll over?',
-    a: 'No, message counts reset at the beginning of each calendar month. Unused messages do not roll over to the next month.',
-  },
-  {
-    q: 'Do you offer refunds?',
-    a: 'We offer refunds within the first 14 days of a new subscription. Contact our support team for assistance.',
-  },
-  {
-    q: 'Which AI providers are supported?',
-    a: 'We support OpenAI (GPT-4o, GPT-4o-mini), Anthropic (Claude 3.5 Sonnet, Claude 3 Haiku), Google (Gemini 1.5 Pro/Flash), and Groq (Llama 3.1 70B). You can also bring your own API keys.',
-  },
-  {
-    q: 'Can I change plans later?',
-    a: 'Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately, and we prorate the difference.',
-  },
-]
 
 function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
   const icon = plan.icon ? PLAN_ICONS[plan.icon] : null
@@ -80,7 +39,6 @@ function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
       )}
 
       <div className="relative flex flex-col h-full p-5 md:p-7">
-        {/* Header */}
         <div className="flex flex-col items-center text-center mb-5">
           {icon && (
             <div className={cn(
@@ -101,7 +59,6 @@ function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
           <p className="text-[13px] text-muted-foreground">{plan.description}</p>
         </div>
 
-        {/* Price */}
         <div className="flex items-baseline justify-center gap-1.5 mb-5">
           <span className="font-mono text-3xl md:text-4xl font-bold tracking-tight text-foreground">
             {price}
@@ -113,7 +70,6 @@ function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
 
         <div className="h-px bg-border mb-5" />
 
-        {/* Features */}
         <ul className="space-y-2.5 mb-6">
           {plan.features.map((feature) => (
             <li key={feature.text} className="flex items-start gap-2 text-[12px] md:text-[13px]">
@@ -125,7 +81,6 @@ function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
           ))}
         </ul>
 
-        {/* CTA */}
         <Button
           variant={plan.variant}
           className="w-full mt-auto py-2.5 md:py-3 text-[13px] md:text-[14px] h-auto transition-transform duration-200 group-hover:scale-[1.02]"
@@ -141,28 +96,6 @@ function PlanCard({ plan, isYearly }: { plan: PlanConfig; isYearly: boolean }) {
   }
 
   return <a href={plan.href} className="h-full">{cardContent}</a>
-}
-
-function FAQ({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false)
-
-  return (
-    <div className="border-b border-border/50 last:border-0">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center justify-between w-full py-4 text-left"
-      >
-        <span className="text-sm font-medium text-foreground pr-4">{q}</span>
-        <ChevronDown className={cn(
-          'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
-          open && 'rotate-180',
-        )} />
-      </button>
-      {open && (
-        <p className="pb-4 text-sm text-muted-foreground leading-relaxed">{a}</p>
-      )}
-    </div>
-  )
 }
 
 export function Pricing() {
@@ -224,76 +157,17 @@ export function Pricing() {
           ))}
         </div>
 
-        {/* Trust Section */}
+        {/* View All Plans CTA */}
         <ScrollReveal>
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 mt-10 text-[12px] text-muted-foreground">
-            <span className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-emerald-500" /> Cancel anytime</span>
-            <span className="flex items-center gap-1.5"><CreditCard className="size-3.5 text-emerald-500" /> Secure billing</span>
-            <span className="flex items-center gap-1.5"><Check className="size-3.5 text-emerald-500" /> No hidden fees</span>
-            <span className="flex items-center gap-1.5"><Headphones className="size-3.5 text-emerald-500" /> Community support</span>
-            <span className="flex items-center gap-1.5"><Clock className="size-3.5 text-emerald-500" /> 99.9% uptime</span>
+          <div className="flex justify-center mt-10">
+            <Link to="/pricing">
+              <Button variant="outline" className="gap-2">
+                Compare all plans & FAQ
+                <span className="text-muted-foreground">→</span>
+              </Button>
+            </Link>
           </div>
         </ScrollReveal>
-
-        {/* Feature Comparison Table */}
-        <ScrollReveal>
-          <div className="mt-20">
-            <h3 className="text-xl font-semibold text-center mb-8">Compare plans</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 pr-4 font-medium text-muted-foreground">Feature</th>
-                    {plans.map((p) => (
-                      <th key={p.key} className={cn(
-                        'text-center py-3 px-3 font-medium',
-                        p.highlighted ? 'text-primary' : 'text-foreground',
-                      )}>
-                        {p.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON_FEATURES.map((f, i) => (
-                    <tr key={f.name} className={cn('border-b border-border/50', i % 2 === 0 && 'bg-muted/30')}>
-                      <td className="py-3 pr-4 text-muted-foreground">{f.name}</td>
-                      {(['free', 'pro', 'business', 'enterprise'] as const).map((plan) => (
-                        <td key={plan} className="text-center py-3 px-3">
-                          {typeof f[plan] === 'boolean' ? (
-                            f[plan] ? (
-                              <Check className="size-4 text-emerald-500 mx-auto" />
-                            ) : (
-                              <span className="text-muted-foreground/40">—</span>
-                            )
-                          ) : (
-                            <span className="text-foreground">{f[plan]}</span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* FAQ Section */}
-        <ScrollReveal>
-          <div className="mt-20 max-w-2xl mx-auto">
-            <h3 className="text-xl font-semibold text-center mb-8">Frequently asked questions</h3>
-            <div className="rounded-xl border bg-card px-5">
-              {FAQS.map((faq) => (
-                <FAQ key={faq.q} q={faq.q} a={faq.a} />
-              ))}
-            </div>
-          </div>
-        </ScrollReveal>
-
-        <p className="mt-8 text-center text-[12px] text-muted-foreground">
-          {footer}
-        </p>
       </div>
     </section>
   )

@@ -30,11 +30,11 @@ export function CTA() {
                     <ArrowRight className="size-4" />
                   </Button>
                 </Link>
-                <a href="#pricing">
+                <Link to="/pricing">
                   <Button size="lg" variant="outline" className="w-full justify-center bg-card/60">
                     See Pricing
                   </Button>
-                </a>
+                </Link>
               </div>
             </div>
           </GlowCard>

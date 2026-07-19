@@ -16,7 +16,7 @@ import {
 
 const navLinks = [
   { label: 'Channels', href: '#channels' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'Docs', href: '/docs' },
 ]
 
