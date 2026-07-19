@@ -34,6 +34,7 @@ import billingRoutes from './modules/billing/routes.js'
 import widgetsRoutes from './modules/widgets/routes.js'
 import providerKeysRoutes from './modules/provider-keys/routes.js'
 import dataManagementRoutes from './modules/data-management/routes.js'
+import { initDiscordGateway, shutdownDiscordGateway } from './services/discord-gateway.js'
 
 
 async function buildServer() {
@@ -97,6 +98,7 @@ async function start() {
   for (const signal of signals) {
     process.on(signal, async () => {
       app.log.info(`Received ${signal}, shutting down gracefully...`)
+      shutdownDiscordGateway()
       await app.close()
       process.exit(0)
     })
@@ -105,6 +107,7 @@ async function start() {
   try {
     await app.listen({ port: PORT, host: HOST })
     app.log.info(`Server listening on ${HOST}:${PORT}`)
+    initDiscordGateway(app.config.DISCORD_BOT_TOKEN)
   } catch (err) {
     app.log.error(err)
     process.exit(1)

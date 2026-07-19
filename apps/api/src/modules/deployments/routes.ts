@@ -544,8 +544,8 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     if (!agent) throw new AppError(404, 'Agent not found')
     await fastify.getMembership(request.userId!, agent.organizationId)
 
-    // Permissions: Send Messages, Use Slash Commands, Read Message History, Embed Links
-    const permissions = '274877975552'
+    // Permissions: Send Messages, Use Slash Commands, Read Message History, Embed Links, View Channels
+    const permissions = '274877976576'
     const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${applicationId}&scope=bot%20applications.commands&permissions=${permissions}`
 
     return { data: { inviteUrl, applicationId } }
