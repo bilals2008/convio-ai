@@ -358,6 +358,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     const convId = activeConvId
     const controller = new AbortController()
     abortRef.current = controller
+    const streamStartTime = Date.now()
 
     try {
       const response = await agentsApi.testStream({
@@ -455,6 +456,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
           try {
             await messagesApi.send(convId, assistantContent || 'I used the available tools to look that up.', 'assistant', {
               ...(finalUsage ? { inputTokens: finalUsage.promptTokens, outputTokens: finalUsage.completionTokens } : {}),
+              responseTimeMs: Date.now() - streamStartTime,
             })
           } catch { /* non-blocking */ }
         }

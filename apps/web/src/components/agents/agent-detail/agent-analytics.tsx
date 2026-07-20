@@ -52,10 +52,15 @@ const activityConfig = {
 const tokenConfig = {
   inputTokens: { label: 'Input Tokens', color: 'hsl(217, 91%, 60%)' },
   outputTokens: { label: 'Output Tokens', color: 'hsl(38, 92%, 50%)' },
+  totalMessages: { label: 'Messages', color: 'hsl(142, 71%, 45%)' },
 } satisfies ChartConfig
 
 const channelConfig = {
   count: { label: 'Conversations', color: 'hsl(142, 71%, 45%)' },
+} satisfies ChartConfig
+
+const responseTimeConfig = {
+  avgResponseTime: { label: 'Avg Response (s)', color: 'hsl(263, 70%, 58%)' },
 } satisfies ChartConfig
 
 function trendOf(val: number): { trend: 'up' | 'down' | 'flat'; change: string } {
@@ -187,6 +192,8 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
     date: d.date,
     inputTokens: d.inputTokens || 0,
     outputTokens: d.outputTokens || 0,
+    totalMessages: d.totalMessages,
+    avgResponseTime: d.avgResponseTime,
   }))
 
   return (
@@ -347,6 +354,48 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
           </Card>
         )}
       </div>
+
+      {/* Response Time */}
+      <Card>
+        <CardHeader className="border-b py-4">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Timer className="size-4 text-muted-foreground" />
+            Response Time
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <ChartContainer config={responseTimeConfig} className="h-[200px] w-full">
+            <AreaChart data={daily} margin={{ top: 6, bottom: 4, left: 0, right: 0 }}>
+              <defs>
+                <linearGradient id="rt-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-avgResponseTime)" stopOpacity={0.7} />
+                  <stop offset="95%" stopColor="var(--color-avgResponseTime)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => formatDay(v)}
+                tickMargin={8}
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent labelFormatter={(v) => formatDay(v)} />}
+              />
+              <Area
+                dataKey="avgResponseTime"
+                type="monotone"
+                stroke="var(--color-avgResponseTime)"
+                strokeWidth={2}
+                fill="url(#rt-grad)"
+              />
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
     </div>
   )
 }
