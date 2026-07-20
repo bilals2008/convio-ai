@@ -37,7 +37,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
-import { cn } from '@/lib/utils'
+import { cn, formatTokenCount } from '@/lib/utils'
 import { TypingIndicator } from '@/components/shared/typing-indicator'
 import { AiResponse } from '@/components/shared/ai-response'
 import { agents as agentsApi, conversations as conversationsApi, messages as messagesApi } from '@/lib/api'
@@ -896,7 +896,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                           <span>{formatTime(msg.createdAt)}</span>
                           {!isUser && msg.usage && (
                             <span className="text-muted-foreground/60 text-[11px]" title={`Prompt: ${msg.usage.promptTokens}, Completion: ${msg.usage.completionTokens}`}>
-                              {msg.usage.totalTokens} tokens
+                              {formatTokenCount(msg.usage.totalTokens)} tokens
                             </span>
                           )}
                           <button
