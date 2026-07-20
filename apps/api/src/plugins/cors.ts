@@ -17,7 +17,6 @@ export function getCorsHeaders(
     };
   }
 
-  // No origin header (server-to-server) — allow
   if (!origin && origins.length > 0) {
     return {
       'Access-Control-Allow-Origin': origins[0],
@@ -28,11 +27,27 @@ export function getCorsHeaders(
   return {}
 }
 
-export default fp(async function corsPlugin(fastify: FastifyInstance) {
-  const origin = fastify.config.CORS_ORIGIN;
+export function getWidgetCorsHeaders(
+  allowedDomains: string[],
+  request?: FastifyRequest,
+): Record<string, string> {
+  const origin = request?.headers?.origin;
+  if (!origin) return {}
 
+  const host = new URL(origin).host.toLowerCase()
+  if (allowedDomains.includes(host)) {
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
+    }
+  }
+
+  return {}
+}
+
+export default fp(async function corsPlugin(fastify: FastifyInstance) {
   await fastify.register(cors, {
-    origin: origin.split(',').map((o) => o.trim()),
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,

@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
-import { getCorsHeaders } from '../../plugins/cors.js'
+import { getWidgetCorsHeaders } from '../../plugins/cors.js'
 import { z } from 'zod'
 
 const widgetStatuses = ['draft', 'active', 'paused', 'archived'] as const
@@ -166,7 +166,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     })
     if (!widget) throw new AppError(404, 'Widget not found')
     assertPublicAccess(request, widget.allowedDomains)
-    reply.headers(getCorsHeaders(fastify.config.CORS_ORIGIN, request))
+    reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
     return { data: widget }
   })
 
@@ -181,7 +181,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     if (!widget) throw new AppError(404, 'Widget not found')
     assertPublicAccess(request, widget.allowedDomains)
     const conversation = await prisma.conversation.create({ data: { agentId: widget.agentId, userId: visitorId ?? null, channel: 'web' } })
-    reply.headers(getCorsHeaders(fastify.config.CORS_ORIGIN, request))
+    reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
     reply.code(201)
     return { data: conversation }
   })
