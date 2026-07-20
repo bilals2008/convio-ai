@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { publicApi as api } from '@/lib/api'
 
 export interface WidgetMessage {
@@ -172,6 +172,18 @@ export function useWidget(config: WidgetConfig) {
     [conversationId, createConversation]
   )
 
+  const isEmbed = useRef(typeof window !== 'undefined' && window.parent !== window)
+  // Closed iframe size: must fit the 56px bubble + its inset + shadow so it
+  // isn't clipped by the iframe's overflow:hidden.
+  const BTN_SIZE = 80
+  const OPEN_WIDTH = 400
+  const OPEN_HEIGHT = 620
+
+  const sendResize = useCallback((w: number, h: number, open: boolean) => {
+    if (!isEmbed.current) return
+    window.parent.postMessage({ type: 'convio-resize', width: w, height: h, open }, '*')
+  }, [])
+
   const openWidget = useCallback(() => {
     setError(null)
     setEntering(true)
@@ -179,19 +191,21 @@ export function useWidget(config: WidgetConfig) {
     setIsOpen(true)
     setIsMinimized(false)
     setUnreadCount(0)
+    sendResize(OPEN_WIDTH, OPEN_HEIGHT, true)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setEntering(false))
     })
-  }, [])
+  }, [sendResize])
 
   const closeWidget = useCallback(() => {
     setExiting(true)
+    sendResize(BTN_SIZE, BTN_SIZE, false)
     setTimeout(() => {
       setIsOpen(false)
       setIsMinimized(false)
       setExiting(false)
     }, 200)
-  }, [])
+  }, [sendResize])
 
   const toggleWidget = useCallback(() => {
     if (isOpen) {
@@ -221,6 +235,12 @@ export function useWidget(config: WidgetConfig) {
   }, [config.greeting, messages.length, addAgentMessage])
 
   useEffect(() => {
+    if (isEmbed.current) {
+      setTimeout(() => sendResize(BTN_SIZE, BTN_SIZE, false), 100)
+    }
+  }, [sendResize])
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         closeWidget()
@@ -233,6 +253,7 @@ export function useWidget(config: WidgetConfig) {
   return {
     isOpen,
     isMinimized,
+    isEmbed: isEmbed.current,
     messages,
     isTyping,
     isCreatingConversation,

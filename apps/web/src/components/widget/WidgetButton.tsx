@@ -3,11 +3,15 @@ import { useWidgetState } from './WidgetState'
 import { MessageCircle, X } from 'lucide-react'
 
 export function WidgetButton() {
-  const { isOpen, unreadCount, agentAvatar, agentName, position, onToggle } = useWidgetState()
+  const { isOpen, isEmbed, unreadCount, agentAvatar, agentName, position, onToggle } = useWidgetState()
 
   const initials = agentName
     ? agentName.split(' ').map((w) => w[0]).slice(0, 1).join('').toUpperCase()
     : 'A'
+
+  // In embed mode the open window fills the whole iframe, so the floating
+  // toggle would overlap the input row. Hide it while open.
+  if (isEmbed && isOpen) return null
 
   return (
     <button

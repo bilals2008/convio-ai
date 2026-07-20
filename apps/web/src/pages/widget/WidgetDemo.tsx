@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChatWidget } from '@/components/widget'
 import type { ChatWidgetProps } from '@/components/widget'
@@ -40,9 +40,22 @@ function getEmbedScript(agentId: string, position: string, primaryColor: string)
   (function() {
     var iframe = document.createElement('iframe');
     iframe.src = '${appUrl}/widget/demo?${params.toString()}';
-    iframe.style.cssText = 'position:fixed;bottom:20px;right:20px;width:400px;height:600px;border:none;z-index:2147483647;max-width:calc(100vw - 40px);max-height:calc(100vh - 40px);box-shadow:0 4px 24px rgba(0,0,0,0.16);border-radius:12px;overflow:hidden;background:#fff;';
+    iframe.style.cssText = 'position:fixed;bottom:20px;right:20px;width:80px;height:80px;border:none;z-index:2147483647;max-width:calc(100vw - 40px);max-height:calc(100vh - 40px);border-radius:28px;overflow:hidden;background:transparent;transition:all 0.3s ease;';
     iframe.title = 'Chat Widget';
     document.body.appendChild(iframe);
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'convio-resize') {
+        iframe.style.width = e.data.width + 'px';
+        iframe.style.height = e.data.height + 'px';
+        if (e.data.open) {
+          iframe.style.borderRadius = '12px';
+          iframe.style.boxShadow = '0 4px 24px rgba(0,0,0,0.16)';
+        } else {
+          iframe.style.borderRadius = '28px';
+          iframe.style.boxShadow = 'none';
+        }
+      }
+    });
   })();
 </script>`
 }
@@ -56,7 +69,7 @@ function getEmbedIframe(agentId: string, position?: string, primaryColor?: strin
   width="400"
   height="600"
   frameborder="0"
-  style="border:none;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.12);"
+  style="border:none;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.12);background:transparent;"
 ></iframe>`
 }
 
@@ -90,6 +103,23 @@ function WidgetEmbedPage() {
   const agentId = params.get('agentId')
 
   const preview = params.get('preview') === 'true'
+
+  useEffect(() => {
+    const root = document.getElementById('root')
+    const targets = [document.documentElement, document.body, root].filter(Boolean) as HTMLElement[]
+    for (const el of targets) {
+      el.style.setProperty('background', 'transparent', 'important')
+      el.style.setProperty('background-color', 'transparent', 'important')
+    }
+    document.documentElement.style.setProperty('color-scheme', 'normal')
+    return () => {
+      for (const el of targets) {
+        el.style.removeProperty('background')
+        el.style.removeProperty('background-color')
+      }
+      document.documentElement.style.removeProperty('color-scheme')
+    }
+  }, [])
 
   const { data: widgetConfig, isLoading: configLoading } = useQuery({
     queryKey: ['widget-config', widgetKey],

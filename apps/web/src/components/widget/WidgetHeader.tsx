@@ -2,7 +2,7 @@ import { useWidgetState } from './WidgetState'
 import { X, Minus } from 'lucide-react'
 
 export function WidgetHeader() {
-  const { agentName, agentAvatar, onClose, onMinimize } = useWidgetState()
+  const { agentName, agentAvatar, isEmbed, onClose, onMinimize } = useWidgetState()
 
   const initials = agentName
     ? agentName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -42,14 +42,16 @@ export function WidgetHeader() {
         </div>
       </div>
       <div className="relative z-10 flex items-center gap-0.5">
-        <button
-          type="button"
-          onClick={onMinimize}
-          className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
-          aria-label="Minimize"
-        >
-          <Minus className="size-4" />
-        </button>
+        {!isEmbed && (
+          <button
+            type="button"
+            onClick={onMinimize}
+            className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            aria-label="Minimize"
+          >
+            <Minus className="size-4" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}

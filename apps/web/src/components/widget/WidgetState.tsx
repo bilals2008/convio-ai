@@ -4,6 +4,7 @@ import type { WidgetMessage, WidgetTheme } from '@/hooks/useWidget'
 export interface WidgetStateValue {
   isOpen: boolean
   isMinimized: boolean
+  isEmbed: boolean
   entering: boolean
   exiting: boolean
   messages: WidgetMessage[]

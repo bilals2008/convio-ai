@@ -56,6 +56,7 @@ export function ChatWidget({
   const stateValue = {
     isOpen: widget.isOpen,
     isMinimized: widget.isMinimized,
+    isEmbed: widget.isEmbed,
     entering: widget.entering,
     exiting: widget.exiting,
     messages: widget.messages,
@@ -79,7 +80,7 @@ export function ChatWidget({
   return createPortal(
     <WidgetStateProvider value={stateValue}>
       <WidgetStyles theme={theme} />
-      <WidgetBackdrop show={widget.isOpen} onClose={widget.closeWidget} />
+      <WidgetBackdrop show={widget.isOpen && !widget.isEmbed} onClose={widget.closeWidget} />
       <div className="convio-widget font-sans antialiased">
         <WidgetButton />
         <WidgetWindow />

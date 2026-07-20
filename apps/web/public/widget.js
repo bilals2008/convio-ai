@@ -12,7 +12,7 @@
   var iframe = document.createElement('iframe')
   iframe.src = baseUrl + '/widget/demo?embed=true&widgetKey=' + encodeURIComponent(widgetKey)
   iframe.style.cssText =
-    'position:fixed;bottom:20px;right:20px;width:400px;height:600px;border:none;z-index:2147483647;max-width:calc(100vw - 40px);max-height:calc(100vh - 40px);box-shadow:0 4px 24px rgba(0,0,0,0.16);border-radius:12px;overflow:hidden;background:#fff;'
+    'position:fixed;bottom:20px;right:20px;width:0;height:0;border:none;z-index:2147483647;max-width:calc(100vw - 40px);max-height:calc(100vh - 40px);border-radius:12px;overflow:hidden;background:transparent;'
   iframe.title = 'Chat Widget'
   iframe.setAttribute('aria-label', 'Chat Widget')
 
@@ -22,11 +22,15 @@
   window.addEventListener('message', function (event) {
     if (event.origin !== baseUrl) return
     if (event.data.type === 'convio-resize') {
-      iframe.style.width = (event.data.width || 400) + 'px'
-      iframe.style.height = (event.data.height || 600) + 'px'
-    }
-    if (event.data.type === 'convio-toggle') {
-      iframe.style.width = iframe.style.width === '0px' ? '400px' : '0px'
+      iframe.style.width = (event.data.width || 0) + 'px'
+      iframe.style.height = (event.data.height || 0) + 'px'
+      if (event.data.open) {
+        iframe.style.boxShadow = '0 4px 24px rgba(0,0,0,0.16)'
+        iframe.style.background = '#fff'
+      } else {
+        iframe.style.boxShadow = 'none'
+        iframe.style.background = 'transparent'
+      }
     }
   })
 })()

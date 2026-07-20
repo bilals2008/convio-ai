@@ -155,7 +155,7 @@ function PromptChip({
               setEditing(false)
             }
           }}
-          maxLength={80}
+          maxLength={60}
           className="min-w-0 flex-1 bg-transparent text-sm outline-none"
         />
       ) : (
@@ -393,7 +393,20 @@ export default function WidgetConfigPage() {
       toast.success('Widget saved')
       setIsDirty(false)
     },
-    onError: (error: Error) => toast.error(error.message || 'Could not save widget'),
+    onError: (error: any) => {
+      const status = error?.response?.status
+      if (status === 402) {
+        toast.error('You have reached your plan limit. Upgrade to publish or save more widgets.', {
+          action: { label: 'Upgrade', onClick: () => navigate('/settings/billing') },
+          duration: 8000,
+        })
+      } else if (status === 400 && error?.response?.data?.details) {
+        const msgs = error.response.data.details.map((d: any) => d.message).join('. ')
+        toast.error(msgs || 'Please check your inputs and try again.')
+      } else {
+        toast.error(error.message || 'Something went wrong. Please try again.')
+      }
+    },
   })
 
   const deleteWidget = useMutation({
@@ -471,13 +484,18 @@ export default function WidgetConfigPage() {
           </button>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold tracking-tight">{widget.name}</h1>
+            <span className="text-[11px] text-muted-foreground">Status:</span>
             <Badge
               variant="outline"
               className={`h-5 px-1.5 text-[10px] capitalize leading-tight border-transparent ${
-                isLive ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'
+                isLive
+                  ? 'bg-success/15 text-success'
+                  : widget.status === 'paused'
+                    ? 'bg-warning/15 text-warning'
+                    : 'bg-muted text-muted-foreground'
               }`}
             >
-              {widget.status}
+              {widget.status === 'active' ? 'Live' : widget.status === 'paused' ? 'Paused' : 'Draft'}
             </Badge>
           </div>
           <div className="flex items-center gap-2">

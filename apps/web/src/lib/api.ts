@@ -22,7 +22,14 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
       window.location.href = '/login'
+      return Promise.reject(error)
     }
+
+    const data = error.response?.data
+    if (data?.message) {
+      error.message = data.message
+    }
+
     return Promise.reject(error)
   }
 )
