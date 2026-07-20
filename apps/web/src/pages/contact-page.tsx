@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { ScrollReveal } from '@/components/landing/scroll-reveal'
 import { SectionHeading } from '@/components/landing/section-heading'
 import { FloatingOrbs } from '@/components/landing/floating-orbs'
@@ -22,7 +21,6 @@ import {
   ArrowRight,
   Building2,
   LifeBuoy,
-  Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -66,25 +64,6 @@ const HIGHLIGHTS = [
   { icon: Clock, label: 'Under 24h', sub: 'Average first reply' },
   { icon: ShieldCheck, label: 'Real humans', sub: 'No ticket-bot runaround' },
   { icon: Building2, label: 'Enterprise', sub: 'Dedicated onboarding' },
-]
-
-const FAQS = [
-  {
-    q: 'How fast will I hear back?',
-    a: 'Most messages get a reply within 24 hours on business days. Support requests from paid plans are prioritized and usually answered much sooner.',
-  },
-  {
-    q: 'Do you offer onboarding help?',
-    a: 'Yes. Team and Enterprise plans include guided onboarding where we help you connect channels, load your knowledge base, and tune your first agents.',
-  },
-  {
-    q: 'Can I book a live demo?',
-    a: 'Absolutely. Pick "Sales & pricing" as your topic and mention you would like a demo — we will send over a scheduling link.',
-  },
-  {
-    q: 'Is my data kept private?',
-    a: 'Your knowledge base and conversations are yours. We never train shared models on your data and you can export or delete it at any time.',
-  },
 ]
 
 export default function ContactPage() {
@@ -347,61 +326,6 @@ export default function ContactPage() {
                 </ScrollReveal>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section className="relative overflow-hidden border-t border-border">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[300px] w-[500px] -translate-x-1/2 bg-glow-green opacity-20"
-          />
-          <div className="mx-auto max-w-2xl px-5 md:px-10 py-20 md:py-28">
-            <ScrollReveal variant="fadeUp">
-              <SectionHeading
-                eyebrow="FAQ"
-                title="Before you ask"
-                description="A few things people usually want to know."
-              />
-            </ScrollReveal>
-
-            <ScrollReveal variant="fadeUp" delay={0.1}>
-              <div className="mt-10 rounded-2xl border border-border bg-card px-5">
-                <Accordion defaultValue={[]} className="w-full">
-                  {FAQS.map((faq) => (
-                    <AccordionItem
-                      key={faq.q}
-                      value={faq.q}
-                      className="border-b border-border/50 last:border-0"
-                    >
-                      <AccordionTrigger className="py-4 text-sm font-medium text-foreground hover:no-underline">
-                        {faq.q}
-                      </AccordionTrigger>
-                      <AccordionContent className="pb-4">
-                        <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
-            </ScrollReveal>
-
-            <ScrollReveal variant="fadeUp" delay={0.15}>
-              <div className="mt-10 flex flex-col items-center gap-4 text-center">
-                <div className="flex size-11 items-center justify-center rounded-xl border border-border bg-card/60">
-                  <Zap className="size-5 text-primary" />
-                </div>
-                <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
-                  Still stuck? Start a free workspace and explore — no credit card required.
-                </p>
-                <Link to="/signup">
-                  <Button size="lg" className="glow-primary-sm">
-                    Start Free
-                    <ArrowRight className="size-4" />
-                  </Button>
-                </Link>
-              </div>
-            </ScrollReveal>
           </div>
         </section>
       </main>
