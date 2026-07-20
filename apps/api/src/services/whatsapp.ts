@@ -2,6 +2,7 @@ import { prisma } from '@convio/database'
 import twilio from 'twilio'
 import { sendPlatformMessage } from './kapso-platform.js'
 import { chatWithAgent } from '../modules/ai/routes.js'
+import { formatResponse } from './formatters/index.js'
 
 function getTwilioClient(config: Record<string, unknown>) {
   const accountSid = config.twilioAccountSid as string
@@ -123,8 +124,8 @@ export async function processIncomingMessage(
       })
 
       if (existingCount <= 1) {
-        const welcome = `👋 Hi! I'm **${deployment.agent.name || 'your AI assistant'}**. How can I help you today?\n\n` +
-          `📌 *Tip:* Send "clear" or "reset" anytime to start a fresh conversation.`
+        const welcome = `👋 Hi! I'm *${deployment.agent.name || 'your AI assistant'}*. How can I help you today?\n\n` +
+          `📌 _Tip:_ Send "clear" or "reset" anytime to start a fresh conversation.`
         sendWhatsAppMessage(deploymentId, fromNumber, welcome).catch((err) => {
           console.error('[WhatsApp] Failed to send welcome message:', err)
         })
@@ -186,6 +187,8 @@ export async function processIncomingMessage(
       messages.map((m) => ({ role: m.role, content: m.content }))
     )
 
+    const formattedReply = formatResponse('whatsapp', reply)
+
     await prisma.message.create({
       data: {
         conversationId: conversation.id,
@@ -194,12 +197,12 @@ export async function processIncomingMessage(
       },
     })
 
-    const sendResult = await sendWhatsAppMessage(deploymentId, fromNumber, reply)
+    const sendResult = await sendWhatsAppMessage(deploymentId, fromNumber, formattedReply)
     if (!sendResult.success) {
       return { error: sendResult.error || 'Failed to send reply' }
     }
 
-    return { response: reply }
+    return { response: formattedReply }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[WhatsApp] processIncomingMessage error:', message)

@@ -1,5 +1,6 @@
 import { prisma } from '@convio/database'
 import { chatWithAgent } from '../modules/ai/routes.js'
+import { formatResponse } from './formatters/index.js'
 
 const TELEGRAM_API = 'https://api.telegram.org'
 
@@ -38,13 +39,17 @@ export interface TelegramUpdate {
 export async function sendTelegramMessage(
   botToken: string,
   chatId: string | number,
-  text: string
+  text: string,
+  parseMode?: string
 ): Promise<{ success: boolean; messageId?: number; error?: string }> {
   try {
+    const body: Record<string, unknown> = { chat_id: chatId, text }
+    if (parseMode) body.parse_mode = parseMode
+
     const res = await fetch(`${TELEGRAM_API}/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify(body),
     })
 
     const data = (await res.json()) as { ok: boolean; result?: { message_id: number }; description?: string }
@@ -158,6 +163,8 @@ export async function processTelegramUpdate(
       history.map((m) => ({ role: m.role, content: m.content }))
     )
 
+    const formattedReply = formatResponse('telegram', reply)
+
     await prisma.message.create({
       data: {
         conversationId: conversation.id,
@@ -166,12 +173,12 @@ export async function processTelegramUpdate(
       },
     })
 
-    const sendResult = await sendTelegramMessage(botToken, chatId, reply)
+    const sendResult = await sendTelegramMessage(botToken, chatId, formattedReply, 'HTML')
     if (!sendResult.success) {
       return { error: sendResult.error || 'Failed to send reply' }
     }
 
-    return { response: reply }
+    return { response: formattedReply }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Telegram] processTelegramUpdate error:', message)

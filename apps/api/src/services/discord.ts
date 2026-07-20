@@ -1,6 +1,7 @@
 import { prisma } from '@convio/database'
 import crypto from 'node:crypto'
 import { chatWithAgent } from '../modules/ai/routes.js'
+import { formatResponse } from './formatters/index.js'
 
 const DISCORD_API = 'https://discord.com/api/v10'
 
@@ -442,17 +443,16 @@ async function handleDiscordAiReply(
       history.map((m) => ({ role: m.role, content: m.content }))
     )
 
-    const replyText = reply || 'Sorry, I could not generate a response. Please try again.'
+    const replyText = formatResponse('discord', reply || 'Sorry, I could not generate a response. Please try again.')
 
     await prisma.message.create({
       data: {
         conversationId: conversation.id,
         role: 'assistant',
-        content: replyText,
+        content: reply,
       },
     })
 
-    // Send embed reply
     const replied = await patchDiscordEmbed(interaction, replyText)
     const botToken = config.botToken as string | undefined
 
