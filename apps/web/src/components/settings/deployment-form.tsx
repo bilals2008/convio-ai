@@ -94,7 +94,7 @@ const twilioFields = [
 export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps) {
   const queryClient = useQueryClient()
   const [agentId, setAgentId] = useState('')
-  const [channel, setChannel] = useState<Channel>('web')
+  const [channel, setChannel] = useState<Channel>('whatsapp')
   const [config, setConfig] = useState<Record<string, string>>({})
   const [whatsappProvider, setWhatsappProvider] = useState('meta')
   const [discordAdvanced, setDiscordAdvanced] = useState(false)
@@ -305,7 +305,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                             <img src={logo} alt={label} className="size-4 shrink-0" />
                           ) : (
                             <div className="size-4 shrink-0 rounded bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                              {key === 'web' ? 'W' : 'A'}
+                              {key === 'api' ? 'A' : 'W'}
                             </div>
                           )}
                           {label}
