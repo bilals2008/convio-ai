@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
-import { cn } from '@/lib/utils'
+import { cn, formatTokenCount } from '@/lib/utils'
 
 interface Agent {
   id: string
@@ -153,7 +153,7 @@ export function AgentPerformanceTable() {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Tokens Used" />,
       cell: ({ row }) => (
         <span className="text-sm font-medium text-muted-foreground">
-          {(row.original.tokensUsed || 0).toLocaleString()}
+          {formatTokenCount(row.original.tokensUsed || 0)}
         </span>
       ),
     },

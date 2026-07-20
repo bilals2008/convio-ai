@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Search, ArrowUp, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+import { cn, formatTokenCount } from '@/lib/utils'
 import { knowledge as knowledgeApi } from '@/lib/api'
 import type { SearchResult } from './kb-types'
 import { DocumentTypeBadge } from './document-type-badge'
@@ -143,7 +143,7 @@ export function KbTestPanel({ knowledgeBaseId, onTested, onSearch }: KbTestPanel
                       {latency}ms
                     </span>
                   )}
-                  <span>~{promptTokens} tokens</span>
+                  <span>~{formatTokenCount(promptTokens)} tokens</span>
                 </span>
               </div>
               <div className="space-y-2">
