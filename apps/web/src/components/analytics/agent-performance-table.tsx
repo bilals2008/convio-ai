@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { cn, formatTokenCount } from '@/lib/utils'
+import { formatResponseTime } from '@/lib/analytics'
 
 interface Agent {
   id: string
@@ -89,7 +90,7 @@ export function AgentPerformanceTable() {
       name: item.agentName as string,
       status: 'active',
       totalConversations: (item.totalConversations as number) || 0,
-      successRate: item.satisfactionScore ? Math.round((item.satisfactionScore as number) / 5 * 100) : 0,
+      successRate: (item.successRate as number) ?? 0,
       avgResponseTime: (item.avgResponseTime as number) || 0,
       tokensUsed: ((item.totalInputTokens as number) || 0) + ((item.totalOutputTokens as number) || 0),
     }))
@@ -143,7 +144,7 @@ export function AgentPerformanceTable() {
             'text-sm font-medium',
             time < 1 ? 'text-emerald-500' : time < 2 ? 'text-amber-500' : 'text-red-500'
           )}>
-            {time.toFixed(1)}s
+            {formatResponseTime(time)}
           </span>
         )
       },

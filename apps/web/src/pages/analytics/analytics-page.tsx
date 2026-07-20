@@ -12,6 +12,7 @@ import { AgentPerformanceTable } from '@/components/analytics/agent-performance-
 import { EmptyState } from '@/components/shared/empty-state'
 import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
+import { formatResponseTime } from '@/lib/analytics'
 
 const dateRanges = [
   { label: '7 days', value: '7d' },
@@ -148,7 +149,7 @@ export default function AnalyticsPage() {
         <StatsCard
           icon={Timer}
           label="Avg Response"
-          value={`${avgResponseTime}s`}
+          value={formatResponseTime(avgResponseTime)}
           description={avgResponseTime < 1 ? 'Excellent' : avgResponseTime < 2 ? 'Good' : 'Needs improvement'}
           descriptionClassName={avgResponseTime < 1 ? 'text-emerald-500' : avgResponseTime < 2 ? 'text-amber-500' : 'text-red-500'}
           iconClassName="bg-amber-500/10 text-amber-500 dark:text-amber-400"

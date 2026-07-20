@@ -99,8 +99,52 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     let realtimeInputTokens = 0
     let realtimeOutputTokens = 0
 
+    const [responseTimeResult, prevResponseTimeResult, tokenResult] = await Promise.all([
+      prisma.$queryRaw<{ avg: number | null }[]>`
+        SELECT AVG("response_time_ms") as avg
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."agentId" = ANY(${agentIds})
+          AND m."role" = 'assistant'
+          AND m."response_time_ms" IS NOT NULL
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+      `,
+      prisma.$queryRaw<{ avg: number | null }[]>`
+        SELECT AVG("response_time_ms") as avg
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."agentId" = ANY(${agentIds})
+          AND m."role" = 'assistant'
+          AND m."response_time_ms" IS NOT NULL
+          AND m."createdAt" >= ${prevFromDate}
+          AND m."createdAt" <= ${prevToDate}
+      `,
+      prisma.$queryRaw<{ input: bigint | null; output: bigint | null }[]>`
+        SELECT SUM("input_tokens") as input, SUM("output_tokens") as output
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."agentId" = ANY(${agentIds})
+          AND m."role" = 'assistant'
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+      `,
+    ])
+
+    const realAvgRT = responseTimeResult[0]?.avg
+      ? Math.round((responseTimeResult[0].avg / 1000) * 100) / 100
+      : 0
+    const prevRealAvgRT = prevResponseTimeResult[0]?.avg
+      ? Math.round((prevResponseTimeResult[0].avg / 1000) * 100) / 100
+      : 0
+
+    const inputTokens = tokenResult[0]?.input ? Number(tokenResult[0].input) : 0
+    const outputTokens = tokenResult[0]?.output ? Number(tokenResult[0].output) : 0
+    realtimeInputTokens = inputTokens
+    realtimeOutputTokens = outputTokens
+
     if (analyticsRecords.length === 0 || totals.totalConversations === 0) {
-      const [realtimeConversations, realtimeMessages, realtimeUsers, prevConversations, prevMessages, responseTimeResult, prevResponseTimeResult, tokenResult] = await Promise.all([
+      const [realtimeConversations, realtimeMessages, realtimeUsers, prevConversations, prevMessages] = await Promise.all([
         prisma.conversation.count({
           where: { agentId: { in: agentIds }, createdAt: { gte: fromDate, lte: toDate } },
         }),
@@ -118,48 +162,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         prisma.message.count({
           where: { conversation: { agentId: { in: agentIds } }, createdAt: { gte: prevFromDate, lte: prevToDate } },
         }),
-        prisma.$queryRaw<{ avg: number | null }[]>`
-          SELECT AVG("response_time_ms") as avg
-          FROM "Message" m
-          JOIN "Conversation" c ON c."id" = m."conversationId"
-          WHERE c."agentId" = ANY(${agentIds})
-            AND m."role" = 'assistant'
-            AND m."response_time_ms" IS NOT NULL
-            AND m."createdAt" >= ${fromDate}
-            AND m."createdAt" <= ${toDate}
-        `,
-        prisma.$queryRaw<{ avg: number | null }[]>`
-          SELECT AVG("response_time_ms") as avg
-          FROM "Message" m
-          JOIN "Conversation" c ON c."id" = m."conversationId"
-          WHERE c."agentId" = ANY(${agentIds})
-            AND m."role" = 'assistant'
-            AND m."response_time_ms" IS NOT NULL
-            AND m."createdAt" >= ${prevFromDate}
-            AND m."createdAt" <= ${prevToDate}
-        `,
-        prisma.$queryRaw<{ input: bigint | null; output: bigint | null }[]>`
-          SELECT SUM("input_tokens") as input, SUM("output_tokens") as output
-          FROM "Message" m
-          JOIN "Conversation" c ON c."id" = m."conversationId"
-          WHERE c."agentId" = ANY(${agentIds})
-            AND m."role" = 'assistant'
-            AND m."createdAt" >= ${fromDate}
-            AND m."createdAt" <= ${toDate}
-        `,
       ])
-
-      const realAvgRT = responseTimeResult[0]?.avg
-        ? Math.round((responseTimeResult[0].avg / 1000) * 100) / 100
-        : 0
-      const prevRealAvgRT = prevResponseTimeResult[0]?.avg
-        ? Math.round((prevResponseTimeResult[0].avg / 1000) * 100) / 100
-        : 0
-
-      const inputTokens = tokenResult[0]?.input ? Number(tokenResult[0].input) : 0
-      const outputTokens = tokenResult[0]?.output ? Number(tokenResult[0].output) : 0
-      realtimeInputTokens = inputTokens
-      realtimeOutputTokens = outputTokens
 
       totals = {
         totalConversations: realtimeConversations,
@@ -251,8 +254,24 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       dailyBreakdownData = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date))
     }
 
-    const avgResponseTime = totals.avgResponseTime
-    const prevAvgResponseTime = prevTotals.avgResponseTime
+    const avgResponseTime = realAvgRT
+    const prevAvgResponseTime = prevRealAvgRT
+
+    const successRateResult = await prisma.$queryRaw<{ with_replies: bigint }[]>`
+      SELECT COUNT(*)::int as with_replies
+      FROM (
+        SELECT DISTINCT m."conversationId"
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."agentId" = ANY(${agentIds})
+          AND m."role" = 'assistant'
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+      ) sub
+    `
+    const successRate = totals.totalConversations > 0
+      ? Math.round((Number(successRateResult[0]?.with_replies || 0) / totals.totalConversations) * 100)
+      : 0
 
     function pctChange(current: number, previous: number) {
       if (previous === 0) return current > 0 ? 100 : 0
@@ -309,6 +328,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         avgResponseTime,
         totalInputTokens: realtimeInputTokens,
         totalOutputTokens: realtimeOutputTokens,
+        successRate,
         conversationsChange: pctChange(totals.totalConversations, prevTotals.totalConversations),
         messagesChange: pctChange(totals.totalMessages, prevTotals.totalMessages),
         usersChange: pctChange(totals.uniqueUsers, prevTotals.uniqueUsers),
@@ -514,6 +534,22 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       count: c._count.id,
     }))
 
+    const agentSuccessRateResult = await prisma.$queryRaw<{ with_replies: bigint }[]>`
+      SELECT COUNT(*)::int as with_replies
+      FROM (
+        SELECT DISTINCT m."conversationId"
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."agentId" = ${agentId}
+          AND m."role" = 'assistant'
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+      ) sub
+    `
+    const agentSuccessRate = totals.totalConversations > 0
+      ? Math.round((Number(agentSuccessRateResult[0]?.with_replies || 0) / totals.totalConversations) * 100)
+      : 0
+
     const realAvgResponseTime = totals.avgResponseTime
     const prevRealAvgResponseTime = prevTotals.avgResponseTime
 
@@ -523,6 +559,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         totalMessages: totals.totalMessages,
         uniqueUsers: totals.uniqueUsers,
         avgResponseTime: realAvgResponseTime,
+        successRate: agentSuccessRate,
         conversationsChange: pctChange(totals.totalConversations, prevTotals.totalConversations),
         messagesChange: pctChange(totals.totalMessages, prevTotals.totalMessages),
         usersChange: pctChange(totals.uniqueUsers, prevTotals.uniqueUsers),
@@ -631,6 +668,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
           avgResponseTime: r._avg.avgResponseTime
             ? Math.round(r._avg.avgResponseTime * 100) / 100
             : 0,
+          successRate: null,
           satisfactionScore: r._avg.satisfactionScore
             ? Math.round(r._avg.satisfactionScore * 100) / 100
             : null,
@@ -638,7 +676,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       }
     }
 
-    const [convCounts, msgCounts, tokenCounts, rtCounts] = await Promise.all([
+    const [convCounts, msgCounts, tokenCounts, rtCounts, srCounts] = await Promise.all([
       prisma.conversation.groupBy({
         by: ['agentId'],
         where: { agentId: { in: agentIds }, createdAt: { gte: fromDate, lte: toDate } },
@@ -674,21 +712,35 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
           AND m."createdAt" <= ${toDate}
         GROUP BY c."agentId"
       `,
+      prisma.$queryRaw<{ agent_id: string; with_replies: bigint }[]>`
+        SELECT c."agentId" as agent_id, COUNT(DISTINCT m."conversationId")::int as with_replies
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."agentId" = ANY(${agentIds})
+          AND m."role" = 'assistant'
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+        GROUP BY c."agentId"
+      `,
     ])
 
     const convMap = new Map(convCounts.map((c) => [c.agentId, c._count.id]))
     const msgMap = new Map(msgCounts.map((r) => [r.agent_id, Number(r.count)]))
     const tokenMap = new Map(tokenCounts.map((r) => [r.agent_id, { input: Number(r.input || 0), output: Number(r.output || 0) }]))
     const rtMap = new Map(rtCounts.map((r) => [r.agent_id, r.avg ? Math.round((r.avg / 1000) * 100) / 100 : 0]))
+    const srMap = new Map(srCounts.map((r) => [r.agent_id, Number(r.with_replies)]))
 
     const liveAgentData = allAgents.map((agent) => {
       const tokens = tokenMap.get(agent.id) || { input: 0, output: 0 }
+      const totalConversations = convMap.get(agent.id) || 0
+      const withReplies = srMap.get(agent.id) || 0
       return {
         agentId: agent.id,
         agentName: agent.name,
-        totalConversations: convMap.get(agent.id) || 0,
+        totalConversations,
         totalMessages: msgMap.get(agent.id) || 0,
         avgResponseTime: rtMap.get(agent.id) || 0,
+        successRate: totalConversations > 0 ? Math.round((withReplies / totalConversations) * 100) : 0,
         satisfactionScore: null,
         totalInputTokens: tokens.input,
         totalOutputTokens: tokens.output,

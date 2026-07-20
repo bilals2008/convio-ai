@@ -14,6 +14,7 @@ import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
+import { formatResponseTime } from '@/lib/analytics'
 
 const dateRanges = [
   { label: 'Today', value: 'today' },
@@ -125,8 +126,8 @@ export default function DashboardOverviewPage() {
     {
       icon: Bot,
       label: 'AI Success',
-      value: `${overview?.totalMessages ? Math.min(Math.round((overview.totalMessages / Math.max(overview.totalMessages + 5, 1)) * 100), 99) : 0}%`,
-      change: '+2.1%',
+      value: `${overview?.successRate ?? 0}%`,
+      change: `${overview?.successRate ? '+' : ''}${overview?.successRate ?? 0}%`,
       trend: 'up' as const,
       period: 'success rate',
       color: 'bg-emerald-500/10 text-emerald-500' as const,
@@ -134,7 +135,7 @@ export default function DashboardOverviewPage() {
     {
       icon: Zap,
       label: 'Avg Response',
-      value: `${overview?.avgResponseTime || 0}s`,
+      value: formatResponseTime(overview?.avgResponseTime ?? 0),
       ...trendOf(overview?.responseTimeChange ?? 0),
       period: 'vs last period',
       color: 'bg-info/10 text-info' as const,

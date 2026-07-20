@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
+import { formatResponseTime } from '@/lib/analytics'
 
 interface Agent {
   id: string
@@ -88,7 +89,7 @@ export function TopAgentsTable() {
       name: item.agentName as string,
       status: 'active',
       totalConversations: (item.totalConversations as number) || 0,
-      successRate: item.satisfactionScore ? Math.round((item.satisfactionScore as number) / 5 * 100) : 95,
+      successRate: (item.successRate as number) ?? 95,
       avgResponseTime: (item.avgResponseTime as number) || 0,
     }))
   }, [topAgentsData])
@@ -141,7 +142,7 @@ export function TopAgentsTable() {
             'text-sm font-medium',
             time < 1 ? 'text-emerald-500' : time < 2 ? 'text-amber-500' : 'text-red-500'
           )}>
-            {time.toFixed(1)}s
+            {formatResponseTime(time)}
           </span>
         )
       },
