@@ -442,16 +442,18 @@ async function handleDiscordAiReply(
       history.map((m) => ({ role: m.role, content: m.content }))
     )
 
+    const replyText = reply || 'Sorry, I could not generate a response. Please try again.'
+
     await prisma.message.create({
       data: {
         conversationId: conversation.id,
         role: 'assistant',
-        content: reply,
+        content: replyText,
       },
     })
 
     // Send embed reply
-    const replied = await patchDiscordEmbed(interaction, reply)
+    const replied = await patchDiscordEmbed(interaction, replyText)
     const botToken = config.botToken as string | undefined
 
     // Create thread on first interaction for this conversation

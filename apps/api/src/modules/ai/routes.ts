@@ -3,6 +3,7 @@ import { prisma } from '@convio/database'
 import { getProviderForModel, allProviders } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
+import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { z } from 'zod'
 import type { AIProvider, Message } from '@convio/ai'
 
@@ -63,15 +64,72 @@ export async function chatWithAgent(
     ...messages.map((m) => ({ role: m.role as Message['role'], content: m.content })),
   ]
 
-  const result = await provider.generate({
+  const toolHandlers = await loadAgentToolHandlers(agentId, prisma)
+  const toolDefs = toolHandlers.map((h) => ({
+    name: h.schema.name,
+    description: h.schema.description,
+    parameters: h.schema.parameters,
+  }))
+
+  let firstResponseText = ''
+  const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
+
+  const stream = provider.stream({
     model: agent.model,
     messages: systemMessages,
     temperature: agent.temperature ?? 0.7,
     maxTokens: agent.maxTokens ?? 2048,
     apiKey,
+    tools: toolDefs.length > 0 ? toolDefs : undefined,
   })
 
-  return result.content
+  for await (const chunk of stream) {
+    if (chunk.type === 'text' && chunk.content) {
+      firstResponseText += chunk.content
+    } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+      toolCallsFromStream.push({ tool: chunk.toolCall.name, args: chunk.toolCall.arguments })
+    }
+    if (chunk.type === 'done') break
+  }
+
+  if (toolCallsFromStream.length === 0) {
+    return firstResponseText
+  }
+
+  const results: { tool: string; result: unknown }[] = []
+  for (const tc of toolCallsFromStream) {
+    const handler = toolHandlers.find((h) => h.schema.name === tc.tool)
+    if (handler) {
+      const result = await handler.execute(tc.args)
+      results.push({ tool: tc.tool, result })
+    }
+  }
+
+  const resultsSummary = results
+    .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
+    .join('\n\n')
+
+  let finalResponse = ''
+  const finalStream = provider.stream({
+    model: agent.model,
+    messages: [
+      ...systemMessages,
+      { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
+      { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
+    ],
+    temperature: agent.temperature ?? 0.7,
+    maxTokens: agent.maxTokens ?? 2048,
+    apiKey,
+  })
+
+  for await (const chunk of finalStream) {
+    if (chunk.type === 'text' && chunk.content) {
+      finalResponse += chunk.content
+    }
+    if (chunk.type === 'done') break
+  }
+
+  return finalResponse || firstResponseText
 }
 
 export default async function aiRoutes(fastify: FastifyInstance) {

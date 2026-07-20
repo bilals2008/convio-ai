@@ -120,12 +120,14 @@ async function handleMessageCreate(data: any, botToken: string) {
       history.map((m) => ({ role: m.role, content: m.content }))
     )
 
+    const replyText = reply || 'Sorry, I could not generate a response. Please try again.'
+
     await prisma.message.create({
-      data: { conversationId: conversation.id, role: 'assistant', content: reply },
+      data: { conversationId: conversation.id, role: 'assistant', content: replyText },
     })
 
     const mention = `<@${contactId}>`
-    const messageId = await sendEmbedMessage(data.channel_id, `${mention} ${reply}`, botToken)
+    const messageId = await sendEmbedMessage(data.channel_id, `${mention} ${replyText}`, botToken)
 
     const convMeta = (conversation.metadata || {}) as Record<string, unknown>
     if (messageId && !convMeta.threadId) {
@@ -141,6 +143,12 @@ async function handleMessageCreate(data: any, botToken: string) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Discord Gateway] AI reply error:', message)
+    const mention = `<@${contactId}>`
+    await sendEmbedMessage(
+      data.channel_id,
+      `${mention} Sorry, an error occurred while generating a response. Please try again.`,
+      botToken,
+    )
   }
 }
 

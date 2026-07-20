@@ -19,12 +19,10 @@ export class OpenRouterProvider implements AIProvider {
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
-    const sysMsg = params.messages.find(m => m.role === 'system')
-    const chatMessages = params.messages.filter(m => m.role !== 'system')
     const result = await generateText({
       model: this.getClient(params.apiKey).chatModel(params.model),
-      messages: chatMessages,
-      ...(sysMsg && { instructions: sysMsg.content }),
+      messages: params.messages,
+      allowSystemInMessages: true,
       temperature: params.temperature,
       maxOutputTokens: params.maxTokens,
     })
@@ -40,9 +38,6 @@ export class OpenRouterProvider implements AIProvider {
   }
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
-    const sysMsg = params.messages.find(m => m.role === 'system')
-    const chatMessages = params.messages.filter(m => m.role !== 'system')
-
     const tools = params.tools?.reduce((acc: any, t) => {
       acc[t.name] = { description: t.description, inputSchema: jsonSchema(t.parameters as any) }
       return acc
@@ -50,8 +45,8 @@ export class OpenRouterProvider implements AIProvider {
 
     const result = streamText({
       model: this.getClient(params.apiKey).chatModel(params.model),
-      messages: chatMessages,
-      ...(sysMsg && { instructions: sysMsg.content }),
+      messages: params.messages,
+      allowSystemInMessages: true,
       temperature: params.temperature,
       maxOutputTokens: params.maxTokens,
       ...(tools && Object.keys(tools).length > 0 && { tools }),
