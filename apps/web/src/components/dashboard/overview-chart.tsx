@@ -3,7 +3,6 @@ import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from '@/c
 import { ChartTooltipContent, ChartLegendContent } from '@/components/application/charts/charts-base'
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
-import { mockOverviewData } from '@/lib/mock-chart-data'
 
 interface ChartDataPoint {
   date: string
@@ -28,7 +27,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function OverviewChart({ data, loading }: OverviewChartProps) {
-  const chartData = data.length >= 5 && data.some((d) => d.messages > 0) ? data : mockOverviewData
+  const chartData = data
 
   return (
     <Card>

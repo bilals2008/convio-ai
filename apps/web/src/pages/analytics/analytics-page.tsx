@@ -87,10 +87,17 @@ export default function AnalyticsPage() {
   }
 
   const chartData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; totalConversations: number; totalMessages: number }) => ({
+    (d: { date: string; totalConversations: number; totalMessages: number; avgResponseTime: number }) => ({
       date: d.date,
       conversations: d.totalConversations,
       messages: d.totalMessages,
+    }),
+  )
+
+  const responseTimeData = (overview?.dailyBreakdown || []).map(
+    (d: { date: string; avgResponseTime: number }) => ({
+      date: d.date,
+      avgResponseTime: d.avgResponseTime ?? 0,
     }),
   )
 
@@ -159,7 +166,7 @@ export default function AnalyticsPage() {
 
       {/* ── Response Time & Channel Performance ──────────────────────── */}
       <div className="grid gap-3 lg:grid-cols-2">
-        <ResponseTimeChart data={chartData} loading={isLoading} />
+        <ResponseTimeChart data={responseTimeData} loading={isLoading} />
         <ChannelPerformanceChart data={overview?.channelBreakdown} loading={isLoading} />
       </div>
 

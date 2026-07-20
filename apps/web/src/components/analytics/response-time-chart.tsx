@@ -3,12 +3,10 @@ import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/
 import { ChartTooltipContent } from '@/components/application/charts/charts-base'
 import { Line, LineChart, CartesianGrid, XAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
-import { mockOverviewData } from '@/lib/mock-chart-data'
 
 interface ChartDataPoint {
   date: string
-  conversations: number
-  messages: number
+  avgResponseTime: number
 }
 
 interface ResponseTimeChartProps {
@@ -17,22 +15,14 @@ interface ResponseTimeChartProps {
 }
 
 const chartConfig = {
-  responseTime: {
+  avgResponseTime: {
     label: 'Response Time',
     color: 'hsl(38, 92%, 50%)',
   },
 } satisfies ChartConfig
 
 export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
-  const chartData = data.length >= 5 && data.some((d) => d.messages > 0) 
-    ? data.map((d, i) => ({
-        date: d.date,
-        responseTime: 1.2 + Math.sin(i * 0.5) * 0.4 + Math.random() * 0.3,
-      }))
-    : mockOverviewData.map((d, i) => ({
-        date: d.date,
-        responseTime: 1.2 + Math.sin(i * 0.5) * 0.4 + Math.random() * 0.3,
-      }))
+  const chartData = data
 
   return (
     <Card>
@@ -73,9 +63,9 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
                 }
               />
               <Line
-                dataKey="responseTime"
+                dataKey="avgResponseTime"
                 type="natural"
-                stroke="var(--color-responseTime)"
+                stroke="var(--color-avgResponseTime)"
                 strokeWidth={2}
                 dot={false}
               />

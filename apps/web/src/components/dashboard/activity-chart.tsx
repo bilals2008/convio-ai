@@ -3,7 +3,6 @@ import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/
 import { ChartTooltipContent } from '@/components/application/charts/charts-base'
 import { Line, LineChart, CartesianGrid, XAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
-import { mockOverviewData } from '@/lib/mock-chart-data'
 
 interface ChartDataPoint {
   date: string
@@ -24,7 +23,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function ActivityChart({ data, loading }: ActivityChartProps) {
-  const chartData = data.length >= 5 && data.some((d) => d.messages > 0) ? data : mockOverviewData
+  const chartData = data
 
   return (
     <Card>
