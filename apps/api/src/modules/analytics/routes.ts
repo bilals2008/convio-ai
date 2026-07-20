@@ -99,7 +99,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     let realtimeInputTokens = 0
     let realtimeOutputTokens = 0
 
-    const [responseTimeResult, prevResponseTimeResult, tokenResult] = await Promise.all([
+    const [responseTimeResult, prevResponseTimeResult, tokenResult, dailyRt] = await Promise.all([
       prisma.$queryRaw<{ avg: number | null }[]>`
         SELECT AVG("response_time_ms") as avg
         FROM "Message" m
@@ -128,6 +128,18 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
           AND m."role" = 'assistant'
           AND m."createdAt" >= ${fromDate}
           AND m."createdAt" <= ${toDate}
+      `,
+      prisma.$queryRaw<{ date: Date; avg: number | null }[]>`
+        SELECT DATE(m."createdAt") as date, AVG(m."response_time_ms") as avg
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."agentId" = ANY(${agentIds})
+          AND m."role" = 'assistant'
+          AND m."response_time_ms" IS NOT NULL
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+        GROUP BY DATE(m."createdAt")
+        ORDER BY date ASC
       `,
     ])
 
@@ -305,6 +317,12 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
           ...d,
           avgResponseTime: Math.round((d.avgResponseTime / (dailyCounts.get(d.date) || 1)) * 100) / 100,
         }))
+
+    const dailyRtMap = new Map(dailyRt.map((r) => [r.date.toISOString().slice(0, 10), r.avg ? Math.round((r.avg / 1000) * 100) / 100 : 0]))
+    for (const d of finalDaily) {
+      const rt = dailyRtMap.get(d.date)
+      if (rt != null) d.avgResponseTime = rt
+    }
 
     const channelBreakdownResult = await prisma.conversation.groupBy({
       by: ['channel'],
