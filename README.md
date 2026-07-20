@@ -20,7 +20,7 @@ AI Chatbot & Agent Management Platform
 | Frontend | React + Vite + TypeScript + Tailwind |
 | UI | shadcn/ui |
 | Backend | Fastify (TypeScript) |
-| Auth | Better Auth |
+| Auth | Supabase Auth |
 | Database | Supabase PostgreSQL |
 | Realtime | Supabase Realtime + SSE |
 | AI | Vercel AI SDK |

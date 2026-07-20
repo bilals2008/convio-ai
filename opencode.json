@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "agentrouter": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "AgentRouter (OpenAI Compatible)",
+      "options": {
+        "baseURL": "http://localhost:20129/v1"
+      },
+      "models": {
+        "glm-5.2": {
+          "name": "glm-5.2"
+        }
+      }
+    }
+  },
+  "model": "agentrouter/glm-5.2",
+  "disabled_providers": []
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
-import { Menu, X, Search, Moon, Sun } from 'lucide-react'
+import { Outlet, useLocation, Navigate } from 'react-router-dom'
+import { Menu, X, Search, Moon, Sun, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -9,8 +9,12 @@ import { useTheme } from 'next-themes'
 import { DocsSidebar } from './docs-sidebar'
 import { DocsToc } from './docs-toc'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth-context'
+import { useOrg } from '@/lib/org-context'
 
 export function DocsLayout() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { org, isLoading: orgLoading } = useOrg()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { theme, setTheme } = useTheme()
   const { pathname } = useLocation()
@@ -27,6 +31,23 @@ export function DocsLayout() {
     }
     return () => { document.body.style.overflow = '' }
   }, [sidebarOpen])
+
+  if (authLoading || orgLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  const role = org?.role
+  if (role !== 'owner' && role !== 'admin') {
+    return <Navigate to="/dashboard" replace />
+  }
 
   return (
     <div className="min-h-screen bg-background">

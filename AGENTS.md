@@ -44,7 +44,7 @@ Rules for AI agents working on this codebase.
 
 ## Auth
 
-- **Supabase Auth** (not Better Auth) — frontend uses `@supabase/supabase-js` directly
+- **Supabase Auth** — frontend uses `@supabase/supabase-js` directly
 - Backend verifies JWT from Authorization header via `supabase.auth.getUser(token)`
 - User profiles synced from `auth.users` → `public.profiles` via DB trigger
 - API endpoints use `fastify.authenticate` middleware

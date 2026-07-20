@@ -16,7 +16,6 @@ const linkGroups = [
   {
     title: 'Resources',
     links: [
-      { label: 'Docs', href: '/docs' },
       { label: 'Log In', href: '/login' },
     ],
   },

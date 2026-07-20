@@ -156,6 +156,12 @@ export function Sidebar() {
             <SidebarItem icon={Users} label="Team" href="/settings/team" />
           </SidebarGroup>
 
+          {(org?.role === 'owner' || org?.role === 'admin') && (
+            <SidebarGroup label="Development">
+              <SidebarItem icon={BookOpen} label="Docs" href="/docs" />
+            </SidebarGroup>
+          )}
+
           <SettingsGroup collapsed={collapsed} />
         </nav>
       </ScrollArea>
