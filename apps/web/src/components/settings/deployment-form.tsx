@@ -57,7 +57,7 @@ const channelMeta: Record<Channel, { label: string; logo: string | null; disable
   slack: { label: 'Slack', logo: `${CDN}/slack/default.svg`, disabled: true },
   discord: { label: 'Discord', logo: `${CDN}/discord/default.svg` },
   telegram: { label: 'Telegram', logo: `${CDN}/telegram/default.svg` },
-  api: { label: 'API', logo: null },
+  api: { label: 'API', logo: null, disabled: true },
 }
 
 const channelFields: Record<Channel, { label: string; key: string; placeholder: string }[]> = {
