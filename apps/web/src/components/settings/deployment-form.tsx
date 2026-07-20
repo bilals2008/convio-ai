@@ -59,11 +59,7 @@ const channelMeta: Record<Channel, { label: string; logo: string | null; disable
 }
 
 const channelFields: Record<Channel, { label: string; key: string; placeholder: string }[]> = {
-  whatsapp: [
-    { label: 'Phone Number ID', key: 'phoneNumberId', placeholder: 'Phone number ID' },
-    { label: 'Access Token', key: 'accessToken', placeholder: 'Access token' },
-    { label: 'Verify Token', key: 'verifyToken', placeholder: 'Verify token' },
-  ],
+  whatsapp: [],
   slack: [
     { label: 'Bot Token', key: 'botToken', placeholder: 'xoxb-...' },
     { label: 'App Token', key: 'appToken', placeholder: 'xapp-...' },
@@ -85,18 +81,11 @@ const channelFields: Record<Channel, { label: string; key: string; placeholder: 
   ],
 }
 
-const twilioFields = [
-  { label: 'Account SID', key: 'twilioAccountSid', placeholder: 'AC...' },
-  { label: 'Auth Token', key: 'twilioAuthToken', placeholder: 'Auth token' },
-  { label: 'Twilio Number', key: 'twilioNumber', placeholder: '+14155238886' },
-]
-
 export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps) {
   const queryClient = useQueryClient()
   const [agentId, setAgentId] = useState('')
   const [channel, setChannel] = useState<Channel>('whatsapp')
   const [config, setConfig] = useState<Record<string, string>>({})
-  const [whatsappProvider, setWhatsappProvider] = useState('meta')
   const [discordAdvanced, setDiscordAdvanced] = useState(false)
   const [discordInviteLoading, setDiscordInviteLoading] = useState(false)
   const [discordStep, setDiscordStep] = useState<'invite' | 'guilds'>('invite')
@@ -124,8 +113,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
   const [kapsoNumberChoice, setKapsoNumberChoice] = useState('')
 
   const fields = channelFields[channel]
-  const useTwilio = channel === 'whatsapp' && whatsappProvider === 'twilio'
-  const useKapso = channel === 'whatsapp' && whatsappProvider === 'kapso'
+  const useKapso = channel === 'whatsapp'
 
   useEffect(() => {
     if (!useKapso) return
@@ -199,8 +187,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
     e.preventDefault()
     setSaving(true)
     let finalConfig = { ...config }
-    if (useTwilio) finalConfig.provider = 'twilio'
-    else if (useKapso) {
+    if (useKapso) {
       finalConfig.provider = 'kapso'
       if (kapsoNumberChoice) finalConfig.phoneNumberId = kapsoNumberChoice
       else delete finalConfig.phoneNumberId
@@ -293,7 +280,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
 
               <div className="space-y-2">
                 <Label>Channel</Label>
-                <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}); setWhatsappProvider('meta'); setDiscordStep('invite') }}>
+                <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}); setDiscordStep('invite') }}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -318,40 +305,6 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                   </SelectContent>
                 </Select>
               </div>
-
-              {channel === 'whatsapp' && (
-                <div className="space-y-2">
-                  <Label>Provider</Label>
-                  <Select value={whatsappProvider} onValueChange={(v) => { setWhatsappProvider(v); setConfig({}) }}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="meta">
-                        <div className="flex items-center gap-2.5">
-                          <img src={`${CDN}/meta/default.svg`} alt="Meta" className="size-4 shrink-0" />
-                          Meta / WhatsApp Business
-                          <Badge variant="secondary" className="text-[9px]">Production</Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="twilio">
-                        <div className="flex items-center gap-2.5">
-                          <img src={`${CDN}/twilio/default.svg`} alt="Twilio" className="size-4 shrink-0" />
-                          Twilio Sandbox
-                          <Badge variant="secondary" className="text-[9px]">Demo</Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="kapso">
-                        <div className="flex items-center gap-2.5">
-                          <div className="size-4 shrink-0 rounded bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground">K</div>
-                          Kapso
-                          <Badge variant="secondary" className="text-[9px]">Free</Badge>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
 
               {useKapso ? (
                 <div className="space-y-2">
@@ -516,17 +469,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                     Use one-click setup instead
                   </button>
                 </div>
-              ) : useTwilio ? twilioFields.map((field) => (
-                <div key={field.key} className="space-y-2">
-                  <Label htmlFor={field.key}>{field.label}</Label>
-                  <Input
-                    id={field.key}
-                    value={config[field.key] || ''}
-                    onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
-                    placeholder={field.placeholder}
-                  />
-                </div>
-              )) : fields.map((field) => (
+              ) : fields.map((field) => (
                 <div key={field.key} className="space-y-2">
                   <Label htmlFor={field.key}>{field.label}</Label>
                   <Input

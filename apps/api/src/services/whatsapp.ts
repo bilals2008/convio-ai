@@ -1,14 +1,7 @@
 import { prisma } from '@convio/database'
-import twilio from 'twilio'
 import { sendPlatformMessage } from './kapso-platform.js'
 import { chatWithAgent } from '../modules/ai/routes.js'
 import { formatResponse } from './formatters/index.js'
-
-function getTwilioClient(config: Record<string, unknown>) {
-  const accountSid = config.twilioAccountSid as string
-  const authToken = config.twilioAuthToken as string
-  return twilio(accountSid, authToken)
-}
 
 export async function sendWhatsAppMessage(
   deploymentId: string,
@@ -21,36 +14,7 @@ export async function sendWhatsAppMessage(
   if (!deployment) return { success: false, error: 'Deployment not found' }
 
   const config = deployment.config as Record<string, unknown>
-  const provider = (config.provider as string) || 'meta'
-
-  if (provider === 'kapso') {
-    return sendKapsoMessage(config, to, body)
-  }
-
-  if (provider === 'twilio') {
-    return sendTwilioMessage(config, to, body)
-  }
-
-  return { success: false, error: `Provider '${provider}' is not supported yet` }
-}
-
-async function sendTwilioMessage(
-  config: Record<string, unknown>,
-  to: string,
-  body: string
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  try {
-    const client = getTwilioClient(config)
-    const twilioNumber = config.twilioNumber as string
-    const message = await client.messages.create({
-      from: `whatsapp:${twilioNumber}`,
-      to: `whatsapp:${to}`,
-      body,
-    })
-    return { success: true, messageId: message.sid }
-  } catch (err: any) {
-    return { success: false, error: err.message || 'Failed to send Twilio message' }
-  }
+  return sendKapsoMessage(config, to, body)
 }
 
 async function sendKapsoMessage(

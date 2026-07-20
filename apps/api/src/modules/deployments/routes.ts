@@ -37,12 +37,7 @@ const deploymentParamsSchema = z.object({
 
 const whatsappConfigSchema = z.object({
   phoneNumberId: z.string().optional(),
-  accessToken: z.string().optional(),
-  verifyToken: z.string().optional(),
-  provider: z.enum(['meta', 'twilio', 'kapso']).optional().default('meta'),
-  twilioAccountSid: z.string().optional(),
-  twilioAuthToken: z.string().optional(),
-  twilioNumber: z.string().optional(),
+  provider: z.literal('kapso').optional().default('kapso'),
   webhookUrl: z.string().optional(),
   kapsoCustomerId: z.string().optional(),
   kapsoSetupLink: z.string().optional(),
@@ -424,9 +419,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const config = deployment.config as Record<string, unknown>
 
     const requiredFields: Record<Channel, string[]> = {
-      whatsapp: (config.provider === 'twilio') ? ['twilioAccountSid', 'twilioAuthToken', 'twilioNumber']
-        : (config.provider === 'kapso') ? ['phoneNumberId']
-        : ['phoneNumberId', 'accessToken'],
+      whatsapp: ['phoneNumberId'],
       slack: ['botToken', 'signingSecret'],
       discord: ['botToken', 'applicationId'],
       telegram: ['botToken'],
@@ -687,46 +680,6 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     })
 
     return { data: { success: true, nickname } }
-  })
-
-  // POST /api/deployments/:id/whatsapp-webhook — Twilio incoming message webhook
-  fastify.post('/deployments/:id/whatsapp-webhook', {
-    config: { rawBody: true },
-  }, async (request, reply) => {
-    const { id } = request.params as { id: string }
-
-    const deployment = await prisma.deployment.findUnique({
-      where: { id },
-      include: { agent: true },
-    })
-    if (!deployment || deployment.channel !== 'whatsapp') {
-      reply.header('Content-Type', 'text/xml')
-      return reply.code(200).send('<Response></Response>')
-    }
-
-    const config = deployment.config as Record<string, unknown>
-    if (config.provider !== 'twilio') {
-      reply.header('Content-Type', 'text/xml')
-      return reply.code(200).send('<Response></Response>')
-    }
-
-    const body = request.body as any
-    const from = body.From || ''
-    const text = body.Body || ''
-
-    if (!from || !text) {
-      reply.header('Content-Type', 'text/xml')
-      return reply.code(200).send('<Response></Response>')
-    }
-
-    const result = await processIncomingMessage(id, from, text)
-
-    reply.header('Content-Type', 'text/xml')
-    if (result.error) {
-      return reply.code(200).send(`<Response><Message>Sorry, an error occurred: ${result.error}</Message></Response>`)
-    }
-
-    return reply.code(200).send('<Response></Response>')
   })
 
   // POST /api/deployments/:id/kapso-webhook — Kapso incoming message webhook
