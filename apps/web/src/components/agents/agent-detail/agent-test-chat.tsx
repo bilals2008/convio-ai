@@ -453,7 +453,9 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
         if (convId) {
           try {
-            await messagesApi.send(convId, assistantContent || 'I used the available tools to look that up.', 'assistant')
+            await messagesApi.send(convId, assistantContent || 'I used the available tools to look that up.', 'assistant', {
+              ...(finalUsage ? { inputTokens: finalUsage.promptTokens, outputTokens: finalUsage.completionTokens } : {}),
+            })
           } catch { /* non-blocking */ }
         }
       }

@@ -91,7 +91,7 @@ export function AgentPerformanceTable() {
       totalConversations: (item.totalConversations as number) || 0,
       successRate: item.satisfactionScore ? Math.round((item.satisfactionScore as number) / 5 * 100) : 0,
       avgResponseTime: (item.avgResponseTime as number) || 0,
-      tokensUsed: (item.totalMessages as number) ? (item.totalMessages as number) * 150 : 0,
+      tokensUsed: ((item.totalInputTokens as number) || 0) + ((item.totalOutputTokens as number) || 0),
     }))
   }, [topAgentsData])
 

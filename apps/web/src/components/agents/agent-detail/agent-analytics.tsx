@@ -18,6 +18,8 @@ interface AnalyticsData {
   usersChange: number
   responseTimeChange: number
   satisfactionScore: number | null
+  totalInputTokens: number
+  totalOutputTokens: number
   channelBreakdown: { channel: string; count: number }[]
   dailyBreakdown: {
     date: string
@@ -179,12 +181,6 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
     count: c.count,
   }))
 
-  const tokenData = daily.map((d) => ({
-    date: d.date,
-    inputTokens: d.totalMessages * 75,
-    outputTokens: d.totalMessages * 150,
-  }))
-
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
@@ -294,27 +290,25 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
               Token Usage
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-            <ChartContainer config={tokenConfig} className="h-[280px] w-full">
-              <BarChart data={tokenData} margin={{ top: 8, bottom: 4, left: 0, right: 0 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v) => formatDay(v)}
-                  tickMargin={8}
-                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent labelFormatter={(v) => formatDay(v)} />}
-                />
-                <Bar dataKey="inputTokens" fill="var(--color-inputTokens)" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="outputTokens" fill="var(--color-outputTokens)" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                <ChartLegend content={<ChartLegendContent />} />
-              </BarChart>
-            </ChartContainer>
+          <CardContent className="pt-4 sm:px-6 sm:pt-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
+                <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Input Tokens</span>
+                <p className="mt-1 text-xl font-semibold tracking-tight">{data.totalInputTokens.toLocaleString()}</p>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
+                <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Output Tokens</span>
+                <p className="mt-1 text-xl font-semibold tracking-tight">{data.totalOutputTokens.toLocaleString()}</p>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
+                <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Total Tokens</span>
+                <p className="mt-1 text-xl font-semibold tracking-tight">{(data.totalInputTokens + data.totalOutputTokens).toLocaleString()}</p>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
+                <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Avg Response</span>
+                <p className="mt-1 text-xl font-semibold tracking-tight">{data.avgResponseTime.toFixed(1)}s</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

@@ -115,8 +115,8 @@ export const conversations = {
 }
 
 export const messages = {
-  send: (conversationId: string, content: string, role = 'user') =>
-    api.post(`/conversations/${conversationId}/messages`, { role, content }),
+  send: (conversationId: string, content: string, role = 'user', extra?: { responseTimeMs?: number; inputTokens?: number; outputTokens?: number }) =>
+    api.post(`/conversations/${conversationId}/messages`, { role, content, ...extra }),
   list: (conversationId: string, params?: { cursor?: string; limit?: number }) =>
     api.get(`/conversations/${conversationId}/messages`, { params }),
   stream: (conversationId: string, content: string) =>
