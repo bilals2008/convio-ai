@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Loader2, ExternalLink, Copy, Check, ArrowUpRight, Settings2, RefreshCw, Monitor } from 'lucide-react'
+import { Loader2, ExternalLink, Copy, Check, ArrowUpRight, Settings2, RefreshCw } from 'lucide-react'
 import { deployments as deploymentsApi } from '@/lib/api'
 import {
   Dialog,
@@ -22,11 +22,10 @@ import {
   SelectGroup,
   SelectLabel,
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
-type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
+type Channel = 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
 
 interface KapsoNumber {
   phoneNumberId: string
@@ -52,7 +51,6 @@ interface DeploymentFormProps {
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
 
 const channelMeta: Record<Channel, { label: string; logo: string | null; disabled?: boolean }> = {
-  web: { label: 'Web Widget', logo: null },
   whatsapp: { label: 'WhatsApp', logo: `${CDN}/whatsapp/default.svg` },
   slack: { label: 'Slack', logo: `${CDN}/slack/default.svg`, disabled: true },
   discord: { label: 'Discord', logo: `${CDN}/discord/default.svg` },
@@ -61,10 +59,6 @@ const channelMeta: Record<Channel, { label: string; logo: string | null; disable
 }
 
 const channelFields: Record<Channel, { label: string; key: string; placeholder: string }[]> = {
-  web: [
-    { label: 'Allowed Origins', key: 'allowedOrigins', placeholder: 'https://example.com, https://app.example.com' },
-    { label: 'Trigger Delay (ms)', key: 'triggerDelay', placeholder: '0' },
-  ],
   whatsapp: [
     { label: 'Phone Number ID', key: 'phoneNumberId', placeholder: 'Phone number ID' },
     { label: 'Access Token', key: 'accessToken', placeholder: 'Access token' },
@@ -205,15 +199,6 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
     e.preventDefault()
     setSaving(true)
     let finalConfig = { ...config }
-    if (channel === 'web') {
-      if (finalConfig.allowedOrigins) {
-        finalConfig.allowedOrigins = finalConfig.allowedOrigins.split(',').map((s: string) => s.trim()).filter(Boolean)
-      }
-      if (finalConfig.triggerDelay) {
-        finalConfig.triggerDelay = parseInt(finalConfig.triggerDelay as string, 10)
-      }
-      finalConfig.showBranding = finalConfig.showBranding === 'true'
-    }
     if (useTwilio) finalConfig.provider = 'twilio'
     else if (useKapso) {
       finalConfig.provider = 'kapso'
@@ -405,74 +390,6 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                         : "You'll get a setup link to connect a new WhatsApp number via Facebook login."
                     })()}
                   </p>
-                </div>
-              ) : channel === 'web' ? (
-                <div className="space-y-4">
-                  <div className="rounded-lg border bg-card p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="size-8 rounded-md bg-muted flex items-center justify-center">
-                        <Monitor className="size-4 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Web Widget Settings</p>
-                        <p className="text-xs text-muted-foreground">Configure how the widget appears on your site</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Position</Label>
-                      <Select value={config.position || 'bottom-right'} onValueChange={(v) => setConfig({ ...config, position: v })}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                          <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                          <SelectItem value="top-right">Top Right</SelectItem>
-                          <SelectItem value="top-left">Top Left</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Trigger</Label>
-                      <Select value={config.trigger || 'auto'} onValueChange={(v) => setConfig({ ...config, trigger: v })}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Auto</SelectItem>
-                          <SelectItem value="manual">Manual</SelectItem>
-                          <SelectItem value="on-scroll">On Scroll</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="showBranding">Show Branding</Label>
-                        <p className="text-xs text-muted-foreground">Display Convio branding on the widget</p>
-                      </div>
-                      <Switch
-                        id="showBranding"
-                        checked={config.showBranding === 'true'}
-                        onCheckedChange={(checked) => setConfig({ ...config, showBranding: checked ? 'true' : 'false' })}
-                      />
-                    </div>
-                  </div>
-
-                  {channelFields.web.map((field) => (
-                    <div key={field.key} className="space-y-2">
-                      <Label htmlFor={field.key}>{field.label}</Label>
-                      <Input
-                        id={field.key}
-                        type={field.key === 'triggerDelay' ? 'number' : 'text'}
-                        value={config[field.key] || ''}
-                        onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
-                        placeholder={field.placeholder}
-                      />
-                    </div>
-                  ))}
                 </div>
               ) : channel === 'discord' && !discordAdvanced ? (
                 <div className="space-y-3">

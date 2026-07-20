@@ -22,7 +22,7 @@ import {
 } from '../../services/kapso-platform.js'
 
 
-const channels = ['web', 'whatsapp', 'slack', 'discord', 'telegram', 'api'] as const
+const channels = ['whatsapp', 'slack', 'discord', 'telegram', 'api'] as const
 type Channel = (typeof channels)[number]
 
 const deploymentStatuses = ['active', 'inactive', 'pending', 'error'] as const
@@ -34,14 +34,6 @@ const agentParamsSchema = z.object({
 const deploymentParamsSchema = z.object({
   id: z.string().uuid(),
 })
-
-const webConfigSchema = z.object({
-  allowedOrigins: z.array(z.string()).min(1).optional(),
-  showBranding: z.boolean().optional(),
-  position: z.enum(['bottom-right', 'bottom-left', 'top-right', 'top-left']).optional(),
-  trigger: z.enum(['auto', 'manual', 'on-scroll']).optional(),
-  triggerDelay: z.number().min(0).optional(),
-}).passthrough()
 
 const whatsappConfigSchema = z.object({
   phoneNumberId: z.string().optional(),
@@ -85,7 +77,6 @@ const apiConfigSchema = z.object({
 
 function configSchemaForChannel(channel: Channel) {
   switch (channel) {
-    case 'web': return webConfigSchema
     case 'whatsapp': return whatsappConfigSchema
     case 'slack': return slackConfigSchema
     case 'discord': return discordConfigSchema
@@ -95,7 +86,6 @@ function configSchemaForChannel(channel: Channel) {
 }
 
 const createDeploymentBodySchema = z.discriminatedUnion('channel', [
-  z.object({ channel: z.literal('web'), config: webConfigSchema }),
   z.object({ channel: z.literal('whatsapp'), config: whatsappConfigSchema }),
   z.object({ channel: z.literal('slack'), config: slackConfigSchema }),
   z.object({ channel: z.literal('discord'), config: discordConfigSchema }),
@@ -434,7 +424,6 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const config = deployment.config as Record<string, unknown>
 
     const requiredFields: Record<Channel, string[]> = {
-      web: [],
       whatsapp: (config.provider === 'twilio') ? ['twilioAccountSid', 'twilioAuthToken', 'twilioNumber']
         : (config.provider === 'kapso') ? ['phoneNumberId']
         : ['phoneNumberId', 'accessToken'],
