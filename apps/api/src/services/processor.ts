@@ -54,14 +54,21 @@ function chunkText(text: string): string[] {
   return chunks
 }
 
-/** GitHub Models text-embedding-3-small via OmniRoute is 1536-d — matches DocumentChunk vector(1536). */
+/**
+ * text-embedding-3-small is 1536-d — matches DocumentChunk vector(1536).
+ * Prefers OpenAI when OPENAI_API_KEY is set, else falls back to the local
+ * (GitHub Models) provider via GITHUB_PAT.
+ */
 export async function embedText(text: string): Promise<number[] | null> {
-  const localProvider = getProviderById('local')
-  if (!localProvider) return null
+  const providerId = process.env.OPENAI_API_KEY ? 'openai' : 'local'
+  const provider = getProviderById(providerId)
+  if (!provider) return null
 
   try {
-    return await localProvider.embed(text)
-  } catch {
+    return await provider.embed(text)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[Embeddings] embed failed (${providerId}):`, message)
     return null
   }
 }

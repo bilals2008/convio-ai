@@ -312,33 +312,68 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
       return reply.code(400).send({ error: 'No file uploaded' })
     }
 
-    if (data.mimetype !== 'application/pdf') {
-      return reply.code(400).send({ error: 'Only PDF files are supported' })
+    const fileName = data.filename || 'document'
+    const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
+    const isPdf = data.mimetype === 'application/pdf' || ext === 'pdf'
+
+    const textTypes: Record<string, DocumentType> = {
+      txt: 'txt',
+      md: 'md',
+      markdown: 'md',
+      csv: 'csv',
+      json: 'json',
     }
 
     const buffer = await data.toBuffer()
-    const fileName = data.filename || 'document.pdf'
 
-    const fileKey = await uploadFile(buffer, fileName, 'application/pdf')
+    if (isPdf) {
+      const fileKey = await uploadFile(buffer, fileName, 'application/pdf')
+
+      const doc = await prisma.document.create({
+        data: {
+          knowledgeBaseId: id,
+          name: fileName.replace(/\.pdf$/i, ''),
+          type: 'pdf',
+          fileKey,
+          status: 'pending',
+        },
+      })
+
+      const tmpPath = join(tmpdir(), `convio-upload-${doc.id}.pdf`)
+      await writeFile(tmpPath, buffer)
+      processPdf(tmpPath, doc.id)
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : 'PDF indexing failed'
+          request.log.error({ err, documentId: doc.id }, `PDF indexing failed: ${message}`)
+        })
+        .finally(() => unlink(tmpPath).catch(() => {}))
+
+      return { data: { ...doc, chunkCount: 0 } }
+    }
+
+    const textType = textTypes[ext]
+    if (!textType) {
+      return reply
+        .code(400)
+        .send({ error: 'Unsupported file type. Allowed: pdf, txt, md, csv, json' })
+    }
+
+    const content = buffer.toString('utf-8')
+    if (!content.trim()) {
+      return reply.code(400).send({ error: 'File is empty' })
+    }
 
     const doc = await prisma.document.create({
       data: {
         knowledgeBaseId: id,
-        name: fileName.replace(/\.pdf$/i, ''),
-        type: 'pdf',
-        fileKey,
+        name: fileName.replace(/\.[^.]+$/, ''),
+        type: textType,
+        content,
         status: 'pending',
       },
     })
 
-    const tmpPath = join(tmpdir(), `convio-upload-${doc.id}.pdf`)
-    await writeFile(tmpPath, buffer)
-    processPdf(tmpPath, doc.id)
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : 'PDF indexing failed'
-        request.log.error({ err, documentId: doc.id }, `PDF indexing failed: ${message}`)
-      })
-      .finally(() => unlink(tmpPath).catch(() => {}))
+    runIndexing(doc.id, request.log)
 
     return { data: { ...doc, chunkCount: 0 } }
   })

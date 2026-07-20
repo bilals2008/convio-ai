@@ -293,8 +293,10 @@ export default function KnowledgeDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
       queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
       toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded`)
-    } catch {
-      toast.error('Upload failed')
+    } catch (err) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(message || 'Upload failed')
     } finally {
       setUploading(false)
     }
@@ -573,6 +575,7 @@ export default function KnowledgeDetailPage() {
         ref={fileInputRef}
         type="file"
         multiple
+        accept=".pdf,.txt,.md,.markdown,.csv,.json"
         className="hidden"
         onChange={(e) => {
           if (e.target.files) handleUploadFiles(Array.from(e.target.files))

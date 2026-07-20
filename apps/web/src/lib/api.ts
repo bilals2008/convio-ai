@@ -131,7 +131,7 @@ export const knowledge = {
     api.post(`/knowledge-bases/${knowledgeBaseId}/documents`, data),
   uploadPdf: (knowledgeBaseId: string, formData: FormData) =>
     api.post(`/knowledge-bases/${knowledgeBaseId}/documents/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
     }),
   getDocuments: (knowledgeBaseId: string, params?: { cursor?: string; limit?: number; status?: string }) =>
     api.get(`/knowledge-bases/${knowledgeBaseId}/documents`, { params }),
