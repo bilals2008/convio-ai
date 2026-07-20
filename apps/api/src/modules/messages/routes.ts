@@ -63,6 +63,9 @@ const createMessageBodySchema = z.object({
   role: z.enum(['user', 'assistant']),
   content: z.string().min(1).max(10000),
   stream: z.boolean().optional(),
+  responseTimeMs: z.number().int().min(0).optional(),
+  inputTokens: z.number().int().min(0).optional(),
+  outputTokens: z.number().int().min(0).optional(),
 })
 
 const updateMessageBodySchema = z.object({
@@ -96,7 +99,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
-    const { role, content } = request.body as { role: 'user' | 'assistant'; content: string }
+    const { role, content, responseTimeMs, inputTokens, outputTokens } = request.body as {
+      role: 'user' | 'assistant'; content: string; responseTimeMs?: number; inputTokens?: number; outputTokens?: number
+    }
 
     const orgId = await getConversationOrgId(id)
     await fastify.getMembership(request.userId!, orgId)
@@ -110,7 +115,15 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     }
 
     const message = await prisma.message.create({
-      data: { conversationId: id, role, content, status: 'sent' },
+      data: {
+        conversationId: id,
+        role,
+        content,
+        status: 'sent',
+        responseTimeMs: responseTimeMs ?? null,
+        inputTokens: inputTokens ?? null,
+        outputTokens: outputTokens ?? null,
+      },
     })
     await prisma.conversation.update({
       where: { id },
@@ -271,6 +284,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     })
 
     let fullResponse = ''
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
 
     try {
       const stream = provider.stream({
@@ -299,7 +314,13 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           firstResponseText += chunk.content
           reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
         }
-        if (chunk.type === 'done') break
+        if (chunk.type === 'done') {
+          if (chunk.usage) {
+            totalInputTokens += chunk.usage.promptTokens || 0
+            totalOutputTokens += chunk.usage.completionTokens || 0
+          }
+          break
+        }
       }
 
       // Execute tools and make second AI call for summarization
@@ -335,6 +356,10 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             fullResponse += chunk.content
             reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
           }
+          if (chunk.type === 'done' && chunk.usage) {
+            totalInputTokens += chunk.usage.promptTokens || 0
+            totalOutputTokens += chunk.usage.completionTokens || 0
+          }
         }
       } else {
         fullResponse = firstResponseText
@@ -350,8 +375,23 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     }
 
     if (fullResponse) {
+      const lastUserMsg = await prisma.message.findFirst({
+        where: { conversationId: id, role: 'user' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      })
+      const responseTimeMs = lastUserMsg ? Date.now() - lastUserMsg.createdAt.getTime() : null
+
       await prisma.message.create({
-        data: { conversationId: id, role: 'assistant', content: fullResponse, status: 'sent' },
+        data: {
+          conversationId: id,
+          role: 'assistant',
+          content: fullResponse,
+          status: 'sent',
+          responseTimeMs,
+          inputTokens: totalInputTokens || null,
+          outputTokens: totalOutputTokens || null,
+        },
       })
 
       try {
@@ -547,8 +587,23 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         apiKey,
       })
 
+      const lastUserMsg = await prisma.message.findFirst({
+        where: { conversationId: id, role: 'user' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      })
+      const responseTimeMs = lastUserMsg ? Date.now() - lastUserMsg.createdAt.getTime() : null
+
       await prisma.message.create({
-        data: { conversationId: id, role: 'assistant', content: response.content, status: 'sent' },
+        data: {
+          conversationId: id,
+          role: 'assistant',
+          content: response.content,
+          status: 'sent',
+          responseTimeMs,
+          inputTokens: response.usage?.promptTokens ?? null,
+          outputTokens: response.usage?.completionTokens ?? null,
+        },
       })
 
       return { data: { response: response.content } }
@@ -669,6 +724,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     request.raw.once('close', () => { clientDisconnected = true })
 
     let fullResponse = ''
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
 
     try {
       const stream = provider.stream({
@@ -695,7 +752,13 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           firstResponseText += chunk.content
           reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
         }
-        if (chunk.type === 'done') break
+        if (chunk.type === 'done') {
+          if (chunk.usage) {
+            totalInputTokens += chunk.usage.promptTokens || 0
+            totalOutputTokens += chunk.usage.completionTokens || 0
+          }
+          break
+        }
       }
 
       // Execute tools and make second AI call for summarization
@@ -730,6 +793,10 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             fullResponse += chunk.content
             reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
           }
+          if (chunk.type === 'done' && chunk.usage) {
+            totalInputTokens += chunk.usage.promptTokens || 0
+            totalOutputTokens += chunk.usage.completionTokens || 0
+          }
         }
       } else {
         fullResponse = firstResponseText
@@ -744,8 +811,23 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     }
 
     if (fullResponse) {
+      const lastUserMsg = await prisma.message.findFirst({
+        where: { conversationId: id, role: 'user' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      })
+      const responseTimeMs = lastUserMsg ? Date.now() - lastUserMsg.createdAt.getTime() : null
+
       await prisma.message.create({
-        data: { conversationId: id, role: 'assistant', content: fullResponse, status: 'sent' },
+        data: {
+          conversationId: id,
+          role: 'assistant',
+          content: fullResponse,
+          status: 'sent',
+          responseTimeMs,
+          inputTokens: totalInputTokens || null,
+          outputTokens: totalOutputTokens || null,
+        },
       })
     }
 
