@@ -430,7 +430,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     let realtimeOutputTokens = 0
 
     if (dailyBreakdown.length === 0 || totals.totalConversations === 0) {
-      const [convByDate, msgByDate, responseTimeResult, tokenResult, dailyTokens, rtByDate] = await Promise.all([
+      const [convByDate, msgByDate, responseTimeResult, tokenResult, dailyTokens, rtByDate, uniqueUsersResult] = await Promise.all([
         prisma.conversation.groupBy({
           by: ['createdAt'],
           where: { agentId, createdAt: { gte: fromDate, lte: toDate } },
@@ -488,6 +488,11 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
           GROUP BY DATE(m."createdAt")
           ORDER BY date ASC
         `,
+        prisma.conversation.groupBy({
+          by: ['userId'],
+          where: { agentId, createdAt: { gte: fromDate, lte: toDate }, userId: { not: null } },
+          _count: { id: true },
+        }),
       ])
 
       const realAvgRT = responseTimeResult[0]?.avg
@@ -529,16 +534,13 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       }
       dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date))
 
-      totals = dailyBreakdown.reduce(
-        (acc, d) => ({
-          ...acc,
-          totalConversations: acc.totalConversations + d.totalConversations,
-          totalMessages: acc.totalMessages + d.totalMessages,
-          uniqueUsers: acc.uniqueUsers + d.uniqueUsers,
-          avgResponseTime: realAvgRT,
-        }),
-        { totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, satisfactionScores: [] as number[] },
-      )
+      totals = {
+        totalConversations: dailyBreakdown.reduce((a, d) => a + d.totalConversations, 0),
+        totalMessages: dailyBreakdown.reduce((a, d) => a + d.totalMessages, 0),
+        uniqueUsers: uniqueUsersResult.length,
+        avgResponseTime: realAvgRT,
+        satisfactionScores: [] as number[],
+      }
     }
 
     const channelBreakdownResult = await prisma.conversation.groupBy({
