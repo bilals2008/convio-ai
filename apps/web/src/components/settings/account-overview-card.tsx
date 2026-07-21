@@ -1,11 +1,9 @@
-import { CreditCard, Calendar, HardDrive, Hash } from 'lucide-react'
+import { CreditCard, Calendar, HardDrive } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { useProfile } from '@/lib/hooks/use-profile'
-import { useAuth } from '@/lib/auth-context'
-import { useOrg } from '@/lib/org-context'
 import { usePlan, useUsage } from '@/lib/hooks/use-billing'
 
 function formatDate(date: string) {
@@ -18,15 +16,12 @@ function formatDate(date: string) {
 
 export function AccountOverviewCard() {
   const { data: profile } = useProfile()
-  const { user } = useAuth()
-  const { org } = useOrg()
   const { data: plan } = usePlan()
   const { data: usage } = useUsage()
 
-  const userId = user?.id || profile?.id || 'usr_bdr7l2a3e1c'
   const joinedDate = profile?.createdAt ? formatDate(profile.createdAt) : '18 May 2025'
   const planLabel = plan?.label || 'Free'
-  const isPro = plan?.name === 'pro' || plan?.name === 'enterprise'
+  const planVariant = (plan?.name === 'pro' ? 'pro' : plan?.name === 'enterprise' ? 'enterprise' : 'free') as 'free' | 'pro' | 'enterprise'
 
   const storageUsed = usage ? `${usage.messages} / ${usage.limit}` : '0 / 0'
   const storagePercent = usage ? Math.min(usage.messagesPercent, 100) : 0
@@ -40,14 +35,6 @@ export function AccountOverviewCard() {
       <CardContent className="space-y-0 divide-y divide-foreground/5">
         <div className="flex items-center justify-between gap-3 py-3">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <Hash className="size-3.5" />
-            <span className="text-xs">Account ID</span>
-          </div>
-          <span className="font-mono text-sm">{userId}</span>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 py-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar className="size-3.5" />
             <span className="text-xs">Joined</span>
           </div>
@@ -59,7 +46,7 @@ export function AccountOverviewCard() {
             <CreditCard className="size-3.5" />
             <span className="text-xs">Current Plan</span>
           </div>
-          <Badge variant={isPro ? 'default' : 'secondary'} className="capitalize">
+          <Badge variant={planVariant} className="capitalize">
             {planLabel}
           </Badge>
         </div>

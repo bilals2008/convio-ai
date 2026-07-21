@@ -53,6 +53,12 @@ const badgeVariants = cva(
           "bg-destructive/10 text-destructive border-destructive/20",
         pending:
           "bg-warning/10 text-warning border-warning/20",
+        free:
+          "bg-muted text-muted-foreground border-border",
+        pro:
+          "bg-primary/10 text-primary border-primary/20",
+        enterprise:
+          "bg-info/10 text-info border-info/20",
       },
     },
     defaultVariants: {
