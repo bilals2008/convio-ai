@@ -4,7 +4,15 @@ import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { useDeleteAccount } from '@/lib/hooks/use-profile'
 
 export function DangerZoneCard() {
@@ -31,6 +39,12 @@ export function DangerZoneCard() {
     })
   }
 
+  const handleCloseDialog = () => {
+    setDeleteOpen(false)
+    setDeleteConfirmText('')
+    setDeleteError('')
+  }
+
   return (
     <>
       <Card className="border-destructive/30">
@@ -55,22 +69,58 @@ export function DangerZoneCard() {
         </CardContent>
       </Card>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeleteOpen(false)
-            setDeleteConfirmText('')
-            setDeleteError('')
-          }
-        }}
-        title="Delete Account"
-        description='Type "delete my account" to confirm. All your data will be permanently deleted.'
-        confirmText="Delete Account"
-        cancelText="Cancel"
-        variant="destructive"
-        onConfirm={handleDeleteAccount}
-      />
+      <Dialog open={deleteOpen} onOpenChange={handleCloseDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="flex size-8 items-center justify-center rounded-full bg-destructive/10">
+                <Trash2 className="size-4 text-destructive" />
+              </span>
+              Delete Account
+            </DialogTitle>
+            <DialogDescription>
+              Type <span className="font-medium text-foreground">"delete my account"</span> to confirm. All your data will be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Input
+              type="text"
+              placeholder='Type "delete my account"'
+              value={deleteConfirmText}
+              onChange={(e) => {
+                setDeleteConfirmText(e.target.value)
+                if (deleteError) setDeleteError('')
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && deleteConfirmText === 'delete my account') {
+                  handleDeleteAccount()
+                }
+              }}
+              className={deleteError ? 'border-destructive focus-visible:ring-destructive/20' : ''}
+              disabled={deleteAccount.isPending}
+              autoFocus
+            />
+            {deleteError && (
+              <p className="text-xs text-destructive">{deleteError}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDialog} disabled={deleteAccount.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteAccount.isPending || deleteConfirmText !== 'delete my account'}
+            >
+              {deleteAccount.isPending && <Loader2 className="size-3.5 animate-spin" />}
+              Delete Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
