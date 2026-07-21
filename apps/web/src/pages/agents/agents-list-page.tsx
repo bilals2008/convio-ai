@@ -4,11 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Brain, Clock, Pencil, Trash2, MoreVertical, AlertCircle, CheckSquare, Square, X } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -52,21 +52,15 @@ interface Agent {
   updatedAt: string
 }
 
-const STATUS_META: Record<string, { label: string; className: string; dot: string }> = {
-  active: { label: 'Active', className: 'border-success/20 bg-success/10 text-success', dot: 'bg-success' },
-  draft: { label: 'Draft', className: 'border-warning/20 bg-warning/10 text-warning', dot: 'bg-warning' },
-  paused: { label: 'Paused', className: 'border-warning/20 bg-warning/10 text-warning', dot: 'bg-warning' },
-  archived: { label: 'Archived', className: 'border-border bg-muted/40 text-muted-foreground', dot: 'bg-muted-foreground' },
+const STATUS_META: Record<string, { label: string; variant: 'active' | 'pending' | 'canceled' | 'archived' }> = {
+  active: { label: 'Active', variant: 'active' },
+  draft: { label: 'Draft', variant: 'pending' },
+  paused: { label: 'Paused', variant: 'pending' },
+  archived: { label: 'Archived', variant: 'archived' },
 }
 
-function statusMeta(status: string) {
-  return (
-    STATUS_META[status] ?? {
-      label: status.charAt(0).toUpperCase() + status.slice(1),
-      className: 'border-border bg-muted/40 text-muted-foreground',
-      dot: 'bg-muted-foreground',
-    }
-  )
+function statusVariant(status: string) {
+  return STATUS_META[status]?.variant ?? 'archived'
 }
 
 function formatModelName(model: string): string {
@@ -84,31 +78,6 @@ function formatDate(dateString: string) {
   if (days === 1) return 'Yesterday'
   if (days < 7) return `${days}d ago`
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const meta = statusMeta(status)
-  return (
-    <span
-      className={cn(
-        'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-        meta.className
-      )}
-    >
-      <span className={cn('size-1.5 rounded-full', meta.dot)} />
-      {meta.label}
-    </span>
-  )
-}
-
-function ModelChip({ model }: { model: string }) {
-  const provider = model.split('/')[0] || 'other'
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-      <ProviderLogo provider={provider} className="size-3.5 rounded-[3px]" />
-      <span className="max-w-[180px] truncate">{formatModelName(model)}</span>
-    </span>
-  )
 }
 
 function AgentCard({
@@ -142,80 +111,82 @@ function AgentCard({
         }
       }}
       className={cn(
-        "group [--card-spacing:0px] cursor-pointer rounded-xl border bg-card p-0 outline-none transition-all duration-200",
+        "group cursor-pointer p-0 outline-none transition-all duration-200",
         isSelected && "border-primary/60 bg-primary/5 ring-1 ring-primary/20",
-        !isSelected && "border-border hover:-translate-y-0.5 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
+        !isSelected && "hover:-translate-y-0.5 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
       )}
     >
       <CardContent className="flex h-full flex-col gap-3 p-4">
-        <div className="flex items-start gap-3">
-          {selectionMode ? (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onToggleSelect() }}
-              className="mt-0.5 shrink-0"
+      <div className="flex items-start gap-3">
+        {selectionMode && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleSelect() }}
+            className="mt-0.5 shrink-0"
+          >
+            {isSelected ? (
+              <CheckSquare className="size-5 text-primary" />
+            ) : (
+              <Square className="size-5 text-muted-foreground/50" />
+            )}
+          </button>
+        )}
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+          <Brain className="size-5 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-semibold text-foreground">{agent.name}</h3>
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+            {agent.description || 'No description'}
+          </p>
+        </div>
+        {!selectionMode && (
+          <Badge variant={statusVariant(agent.status)} className="text-[10px] font-medium capitalize">
+            {agent.status}
+          </Badge>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+          <ProviderLogo provider={agent.model.split('/')[0] || 'other'} className="size-3.5 rounded-[3px]" />
+          <span className="max-w-[180px] truncate">{formatModelName(agent.model)}</span>
+        </span>
+      </div>
+
+      <p className="line-clamp-2 text-[11px] leading-relaxed text-muted-foreground/80">
+        {agent.systemPrompt || 'No system prompt configured.'}
+      </p>
+
+      <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-3">
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Clock className="size-3" />
+          {formatDate(agent.updatedAt || agent.createdAt)}
+        </div>
+        {!selectionMode && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              {isSelected ? (
-                <CheckSquare className="size-5 text-primary" />
-              ) : (
-                <Square className="size-5 text-muted-foreground/50" />
-              )}
-            </button>
-          ) : null}
-          <Avatar className="size-11 rounded-xl">
-            {agent.avatar ? (
-              <AvatarImage src={agent.avatar} alt={agent.name} className="object-cover" />
-            ) : null}
-            <AvatarFallback className="rounded-xl bg-primary/10 text-primary">
-              <Brain className="size-5" />
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold text-foreground">{agent.name}</h3>
-            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-              {agent.description || 'No description'}
-            </p>
-          </div>
-          {!selectionMode && <StatusBadge status={agent.status} />}
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <ModelChip model={agent.model} />
-        </div>
-
-        <p className="line-clamp-2 text-[11px] leading-relaxed text-muted-foreground/80">
-          {agent.systemPrompt || 'No system prompt configured.'}
-        </p>
-
-        <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-3">
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Clock className="size-3" />
-            {formatDate(agent.updatedAt || agent.createdAt)}
-          </div>
-          {!selectionMode && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                onClick={(e) => e.stopPropagation()}
-                className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "text-muted-foreground hover:text-foreground")}
+              <MoreVertical className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit() }}>
+                <Pencil className="size-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={(e) => { e.stopPropagation(); onDelete() }}
               >
-                <MoreVertical className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit() }}>
-                  <Pencil className="size-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={(e) => { e.stopPropagation(); onDelete() }}
-                >
-                  <Trash2 className="size-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+                <Trash2 className="size-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
       </CardContent>
     </Card>
   )
@@ -223,7 +194,7 @@ function AgentCard({
 
 function AgentCardSkeleton() {
   return (
-    <Card className="[--card-spacing:0px] rounded-xl border border-border p-0">
+    <Card className="p-0">
       <CardContent className="flex flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
           <Skeleton className="size-11 rounded-xl" />
@@ -231,7 +202,7 @@ function AgentCardSkeleton() {
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-3 w-44" />
           </div>
-          <Skeleton className="h-4 w-14 rounded-full" />
+          <Skeleton className="h-5 w-14 rounded-full" />
         </div>
         <Skeleton className="h-5 w-32 rounded-md" />
         <div className="space-y-1.5">
@@ -323,21 +294,15 @@ export default function AgentsListPage() {
     list = [...list].sort((a, b) => {
       if (sortBy === 'name') return a.name.localeCompare(b.name)
       if (sortBy === 'oldest') {
-        return (
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        )
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       }
-      return (
-        new Date(b.updatedAt || b.createdAt).getTime() -
-        new Date(a.updatedAt || a.createdAt).getTime()
-      )
+      return new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
     })
 
     return list
   }, [agents, search, statusFilter, modelFilter, sortBy])
 
-  const hasActiveFilters =
-    !!search.trim() || statusFilter !== 'all' || modelFilter !== 'all'
+  const hasActiveFilters = !!search.trim() || statusFilter !== 'all' || modelFilter !== 'all'
 
   const clearFilters = () => {
     setSearch('')
@@ -380,9 +345,7 @@ export default function AgentsListPage() {
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Agents</h1>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Create, manage, and deploy your AI agents.
-          </p>
+          <p className="text-sm text-muted-foreground">Create, manage, and deploy your AI agents.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {selectionMode ? (
@@ -432,13 +395,9 @@ export default function AgentsListPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All status</SelectItem>
-              {statusOptions
-                .filter((s) => s !== 'all')
-                .map((s) => (
-                  <SelectItem key={s} value={s} className="capitalize">
-                    {s}
-                  </SelectItem>
-                ))}
+              {statusOptions.filter((s) => s !== 'all').map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -448,13 +407,9 @@ export default function AgentsListPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All models</SelectItem>
-              {modelOptions
-                .filter((m) => m !== 'all')
-                .map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {formatModelName(m)}
-                  </SelectItem>
-                ))}
+              {modelOptions.filter((m) => m !== 'all').map((m) => (
+                <SelectItem key={m} value={m}>{formatModelName(m)}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -478,16 +433,14 @@ export default function AgentsListPage() {
             <AlertCircle className="size-6 text-destructive" />
           </div>
           <p className="text-sm font-medium">Failed to load agents</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Something went wrong while fetching your agents.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Something went wrong while fetching your agents.</p>
           <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>
             Try again
           </Button>
         </div>
       )}
 
-      {/* Loading state */}
+      {/* Loading */}
       {!isError && loading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 8 }, (_, i) => (
@@ -496,7 +449,7 @@ export default function AgentsListPage() {
         </div>
       )}
 
-      {/* Empty: no agents at all */}
+      {/* Empty: no agents */}
       {!loading && !isError && agents.length === 0 && (
         <EmptyState
           icon={Brain}
@@ -506,7 +459,7 @@ export default function AgentsListPage() {
         />
       )}
 
-      {/* Empty: filters match nothing */}
+      {/* Empty: no matches */}
       {!loading && !isError && agents.length > 0 && displayAgents.length === 0 && (
         <EmptyState
           icon={Brain}
@@ -568,15 +521,9 @@ export default function AgentsListPage() {
       {deleteAgent && (
         <AgentDeleteDialog
           open={!!deleteAgent}
-          onOpenChange={(open) => {
-            if (!open) {
-              setDeleteAgent(null)
-            }
-          }}
+          onOpenChange={(open) => { if (!open) setDeleteAgent(null) }}
           agentName={deleteAgent.name}
-          onConfirm={() => {
-            deleteMutation.mutate(deleteAgent.id)
-          }}
+          onConfirm={() => deleteMutation.mutate(deleteAgent.id)}
           isPending={deleteMutation.isPending}
         />
       )}

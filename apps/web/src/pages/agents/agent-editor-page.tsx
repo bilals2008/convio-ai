@@ -185,11 +185,7 @@ export default function AgentEditorPage() {
     <PageContainer>
       <PageHeader
         title={isEdit ? 'Edit Agent' : 'Create Agent'}
-        description={
-          isEdit
-            ? 'Update your agent configuration'
-            : 'Configure a new AI agent'
-        }
+        description={isEdit ? 'Update your agent configuration' : 'Configure a new AI agent'}
         action={
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => navigate('/agents')}>
@@ -197,11 +193,7 @@ export default function AgentEditorPage() {
               Back
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Save className="size-4" />
-              )}
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               {saving ? 'Saving...' : 'Save'}
             </Button>
           </div>
@@ -226,9 +218,9 @@ export default function AgentEditorPage() {
           <Card>
             <CardHeader>
               <CardTitle>Configuration</CardTitle>
-              <CardDescription>Configure your agent&apos;s behavior and model</CardDescription>
+              <CardDescription>Configure your agent's behavior and model</CardDescription>
             </CardHeader>
-                <CardContent>
+            <CardContent>
               <AgentForm
                 data={formData}
                 onChange={(data) => {
@@ -248,13 +240,13 @@ export default function AgentEditorPage() {
               agentConfig={{
                 name: formData.name,
                 model: formData.model,
-              systemPrompt: formData.systemPrompt,
-              temperature: formData.temperature,
-              maxTokens: formData.maxTokens,
-              providerKeyId: formData.providerKeyId,
-              knowledgeBaseId: formData.knowledgeBaseId || null,
-              mcpServerIds: formData.mcpServerIds || [],
-            }}
+                systemPrompt: formData.systemPrompt,
+                temperature: formData.temperature,
+                maxTokens: formData.maxTokens,
+                providerKeyId: formData.providerKeyId,
+                knowledgeBaseId: formData.knowledgeBaseId || null,
+                mcpServerIds: formData.mcpServerIds || [],
+              }}
             />
           </div>
         </div>
