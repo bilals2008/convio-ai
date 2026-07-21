@@ -115,10 +115,20 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
     )
   }
 
-  const daily = (data.dailyBreakdown || []).map((d) => ({
+  const rawDaily = (data.dailyBreakdown || []).map((d) => ({
     ...d,
     date: new Date(d.date),
   }))
+
+  const daily = rawDaily.length <= 1
+    ? [
+        { date: new Date(Date.now() - 2 * 86400000), totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 },
+        { date: new Date(Date.now() - 1 * 86400000), totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 },
+        ...(rawDaily.length === 1 ? [{ ...rawDaily[0] }] : []),
+        { date: new Date(Date.now() + 1 * 86400000), totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 },
+        { date: new Date(Date.now() + 2 * 86400000), totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 },
+      ]
+    : rawDaily
   const hasData = data.totalConversations > 0 || daily.length > 0
 
   if (!hasData) {
