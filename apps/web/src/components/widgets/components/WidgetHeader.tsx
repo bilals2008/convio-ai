@@ -103,21 +103,14 @@ export function WidgetHeader({
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
               <span
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
-                  'border',
+                  'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
                   isLive
-                    ? 'border-success/30 bg-success/10 text-success'
+                    ? 'bg-success/10 text-success'
                     : widget.status === 'paused'
-                      ? 'border-warning/30 bg-warning/10 text-warning'
-                      : 'border-border bg-muted/50 text-muted-foreground',
+                      ? 'bg-warning/10 text-warning'
+                      : 'bg-muted text-muted-foreground',
                 )}
               >
-                <span className="relative flex size-1.5">
-                  {status.pulse && (
-                    <span className={cn('absolute inline-flex size-full animate-ping rounded-full opacity-75', status.dot)} aria-hidden="true" />
-                  )}
-                  <span className={cn('relative inline-flex size-1.5 rounded-full', status.dot)} aria-hidden="true" />
-                </span>
                 {status.label}
               </span>
 
