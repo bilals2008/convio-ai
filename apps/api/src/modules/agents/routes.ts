@@ -242,6 +242,9 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     if (knowledgeBaseId !== undefined) {
       updateData.knowledgeBaseId = knowledgeBaseId || null
     }
+    if (reasoningEffort !== undefined) {
+      updateData.reasoningEffort = reasoningEffort
+    }
     if (tools !== undefined) {
       const existingConfig = (existing.widgetConfig as Record<string, unknown>) || {}
       updateData.widgetConfig = { ...existingConfig, tools }

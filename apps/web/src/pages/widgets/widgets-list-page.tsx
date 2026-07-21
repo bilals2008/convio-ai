@@ -3,15 +3,34 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { LayoutDashboard, Plus, Rocket, Search, SlidersHorizontal, ArrowDownAZ, ArrowUpAZ, Clock, Globe2 } from 'lucide-react'
+import { LayoutDashboard, Plus, Rocket, Globe2, Clock, ArrowDownAZ, ArrowUpAZ, SlidersHorizontal, AlertCircle } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { PageContainer } from '@/components/shared/page-container'
+import { EmptyState } from '@/components/shared/empty-state'
+import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { WidgetCard } from '@/components/widgets/widget-card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { WidgetCard, WidgetCardSkeleton } from '@/components/widgets/widget-card'
 import { agents as agentsApi, widgets as widgetsApi } from '@/lib/api'
 import { useWidgets, type WidgetSummary } from '@/lib/hooks/use-widgets'
 import { useOrg } from '@/lib/org-context'
@@ -28,12 +47,13 @@ type SortOption = 'updated' | 'newest' | 'oldest' | 'domains'
 export default function WidgetsListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { orgId } = useOrg()
+  const { orgId, isLoading: orgLoading } = useOrg()
   const { widgets = [], isLoading, isError, refetch } = useWidgets(orgId)
   const [createOpen, setCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterStatus>('all')
   const [sort, setSort] = useState<SortOption>('updated')
+  const [archiveTarget, setArchiveTarget] = useState<WidgetSummary | null>(null)
 
   const form = useForm<CreateWidgetValues>({
     resolver: zodResolver(createWidgetSchema),
@@ -60,7 +80,11 @@ export default function WidgetsListPage() {
 
   const archiveWidget = useMutation({
     mutationFn: (id: string) => widgetsApi.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['widgets', orgId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['widgets', orgId] })
+      toast.success('Widget archived')
+      setArchiveTarget(null)
+    },
     onError: (error: Error) => toast.error(error.message || 'Could not archive widget'),
   })
 
@@ -103,17 +127,31 @@ export default function WidgetsListPage() {
     return result
   }, [widgets, search, filter, sort])
 
+  const hasActiveFilters = !!search.trim() || filter !== 'all' || sort !== 'updated'
+  const loading = orgLoading || isLoading
+
+  const clearFilters = () => {
+    setSearch('')
+    setFilter('all')
+    setSort('updated')
+  }
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <PageContainer>
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight">Website widgets</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+              <LayoutDashboard className="size-4 text-primary" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight">Website widgets</h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
             Create, test, and publish a chat experience without changing your agent.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={() => setCreateOpen(true)} className="shrink-0">
           <Plus className="size-4" />
           Create Widget
         </Button>
@@ -121,46 +159,36 @@ export default function WidgetsListPage() {
 
       {/* Toolbar */}
       {widgets.length > 0 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Search */}
-          <div className="relative max-w-sm flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search widgets..."
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex-1">
+            <SearchInput
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              onChange={setSearch}
+              placeholder="Search widgets by name or agent..."
             />
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={filter} onValueChange={(v) => setFilter((v ?? 'all') as FilterStatus)}>
+              <SelectTrigger className="h-9 w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All status</SelectItem>
+                <SelectItem value="active">Live</SelectItem>
+                <SelectItem value="paused">Paused</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <div className="flex items-center gap-2">
-            {/* Filter */}
-            <div className="flex items-center rounded-lg border border-border p-0.5">
-              {(['all', 'active', 'paused', 'archived'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                    filter === f
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-
-            {/* Sort */}
-            <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-              <SelectTrigger className="w-[180px]">
+            <Select value={sort} onValueChange={(v) => setSort((v ?? 'updated') as SortOption)}>
+              <SelectTrigger className="h-9 w-[180px]">
                 <SlidersHorizontal className="size-3.5" />
-                <SelectValue />
+                <SelectValue placeholder="Sort" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="updated">
                   <Clock className="size-3.5" />
-                  Recently Updated
+                  Recently updated
                 </SelectItem>
                 <SelectItem value="newest">
                   <ArrowDownAZ className="size-3.5" />
@@ -172,7 +200,7 @@ export default function WidgetsListPage() {
                 </SelectItem>
                 <SelectItem value="domains">
                   <Globe2 className="size-3.5" />
-                  Most Domains
+                  Most domains
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -180,70 +208,102 @@ export default function WidgetsListPage() {
         </div>
       )}
 
-      {/* Loading */}
-      {!orgId || isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2, 3, 4, 5].map((item) => (
-            <div key={item} className="h-[168px] animate-pulse rounded-xl border border-border bg-muted/50" />
-          ))}
-        </div>
-      ) : isError ? (
-        /* Error state */
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-destructive/10">
-            <span className="text-2xl text-destructive">!</span>
+      {/* Error state */}
+      {isError && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-16 text-center">
+          <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-destructive/10">
+            <AlertCircle className="size-6 text-destructive" />
           </div>
-          <h3 className="mt-5 text-lg font-semibold">Failed to load widgets</h3>
-          <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-            Something went wrong. Please try again.
+          <p className="text-sm font-medium">Failed to load widgets</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Something went wrong while fetching your widgets.
           </p>
-          <Button className="mt-6" variant="outline" onClick={() => refetch()}>
-            Try Again
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>
+            Try again
           </Button>
         </div>
-      ) : filtered.length > 0 ? (
-        /* Widget grid */
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {filtered.length} widget{filtered.length !== 1 ? 's' : ''}
-            {filtered.length !== widgets.length ? ' found' : ''}
-          </p>
+      )}
+
+      {/* Loading state */}
+      {!isError && loading && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <WidgetCardSkeleton key={i} />
+          ))}
+        </div>
+      )}
+
+      {/* Empty: no widgets at all */}
+      {!loading && !isError && widgets.length === 0 && (
+        <EmptyState
+          icon={LayoutDashboard}
+          title="No widgets yet"
+          description="Widgets let you embed your AI assistant on any website. Choose an agent, customize the experience, then publish one installation snippet."
+          action={{ label: 'Create Widget', onClick: () => setCreateOpen(true) }}
+        />
+      )}
+
+      {/* Empty: filters match nothing */}
+      {!loading && !isError && widgets.length > 0 && filtered.length === 0 && (
+        <EmptyState
+          icon={LayoutDashboard}
+          title="No widgets match your filters"
+          description="Try a different search term or clear the filters."
+          action={{ label: 'Clear filters', onClick: clearFilters }}
+        />
+      )}
+
+      {/* List */}
+      {!loading && !isError && filtered.length > 0 && (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {filtered.length} widget{filtered.length !== 1 ? 's' : ''}
+              {hasActiveFilters ? ' found' : ''}
+            </p>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            )}
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((widget) => (
               <WidgetCard
                 key={widget.id}
                 widget={widget}
                 onCopyEmbed={copyEmbed}
-                onArchive={(item) => archiveWidget.mutate(item.id)}
+                onArchive={(item) => setArchiveTarget(item)}
               />
             ))}
           </div>
-        </div>
-      ) : widgets.length === 0 ? (
-        /* Empty state: no widgets */
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10">
-            <LayoutDashboard className="size-7 text-primary" />
-          </div>
-          <h3 className="mt-5 text-lg font-semibold">Create your first widget</h3>
-          <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-            Widgets let you embed your AI assistant on any website. Choose an agent, customize the experience, then publish one installation snippet.
-          </p>
-          <Button className="mt-6" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            Create Widget
-          </Button>
-        </div>
-      ) : (
-        /* Empty state: filtered to nothing */
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
-          <Search className="size-8 text-muted-foreground/40" />
-          <h3 className="mt-4 text-sm font-semibold">No widgets found</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Try adjusting your search or filter.
-          </p>
-        </div>
+        </>
       )}
+
+      {/* Archive confirmation */}
+      <AlertDialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive widget</AlertDialogTitle>
+            <AlertDialogDescription>
+              {archiveTarget
+                ? `"${archiveTarget.name}" will be archived. You can restore it later from the Archived filter.`
+                : 'This widget will be archived.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={archiveWidget.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={archiveWidget.isPending}
+              onClick={() => archiveTarget && archiveWidget.mutate(archiveTarget.id)}
+            >
+              {archiveWidget.isPending ? 'Archiving...' : 'Archive'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -251,11 +311,19 @@ export default function WidgetsListPage() {
           <form onSubmit={form.handleSubmit((values) => createWidget.mutate(values))}>
             <DialogHeader>
               <DialogTitle>Create a widget</DialogTitle>
+              <DialogDescription>
+                Pick a name and the agent this widget will use. You can adjust everything else later.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-5">
               <div className="space-y-2">
                 <Label htmlFor="widget-name">Widget name</Label>
-                <Input id="widget-name" placeholder="Website assistant" {...form.register('name')} />
+                <Input
+                  id="widget-name"
+                  placeholder="Website assistant"
+                  {...form.register('name')}
+                  autoFocus
+                />
                 <p className="text-xs text-destructive">{form.formState.errors.name?.message}</p>
               </div>
               <div className="space-y-2">
@@ -284,7 +352,7 @@ export default function WidgetsListPage() {
               </Button>
               <Button type="submit" disabled={createWidget.isPending}>
                 {createWidget.isPending ? (
-                  'Creating…'
+                  'Creating...'
                 ) : (
                   <>
                     <Rocket className="size-4" />
@@ -296,6 +364,6 @@ export default function WidgetsListPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

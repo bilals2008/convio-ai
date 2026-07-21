@@ -53,6 +53,7 @@ export interface Agent {
   providerKeyId?: string
   knowledgeBaseId?: string
   avatar?: string
+  reasoningEffort?: string
   widgetColor: string
   welcomeMessage?: string
   widgetConfig?: Record<string, unknown>

@@ -37,6 +37,7 @@ import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
 const settingsGeneral = [
+  { icon: User, label: 'Profile', href: '/settings/profile' },
   { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
   { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
   { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
@@ -353,6 +354,7 @@ const mobileNavGroups = [
   {
     label: 'Settings',
     items: [
+      { icon: User, label: 'Profile', href: '/settings/profile' },
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
       { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },

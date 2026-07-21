@@ -75,6 +75,7 @@ model Agent {
   providerKeyId   String?
   knowledgeBaseId String?
   avatar          String?
+  reasoningEffort String?
   createdById     String?
   status          String         @default("draft")
   welcomeMessage  String?

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import {
   Loader2,
   LayoutDashboard,
@@ -58,8 +59,6 @@ const agentDetailSchema = z.object({
   systemPrompt: z.string(),
   temperature: z.number().min(0).max(2),
   reasoningEffort: z.string(),
-  toneOfVoice: z.string(),
-  language: z.string(),
   maxTokens: z.number(),
 })
 
@@ -85,8 +84,6 @@ export default function AgentDetailPage() {
       systemPrompt: '',
       temperature: 0.7,
       reasoningEffort: 'medium',
-      toneOfVoice: 'friendly',
-      language: 'english',
       maxTokens: 2048,
     },
   })
@@ -213,8 +210,6 @@ export default function AgentDetailPage() {
         temperature: agent.temperature,
         maxTokens: agent.maxTokens || 2048,
         reasoningEffort: (agent as any).reasoningEffort || 'medium',
-        toneOfVoice: 'friendly',
-        language: 'english',
       })
 
       const savedTools = agent.widgetConfig?.tools
@@ -245,6 +240,9 @@ export default function AgentDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       queryClient.invalidateQueries({ queryKey: ['agent', id] })
     },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to save agent')
+    },
   })
 
   const deleteMutation = useMutation({
@@ -265,7 +263,7 @@ export default function AgentDetailPage() {
     updateMutation.mutate({
       name: data.name,
       description: data.description,
-      avatar: data.avatar,
+      ...(data.avatar ? { avatar: data.avatar } : {}),
       model: data.model,
       systemPrompt: data.systemPrompt,
       temperature: data.temperature,

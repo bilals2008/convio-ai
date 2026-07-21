@@ -4,13 +4,6 @@ import { SlidersHorizontal } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import {
-  Combobox,
-  ComboboxInput,
-  ComboboxContent,
-  ComboboxList,
-  ComboboxItem,
-} from "@/components/ui/combobox"
 import { ModelPicker } from "./model-picker-dialog"
 import { ModelBadges } from "./model-badges"
 import { getModelBadges, providerLabel } from "./model-meta"
@@ -39,20 +32,6 @@ interface AgentBehaviorSettingsProps {
   modelsErrorMessage?: string
 }
 
-const toneOptions = [
-  { value: "friendly", label: "Friendly" },
-  { value: "professional", label: "Professional" },
-  { value: "casual", label: "Casual" },
-  { value: "formal", label: "Formal" },
-]
-
-const languageOptions = [
-  { value: "english", label: "English" },
-  { value: "urdu", label: "Urdu" },
-  { value: "arabic", label: "Arabic" },
-  { value: "hindi", label: "Hindi" },
-]
-
 export function AgentBehaviorSettings({
   control,
   disabled,
@@ -61,8 +40,6 @@ export function AgentBehaviorSettings({
   modelsError = false,
   modelsErrorMessage,
 }: AgentBehaviorSettingsProps) {
-  const { field: toneField } = useController({ name: 'toneOfVoice', control })
-  const { field: langField } = useController({ name: 'language', control })
   const { field: modelField } = useController({ name: 'model', control })
   const { field: tempField } = useController({ name: 'temperature', control })
   const { field: promptField } = useController({ name: 'systemPrompt', control })
@@ -105,49 +82,6 @@ export function AgentBehaviorSettings({
         {selectedModel && (
           <ModelBadges badges={selectedBadges} className="px-0.5" />
         )}
-      </div>
-
-      {/* Tone + Language as comboboxes */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Tone</Label>
-          <Combobox
-            value={toneField.value}
-            onValueChange={toneField.onChange}
-            disabled={disabled}
-          >
-            <ComboboxInput placeholder="Select tone" className="h-9" />
-            <ComboboxContent>
-              <ComboboxList>
-                {toneOptions.map((opt) => (
-                  <ComboboxItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </ComboboxItem>
-                ))}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Language</Label>
-          <Combobox
-            value={langField.value}
-            onValueChange={langField.onChange}
-            disabled={disabled}
-          >
-            <ComboboxInput placeholder="Select language" className="h-9" />
-            <ComboboxContent>
-              <ComboboxList>
-                {languageOptions.map((opt) => (
-                  <ComboboxItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </ComboboxItem>
-                ))}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
       </div>
 
       <Separator />
