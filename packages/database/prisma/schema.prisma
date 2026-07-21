@@ -47,18 +47,26 @@ model Organization {
   @@index([slug])
 }
 
+enum MembershipRole {
+  owner
+  admin
+  member
+  viewer
+}
+
 model Membership {
-  id             String       @id @default(uuid())
+  id             String         @id @default(uuid())
   userId         String
   organizationId String
-  role           String       @default("member")
-  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  profile        Profile      @relation(fields: [userId], references: [id])
+  role           MembershipRole @default(member)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  profile        Profile        @relation(fields: [userId], references: [id])
 
   @@unique([userId, organizationId])
   @@index([userId])
   @@index([organizationId])
+  @@index([role])
 }
 
 model Agent {
@@ -298,17 +306,17 @@ model Analytics {
 }
 
 model Invitation {
-  id             String       @id @default(uuid())
+  id             String         @id @default(uuid())
   email          String
   organizationId String
-  role           String       @default("member")
-  token          String       @unique
+  role           MembershipRole @default(member)
+  token          String         @unique
   invitedById    String?
   expiresAt      DateTime
   acceptedAt     DateTime?
-  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  invitedBy      Profile?     @relation(fields: [invitedById], references: [id])
+  createdAt      DateTime       @default(now()) @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  invitedBy      Profile?       @relation(fields: [invitedById], references: [id])
 
   @@index([email])
   @@index([token])

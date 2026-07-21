@@ -233,7 +233,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const existing = await prisma.agent.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Agent not found')
 
-    await fastify.getMembership(request.userId!, existing.organizationId)
+    await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
     const body = request.body as Record<string, unknown>
     const { knowledgeBaseId, reasoningEffort, tools, ...rest } = body

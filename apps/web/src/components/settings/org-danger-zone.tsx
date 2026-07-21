@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useRole } from '@/lib/hooks/useRole'
 
 interface OrgDangerZoneProps {
   orgName: string
@@ -16,6 +17,7 @@ export function OrgDangerZone({ orgName, onDelete, loading }: OrgDangerZoneProps
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmText, setConfirmText] = useState('')
   const [error, setError] = useState('')
+  const role = useRole()
 
   const handleDelete = () => {
     if (confirmText !== orgName) {
@@ -27,6 +29,8 @@ export function OrgDangerZone({ orgName, onDelete, loading }: OrgDangerZoneProps
     setConfirmOpen(false)
     setConfirmText('')
   }
+
+  if (role !== 'owner') return null
 
   return (
     <Card className="border-destructive/50">

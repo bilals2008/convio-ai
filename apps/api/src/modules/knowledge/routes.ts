@@ -222,7 +222,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     const existing = await prisma.knowledgeBase.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Knowledge base not found')
 
-    await fastify.getMembership(request.userId!, existing.organizationId)
+    await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
     const kb = await prisma.knowledgeBase.update({
       where: { id },
@@ -562,7 +562,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     if (!existing) throw new AppError(404, 'Document not found')
 
-    await fastify.getMembership(request.userId!, existing.knowledgeBase.organizationId)
+    await fastify.ensureAdmin(request.userId!, existing.knowledgeBase.organizationId)
 
     const contentChanged =
       (body.content !== undefined && body.content !== existing.content) ||
@@ -602,7 +602,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     if (!doc) throw new AppError(404, 'Document not found')
 
-    await fastify.getMembership(request.userId!, doc.knowledgeBase.organizationId)
+    await fastify.ensureAdmin(request.userId!, doc.knowledgeBase.organizationId)
 
     if (doc.status === 'processing') {
       throw new AppError(409, 'Document is already being processed')
@@ -640,7 +640,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     if (!doc) throw new AppError(404, 'Document not found')
 
-    await fastify.getMembership(request.userId!, doc.knowledgeBase.organizationId)
+    await fastify.ensureAdmin(request.userId!, doc.knowledgeBase.organizationId)
 
     if (doc.fileKey) {
       deleteFile(doc.fileKey).catch(() => {})

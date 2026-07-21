@@ -365,7 +365,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
 
     if (!deployment) throw new AppError(404, 'Deployment not found')
 
-    await fastify.getMembership(request.userId!, deployment.agent.organizationId)
+    await fastify.ensureAdmin(request.userId!, deployment.agent.organizationId)
 
     const updated = await prisma.deployment.update({
       where: { id },

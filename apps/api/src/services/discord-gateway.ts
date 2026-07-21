@@ -68,16 +68,41 @@ async function createThread(
 
 async function handleMessageCreate(data: any, botToken: string) {
   if (!botUserId || data.author?.id === botUserId) return
-  if (data.guild_id === undefined) return
 
-  const isMentioned = data.mentions?.some((m: any) => m.id === botUserId)
-  if (!isMentioned) return
+  const isDM = data.guild_id === undefined
+
+  if (!isDM) {
+    const isMentioned = data.mentions?.some((m: any) => m.id === botUserId)
+    if (!isMentioned) return
+  }
 
   const guildId = data.guild_id
-  const deployment = await prisma.deployment.findFirst({
-    where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
-    include: { agent: true },
-  })
+  let deployment: any
+
+  if (guildId) {
+    deployment = await prisma.deployment.findFirst({
+      where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
+      include: { agent: true },
+    })
+  } else {
+    const existingConversation = await prisma.conversation.findFirst({
+      where: { channel: 'discord', contactPhone: data.author.id, status: { not: 'closed' } },
+      orderBy: { createdAt: 'desc' },
+    })
+    if (existingConversation) {
+      deployment = await prisma.deployment.findFirst({
+        where: { agentId: existingConversation.agentId, channel: 'discord' },
+        include: { agent: true },
+      })
+    } else {
+      deployment = await prisma.deployment.findFirst({
+        where: { channel: 'discord', config: { path: ['botToken'], equals: botToken } },
+        include: { agent: true },
+        orderBy: { createdAt: 'desc' },
+      })
+    }
+  }
+
   if (!deployment) return
 
   const text = data.content?.replace(/<@!?(\d+)>/g, '').trim()
@@ -90,8 +115,6 @@ async function handleMessageCreate(data: any, botToken: string) {
     where: { agentId: deployment.agentId, channel: 'discord', contactPhone: contactId, status: { not: 'closed' } },
     orderBy: { createdAt: 'desc' },
   })
-
-  const isNewConversation = !conversation
 
   if (!conversation) {
     conversation = await prisma.conversation.create({
@@ -133,11 +156,14 @@ async function handleMessageCreate(data: any, botToken: string) {
       data: { conversationId: conversation.id, role: 'assistant', content: reply },
     })
 
-    const mention = `<@${contactId}>`
-    const messageId = await sendEmbedMessage(data.channel_id, `${mention} ${replyText}`, botToken)
+    const messageId = await sendEmbedMessage(
+      data.channel_id,
+      isDM ? replyText : `<@${contactId}> ${replyText}`,
+      botToken,
+    )
 
     const convMeta = (conversation.metadata || {}) as Record<string, unknown>
-    if (messageId && !convMeta.threadId) {
+    if (!isDM && messageId && !convMeta.threadId) {
       const threadName = `Chat with ${deployment.agent?.name || 'ai'}`
       const threadId = await createThread(botToken, data.channel_id, messageId, threadName)
       if (threadId) {
@@ -150,10 +176,11 @@ async function handleMessageCreate(data: any, botToken: string) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Discord Gateway] AI reply error:', message)
-    const mention = `<@${contactId}>`
     await sendEmbedMessage(
       data.channel_id,
-      `${mention} Sorry, an error occurred while generating a response. Please try again.`,
+      isDM
+        ? 'Sorry, an error occurred while generating a response. Please try again.'
+        : `<@${contactId}> Sorry, an error occurred while generating a response. Please try again.`,
       botToken,
     )
   }
@@ -238,12 +265,13 @@ function startGateway(botToken: string) {
           }, heartbeat_interval)
 
           const GUILD_MESSAGES = 1 << 9
+          const DIRECT_MESSAGES = 1 << 12
           const MESSAGE_CONTENT = 1 << 15
           gateway?.send(JSON.stringify({
             op: 2,
             d: {
               token: `Bot ${botToken}`,
-              intents: GUILD_MESSAGES | MESSAGE_CONTENT,
+              intents: GUILD_MESSAGES | DIRECT_MESSAGES | MESSAGE_CONTENT,
               properties: { os: 'linux', browser: 'convio', device: 'convio' },
             },
           }))

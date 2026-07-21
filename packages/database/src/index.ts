@@ -1,8 +1,10 @@
 import { Pool } from "pg"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "./generated/client.js"
+import { MembershipRole } from "./generated/enums.js"
 
 export type { Prisma } from "./generated/client.js"
+export { MembershipRole }
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined

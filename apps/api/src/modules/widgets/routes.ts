@@ -87,7 +87,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     const { orgId } = request.params as { orgId: string }
     const { name, agentId, config } = request.body as z.infer<typeof createWidgetBodySchema>
-    await fastify.getMembership(request.userId!, orgId)
+    await fastify.ensureAdmin(request.userId!, orgId)
     const agent = await prisma.agent.findFirst({ where: { id: agentId, organizationId: orgId }, select: { id: true, name: true, avatar: true } })
     if (!agent) throw new AppError(404, 'Agent not found in this organization')
 
@@ -119,7 +119,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     const body = request.body as z.infer<typeof updateWidgetBodySchema>
     const existing = await prisma.widget.findUnique({ where: { id }, select: { organizationId: true, config: true, allowedDomains: true } })
     if (!existing) throw new AppError(404, 'Widget not found')
-    await fastify.getMembership(request.userId!, existing.organizationId)
+    await fastify.ensureAdmin(request.userId!, existing.organizationId)
     if (body.agentId) {
       const agent = await prisma.agent.findFirst({ where: { id: body.agentId, organizationId: existing.organizationId }, select: { id: true } })
       if (!agent) throw new AppError(404, 'Agent not found in this organization')

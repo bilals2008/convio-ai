@@ -36,16 +36,24 @@ import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 
-const settingsGeneral = [
-  { icon: User, label: 'Profile', href: '/settings/profile' },
-  { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
-  { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
-  { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
-  { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
-  { icon: Database, label: 'Data', href: '/settings/data' },
-]
+function useSettingsItems() {
+  const { org } = useOrg()
+  const role = org?.role
+  const isAdmin = role === 'owner' || role === 'admin'
+
+  return [
+    { icon: User, label: 'Profile', href: '/settings/profile', adminOnly: false },
+    { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
+    { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true },
+    { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments', adminOnly: false },
+    { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
+    { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
+  ].filter((item) => !item.adminOnly || isAdmin)
+}
 
 function SettingsGroup({ collapsed }: { collapsed: boolean }) {
+  const settingsGeneral = useSettingsItems()
+
   if (collapsed) {
     return (
       <div className="space-y-0.5 mt-4">
@@ -246,7 +254,7 @@ export function Sidebar() {
 
                 <ScrollArea className="flex-1 min-h-0">
                   <nav className="flex flex-col px-3 py-2">
-                    {mobileNavGroups.map((group) => (
+                    {getMobileNavGroups(org?.role).map((group) => (
                       <div key={group.label} className="space-y-1">
                         <h4 className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           {group.label}
@@ -322,44 +330,51 @@ export function Sidebar() {
   )
 }
 
-const mobileNavGroups = [
-  {
-    label: 'Overview',
-    items: [
-      { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-      { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
-    ],
-  },
-  {
-    label: 'AI',
-    items: [
-      { icon: Brain, label: 'Agents', href: '/agents' },
-      { icon: BookOpen, label: 'Knowledge Base', href: '/knowledge' },
-    ],
-  },
-  {
-    label: 'Channels',
-    items: [
-      { icon: MessageSquare, label: 'Conversations', href: '/conversations' },
-      { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
-    ],
-  },
-  {
-    label: 'Workspace',
-    items: [
-      { icon: Building2, label: 'Organization', href: '/settings/organization' },
-      { icon: Users, label: 'Team', href: '/settings/team' },
-    ],
-  },
-  {
-    label: 'Settings',
-    items: [
-      { icon: User, label: 'Profile', href: '/settings/profile' },
+function getMobileNavGroups(role?: string) {
+  const isAdmin = role === 'owner' || role === 'admin'
+  const settingsItems = [
+    { icon: User, label: 'Profile', href: '/settings/profile' },
+    ...(isAdmin ? [
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
-      { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
-      { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
       { icon: Database, label: 'Data', href: '/settings/data' },
-    ],
-  },
-]
+    ] : []),
+    { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
+    { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
+  ]
+
+  return [
+    {
+      label: 'Overview',
+      items: [
+        { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+        { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+      ],
+    },
+    {
+      label: 'AI',
+      items: [
+        { icon: Brain, label: 'Agents', href: '/agents' },
+        { icon: BookOpen, label: 'Knowledge Base', href: '/knowledge' },
+      ],
+    },
+    {
+      label: 'Channels',
+      items: [
+        { icon: MessageSquare, label: 'Conversations', href: '/conversations' },
+        { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
+      ],
+    },
+    {
+      label: 'Workspace',
+      items: [
+        { icon: Building2, label: 'Organization', href: '/settings/organization' },
+        { icon: Users, label: 'Team', href: '/settings/team' },
+      ],
+    },
+    {
+      label: 'Settings',
+      items: settingsItems,
+    },
+  ]
+}
