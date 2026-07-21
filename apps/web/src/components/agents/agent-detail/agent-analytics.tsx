@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { MessageSquare, Users, Timer, BarChart3, Coins, Hash } from 'lucide-react'
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { MessageSquare, Users, Timer, BarChart3, Coins, Radio } from 'lucide-react'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from '@/components/ui/chart'
 import { ChartTooltipContent, ChartLegendContent } from '@/components/application/charts/charts-base'
@@ -55,9 +55,29 @@ const tokenConfig = {
   totalMessages: { label: 'Messages', color: 'hsl(142, 71%, 45%)' },
 } satisfies ChartConfig
 
-const channelConfig = {
-  count: { label: 'Conversations', color: 'hsl(142, 71%, 45%)' },
-} satisfies ChartConfig
+const channelConfig = {} satisfies ChartConfig
+
+const CHANNEL_COLORS: Record<string, string> = {
+  web: 'hsl(217, 91%, 60%)',
+  widget: 'hsl(142, 71%, 45%)',
+  api: 'hsl(263, 70%, 58%)',
+  whatsapp: 'hsl(142, 71%, 45%)',
+  link: 'hsl(38, 92%, 50%)',
+  'shareable-link': 'hsl(38, 92%, 50%)',
+  email: 'hsl(199, 89%, 48%)',
+  slack: 'hsl(263, 70%, 58%)',
+}
+
+const CHANNEL_COLORS_FALLBACK = [
+  'hsl(217, 91%, 60%)',
+  'hsl(142, 71%, 45%)',
+  'hsl(263, 70%, 58%)',
+  'hsl(38, 92%, 50%)',
+  'hsl(199, 89%, 48%)',
+  'hsl(0, 84%, 60%)',
+  'hsl(45, 93%, 47%)',
+  'hsl(180, 70%, 45%)',
+]
 
 const responseTimeConfig = {
   avgResponseTime: { label: 'Avg Response (s)', color: 'hsl(263, 70%, 58%)' },
@@ -193,9 +213,10 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
     },
   ]
 
-  const channelData = data.channelBreakdown.map((c) => ({
+  const channelData = data.channelBreakdown.map((c, i) => ({
     name: CHANNEL_LABELS[c.channel] || c.channel,
     count: c.count,
+    fill: CHANNEL_COLORS[c.channel] || CHANNEL_COLORS_FALLBACK[i % CHANNEL_COLORS_FALLBACK.length],
   }))
 
   const tokenData = daily.map((d) => ({
@@ -339,30 +360,53 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
           </CardContent>
         </Card>
 
-        {channelData.length > 0 && (
-          <Card>
-            <CardHeader className="border-b py-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Hash className="size-4 text-muted-foreground" />
-                Channel Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-              <ChartContainer config={channelConfig} className="h-[280px] w-full">
-                <BarChart data={channelData} margin={{ top: 8, bottom: 4, left: 0, right: 0 }} layout="vertical">
-                  <CartesianGrid horizontal={false} />
-                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                  <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={90} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent />}
-                  />
-                  <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} maxBarSize={24} />
-                </BarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
+        {channelData.length > 0 && (() => {
+          const total = channelData.reduce((a, d) => a + d.count, 0)
+          return (
+            <Card>
+              <CardHeader className="border-b py-4">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Radio className="size-4 text-muted-foreground" />
+                  Channel Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+                <ChartContainer config={channelConfig} className="h-[280px] w-full">
+                  <PieChart>
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                    />
+                    <Pie
+                      data={channelData}
+                      dataKey="count"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      strokeWidth={2}
+                      stroke="hsl(0, 0%, 100%)"
+                    >
+                      {channelData.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
+                <div className="flex flex-wrap justify-center gap-4 pt-2">
+                  {channelData.map((d) => (
+                    <div key={d.name} className="flex items-center gap-2 text-xs">
+                      <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: d.fill }} />
+                      <span className="text-muted-foreground">{d.name}</span>
+                      <span className="font-medium tabular-nums">{d.count}</span>
+                      <span className="text-muted-foreground/60">({Math.round((d.count / total) * 100)}%)</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })()}
       </div>
 
       {/* Response Time */}
