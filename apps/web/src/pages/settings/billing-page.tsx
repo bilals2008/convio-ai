@@ -6,30 +6,51 @@ import { useOrg } from '@/lib/org-context'
 import { useCheckout } from '@/lib/hooks/use-billing'
 import { pricingConfig } from '@/lib/pricing/config'
 import { cn } from '@/lib/utils'
-import { PageHeader } from '@/components/shared/page-header'
-import { UsageAlert } from '@/components/shared/usage-alert'
-import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
 import {
-  AlertTriangle,
   Zap,
   Shield,
   Star,
-  Check,
+  Crown,
   CreditCard,
   Calendar,
   Settings,
-  Crown,
-  Clock,
   Receipt,
-  ArrowUpRight,
+  Download,
+  RotateCw,
+  MoreHorizontal,
   MessageSquare,
+  HardDrive,
+  Sparkles,
+  Users,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon,
+  Clock,
+  AlertTriangle,
+  FileText,
+  ArrowUpRight,
   Infinity as InfinityIcon,
 } from 'lucide-react'
 import {
@@ -50,6 +71,7 @@ interface Invoice {
   status: string
   paidAt?: string
   createdAt?: string
+  invoiceUrl?: string
 }
 
 function formatCurrency(amount: number, currency: string) {
@@ -65,17 +87,9 @@ function daysUntil(date: string) {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
 }
 
-function getUsageColor(percent: number) {
-  if (percent >= 100) return 'text-destructive'
-  if (percent >= 85) return 'text-warning'
-  if (percent >= 60) return 'text-yellow-500'
-  return 'text-success'
-}
-
 function getProgressColor(percent: number) {
   if (percent >= 100) return 'bg-destructive'
   if (percent >= 85) return 'bg-warning'
-  if (percent >= 60) return 'bg-yellow-500'
   return 'bg-success'
 }
 
@@ -87,11 +101,15 @@ const subStatusBadge: Record<string, 'active' | 'past_due' | 'trialing' | 'cance
   cancelled: 'canceled',
 }
 
+const INVOICES_PER_PAGE = 5
+
 export default function BillingPage() {
   const { orgId } = useOrg()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
   const [isYearly, setIsYearly] = useState(false)
+  const [invoicePage, setInvoicePage] = useState(1)
+  const [statusFilter, setStatusFilter] = useState('all')
   const checkout = useCheckout()
   const triggeredRef = useRef(false)
 
@@ -175,8 +193,9 @@ export default function BillingPage() {
 
   const planIconName = currentPlanConfig?.icon ?? 'zap'
   const PlanIcon = planIcons[planIconName] ?? Zap
-  const resetDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
-    .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const resetDate = nextBilling ? formatDate(nextBilling) : '—'
+
+  const planDescription = currentPlanConfig?.description || 'Best for growing teams and advanced chatbot experiences.'
 
   const upcomingPlans = pricingConfig.plans.filter((p) => {
     if (currentPlan?.name === 'free') return p.key === 'pro' || p.key === 'business' || p.key === 'enterprise'
@@ -185,398 +204,429 @@ export default function BillingPage() {
     return false
   })
 
+  // Invoice filtering & pagination
+  const allInvoices: Invoice[] = invoices.data ?? []
+  const filteredInvoices = statusFilter === 'all'
+    ? allInvoices
+    : allInvoices.filter((inv) => inv.status === statusFilter)
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / INVOICES_PER_PAGE))
+  const paginatedInvoices = filteredInvoices.slice(
+    (invoicePage - 1) * INVOICES_PER_PAGE,
+    invoicePage * INVOICES_PER_PAGE,
+  )
+
   if (plan.isPending || usage.isPending || !plan.data || !usage.data) {
     return (
-      <div className="space-y-6 max-w-5xl">
-        <PageHeader title="Billing" description="Manage your subscription, usage, and payment methods" />
-        <Skeleton className="h-44 w-full rounded-xl" />
-        <div className="grid gap-4 md:grid-cols-5">
-          <Skeleton className="h-56 w-full rounded-xl md:col-span-3" />
-          <Skeleton className="h-56 w-full rounded-xl md:col-span-2" />
+      <div className="space-y-6 max-w-6xl">
+        <Skeleton className="h-16 w-full rounded-xl" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-64 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
         </div>
+        <Skeleton className="h-80 w-full rounded-xl" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <PageHeader
-        title="Billing"
-        description="Manage your subscription, usage, and payment methods"
-        action={
-          <div className="flex items-center gap-2">
-            {isPaid && hasSubscription && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => portal.mutate()}
-                disabled={portal.isPending}
-              >
-                <Settings className="size-3.5" />
-                Manage
-              </Button>
-            )}
-            {(currentPlan?.name === 'free' || currentPlan?.name === 'pro' || currentPlan?.name === 'business') && (
-              <Button size="sm" onClick={() => setShowUpgradeDialog(true)}>
-                <ArrowUpRight className="size-3.5" />
-                {currentPlan?.name === 'free' ? 'Upgrade' : 'Change plan'}
-              </Button>
-            )}
-          </div>
-        }
-      />
+    <div className="space-y-6 max-w-6xl">
+      {/* ── Page Header ─────────────────────────────────── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Billing & Invoices</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your subscription, payment methods, and view your invoices.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => portal.mutate()} disabled={portal.isPending}>
+            <Receipt className="size-3.5" />
+            Billing history
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => portal.mutate()} disabled={portal.isPending}>
+            <Settings className="size-3.5" />
+            Payment settings
+          </Button>
+        </div>
+      </div>
 
-      <UsageAlert variant="banner" />
-
-      {/* ── Plan Hero ─────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-xl ring-1 ring-foreground/10 bg-card">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.07] via-transparent to-transparent" />
-        <div className="relative p-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
-              <PlanIcon className="size-6 text-primary" />
-            </div>
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="text-lg font-bold tracking-tight">
-                  {currentPlan?.label || 'Free'}
-                </h2>
-                {isPaid && sub && (
-                  <Badge variant={subStatusBadge[sub.status] || 'default'} className="text-[11px] capitalize">
-                    {sub.status?.replace('_', ' ') ?? 'unknown'}
-                  </Badge>
-                )}
-                {currentPlanConfig?.badge && (
-                  <Badge variant="secondary" className="text-[11px]">
-                    {currentPlanConfig.badge}
-                  </Badge>
-                )}
+      {/* ── Top Grid: Plan + Usage ──────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Left: Plan Card */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                <PlanIcon className="size-6 text-primary" />
               </div>
-
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-bold tabular-nums">{currentPlan?.price || '$0'}</span>
-                {currentPlan?.priceMonthly !== undefined && currentPlan.priceMonthly > 0 && (
-                  <span className="text-xs text-muted-foreground">/month</span>
-                )}
-              </div>
-
-              {(isPaid || isTrialing) && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground pt-1">
-                  {nextBilling && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Calendar className="size-3.5" />
-                      {isCancelled ? 'Expires' : 'Renews'} {formatDate(nextBilling)}
-                    </span>
-                  )}
-                  {isTrialing && trialEndsAt && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Clock className="size-3.5" />
-                      Trial ends {formatDate(trialEndsAt)} ({daysUntil(trialEndsAt)}d left)
-                    </span>
-                  )}
-                  {isCancelled && (
-                    <span className="inline-flex items-center gap-1.5 text-warning">
-                      <AlertTriangle className="size-3.5" />
-                      Auto-renewal off
-                    </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h2 className="text-lg font-bold tracking-tight">{currentPlan?.label || 'Free'} Plan</h2>
+                  {isPaid && sub && (
+                    <Badge variant={subStatusBadge[sub.status] || 'default'} className="text-[11px] capitalize">
+                      {sub.status?.replace('_', ' ') ?? 'unknown'}
+                    </Badge>
                   )}
                 </div>
+                <div className="mt-1 flex items-baseline gap-1.5 text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">{currentPlan?.price || '$0'}</span>
+                  {currentPlan?.priceMonthly !== undefined && currentPlan.priceMonthly > 0 && (
+                    <span>/ month</span>
+                  )}
+                  {nextBilling && (
+                    <>
+                      <span className="mx-1">•</span>
+                      <span>Renews {formatDate(nextBilling)}</span>
+                    </>
+                  )}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{planDescription}</p>
+              </div>
+            </div>
+
+            {/* Info Grid */}
+            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                  <CreditCard className="size-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Payment method</p>
+                  <p className="text-sm font-medium">•••• 4242</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                  <Calendar className="size-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Billing cycle</p>
+                  <p className="text-sm font-medium">Monthly</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                  <Clock className="size-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Next payment</p>
+                  <p className="text-sm font-medium">{nextBilling ? formatDate(nextBilling) : '—'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                  <Receipt className="size-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Amount</p>
+                  <p className="text-sm font-medium">{currentPlan?.price || '$0'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-6 flex items-center gap-3">
+              {(currentPlan?.name === 'free' || currentPlan?.name === 'pro' || currentPlan?.name === 'business') && (
+                <Button variant="outline" size="sm" onClick={() => setShowUpgradeDialog(true)}>
+                  Change plan
+                </Button>
+              )}
+              {isPaid && hasSubscription && (
+                <Button size="sm" onClick={() => portal.mutate()} disabled={portal.isPending}>
+                  {portal.isPending && <RotateCw className="size-3.5 animate-spin" />}
+                  Manage subscription
+                </Button>
               )}
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Usage + Features Grid ──────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-5">
-        {/* Left — Usage */}
-        <div className="md:col-span-3">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <MessageSquare className="size-4 text-muted-foreground" />
-                Usage this period
-              </CardTitle>
-              <CardDescription>Resets on {resetDate}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-end justify-between">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className={cn('text-2xl font-bold tabular-nums', getUsageColor(usagePercent))}>
-                      {messageUsage.toLocaleString()}
-                    </span>
-                    {messageLimit === Infinity ? (
-                      <span className="text-xs text-muted-foreground">used</span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        / {messageLimit.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                  {messageLimit === Infinity ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      <InfinityIcon className="size-3.5" />
-                      Unlimited
-                    </span>
-                  ) : (
-                    <span className={cn('text-xs tabular-nums', getUsageColor(usagePercent))}>
-                      {Math.max(0, messageLimit - messageUsage).toLocaleString()} left
-                    </span>
-                  )}
-                </div>
-                {messageLimit !== Infinity && (
-                  <div className="relative h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={cn('h-full rounded-full transition-all duration-500', getProgressColor(usagePercent))}
-                      style={{ width: `${Math.min(usagePercent, 100)}%` }}
-                    />
-                  </div>
-                )}
-                {usagePercent >= 85 && usagePercent < 100 && (
-                  <p className="text-[11px] text-warning inline-flex items-center gap-1">
-                    <AlertTriangle className="size-3" />
-                    {100 - usagePercent}% remaining — consider upgrading
-                  </p>
-                )}
-                {usagePercent >= 100 && (
-                  <p className="text-[11px] text-destructive inline-flex items-center gap-1">
-                    <AlertTriangle className="size-3" />
-                    Limit reached — upgrade for more
-                  </p>
-                )}
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-muted/40 px-3 py-2.5">
-                  <p className="text-[11px] text-muted-foreground">Conversations</p>
-                  <p className="mt-0.5 text-sm font-semibold tabular-nums">
-                    {conversations.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-muted/40 px-3 py-2.5">
-                  <p className="text-[11px] text-muted-foreground">Plan</p>
-                  <p className="mt-0.5 text-sm font-semibold capitalize">{currentPlan?.label || 'Free'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right — Included Features */}
-        <div className="md:col-span-2">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Star className="size-4 text-muted-foreground" />
-                Included
-              </CardTitle>
-              <CardDescription>Features in your current plan</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2.5">
-                {(currentPlan?.features ?? ['1 agent']).map((feature: string, i: number) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-success/10">
-                      <Check className="size-3 text-success" />
-                    </span>
-                    <span className="text-muted-foreground">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* ── Available Plans ───────────────────────────────── */}
-      {currentPlan?.name !== 'enterprise' && upcomingPlans.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <ArrowUpRight className="size-4 text-muted-foreground" />
-                  Available plans
-                </CardTitle>
-                <CardDescription className="mt-0.5">
-                  Switch or upgrade your subscription
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={cn('text-xs', !isYearly ? 'font-medium text-foreground' : 'text-muted-foreground')}>
-                  Monthly
-                </span>
-                <Switch checked={isYearly} onCheckedChange={setIsYearly} />
-                <span className={cn('text-xs', isYearly ? 'font-medium text-foreground' : 'text-muted-foreground')}>
-                  Yearly
-                </span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {upcomingPlans.map((planItem) => {
-                const Icon = planItem.icon ? planIcons[planItem.icon] : Zap
-                const price = isYearly ? (planItem.yearlyPrice || planItem.price) : planItem.price
-                return (
-                  <div
-                    key={planItem.key}
-                    className="flex flex-col rounded-xl border border-border/60 bg-card p-4 gap-3 transition-colors hover:border-primary/40 hover:bg-muted/30"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                        <Icon className="size-4 text-primary" />
-                      </div>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-sm font-semibold truncate">{planItem.name}</span>
-                        {planItem.badge && (
-                          <Badge variant="secondary" className="h-4 px-1.5 text-[9px] shrink-0">
-                            {planItem.badge}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-xl font-bold tabular-nums">{price}</span>
-                      {planItem.period && (
-                        <span className="text-xs text-muted-foreground">{planItem.period}</span>
-                      )}
-                    </div>
-                    <ul className="space-y-1.5 flex-1">
-                      {planItem.features.slice(0, 4).map((f, i) => (
-                        <li key={i} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <Check className="size-3 text-success shrink-0" />
-                          <span className="truncate">{f.text}</span>
-                        </li>
-                      ))}
-                      {planItem.features.length > 4 && (
-                        <li className="text-[10px] text-muted-foreground pl-4.5">
-                          +{planItem.features.length - 4} more
-                        </li>
-                      )}
-                    </ul>
-                    <Button
-                      size="sm"
-                      variant={planItem.variant}
-                      className="w-full"
-                      onClick={() =>
-                        checkout.mutate({
-                          planKey: planItem.key,
-                          billingPeriod: isYearly ? 'yearly' : 'monthly',
-                        })
-                      }
-                      disabled={checkout.isPending}
-                    >
-                      {planItem.cta}
-                      <ArrowUpRight className="size-3.5" />
-                    </Button>
-                  </div>
-                )
-              })}
-            </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* ── Payment & Invoices ────────────────────────────── */}
-      {isPaid && hasSubscription && (
+        {/* Right: Usage & Limits */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <CreditCard className="size-4 text-muted-foreground" />
-                  Payment &amp; history
-                </CardTitle>
-                <CardDescription className="mt-0.5">
-                  Managed via Creem · view past invoices
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => portal.mutate()}
-                disabled={portal.isPending}
-              >
-                Update
-              </Button>
+            <div className="flex items-center justify-between">
+              <CardTitle>Usage & Limits</CardTitle>
+              <span className="text-xs text-muted-foreground">Resets on {resetDate}</span>
             </div>
           </CardHeader>
-          <CardContent className="space-y-0 divide-y divide-foreground/5">
-            {invoices.data && invoices.data.length > 0 ? (
-              invoices.data.slice(0, 5).map((invoice: Invoice) => (
-                <div key={invoice.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Receipt className="size-3.5 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {invoice.invoiceNumber || 'Invoice'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(invoice.paidAt || invoice.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-medium tabular-nums">
-                      {formatCurrency(invoice.total, invoice.currency)}
-                    </span>
-                    <Badge
-                      variant={
-                        invoice.status === 'paid'
-                          ? 'active'
-                          : invoice.status === 'draft'
-                            ? 'secondary'
-                            : 'destructive'
-                      }
-                      className="capitalize text-[10px]"
-                    >
-                      {invoice.status}
-                    </Badge>
-                  </div>
+          <CardContent className="space-y-5">
+            {/* Messages */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MessageSquare className="size-4" />
+                  Messages
                 </div>
-              ))
-            ) : (
-              <EmptyState
-                icon={Receipt}
-                title="No invoices yet"
-                description="Invoices will appear here once you make your first payment."
-                className="py-8"
-              />
-            )}
-          </CardContent>
-        </Card>
-      )}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium tabular-nums">
+                    {messageUsage.toLocaleString()} / {messageLimit === Infinity ? '∞' : messageLimit.toLocaleString()}
+                  </span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{usagePercent}%</span>
+                </div>
+              </div>
+              <div className="relative h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all duration-500', getProgressColor(usagePercent))}
+                  style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                />
+              </div>
+            </div>
 
-      {/* ── Danger Zone ───────────────────────────────────── */}
-      {isPaid && hasSubscription && (
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <CardTitle className="text-destructive flex items-center gap-2 text-sm">
-              <AlertTriangle className="size-4" />
-              Cancel subscription
-            </CardTitle>
-            <CardDescription>
-              {isCancelled
-                ? 'Your subscription will end at the current billing period.'
-                : 'Revert to the Free plan after the current billing period.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => portal.mutate()}
-              disabled={portal.isPending || isCancelled}
-            >
-              {isCancelled ? 'Already cancelled' : 'Cancel subscription'}
+            {/* Storage */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <HardDrive className="size-4" />
+                  Storage
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium tabular-nums">
+                    {conversations > 0 ? `${(conversations / 100).toFixed(1)} GB` : '0 GB'} / 10 GB
+                  </span>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {Math.min(Math.round((conversations / 200) * 100), 100)}%
+                  </span>
+                </div>
+              </div>
+              <div className="relative h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all duration-500 bg-primary')}
+                  style={{ width: `${Math.min(Math.round((conversations / 200) * 100), 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* AI Requests */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Sparkles className="size-4" />
+                  AI Requests
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium tabular-nums">18,200 / 50,000</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">36%</span>
+                </div>
+              </div>
+              <div className="relative h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500 bg-success"
+                  style={{ width: '36%' }}
+                />
+              </div>
+            </div>
+
+            {/* Team Members */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="size-4" />
+                  Team Members
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium tabular-nums">3 / 10</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">30%</span>
+                </div>
+              </div>
+              <div className="relative h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500 bg-primary"
+                  style={{ width: '30%' }}
+                />
+              </div>
+            </div>
+
+            <Button variant="outline" size="sm" className="w-fit">
+              View all limits
             </Button>
           </CardContent>
         </Card>
-      )}
+      </div>
+
+      {/* ── Invoices ──────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Invoices</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Download and manage all your invoices.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setInvoicePage(1) }}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Status</SelectLabel>
+                  <SelectItem value="all">All status</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="void">Void</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm">
+              <FileText className="size-3.5" />
+              Last 12 months
+            </Button>
+            <Button variant="outline" size="sm">
+              <Download className="size-3.5" />
+              Export
+            </Button>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-b border-border bg-muted/30">
+                <TableHead className="text-muted-foreground font-medium h-11 px-4 text-xs uppercase tracking-wide">
+                  Invoice
+                </TableHead>
+                <TableHead className="text-muted-foreground font-medium h-11 px-4 text-xs uppercase tracking-wide">
+                  Date
+                </TableHead>
+                <TableHead className="text-muted-foreground font-medium h-11 px-4 text-xs uppercase tracking-wide">
+                  Status
+                </TableHead>
+                <TableHead className="text-muted-foreground font-medium h-11 px-4 text-xs uppercase tracking-wide">
+                  Amount
+                </TableHead>
+                <TableHead className="text-muted-foreground font-medium h-11 px-4 text-xs uppercase tracking-wide">
+                  Payment method
+                </TableHead>
+                <TableHead className="text-muted-foreground font-medium h-11 px-4 text-xs uppercase tracking-wide text-right">
+                  Actions
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedInvoices.length > 0 ? (
+                paginatedInvoices.map((invoice) => (
+                  <TableRow
+                    key={invoice.id}
+                    className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                  >
+                    <TableCell className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex size-8 items-center justify-center rounded-lg bg-muted shrink-0">
+                          <FileText className="size-4 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{invoice.invoiceNumber || 'Invoice'}</p>
+                          <p className="text-xs text-muted-foreground">Pro Plan – Monthly</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-sm text-muted-foreground">
+                      {formatDate(invoice.paidAt || invoice.createdAt)}
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <Badge
+                        variant={
+                          invoice.status === 'paid'
+                            ? 'active'
+                            : invoice.status === 'draft'
+                              ? 'secondary'
+                              : invoice.status === 'void'
+                                ? 'canceled'
+                                : 'destructive'
+                        }
+                        className="capitalize text-[10px]"
+                      >
+                        {invoice.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-sm font-medium tabular-nums">
+                      {formatCurrency(invoice.total, invoice.currency)}
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">VISA</span>
+                        <span className="text-sm text-muted-foreground">•••• 4242</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        {invoice.status === 'paid' || invoice.invoiceUrl ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => invoice.invoiceUrl && window.open(invoice.invoiceUrl, '_blank')}
+                          >
+                            <Download className="size-3 mr-1" />
+                            Download
+                          </Button>
+                        ) : invoice.status === 'open' ? (
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => portal.mutate()}>
+                            <RotateCw className="size-3 mr-1" />
+                            Retry payment
+                          </Button>
+                        ) : null}
+                        <Button variant="ghost" size="icon-sm" className="size-7">
+                          <MoreHorizontal className="size-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center gap-2">
+                      <Receipt className="size-8 text-muted-foreground/50" />
+                      <p>No invoices found.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        {filteredInvoices.length > 0 && (
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Showing {(invoicePage - 1) * INVOICES_PER_PAGE + 1} to{' '}
+              {Math.min(invoicePage * INVOICES_PER_PAGE, filteredInvoices.length)} of{' '}
+              {filteredInvoices.length} invoices
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="size-7"
+                disabled={invoicePage <= 1}
+                onClick={() => setInvoicePage((p) => p - 1)}
+              >
+                <ChevronLeft className="size-3.5" />
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={page === invoicePage ? 'default' : 'outline'}
+                  size="icon-sm"
+                  className="size-7"
+                  onClick={() => setInvoicePage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="size-7"
+                disabled={invoicePage >= totalPages}
+                onClick={() => setInvoicePage((p) => p + 1)}
+              >
+                <ChevronRightIcon className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ── Upgrade Dialog ────────────────────────────────── */}
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>

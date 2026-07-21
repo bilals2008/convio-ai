@@ -206,29 +206,24 @@ export function LoginActivityTable() {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
-        <div>
-          <CardTitle>Recent Login Activity</CardTitle>
-          <CardDescription>Your recent sign-in sessions across devices</CardDescription>
-        </div>
-        <Button variant="outline" size="sm">
-          View All
-        </Button>
+      <CardHeader>
+        <CardTitle>Recent Login Activity</CardTitle>
+        <CardDescription>Your recent sign-in sessions across devices</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="rounded-lg border border-border">
+        <div className="overflow-hidden rounded-lg border border-border">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow
                   key={headerGroup.id}
-                  className="hover:bg-transparent border-b border-border"
+                  className="hover:bg-transparent border-b border-border bg-muted/30"
                 >
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
                       className={cn(
-                        'text-muted-foreground font-medium h-11 px-4 text-sm',
+                        'text-muted-foreground font-medium h-11 px-4 text-xs uppercase tracking-wide',
                         header.column.getCanSort() && 'cursor-pointer select-none'
                       )}
                     >
