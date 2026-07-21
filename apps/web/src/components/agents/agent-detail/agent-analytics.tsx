@@ -59,13 +59,13 @@ const channelConfig = {} satisfies ChartConfig
 
 const CHANNEL_COLORS: Record<string, string> = {
   web: 'hsl(217, 91%, 60%)',
-  widget: 'hsl(142, 71%, 45%)',
-  api: 'hsl(263, 70%, 58%)',
+  widget: 'hsl(263, 70%, 58%)',
+  api: 'hsl(25, 95%, 53%)',
   whatsapp: 'hsl(142, 71%, 45%)',
-  link: 'hsl(38, 92%, 50%)',
-  'shareable-link': 'hsl(38, 92%, 50%)',
-  email: 'hsl(199, 89%, 48%)',
-  slack: 'hsl(263, 70%, 58%)',
+  link: 'hsl(45, 93%, 47%)',
+  'shareable-link': 'hsl(45, 93%, 47%)',
+  email: 'hsl(0, 84%, 60%)',
+  slack: 'hsl(322, 65%, 50%)',
 }
 
 const CHANNEL_COLORS_FALLBACK = [
@@ -374,7 +374,19 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
                 <ChartContainer config={channelConfig} className="h-[280px] w-full">
                   <PieChart>
                     <ChartTooltip
-                      content={<ChartTooltipContent />}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null
+                        const item = payload[0]
+                        return (
+                          <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-md">
+                            <div className="flex items-center gap-2">
+                              <div className="size-2 rounded-full shrink-0" style={{ backgroundColor: item.payload.fill }} />
+                              <span className="font-medium text-foreground">{item.name}</span>
+                              <span className="text-muted-foreground ml-auto tabular-nums">{item.value}</span>
+                            </div>
+                          </div>
+                        )
+                      }}
                     />
                     <Pie
                       data={channelData}
