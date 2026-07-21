@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import api from '@/lib/api'
 
@@ -40,7 +39,6 @@ export function useUpdateProfile() {
 
 export function useDeleteAccount() {
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
 
   return useMutation({
     mutationFn: async () => {
@@ -50,7 +48,7 @@ export function useDeleteAccount() {
       await supabase.auth.signOut()
       queryClient.setQueryData(['auth', 'session'], null)
       queryClient.clear()
-      navigate('/login', { replace: true })
+      window.location.href = '/login'
     },
   })
 }
