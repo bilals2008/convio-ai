@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ import {
 import { useProfile } from '@/lib/hooks/use-profile'
 import { useAuth } from '@/lib/auth-context'
 import { useProfileForm } from './profile-form-context'
+import { AvatarUploadModal } from './avatar-upload-modal'
 
 function getInitials(name: string | null | undefined, email: string) {
   if (name) {
@@ -41,6 +43,7 @@ export function ProfileInformationCard({ profile, user }: ProfileInformationCard
     setValue,
     watch,
   } = form
+  const [modalOpen, setModalOpen] = useState(false)
 
   const displayEmail = profile?.email || user?.email || ''
   const watchedName = watch('name')
@@ -67,21 +70,30 @@ export function ProfileInformationCard({ profile, user }: ProfileInformationCard
         {/* Avatar + identity row */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-5">
           <div className="relative -mt-12 shrink-0">
-            <Avatar className="size-24 rounded-2xl ring-4 ring-card shadow-lg after:rounded-2xl">
-              {displayAvatar && <AvatarImage src={displayAvatar} alt={displayName} className="rounded-2xl" />}
-              <AvatarFallback className="rounded-2xl bg-primary/10 text-2xl font-semibold text-primary">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <Button
-              type="button"
-              size="icon-sm"
-              className="absolute -bottom-1.5 -right-1.5 size-8 rounded-full shadow-md ring-2 ring-card"
-              title="Change avatar"
-            >
-              <Camera className="size-3.5" />
-            </Button>
-          </div>
+              <Avatar className="size-24 rounded-2xl ring-4 ring-card shadow-lg after:rounded-2xl">
+                {displayAvatar && <AvatarImage src={displayAvatar} alt={displayName} className="rounded-2xl" />}
+                <AvatarFallback className="rounded-2xl bg-primary/10 text-2xl font-semibold text-primary">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                type="button"
+                size="icon-sm"
+                className="absolute -bottom-1.5 -right-1.5 size-8 rounded-full shadow-md ring-2 ring-card"
+                title="Change avatar"
+                onClick={() => setModalOpen(true)}
+              >
+                <Camera className="size-3.5" />
+              </Button>
+              <AvatarUploadModal
+                open={modalOpen}
+                onOpenChange={setModalOpen}
+                userId={user?.id || ''}
+                currentAvatar={displayAvatar}
+                currentInitials={initials}
+                onAvatarSaved={(url) => setValue('avatar', url, { shouldDirty: true })}
+              />
+            </div>
 
           <div className="min-w-0 flex-1 sm:pb-1">
             <h2 className="truncate text-lg font-semibold leading-tight">{displayName}</h2>

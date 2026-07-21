@@ -121,4 +121,29 @@ export function useForgotPassword() {
   })
 }
 
+export interface Identity {
+  id: string
+  provider: string
+  email: string | null
+  createdAt: string
+}
+
+export function useIdentities() {
+  return useQuery<Identity[]>({
+    queryKey: ['auth', 'identities'],
+    queryFn: async () => {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error || !user?.identities) return []
+
+      return user.identities.map((identity) => ({
+        id: identity.id,
+        provider: identity.provider,
+        email: identity.identity_data?.email ?? null,
+        createdAt: identity.created_at,
+      }))
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export { getErrorMessage }

@@ -1,12 +1,13 @@
 import { Mail } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/shared/loading'
+import { useIdentities } from '@/lib/hooks/useAuth'
 
 function GithubIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 1024 1024" className={className} fill="currentColor">
-      <path fillRule="evenodd" clipRule="evenodd" d="M8 0C3.58 0 0 3.58 0 8C0 11.54 2.29 14.53 5.47 15.59C5.87 15.66 6.02 15.42 6.02 15.21C6.02 15.02 6.01 14.39 6.01 13.72C4 14.09 3.48 13.23 3.32 12.78C3.23 12.55 2.84 11.84 2.5 11.65C2.22 11.5 1.82 11.13 2.49 11.12C3.12 11.11 3.57 11.7 3.72 11.94C4.44 13.15 5.59 12.81 6.05 12.6C6.12 12.08 6.33 11.73 6.56 11.53C4.78 11.33 2.92 10.64 2.92 7.58C2.92 6.71 3.23 5.99 3.74 5.43C3.66 5.23 3.38 4.41 3.82 3.31C3.82 3.31 4.49 3.1 6.02 4.13C6.66 3.95 7.34 3.86 8.02 3.86C8.7 3.86 9.38 3.95 10.02 4.13C11.55 3.09 12.22 3.31 12.22 3.31C12.66 4.41 12.38 5.23 12.3 5.43C12.81 5.99 13.12 6.7 13.12 7.58C13.12 10.65 11.25 11.33 9.47 11.53C9.76 11.78 10.01 12.26 10.01 13.01C10.01 14.08 10 14.94 10 15.21C10 15.42 10.15 15.67 10.55 15.59C13.71 14.53 16 11.53 16 8C16 3.58 12.42 0 8 0Z" transform="scale(64)" />
+    <svg viewBox="0 0 1024 1024" className={className} fill="none">
+      <path fillRule="evenodd" clipRule="evenodd" d="M8 0C3.58 0 0 3.58 0 8C0 11.54 2.29 14.53 5.47 15.59C5.87 15.66 6.02 15.42 6.02 15.21C6.02 15.02 6.01 14.39 6.01 13.72C4 14.09 3.48 13.23 3.32 12.78C3.23 12.55 2.84 11.84 2.5 11.65C2.22 11.5 1.82 11.13 2.49 11.12C3.12 11.11 3.57 11.7 3.72 11.94C4.44 13.15 5.59 12.81 6.05 12.6C6.12 12.08 6.33 11.73 6.56 11.53C4.78 11.33 2.92 10.64 2.92 7.58C2.92 6.71 3.23 5.99 3.74 5.43C3.66 5.23 3.38 4.41 3.82 3.31C3.82 3.31 4.49 3.1 6.02 4.13C6.66 3.95 7.34 3.86 8.02 3.86C8.7 3.86 9.38 3.95 10.02 4.13C11.55 3.09 12.22 3.31 12.22 3.31C12.66 4.41 12.38 5.23 12.3 5.43C12.81 5.99 13.12 6.7 13.12 7.58C13.12 10.65 11.25 11.33 9.47 11.53C9.76 11.78 10.01 12.26 10.01 13.01C10.01 14.08 10 14.94 10 15.21C10 15.42 10.15 15.67 10.55 15.59C13.71 14.53 16 11.53 16 8C16 3.58 12.42 0 8 0Z" transform="scale(64)" fill="currentColor" />
     </svg>
   )
 }
@@ -30,46 +31,16 @@ function DiscordIcon({ className }: { className?: string }) {
   )
 }
 
-interface ConnectedAccount {
-  id: string
-  provider: string
-  detail: string
-  connected: boolean
-  icon: React.ReactNode
+const providerConfig: Record<string, { label: string; icon: React.ReactNode }> = {
+  email: { label: 'Email', icon: <Mail className="size-4" /> },
+  google: { label: 'Google', icon: <GoogleIcon className="size-4" /> },
+  github: { label: 'GitHub', icon: <GithubIcon className="size-4" /> },
+  discord: { label: 'Discord', icon: <DiscordIcon className="size-4" /> },
 }
 
-const connectedAccounts: ConnectedAccount[] = [
-  {
-    id: 'github',
-    provider: 'GitHub',
-    detail: 'bilal@example.com',
-    connected: true,
-    icon: <GithubIcon className="size-5" />,
-  },
-  {
-    id: 'google',
-    provider: 'Google',
-    detail: 'bilal@example.com',
-    connected: true,
-    icon: <GoogleIcon className="size-5" />,
-  },
-  {
-    id: 'email',
-    provider: 'Email',
-    detail: 'bilal@example.com',
-    connected: true,
-    icon: <Mail className="size-5 text-muted-foreground" />,
-  },
-  {
-    id: 'discord',
-    provider: 'Discord',
-    detail: 'Not connected',
-    connected: false,
-    icon: <DiscordIcon className="size-5" />,
-  },
-]
-
 export function ConnectedAccountsCard() {
+  const { data: identities, isLoading } = useIdentities()
+
   return (
     <Card>
       <CardHeader>
@@ -77,36 +48,46 @@ export function ConnectedAccountsCard() {
         <CardDescription>Manage your linked authentication providers</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {connectedAccounts.map((account) => (
-            <div
-              key={account.id}
-              className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/20 p-4 transition-colors hover:bg-muted/30"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background ring-1 ring-border">
-                  {account.icon}
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-12 w-full rounded-lg" />
+            <Skeleton className="h-12 w-full rounded-lg" />
+          </div>
+        ) : identities && identities.length > 0 ? (
+          <div className="divide-y divide-border/60">
+            {identities.map((identity) => {
+              const config = providerConfig[identity.provider] || {
+                label: identity.provider,
+                icon: <Mail className="size-4" />,
+              }
+              return (
+                <div
+                  key={identity.id}
+                  className="flex items-center justify-between py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-muted/50">
+                      {config.icon}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{config.label}</p>
+                      {identity.email && (
+                        <p className="text-xs text-muted-foreground">{identity.email}</p>
+                      )}
+                    </div>
+                  </div>
+                  <Button variant="destructive" size="sm" className="px-2 py-1 text-xs">
+                    Disconnect
+                  </Button>
                 </div>
-                {account.connected ? (
-                  <Badge variant="active">Connected</Badge>
-                ) : (
-                  <Badge variant="secondary">Not linked</Badge>
-                )}
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">{account.provider}</p>
-                <p className="truncate text-xs text-muted-foreground">{account.detail}</p>
-              </div>
-              <Button
-                variant={account.connected ? 'outline' : 'default'}
-                size="sm"
-                className="w-full"
-              >
-                {account.connected ? 'Disconnect' : 'Connect'}
-              </Button>
-            </div>
-          ))}
-        </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No connected accounts found.
+          </p>
+        )}
       </CardContent>
     </Card>
   )
