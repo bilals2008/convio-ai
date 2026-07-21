@@ -11,7 +11,7 @@ interface AgentBasicInfoProps {
 export function AgentBasicInfo({ control, disabled }: AgentBasicInfoProps) {
   const { field: nameField, fieldState: nameState } = useController({ name: 'name', control })
   const { field: descField } = useController({ name: 'description', control })
-  const { field: avatarField } = useController({ name: 'avatarUrl', control })
+  const { field: avatarField } = useController({ name: 'avatar', control })
   const [imgError, setImgError] = useState(false)
 
   const showPreview = avatarField.value && !imgError

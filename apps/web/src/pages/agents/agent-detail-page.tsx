@@ -53,6 +53,7 @@ interface Agent {
 const agentDetailSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(50, 'Name must be 50 characters or less'),
   description: z.string(),
+  avatar: z.string().optional(),
   model: z.string().min(1, 'Please select a model'),
   systemPrompt: z.string(),
   temperature: z.number().min(0).max(2),
@@ -79,6 +80,7 @@ export default function AgentDetailPage() {
     defaultValues: {
       name: '',
       description: '',
+      avatar: '',
       model: '',
       systemPrompt: '',
       temperature: 0.7,
@@ -205,6 +207,7 @@ export default function AgentDetailPage() {
       form.reset({
         name: agent.name,
         description: agent.description || '',
+        avatar: (agent as any).avatar || '',
         model: agent.model,
         systemPrompt: agent.systemPrompt,
         temperature: agent.temperature,
@@ -262,6 +265,7 @@ export default function AgentDetailPage() {
     updateMutation.mutate({
       name: data.name,
       description: data.description,
+      avatar: data.avatar,
       model: data.model,
       systemPrompt: data.systemPrompt,
       temperature: data.temperature,
