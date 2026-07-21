@@ -52,7 +52,7 @@ export function ProfileInformationCard({ profile, user }: ProfileInformationCard
   return (
     <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
       {/* Hero banner */}
-      <div className="relative h-28 bg-muted/30">
+      <div className="relative h-28 overflow-hidden bg-muted/30">
         <div
           className="absolute inset-0 opacity-15"
           style={{
@@ -61,6 +61,11 @@ export function ProfileInformationCard({ profile, user }: ProfileInformationCard
             backgroundSize: '128px 128px',
           }}
         />
+        <div className="absolute inset-0 flex items-center justify-end pr-8">
+          <span className="select-none font-heading text-[5rem] font-semibold leading-none tracking-tight text-foreground/[0.025]">
+            {(watchedName || profile?.name || user?.name || 'User').split(' ')[0]}
+          </span>
+        </div>
       </div>
 
       <div className="px-6 pb-6">
