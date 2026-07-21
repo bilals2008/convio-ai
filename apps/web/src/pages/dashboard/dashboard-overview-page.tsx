@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Building2, MessageSquare, Bot, Zap, Star, Plus, BookOpen, MessageCircle, BarChart3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -10,6 +10,7 @@ import { ActivityChart } from '@/components/dashboard/activity-chart'
 import { TopAgentsTable } from '@/components/dashboard/top-agents-table'
 import { RecentConversations } from '@/components/dashboard/recent-conversations'
 import { EmptyState } from '@/components/shared/empty-state'
+import { OrgCreationDialog } from '@/components/settings/org-creation-dialog'
 import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { useAuth } from '@/lib/auth-context'
@@ -57,6 +58,13 @@ export default function DashboardOverviewPage() {
   const { orgId, isLoading: orgLoading } = useOrg()
   const { user } = useAuth()
   const [dateRange, setDateRange] = useState<string>('30d')
+  const [showOrgDialog, setShowOrgDialog] = useState(false)
+
+  useEffect(() => {
+    if (!orgLoading && !orgId) {
+      setShowOrgDialog(true)
+    }
+  }, [orgLoading, orgId])
   const { from, to } = getDateRange(dateRange)
 
   const { data: overview, isLoading, isError, error } = useQuery({
@@ -78,8 +86,9 @@ export default function DashboardOverviewPage() {
           icon={Building2}
           title="No organization found"
           description="Create an organization to get started with Convio."
-          action={{ label: 'Create Organization', onClick: () => (window.location.href = '/settings/organization') }}
+          action={{ label: 'Create Organization', onClick: () => setShowOrgDialog(true) }}
         />
+        <OrgCreationDialog open={showOrgDialog} onOpenChange={setShowOrgDialog} />
       </PageContainer>
     )
   }
