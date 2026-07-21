@@ -1,6 +1,7 @@
 import { generateText, streamText, jsonSchema } from 'ai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
+import { toProviderError } from './errors.js'
 
 export class GroqProvider implements AIProvider {
   id = 'groq'
@@ -15,21 +16,25 @@ export class GroqProvider implements AIProvider {
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
-    const result = await generateText({
-      model: this.getClient(params.apiKey).chatModel(params.model),
-      messages: params.messages,
-      allowSystemInMessages: true,
-      temperature: params.temperature,
-      maxOutputTokens: params.maxTokens,
-    })
+    try {
+      const result = await generateText({
+        model: this.getClient(params.apiKey).chatModel(params.model),
+        messages: params.messages,
+        allowSystemInMessages: true,
+        temperature: params.temperature,
+        maxOutputTokens: params.maxTokens,
+      })
 
-    return {
-      content: result.text,
-      usage: {
-        promptTokens: result.usage.inputTokens ?? 0,
-        completionTokens: result.usage.outputTokens ?? 0,
-        totalTokens: result.usage.totalTokens ?? 0,
-      },
+      return {
+        content: result.text,
+        usage: {
+          promptTokens: result.usage.inputTokens ?? 0,
+          completionTokens: result.usage.outputTokens ?? 0,
+          totalTokens: result.usage.totalTokens ?? 0,
+        },
+      }
+    } catch (error) {
+      throw toProviderError(error, 'Groq')
     }
   }
 
@@ -39,43 +44,47 @@ export class GroqProvider implements AIProvider {
       return acc
     }, {} as any)
 
-    const result = streamText({
-      model: this.getClient(params.apiKey).chatModel(params.model),
-      messages: params.messages,
-      allowSystemInMessages: true,
-      temperature: params.temperature,
-      maxOutputTokens: params.maxTokens,
-      ...(tools && Object.keys(tools).length > 0 && { tools }),
-    })
+    try {
+      const result = streamText({
+        model: this.getClient(params.apiKey).chatModel(params.model),
+        messages: params.messages,
+        allowSystemInMessages: true,
+        temperature: params.temperature,
+        maxOutputTokens: params.maxTokens,
+        ...(tools && Object.keys(tools).length > 0 && { tools }),
+      })
 
-    for await (const chunk of result.fullStream) {
-      if (chunk.type === 'text-delta' && chunk.text) {
-        yield { type: 'text', content: chunk.text }
-      }
-      if (chunk.type === 'reasoning-delta' && chunk.text) {
-        yield { type: 'reasoning', content: chunk.text }
-      }
-      if (chunk.type === 'tool-call') {
-        yield {
-          type: 'tool_call',
-          toolCall: {
-            id: chunk.toolCallId,
-            name: chunk.toolName,
-            arguments: chunk.input as Record<string, unknown>,
-          },
+      for await (const chunk of result.fullStream) {
+        if (chunk.type === 'text-delta' && chunk.text) {
+          yield { type: 'text', content: chunk.text }
+        }
+        if (chunk.type === 'reasoning-delta' && chunk.text) {
+          yield { type: 'reasoning', content: chunk.text }
+        }
+        if (chunk.type === 'tool-call') {
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: chunk.toolCallId,
+              name: chunk.toolName,
+              arguments: chunk.input as Record<string, unknown>,
+            },
+          }
+        }
+        if (chunk.type === 'finish') {
+          const u = chunk.totalUsage
+          yield {
+            type: 'done',
+            usage: u ? {
+              promptTokens: u.inputTokens ?? 0,
+              completionTokens: u.outputTokens ?? 0,
+              totalTokens: u.totalTokens ?? 0,
+            } : undefined,
+          }
         }
       }
-      if (chunk.type === 'finish') {
-        const u = chunk.totalUsage
-        yield {
-          type: 'done',
-          usage: u ? {
-            promptTokens: u.inputTokens ?? 0,
-            completionTokens: u.outputTokens ?? 0,
-            totalTokens: u.totalTokens ?? 0,
-          } : undefined,
-        }
-      }
+    } catch (error) {
+      throw toProviderError(error, 'Groq')
     }
   }
 

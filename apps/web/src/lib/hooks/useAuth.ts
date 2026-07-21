@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import api from '@/lib/api'
+import { toast } from '@/lib/toast'
 
 export interface User {
   id: string
@@ -61,7 +61,9 @@ export function useLogin() {
         navigate('/dashboard', { replace: true })
       }
     },
-    onError: () => {},
+    onError: (error) => {
+      toast.error(getErrorMessage(error))
+    },
   })
 }
 
@@ -92,6 +94,9 @@ export function useSignup() {
         navigate('/login', { replace: true })
       }
     },
+    onError: (error) => {
+      toast.error(getErrorMessage(error))
+    },
   })
 }
 
@@ -117,6 +122,9 @@ export function useForgotPassword() {
     mutationFn: async (input: { email: string }) => {
       const { error } = await supabase.auth.resetPasswordForEmail(input.email)
       if (error) throw error
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error))
     },
   })
 }

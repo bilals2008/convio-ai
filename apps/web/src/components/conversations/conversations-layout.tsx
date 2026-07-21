@@ -138,7 +138,8 @@ export function ConversationsLayout() {
       try {
         const res = await conversationsApi.list(params)
         return (res.data.data || []) as ConversationItem[]
-      } catch {
+      } catch (err) {
+        console.error('Failed to load conversations', err)
         return [] as ConversationItem[]
       }
     },

@@ -1,4 +1,5 @@
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
+import { toProviderError } from './errors.js'
 
 const KIE_BASE = 'https://api.kie.ai'
 
@@ -33,6 +34,7 @@ export class KIEProvider implements AIProvider {
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
+    try {
     const response = await fetch(`${KIE_BASE}/${params.model}/v1/chat/completions`, {
       method: 'POST',
       headers: this.getHeaders(params.apiKey),
@@ -61,6 +63,9 @@ export class KIEProvider implements AIProvider {
         completionTokens: data.usage?.completion_tokens ?? 0,
         totalTokens: data.usage?.total_tokens ?? 0,
       },
+    }
+    } catch (error) {
+      throw toProviderError(error, 'KIE')
     }
   }
 
@@ -92,11 +97,11 @@ export class KIEProvider implements AIProvider {
 
     if (!response.ok) {
       const err = await response.json().catch(() => null)
-      throw new Error(err?.error?.message || `KIE API error: ${response.status}`)
+      throw toProviderError(new Error(err?.error?.message || `KIE API error: ${response.status}`), 'KIE')
     }
 
     const reader = response.body?.getReader()
-    if (!reader) throw new Error('No response body')
+    if (!reader) throw toProviderError(new Error('No response body'), 'KIE')
 
     const decoder = new TextDecoder()
     let buffer = ''
@@ -177,7 +182,7 @@ export class KIEProvider implements AIProvider {
   }
 
   async embed(_text: string): Promise<number[]> {
-    throw new Error('KIE API does not support embeddings')
+    throw toProviderError(new Error('KIE does not support embeddings'), 'KIE')
   }
 
   async moderate(_text: string): Promise<ModerationResult> {

@@ -1,5 +1,53 @@
 import { z } from 'zod'
 
+const isDev = process.env.NODE_ENV !== 'production'
+
+const customErrorMap: z.ZodErrorMap = (issue, ctx) => {
+  if (issue.code === z.ZodIssueCode.invalid_type) {
+    if (issue.received === 'undefined') {
+      return { message: `${issue.path.join('.')} is required` }
+    }
+    return { message: `Expected ${issue.expected}, received ${issue.received}` }
+  }
+  if (issue.code === z.ZodIssueCode.invalid_string) {
+    if (issue.validation === 'email') {
+      return { message: 'Please enter a valid email address' }
+    }
+    if (issue.validation === 'url') {
+      return { message: 'Please enter a valid URL' }
+    }
+    if (issue.validation === 'uuid') {
+      return { message: 'Invalid ID format' }
+    }
+  }
+  if (issue.code === z.ZodIssueCode.too_small) {
+    const min = issue.minimum ?? 0
+    if (issue.type === 'string') {
+      return { message: `${issue.path.join('.')} must be at least ${min} characters` }
+    }
+    if (issue.type === 'array') {
+      return { message: `Please add at least ${min} item${min !== 1 ? 's' : ''}` }
+    }
+  }
+  if (issue.code === z.ZodIssueCode.too_big) {
+    const max = issue.maximum ?? 0
+    if (issue.type === 'string') {
+      return { message: `${issue.path.join('.')} must be at most ${max} characters` }
+    }
+  }
+  if (issue.code === z.ZodIssueCode.invalid_enum_value) {
+    return { message: `Invalid value. Expected one of: ${issue.options.join(', ')}` }
+  }
+  if (issue.code === z.ZodIssueCode.custom) {
+    return { message: ctx.defaultError }
+  }
+  return { message: ctx.defaultError }
+}
+
+if (!isDev) {
+  z.setErrorMap(customErrorMap)
+}
+
 // User schemas
 export const userSchema = z.object({
   id: z.string().uuid(),

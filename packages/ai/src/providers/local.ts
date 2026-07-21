@@ -1,4 +1,5 @@
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
+import { toProviderError } from './errors.js'
 
 const LOCAL_BASE = process.env.LOCAL_API_URL || 'http://localhost:20128/v1'
 
@@ -44,38 +45,47 @@ export class LocalProvider implements AIProvider {
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
-    const body = this.buildBody(params)
-    const res = await this.fetchCompletions(body, params.apiKey)
+    try {
+      const body = this.buildBody(params)
+      const res = await this.fetchCompletions(body, params.apiKey)
 
-    if (!res.ok) {
-      const err = await res.text().catch(() => res.statusText)
-      throw new Error(`OmniRoute API error (${res.status}): ${err}`)
-    }
+      if (!res.ok) {
+        const err = await res.text().catch(() => res.statusText)
+        throw new Error(`OmniRoute API error (${res.status}): ${err}`)
+      }
 
-    const data = await res.json()
-    const choice = data.choices?.[0]
+      const data = await res.json()
+      const choice = data.choices?.[0]
 
-    return {
-      content: choice?.message?.content || choice?.message?.reasoning_content || '',
-      usage: {
-        promptTokens: data.usage?.prompt_tokens ?? 0,
-        completionTokens: data.usage?.completion_tokens ?? 0,
-        totalTokens: data.usage?.total_tokens ?? 0,
-      },
+      return {
+        content: choice?.message?.content || choice?.message?.reasoning_content || '',
+        usage: {
+          promptTokens: data.usage?.prompt_tokens ?? 0,
+          completionTokens: data.usage?.completion_tokens ?? 0,
+          totalTokens: data.usage?.total_tokens ?? 0,
+        },
+      }
+    } catch (error) {
+      throw toProviderError(error, 'OmniRoute')
     }
   }
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
     const body = this.buildBody(params, true)
-    const res = await this.fetchCompletions(body, params.apiKey)
+    let res: Response
+    try {
+      res = await this.fetchCompletions(body, params.apiKey)
+    } catch (error) {
+      throw toProviderError(error, 'OmniRoute')
+    }
 
     if (!res.ok) {
       const err = await res.text().catch(() => res.statusText)
-      throw new Error(`OmniRoute API error (${res.status}): ${err}`)
+      throw toProviderError(new Error(`OmniRoute API error (${res.status}): ${err}`), 'OmniRoute')
     }
 
     const reader = res.body?.getReader()
-    if (!reader) throw new Error('No response body')
+    if (!reader) throw toProviderError(new Error('No response body'), 'OmniRoute')
 
     const decoder = new TextDecoder()
     let buffer = ''
@@ -137,28 +147,32 @@ export class LocalProvider implements AIProvider {
   }
 
   async embed(text: string): Promise<number[]> {
-    const apiKey = process.env.GITHUB_PAT || process.env.LOCAL_API_KEY
-    const baseUrl = process.env.EMBEDDING_BASE_URL || 'https://models.inference.ai.azure.com'
+    try {
+      const apiKey = process.env.GITHUB_PAT || process.env.LOCAL_API_KEY
+      const baseUrl = process.env.EMBEDDING_BASE_URL || 'https://models.inference.ai.azure.com'
 
-    const res = await fetch(`${baseUrl}/embeddings`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'text-embedding-3-small',
-        input: text,
-      }),
-    })
+      const res = await fetch(`${baseUrl}/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'text-embedding-3-small',
+          input: text,
+        }),
+      })
 
-    if (!res.ok) {
-      const err = await res.text().catch(() => res.statusText)
-      throw new Error(`Embedding API error (${res.status}): ${err}`)
+      if (!res.ok) {
+        const err = await res.text().catch(() => res.statusText)
+        throw new Error(`Embedding API error (${res.status}): ${err}`)
+      }
+
+      const data = await res.json() as { data: Array<{ embedding: number[] }> }
+      return data.data?.[0]?.embedding ?? []
+    } catch (error) {
+      throw toProviderError(error, 'OmniRoute')
     }
-
-    const data = await res.json() as { data: Array<{ embedding: number[] }> }
-    return data.data?.[0]?.embedding ?? []
   }
 
   async moderate(_text: string): Promise<ModerationResult> {

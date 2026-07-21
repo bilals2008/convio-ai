@@ -7,6 +7,8 @@ import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { z } from 'zod'
 import type { AIProvider, Message } from '@convio/ai'
 
+const isDev = process.env.NODE_ENV !== 'production'
+
 const keyMap: Record<string, string> = {
   openai: 'OPENAI_API_KEY',
   anthropic: 'ANTHROPIC_API_KEY',
@@ -206,7 +208,8 @@ export default async function aiRoutes(fastify: FastifyInstance) {
         reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`)
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Streaming error'
+      const rawMessage = error instanceof Error ? error.message : 'Streaming error'
+      const errorMessage = isDev ? rawMessage : 'Generation failed. Please check your API key and try again.'
       reply.raw.write(`data: ${JSON.stringify({ type: 'error', content: errorMessage })}\n\n`)
     } finally {
       reply.raw.end()
