@@ -148,7 +148,14 @@ export default async function usersRoutes(fastify: FastifyInstance) {
         where: { createdById: userId },
         data: { createdById: null },
       })
-      await tx.profile.delete({ where: { id: userId } })
+      await tx.profile.update({
+        where: { id: userId },
+        data: {
+          name: null,
+          avatar: null,
+          email: `deleted-${userId.slice(0, 8)}@convio.local`,
+        },
+      })
     }, { timeout: 30000 })
 
     reply.code(204).send()
