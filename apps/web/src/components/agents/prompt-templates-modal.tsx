@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { Search, FileText, MessageSquare, ShoppingCart, GraduationCap, Pen, Code, Bot, Sparkles, Star, Clock, ArrowRight } from "lucide-react"
+import { Search, FileText, MessageSquare, ShoppingCart, GraduationCap, Pen, Code, Bot, Star, Clock, ArrowRight } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -300,7 +300,7 @@ export function PromptTemplatesModal({ open, onOpenChange, onSelect }: PromptTem
         <div className="flex min-h-0 flex-col border-border md:border-r">
           <div className="sticky top-0 z-10 space-y-3 border-b border-border bg-popover p-4">
             <div className="flex items-center gap-2">
-              <Sparkles className="size-4 text-primary" />
+              <Star className="size-4 text-primary" />
               <h2 className="text-sm font-semibold">System Prompt Templates</h2>
             </div>
             <div className="relative">

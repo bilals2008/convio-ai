@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { z } from 'zod'
-import { Loader2, Upload, FileText, Sparkles } from 'lucide-react'
+import { Loader2, Upload, FileText, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -103,7 +103,7 @@ export function DocumentUploadForm({ onSubmit, knowledgeBaseId, loading }: Docum
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
-        <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+        <Star className="mt-0.5 size-4 shrink-0 text-primary" />
         <p className="text-xs text-muted-foreground">
           Documents are chunked and embedded for RAG. Agents linked to this knowledge base will
           retrieve relevant passages when answering.

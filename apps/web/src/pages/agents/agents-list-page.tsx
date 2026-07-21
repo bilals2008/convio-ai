@@ -6,6 +6,7 @@ import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -131,9 +132,12 @@ function AgentCard({
             )}
           </button>
         )}
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-          <Brain className="size-5 text-primary" />
-        </div>
+        <Avatar className="size-11 rounded-xl">
+          {agent.avatar && <AvatarImage src={agent.avatar} alt={agent.name} />}
+          <AvatarFallback className="rounded-xl bg-primary/10 text-sm font-semibold text-primary">
+            {agent.name.charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-semibold text-foreground">{agent.name}</h3>
           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
