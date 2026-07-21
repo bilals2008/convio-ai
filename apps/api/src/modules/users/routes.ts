@@ -40,11 +40,117 @@ export default async function usersRoutes(fastify: FastifyInstance) {
     return { data: user }
   })
 
-  // DELETE /api/users/me — Delete current user account
+  // DELETE /api/users/me — Delete current user account + cleanup
   fastify.delete('/users/me', {
     preHandler: [fastify.authenticate],
   }, async (request, reply) => {
-    await prisma.profile.delete({ where: { id: request.userId } })
+    const userId = request.userId!
+
+    await prisma.$transaction(async (tx) => {
+      const memberships = await tx.membership.findMany({ where: { userId } })
+
+      for (const membership of memberships) {
+        const orgId = membership.organizationId
+        const otherMembers = await tx.membership.count({
+          where: { organizationId: orgId, userId: { not: userId } },
+        })
+
+        if (otherMembers === 0) {
+          // Last member — delete entire org
+          const orgAgentIds = (await tx.agent.findMany({
+            where: { organizationId: orgId },
+            select: { id: true },
+          })).map(a => a.id)
+
+          if (orgAgentIds.length > 0) {
+            await tx.widget.deleteMany({ where: { agentId: { in: orgAgentIds } } })
+            await tx.agent.deleteMany({ where: { id: { in: orgAgentIds } } })
+          }
+
+          const kbIds = (await tx.knowledgeBase.findMany({
+            where: { organizationId: orgId },
+            select: { id: true },
+          })).map(k => k.id)
+
+          for (const kbId of kbIds) {
+            const docIds = (await tx.document.findMany({
+              where: { knowledgeBaseId: kbId },
+              select: { id: true },
+            })).map(d => d.id)
+            for (const docId of docIds) {
+              await tx.documentChunk.deleteMany({ where: { documentId: docId } })
+            }
+            await tx.document.deleteMany({ where: { knowledgeBaseId: kbId } })
+          }
+          await tx.knowledgeBase.deleteMany({ where: { organizationId: orgId } })
+
+          await tx.providerKey.deleteMany({ where: { organizationId: orgId } })
+          await tx.tool.deleteMany({ where: { organizationId: orgId } })
+          await tx.mcpServer.deleteMany({ where: { organizationId: orgId } })
+          await tx.invitation.deleteMany({ where: { organizationId: orgId } })
+          await tx.auditLog.deleteMany({ where: { organizationId: orgId } })
+          await tx.ssoConfig.deleteMany({ where: { organizationId: orgId } })
+
+          const bcIds = (await tx.billingCustomer.findMany({
+            where: { organizationId: orgId },
+            select: { id: true },
+          })).map(b => b.id)
+          if (bcIds.length > 0) {
+            await tx.invoice.deleteMany({ where: { customerId: { in: bcIds } } })
+            await tx.subscription.deleteMany({ where: { customerId: { in: bcIds } } })
+          }
+          await tx.billingCustomer.deleteMany({ where: { organizationId: orgId } })
+          await tx.moderationConfig.deleteMany({ where: { organizationId: orgId } })
+          await tx.membership.deleteMany({ where: { organizationId: orgId } })
+          await tx.organization.delete({ where: { id: orgId } })
+        } else {
+          // Keep org alive — delete user's agents and remove membership
+          const ownAgentIds = (await tx.agent.findMany({
+            where: { createdById: userId, organizationId: orgId },
+            select: { id: true },
+          })).map(a => a.id)
+
+          if (ownAgentIds.length > 0) {
+            await tx.widget.deleteMany({ where: { agentId: { in: ownAgentIds } } })
+            await tx.agent.deleteMany({ where: { id: { in: ownAgentIds } } })
+          }
+
+          if (membership.role === 'owner') {
+            const otherOwners = await tx.membership.count({
+              where: { organizationId: orgId, userId: { not: userId }, role: 'owner' },
+            })
+            if (otherOwners === 0) {
+              const next = await tx.membership.findFirst({
+                where: { organizationId: orgId, userId: { not: userId } },
+                orderBy: { createdAt: 'asc' },
+              })
+              if (next) {
+                await tx.membership.update({
+                  where: { id: next.id },
+                  data: { role: 'owner' },
+                })
+              }
+            }
+          }
+        }
+      }
+
+      await tx.membership.deleteMany({ where: { userId } })
+      await tx.auditLog.updateMany({
+        where: { actorId: userId },
+        data: { actorId: null },
+      })
+      await tx.invitation.updateMany({
+        where: { invitedById: userId },
+        data: { invitedById: null },
+      })
+      await tx.agent.updateMany({
+        where: { createdById: userId },
+        data: { createdById: null },
+      })
+      await tx.profile.delete({ where: { id: userId } })
+    }, { timeout: 30000 })
+
     reply.code(204).send()
   })
 
