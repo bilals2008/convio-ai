@@ -7,11 +7,17 @@ const DISCORD_API = 'https://discord.com/api/v10'
 const GATEWAY_URL = 'wss://gateway.discord.gg/?v=10&encoding=json'
 const BOT_COLOR = 0x22c55e
 
+const MAX_RECONNECT_ATTEMPTS = 5
+const RECONNECT_BASE_DELAY = 5000
+const RECONNECT_MAX_DELAY = 30000
+
 let botUserId: string | null = null
 let gateway: WebSocket | null = null
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null
 let sequence: number | null = null
 let sessionId: string | null = null
+let reconnectAttempts = 0
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
 async function sendEmbedMessage(channelId: string, text: string, botToken: string): Promise<string | null> {
   const url = `${DISCORD_API}/channels/${channelId}/messages`
@@ -213,6 +219,7 @@ function startGateway(botToken: string) {
 
   gateway.on('open', () => {
     console.log('[Discord Gateway] Connected')
+    reconnectAttempts = 0
   })
 
   gateway.on('message', async (raw) => {
@@ -274,7 +281,7 @@ function startGateway(botToken: string) {
 
   gateway.on('close', (code, reason) => {
     console.log(`[Discord Gateway] Closed (${code}): ${reason}`)
-    setTimeout(() => reconnect(botToken), 5000)
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) reconnect(botToken)
   })
 
   gateway.on('error', (err) => {
@@ -283,22 +290,36 @@ function startGateway(botToken: string) {
 }
 
 function stopGateway() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval)
     heartbeatInterval = null
   }
   if (gateway) {
+    gateway.onclose = null
+    gateway.onerror = null
     gateway.close()
     gateway = null
   }
   botUserId = null
   sessionId = null
   sequence = null
+  reconnectAttempts = 0
 }
 
 function reconnect(botToken: string) {
   stopGateway()
-  setTimeout(() => startGateway(botToken), 3000)
+  reconnectAttempts++
+  if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+    console.log(`[Discord Gateway] Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`)
+    return
+  }
+  const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempts - 1), RECONNECT_MAX_DELAY)
+  console.log(`[Discord Gateway] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`)
+  reconnectTimer = setTimeout(() => startGateway(botToken), delay)
 }
 
 export function initDiscordGateway(botToken?: string) {
