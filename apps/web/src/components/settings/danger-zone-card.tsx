@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +15,6 @@ import {
 import { useDeleteAccount } from '@/lib/hooks/use-profile'
 
 export function DangerZoneCard() {
-  const navigate = useNavigate()
   const deleteAccount = useDeleteAccount()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -31,7 +29,6 @@ export function DangerZoneCard() {
     deleteAccount.mutate(undefined, {
       onSuccess: () => {
         toast.success('Account deleted')
-        navigate('/login', { replace: true })
       },
       onError: (error) => {
         toast.error(error.message || 'Failed to delete account')

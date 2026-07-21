@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 
 export interface Profile {
@@ -38,6 +39,7 @@ export function useUpdateProfile() {
 
 export function useDeleteAccount() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   return useMutation({
     mutationFn: async () => {
@@ -46,6 +48,7 @@ export function useDeleteAccount() {
     onSuccess: () => {
       queryClient.setQueryData(['auth', 'session'], null)
       queryClient.clear()
+      navigate('/login', { replace: true })
     },
   })
 }
