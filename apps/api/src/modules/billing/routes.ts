@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import crypto from 'crypto'
 import { prisma } from '@convio/database'
-import { PLANS, CREEM_API_KEY, CREEM_WEBHOOK_SECRET, CREEM_TEST_MODE, APP_URL } from '@convio/config'
+import { PLANS, CREEM_TEST_MODE, APP_URL } from '@convio/config'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { checkoutBodySchema, billingUsageQuerySchema } from '@convio/validation'
@@ -16,15 +16,16 @@ const orgParamsSchema = z.object({
 
 function creemHeaders() {
   return {
-    'x-api-key': CREEM_API_KEY,
+    'x-api-key': process.env.CREEM_API_KEY || '',
     'Content-Type': 'application/json',
     Accept: 'application/json',
   }
 }
 
 function verifyWebhookSignature(payload: string, signature: string): boolean {
-  if (!CREEM_WEBHOOK_SECRET) return false
-  const hmac = crypto.createHmac('sha256', CREEM_WEBHOOK_SECRET)
+  const secret = process.env.CREEM_WEBHOOK_SECRET
+  if (!secret) return false
+  const hmac = crypto.createHmac('sha256', secret)
   const digest = hmac.update(payload).digest('hex')
   try {
     return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature))

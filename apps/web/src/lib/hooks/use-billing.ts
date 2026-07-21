@@ -13,10 +13,38 @@ interface UsageData {
 }
 
 interface PlanData {
-  name: 'free' | 'pro' | 'enterprise'
+  name: 'free' | 'pro' | 'business' | 'enterprise'
   label: string
+  features: string[]
+  limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
   price: string
   priceMonthly: number
+}
+
+interface SubscriptionData {
+  id: string
+  customerId: string
+  plan: string
+  status: string
+  trialEndsAt: string | null
+  renewsAt: string | null
+  endsAt: string | null
+  cancelAtPeriodEnd: boolean
+  createdAt: string
+}
+
+interface InvoiceData {
+  id: string
+  subscriptionId: string | null
+  providerInvoiceId: string
+  invoiceNumber: string | null
+  status: string
+  total: number
+  currency: string
+  invoiceUrl: string | null
+  paidAt: string | null
+  billingReason: string | null
+  createdAt: string
 }
 
 export function useUsage() {
@@ -67,5 +95,32 @@ export function usePortal() {
       const url = res?.data?.data?.url as string | undefined
       if (url) window.location.href = url
     },
+    onError: () => {
+      toast.error('Failed to open billing portal. Please try again.')
+    },
+  })
+}
+
+export function useSubscription() {
+  const { orgId } = useOrg()
+
+  return useQuery({
+    queryKey: ['billing', 'subscription', orgId],
+    queryFn: () =>
+      billing.subscription(orgId!).then((r) => (r.data.data as SubscriptionData | null) ?? null),
+    enabled: !!orgId,
+    staleTime: 60_000,
+  })
+}
+
+export function useInvoices() {
+  const { orgId } = useOrg()
+
+  return useQuery({
+    queryKey: ['billing', 'invoices', orgId],
+    queryFn: () =>
+      billing.invoices(orgId!).then((r) => (r.data.data as InvoiceData[]) ?? []),
+    enabled: !!orgId,
+    staleTime: 60_000,
   })
 }

@@ -1,7 +1,7 @@
 // App config
 export const APP_NAME = 'Convio'
 export const APP_DESCRIPTION = 'AI Agent Management Platform'
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VITE_APP_URL || 'http://localhost:5173'
 
 // API config
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
