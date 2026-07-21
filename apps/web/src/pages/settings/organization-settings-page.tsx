@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, Plus, Shield, Calendar, Users, Pencil, Building2, Link2, ChevronRight, Crown, UserCog } from 'lucide-react'
+import { Loader2, Plus, Shield, Calendar, Users, Pencil, Building2, Link2, ChevronRight, Crown, UserCog, ArrowLeft } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/page-header'
@@ -26,6 +26,8 @@ import {
 import { useOrg } from '@/lib/org-context'
 import { organizations as orgsApi } from '@/lib/api'
 import { OrgDangerZone } from '@/components/settings/org-danger-zone'
+import { OrgPlanUpgrade } from '@/components/shared/org-plan-upgrade'
+import { usePlan } from '@/lib/hooks/use-billing'
 
 interface Organization {
   id: string
@@ -89,7 +91,7 @@ function formatDate(date: string) {
 export default function OrganizationSettingsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const { orgId, isLoading: orgLoading } = useOrg()
+  const { orgId, orgs, isLoading: orgLoading } = useOrg()
 
   const [editOpen, setEditOpen] = useState(false)
   const [editName, setEditName] = useState('')
@@ -101,6 +103,7 @@ export default function OrganizationSettingsPage() {
   const [createName, setCreateName] = useState('')
   const [createSlug, setCreateSlug] = useState('')
   const [createErrors, setCreateErrors] = useState<Record<string, string>>({})
+  const [createShowUpgrade, setCreateShowUpgrade] = useState(false)
 
   const { data: org, isLoading } = useQuery({
     queryKey: ['organization', orgId],
@@ -143,11 +146,17 @@ export default function OrganizationSettingsPage() {
       setCreateOpen(false)
       setCreateName('')
       setCreateSlug('')
+      setCreateShowUpgrade(false)
       toast.success('Organization created')
       window.location.reload()
     },
-    onError: () => {
-      toast.error('Failed to create organization')
+    onError: (error) => {
+      const data = (error as any)?.response?.data
+      if (data?.error === 'PLAN_LIMIT_EXCEEDED') {
+        setCreateShowUpgrade(true)
+      } else {
+        toast.error(error.message || 'Failed to create organization')
+      }
     },
   })
 
@@ -215,6 +224,11 @@ export default function OrganizationSettingsPage() {
       </div>
     )
   }
+
+  const { data: planData } = usePlan()
+  const planName = planData?.name || org?.plan || 'free'
+  const planLimits: Record<string, number> = { free: 1, pro: 3, business: 5, enterprise: Infinity }
+  const orgLimit = planLimits[planName] ?? 1
 
   if (orgId && org) {
     const memberCount = members?.length || 0
@@ -455,48 +469,70 @@ export default function OrganizationSettingsPage() {
         </Dialog>
 
         {/* ── Create Dialog ───────────────────────────────────── */}
-        <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateName(''); setCreateSlug(''); setCreateErrors({}) } }}>
+        <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateName(''); setCreateSlug(''); setCreateErrors({}); setCreateShowUpgrade(false) } }}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create Organization</DialogTitle>
-              <DialogDescription>Set up a new workspace</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="create-name">Name</Label>
-                <Input
-                  id="create-name"
-                  value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
-                  placeholder="My Organization"
-                  disabled={createMutation.isPending}
-                />
-                {createErrors.name && <p className="text-xs text-destructive">{createErrors.name}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create-slug">Slug</Label>
-                <Input
-                  id="create-slug"
-                  value={createSlug}
-                  onChange={(e) => setCreateSlug(e.target.value)}
-                  placeholder="my-organization"
-                  disabled={createMutation.isPending}
-                />
-                {createErrors.slug && <p className="text-xs text-destructive">{createErrors.slug}</p>}
-              </div>
-              {createMutation.isError && (
-                <div className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                  {(createMutation.error as any)?.response?.data?.message || 'Failed to create'}
+            {createShowUpgrade ? (
+              <div className="space-y-4 py-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-7"
+                    onClick={() => setCreateShowUpgrade(false)}
+                  >
+                    <ArrowLeft className="size-3.5" />
+                  </Button>
+                  <DialogTitle className="text-sm">Upgrade your plan</DialogTitle>
                 </div>
-              )}
-              <DialogFooter>
-                <DialogClose render={<Button variant="ghost" size="sm" />}>Cancel</DialogClose>
-                <Button type="submit" size="sm" disabled={createMutation.isPending}>
-                  {createMutation.isPending && <Loader2 className="size-3 animate-spin" />}
-                  Create
-                </Button>
-              </DialogFooter>
-            </form>
+                <OrgPlanUpgrade
+                  currentOrgs={(orgs?.length || 1)}
+                  currentPlan={planName}
+                  limit={orgLimit}
+                />
+              </div>
+            ) : (
+              <form onSubmit={handleCreateSubmit} className="space-y-4">
+                <DialogHeader>
+                  <DialogTitle>Create Organization</DialogTitle>
+                  <DialogDescription>Set up a new workspace</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <Label htmlFor="create-name">Name</Label>
+                  <Input
+                    id="create-name"
+                    value={createName}
+                    onChange={(e) => setCreateName(e.target.value)}
+                    placeholder="My Organization"
+                    disabled={createMutation.isPending}
+                  />
+                  {createErrors.name && <p className="text-xs text-destructive">{createErrors.name}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create-slug">Slug</Label>
+                  <Input
+                    id="create-slug"
+                    value={createSlug}
+                    onChange={(e) => setCreateSlug(e.target.value)}
+                    placeholder="my-organization"
+                    disabled={createMutation.isPending}
+                  />
+                  {createErrors.slug && <p className="text-xs text-destructive">{createErrors.slug}</p>}
+                </div>
+                {!createShowUpgrade && createMutation.isError && (
+                  <div className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {(createMutation.error as any)?.response?.data?.message || 'Failed to create'}
+                  </div>
+                )}
+                <DialogFooter>
+                  <DialogClose render={<Button variant="ghost" size="sm" />}>Cancel</DialogClose>
+                  <Button type="submit" size="sm" disabled={createMutation.isPending}>
+                    {createMutation.isPending && <Loader2 className="size-3 animate-spin" />}
+                    Create
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -524,43 +560,65 @@ export default function OrganizationSettingsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateName(''); setCreateSlug(''); setCreateErrors({}) } }}>
+      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateName(''); setCreateSlug(''); setCreateErrors({}); setCreateShowUpgrade(false) } }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create Organization</DialogTitle>
-            <DialogDescription>Set up a new workspace</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="create-name-empty">Name</Label>
-              <Input
-                id="create-name-empty"
-                value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
-                placeholder="My Organization"
-                disabled={createMutation.isPending}
+          {createShowUpgrade ? (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={() => setCreateShowUpgrade(false)}
+                >
+                  <ArrowLeft className="size-3.5" />
+                </Button>
+                <DialogTitle className="text-sm">Upgrade your plan</DialogTitle>
+              </div>
+              <OrgPlanUpgrade
+                currentOrgs={(orgs?.length || 0)}
+                currentPlan={planName}
+                limit={orgLimit}
               />
-              {createErrors.name && <p className="text-xs text-destructive">{createErrors.name}</p>}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="create-slug-empty">Slug</Label>
-              <Input
-                id="create-slug-empty"
-                value={createSlug}
-                onChange={(e) => setCreateSlug(e.target.value)}
-                placeholder="my-organization"
-                disabled={createMutation.isPending}
-              />
-              {createErrors.slug && <p className="text-xs text-destructive">{createErrors.slug}</p>}
-            </div>
-            <DialogFooter>
-              <DialogClose render={<Button variant="ghost" size="sm" />}>Cancel</DialogClose>
-              <Button type="submit" size="sm" disabled={createMutation.isPending}>
-                {createMutation.isPending && <Loader2 className="size-3 animate-spin" />}
-                Create
-              </Button>
-            </DialogFooter>
-          </form>
+          ) : (
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
+              <DialogHeader>
+                <DialogTitle>Create Organization</DialogTitle>
+                <DialogDescription>Set up a new workspace</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="create-name-empty">Name</Label>
+                <Input
+                  id="create-name-empty"
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  placeholder="My Organization"
+                  disabled={createMutation.isPending}
+                />
+                {createErrors.name && <p className="text-xs text-destructive">{createErrors.name}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-slug-empty">Slug</Label>
+                <Input
+                  id="create-slug-empty"
+                  value={createSlug}
+                  onChange={(e) => setCreateSlug(e.target.value)}
+                  placeholder="my-organization"
+                  disabled={createMutation.isPending}
+                />
+                {createErrors.slug && <p className="text-xs text-destructive">{createErrors.slug}</p>}
+              </div>
+              <DialogFooter>
+                <DialogClose render={<Button variant="ghost" size="sm" />}>Cancel</DialogClose>
+                <Button type="submit" size="sm" disabled={createMutation.isPending}>
+                  {createMutation.isPending && <Loader2 className="size-3 animate-spin" />}
+                  Create
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

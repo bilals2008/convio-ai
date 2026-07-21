@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { prisma } from '@convio/database'
+import { prisma, MembershipRole } from '@convio/database'
 import crypto from 'node:crypto'
 import { validate } from '../../plugins/validate.js'
 import { createOrganizationSchema, updateOrganizationSchema, membershipRoleSchema } from '@convio/validation'
@@ -44,7 +44,7 @@ const membersQuerySchema = z.object({
 export default async function organizationsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations — Create new organization (creator becomes owner)
   fastify.post('/organizations', {
-    preHandler: [fastify.authenticate, validate({ body: createOrganizationSchema })],
+    preHandler: [fastify.authenticate, fastify.checkOrgLimit, validate({ body: createOrganizationSchema })],
   }, async (request) => {
     const { name, slug, logo, plan } = request.body as {
       name: string
@@ -319,7 +319,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
         }
 
         const membership = await prisma.membership.create({
-          data: { userId: profile.id, organizationId: id, role: member.role },
+          data: { userId: profile.id, organizationId: id, role: member.role as any },
         })
 
         await fastify.auditLog({
@@ -441,7 +441,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
           data: {
             email: member.email,
             organizationId: id,
-            role: member.role,
+            role: member.role as any,
             token,
             invitedById: request.userId,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -583,15 +583,15 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     if (role === 'owner') {
       await prisma.membership.update({
         where: { userId_organizationId: { userId: request.userId!, organizationId: id } },
-        data: { role: 'admin' },
-      })
-    }
-
-    const updated = await prisma.membership.update({
-      where: { userId_organizationId: { userId, organizationId: id } },
-      data: { role },
-      include: { profile: true },
+      data: { role: 'admin' as any },
     })
+  }
+
+  const updated = await prisma.membership.update({
+    where: { userId_organizationId: { userId, organizationId: id } },
+    data: { role: role as any },
+    include: { profile: true },
+  })
 
     await fastify.auditLog({
       organizationId: id,

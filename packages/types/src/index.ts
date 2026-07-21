@@ -177,7 +177,7 @@ export interface BillingPlan {
   name: PlanName
   label: string
   features: string[]
-  limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
+  limits: { agents: number; messagesPerMonth: number; knowledgeBases: number; organizations: number }
   price: string
   priceMonthly: number
 }

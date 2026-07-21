@@ -31,7 +31,7 @@ export const CREEM_TEST_MODE = process.env.NODE_ENV !== 'production'
 export const PLANS: Record<string, {
   label: string
   features: string[]
-  limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
+  limits: { agents: number; messagesPerMonth: number; knowledgeBases: number; organizations: number }
   price: string
   priceMonthly: number
   providerMonthlyProductId?: string
@@ -40,14 +40,14 @@ export const PLANS: Record<string, {
   free: {
     label: 'Free',
     features: ['1 agent', '500 messages/mo', 'Web widget', 'Basic analytics'],
-    limits: { agents: 1, messagesPerMonth: 500, knowledgeBases: 1 },
+    limits: { agents: 1, messagesPerMonth: 500, knowledgeBases: 1, organizations: 1 },
     price: '$0',
     priceMonthly: 0,
   },
   pro: {
     label: 'Pro',
     features: ['5 agents', '25,000 messages/mo', 'Multi-channel', 'Advanced analytics'],
-    limits: { agents: 5, messagesPerMonth: 25000, knowledgeBases: 10 },
+    limits: { agents: 5, messagesPerMonth: 25000, knowledgeBases: 10, organizations: 3 },
     price: '$39/mo',
     priceMonthly: 39,
     get providerMonthlyProductId() { return process.env.CREEM_PRO_MONTHLY_PRODUCT_ID || '' },
@@ -56,7 +56,7 @@ export const PLANS: Record<string, {
   business: {
     label: 'Business',
     features: ['Unlimited agents', '150,000 messages/mo', '50 knowledge bases', 'Custom branding', 'Priority support'],
-    limits: { agents: Infinity, messagesPerMonth: 150000, knowledgeBases: 50 },
+    limits: { agents: Infinity, messagesPerMonth: 150000, knowledgeBases: 50, organizations: 5 },
     price: '$99/mo',
     priceMonthly: 99,
     get providerMonthlyProductId() { return process.env.CREEM_BUSINESS_MONTHLY_PRODUCT_ID || '' },
@@ -65,7 +65,7 @@ export const PLANS: Record<string, {
   enterprise: {
     label: 'Enterprise',
     features: ['Everything in Business', 'Unlimited messages', 'Unlimited knowledge bases', 'SSO/SAML', 'Dedicated onboarding', 'Volume discounts', 'SLA guarantee'],
-    limits: { agents: Infinity, messagesPerMonth: Infinity, knowledgeBases: Infinity },
+    limits: { agents: Infinity, messagesPerMonth: Infinity, knowledgeBases: Infinity, organizations: Infinity },
     price: 'Custom',
     priceMonthly: 0,
   },
@@ -73,7 +73,7 @@ export const PLANS: Record<string, {
 
 export const LIMITS = Object.fromEntries(
   Object.entries(PLANS).map(([k, v]) => [k, v.limits])
-) as Record<string, { agents: number; messagesPerMonth: number; knowledgeBases: number }>
+) as Record<string, { agents: number; messagesPerMonth: number; knowledgeBases: number; organizations: number }>
 
 // Channels
 export const CHANNELS = ['web', 'api', 'whatsapp', 'telegram', 'discord', 'slack'] as const

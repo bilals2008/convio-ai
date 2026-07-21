@@ -81,6 +81,31 @@ export async function checkMessageLimit(orgId: string) {
   }
 }
 
+const PLAN_TIER: Record<string, number> = { free: 0, pro: 1, business: 2, enterprise: 3 }
+
+export async function checkOrgLimit(userId: string) {
+  const memberships = await prisma.membership.findMany({
+    where: { userId },
+    include: { organization: true },
+  })
+
+  const orgCount = memberships.length
+  const maxTier = memberships.reduce((highest, m) => {
+    const tier = PLAN_TIER[m.organization.plan as string] ?? 0
+    return tier > highest ? tier : highest
+  }, 0)
+
+  const planKey = Object.entries(PLAN_TIER).find(([, t]) => t === maxTier)?.[0] || 'free'
+  const planDef = PLANS[planKey]
+  const limit = planDef.limits.organizations
+
+  return {
+    allowed: limit === Infinity || orgCount < limit,
+    current: orgCount,
+    limit,
+  }
+}
+
 export async function getActiveSubscription(orgId: string) {
   const customer = await prisma.billingCustomer.findUnique({
     where: { organizationId: orgId },
