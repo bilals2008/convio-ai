@@ -1,6 +1,5 @@
 import { Bot, BookOpen, CheckCircle2, Clock3, KeyRound, MessageSquareText, Settings2, Wrench, Cpu, Calendar, RefreshCw, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
@@ -50,7 +49,7 @@ export function AgentOverview({
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {/* Hero */}
-      <section className="rounded-xl border border-border/60 bg-card p-5 sm:p-6 shadow-sm">
+      <section className="rounded-xl border border-border/60 bg-card p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-2">
             <div className="flex items-center gap-2">
@@ -59,7 +58,7 @@ export function AgentOverview({
             </div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight">{agentName || 'Your agent'}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{agentDescription || 'Add a description so your team understands this agent\'s role.'}</p>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{agentDescription || "Add a description so your team understands this agent's role."}</p>
             </div>
           </div>
           <Button onClick={() => onNavigateToTab('test-chat')} className="shrink-0">
@@ -68,19 +67,19 @@ export function AgentOverview({
         </div>
       </section>
 
-      {/* Dashboard-style KPI cards */}
+      {/* KPI cards */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <div
             key={s.label}
-            className="group flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-all duration-200 hover:border-border hover:shadow-sm"
+            className="flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-all duration-200 hover:border-border hover:shadow-sm"
           >
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{s.label}</span>
-              <span className="text-sm font-semibold leading-none tracking-tight text-foreground">{s.value}</span>
-            </div>
             <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105', s.color)}>
               <s.icon className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{s.label}</p>
+              <p className="text-sm font-semibold leading-none tracking-tight text-foreground">{s.value}</p>
             </div>
           </div>
         ))}
@@ -88,45 +87,49 @@ export function AgentOverview({
 
       {/* Main content */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
-        <Card>
-          <CardHeader className="border-b border-border">
-            <CardTitle className="text-base">Operating instructions</CardTitle>
-            <CardDescription>The core guidance sent with every conversation.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-5">
+        <section className="rounded-xl border border-border/60 bg-card">
+          <div className="border-b border-border/60 px-5 pt-5 pb-4">
+            <h3 className="text-sm font-medium text-foreground">Operating instructions</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">The core guidance sent with every conversation.</p>
+          </div>
+          <div className="space-y-4 p-5">
             <p className="line-clamp-5 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{promptPreview}</p>
             <Button variant="outline" size="sm" onClick={() => onNavigateToTab('builder')}>
               <Settings2 className="size-4" /> Edit instructions
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card>
-          <CardHeader className="border-b border-border">
-            <CardTitle className="text-base">Readiness</CardTitle>
-            <CardDescription>Complete these steps to get better answers.</CardDescription>
-          </CardHeader>
-          <CardContent className="divide-y divide-border pt-2">
+        <section className="rounded-xl border border-border/60 bg-card">
+          <div className="border-b border-border/60 px-5 pt-5 pb-4">
+            <h3 className="text-sm font-medium text-foreground">Readiness</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">Complete these steps to get better answers.</p>
+          </div>
+          <div className="divide-y divide-border/60">
             {readiness.map(({ label, complete, tab, icon: Icon }) => (
-              <button key={label} type="button" onClick={() => onNavigateToTab(tab)} className="flex w-full items-center gap-3 py-3 text-left transition-colors hover:text-foreground">
+              <button key={label} type="button" onClick={() => onNavigateToTab(tab)} className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-muted/30">
                 <span className={complete ? 'text-success' : 'text-muted-foreground'}>{complete ? <CheckCircle2 className="size-4" /> : <Icon className="size-4" />}</span>
-                <span className="flex-1 text-sm font-medium">{label}</span>
+                <span className="flex-1 text-sm font-medium text-foreground">{label}</span>
                 <span className="text-xs text-muted-foreground">{complete ? 'Ready' : 'Set up'}</span>
               </button>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      {/* Bottom CTA */}
+      <section className="rounded-xl border border-border/60 bg-card p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Clock3 className="size-4" /></span>
-            <div><p className="text-sm font-medium">Ready to validate the experience?</p><p className="text-sm text-muted-foreground">Run a live conversation with this agent's current configuration.</p></div>
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Clock3 className="size-4" /></span>
+            <div>
+              <p className="text-sm font-medium text-foreground">Ready to validate the experience?</p>
+              <p className="text-sm text-muted-foreground">Run a live conversation with this agent's current configuration.</p>
+            </div>
           </div>
           <Button variant="outline" onClick={() => onNavigateToTab('test-chat')}><Wrench className="size-4" /> Open test chat</Button>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   )
 }
