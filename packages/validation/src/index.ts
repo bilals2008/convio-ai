@@ -144,7 +144,7 @@ export const updateAgentSchema = createAgentSchema.partial().extend({
 })
 
 // Conversation schemas
-export const channelSchema = z.enum(['web', 'api', 'whatsapp', 'telegram', 'discord', 'slack'])
+export const channelSchema = z.enum(['web', 'api', 'whatsapp', 'telegram', 'discord', 'slack', 'twilio'])
 export const conversationStatusSchema = z.enum(['active', 'waiting', 'resolved', 'closed', 'archived'])
 
 export const conversationSchema = z.object({

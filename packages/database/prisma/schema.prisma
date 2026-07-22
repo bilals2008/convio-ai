@@ -173,6 +173,7 @@ model Conversation {
   @@index([agentId, status, updatedAt(sort: Desc)])
   @@index([userId])
   @@index([status])
+  @@unique([agentId, channel, contactPhone, status])
 }
 
 model Message {
