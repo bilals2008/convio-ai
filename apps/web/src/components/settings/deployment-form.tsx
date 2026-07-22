@@ -23,6 +23,7 @@ import {
   SelectLabel,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 type Channel = 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
@@ -97,6 +98,10 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
   const [setupLinkUrl, setSetupLinkUrl] = useState('')
   const [createdDeploymentId, setCreatedDeploymentId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [provider, setProvider] = useState<'kapso' | 'twilio'>('kapso')
+  const [twilioShowFields, setTwilioShowFields] = useState(false)
+  const [kapsoShowFields, setKapsoShowFields] = useState(false)
+  const [connectingNew, setConnectingNew] = useState(false)
 
   const selectedAgentName = agents.find((a) => a.id === agentId)?.name
 
@@ -113,10 +118,10 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
   const [kapsoNumberChoice, setKapsoNumberChoice] = useState('')
 
   const fields = channelFields[channel]
-  const useKapso = channel === 'whatsapp'
+  const isWhatsApp = channel === 'whatsapp'
 
   useEffect(() => {
-    if (!useKapso) return
+    if (!isWhatsApp || provider !== 'kapso') return
     let cancelled = false
     setKapsoNumbersLoading(true)
     deploymentsApi
@@ -135,7 +140,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
     return () => {
       cancelled = true
     }
-  }, [useKapso])
+  }, [isWhatsApp, provider])
 
   const handleDiscordOneClick = async () => {
     if (!agentId) return
@@ -183,22 +188,53 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
     }
   }
 
+  const handleConnectNew = async () => {
+    if (!agentId) {
+      toast.error('Select an agent first')
+      return
+    }
+    setConnectingNew(true)
+    try {
+      const result = await onSave({ agentId, channel: 'whatsapp', config: { provider: 'kapso' } })
+      if (result?.setupLinkUrl) {
+        setSetupLinkUrl(result.setupLinkUrl)
+        if (result.deploymentId) setCreatedDeploymentId(result.deploymentId)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to connect WhatsApp')
+    } finally {
+      setConnectingNew(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    let finalConfig = { ...config }
-    if (useKapso) {
-      finalConfig.provider = 'kapso'
-      if (kapsoNumberChoice) finalConfig.phoneNumberId = kapsoNumberChoice
-      else delete finalConfig.phoneNumberId
-    } else delete finalConfig.provider
+    try {
+      let finalConfig = { ...config }
+      if (isWhatsApp) {
+        finalConfig.provider = provider
+          if (provider === 'kapso') {
+            if (kapsoShowFields) {
+              finalConfig.kapsoApiKey = config.kapsoApiKey || ''
+              finalConfig.phoneNumberId = config.phoneNumberId || ''
+              finalConfig.webhookSecret = config.webhookSecret || ''
+            } else if (kapsoNumberChoice) {
+              finalConfig.phoneNumberId = kapsoNumberChoice
+            }
+          }
+      } else delete finalConfig.provider
 
-    const result = await onSave({ agentId, channel, config: finalConfig })
-    if (result && result.setupLinkUrl) {
-      setSetupLinkUrl(result.setupLinkUrl)
-      if (result.deploymentId) setCreatedDeploymentId(result.deploymentId)
+      const result = await onSave({ agentId, channel, config: finalConfig })
+      if (result && result.setupLinkUrl) {
+        setSetupLinkUrl(result.setupLinkUrl)
+        if (result.deploymentId) setCreatedDeploymentId(result.deploymentId)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create deployment')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   const handleCopy = () => {
@@ -280,7 +316,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
 
               <div className="space-y-2">
                 <Label>Channel</Label>
-                <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}); setDiscordStep('invite') }}>
+                <Select value={channel} onValueChange={(v) => { setChannel(v as Channel); setConfig({}); setProvider('kapso'); setTwilioShowFields(false); setKapsoShowFields(false); setDiscordStep('invite') }}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -306,44 +342,150 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                 </Select>
               </div>
 
-              {useKapso ? (
-                <div className="space-y-2">
-                  <Label>WhatsApp Number</Label>
-                  <Select value={kapsoNumberChoice} onValueChange={setKapsoNumberChoice}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={kapsoNumbersLoading ? 'Loading numbers…' : 'Connect a new number'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Connect a new number</SelectItem>
-                      {kapsoNumbers.length > 0 && (
-                        <SelectGroup>
-                          <SelectLabel>Already connected</SelectLabel>
-                          {kapsoNumbers.map((n) => (
-                            <SelectItem key={n.phoneNumberId} value={n.phoneNumberId} disabled={n.inUse}>
-                              <span className="flex items-center gap-2">
-                                {n.displayPhone || n.displayName || n.phoneNumberId}
-                                {n.inUse && (
-                                  <Badge variant="destructive" className="text-[9px]">In use</Badge>
-                                )}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {(() => {
-                      const chosen = kapsoNumbers.find((n) => n.phoneNumberId === kapsoNumberChoice)
-                      if (chosen?.inUse) {
-                        return 'This number is already in use by another deployment — creating will fail.'
-                      }
-                      return kapsoNumberChoice
-                        ? 'This agent will use the selected connected number. No setup link needed.'
-                        : "You'll get a setup link to connect a new WhatsApp number via Facebook login."
-                    })()}
-                  </p>
-                </div>
+              {isWhatsApp ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>Provider</Label>
+                    <Select value={provider} onValueChange={(v) => { setProvider(v as 'kapso' | 'twilio'); setTwilioShowFields(v === 'twilio'); setKapsoShowFields(false); setConfig({}) }}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="kapso">Kapso (no credentials needed)</SelectItem>
+                        <SelectItem value="twilio">Twilio WhatsApp</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {provider === 'kapso' ? (
+                    kapsoShowFields ? (
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="kapso-apiKey">Kapso API Key</Label>
+                          <Input id="kapso-apiKey" value={config.kapsoApiKey || ''} onChange={(e) => setConfig({ ...config, kapsoApiKey: e.target.value })} placeholder="ka_..." type="password" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="kapso-phoneNumberId">Phone Number ID</Label>
+                          <Input id="kapso-phoneNumberId" value={config.phoneNumberId || ''} onChange={(e) => setConfig({ ...config, phoneNumberId: e.target.value })} placeholder="kapso_phone_..." />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="kapso-webhookSecret">Webhook Secret (optional)</Label>
+                          <Input id="kapso-webhookSecret" value={config.webhookSecret || ''} onChange={(e) => setConfig({ ...config, webhookSecret: e.target.value })} placeholder="For webhook signature verification" type="password" />
+                        </div>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          onClick={() => { setKapsoShowFields(false); setConfig({}) }}
+                        >
+                          Close
+                        </button>
+                      </div>
+                    ) : kapsoNumbers.length > 0 ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <img src={`${CDN}/whatsapp/default.svg`} alt="WhatsApp" className="size-4" />
+                          <Label className="text-sm font-medium m-0">Connected WhatsApp Numbers</Label>
+                        </div>
+                        <Select value={kapsoNumberChoice} onValueChange={setKapsoNumberChoice}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a number" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {kapsoNumbers.map((n) => (
+                              <SelectItem key={n.phoneNumberId} value={n.phoneNumberId} disabled={n.inUse}>
+                                <span className="flex items-center gap-2">
+                                  {n.displayPhone || n.displayName || n.phoneNumberId}
+                                  {n.inUse && <Badge variant="destructive" className="text-[9px]">In use</Badge>}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {kapsoNumberChoice && (
+                          <p className="text-xs text-muted-foreground">This agent will use the selected number.</p>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-2"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleConnectNew()
+                          }}
+                          disabled={!agentId || connectingNew}
+                        >
+                          {connectingNew ? <Loader2 className="size-3.5 animate-spin" /> : <img src={`${CDN}/whatsapp/default.svg`} alt="" className="size-4" />}
+                          Connect a different number
+                        </Button>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-center"
+                          onClick={() => setKapsoShowFields(true)}
+                        >
+                          <Settings2 className="size-3" />
+                          Use your own Kapso credentials
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="rounded-lg border bg-card p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <img src={`${CDN}/whatsapp/default.svg`} alt="WhatsApp" className="size-5" />
+                            <p className="text-sm font-medium">Connect WhatsApp</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            No WhatsApp number connected yet. Click below to connect one via Facebook login.
+                          </p>
+                          <Button
+                            type="button"
+                            className="w-full gap-2"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handleConnectNew()
+                            }}
+                            disabled={!agentId || connectingNew}
+                          >
+                            {connectingNew ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <img src={`${CDN}/whatsapp/default.svg`} alt="" className="size-4" />
+                            )}
+                            {connectingNew ? 'Connecting...' : 'Connect WhatsApp Number'}
+                          </Button>
+                          {!agentId && (
+                            <p className="text-xs text-amber-500 text-center">Select an agent first to continue</p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-center"
+                          onClick={() => setKapsoShowFields(true)}
+                        >
+                          <Settings2 className="size-3" />
+                          Use your own Kapso credentials
+                        </button>
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Enter your Twilio WhatsApp credentials. Each deployment needs its own Twilio number.
+                      </p>
+                      <div className="space-y-2">
+                        <Label htmlFor="twilio-accountSid">Account SID</Label>
+                        <Input id="twilio-accountSid" value={config.accountSid || ''} onChange={(e) => setConfig({ ...config, accountSid: e.target.value })} placeholder="AC..." />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="twilio-authToken">Auth Token</Label>
+                        <Input id="twilio-authToken" value={config.authToken || ''} onChange={(e) => setConfig({ ...config, authToken: e.target.value })} placeholder="Auth token" type="password" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="twilio-phoneNumber">Phone Number</Label>
+                        <Input id="twilio-phoneNumber" value={config.phoneNumber || ''} onChange={(e) => setConfig({ ...config, phoneNumber: e.target.value })} placeholder="+1234567890" />
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : channel === 'discord' && !discordAdvanced ? (
                 <div className="space-y-3">
                   {discordStep === 'invite' ? (
@@ -485,7 +627,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                 <Button type="button" variant="ghost" onClick={handleClose}>
                   Cancel
                 </Button>
-                {!(channel === 'discord' && !discordAdvanced) && (
+                {!(channel === 'discord' && !discordAdvanced) && !(isWhatsApp && provider === 'kapso' && !kapsoShowFields && kapsoNumbers.length === 0) && (
                   <Button type="submit" disabled={!agentId || saving}>
                     {saving ? <Loader2 className="size-3 animate-spin" /> : null}
                     Create Deployment

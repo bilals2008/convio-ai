@@ -4,7 +4,7 @@ import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
 import crypto from 'node:crypto'
-import { processIncomingMessage } from '../../services/whatsapp.js'
+import { processIncomingMessage as processKapsoIncomingMessage } from '../../services/whatsapp.js'
 import { processTelegramUpdate, type TelegramUpdate } from '../../services/telegram.js'
 import {
   processDiscordInteraction,
@@ -14,6 +14,7 @@ import {
   type DiscordInteraction,
 } from '../../services/discord.js'
 import { processSlackEvent } from '../../services/slack.js'
+import { processIncomingMessage, verifyTwilioSignature } from '../../services/twilio.js'
 import {
   createKapsoCustomer,
   generateSetupLink,
@@ -37,12 +38,17 @@ const deploymentParamsSchema = z.object({
 
 const whatsappConfigSchema = z.object({
   phoneNumberId: z.string().optional(),
-  provider: z.literal('kapso').optional().default('kapso'),
+  provider: z.enum(['kapso', 'twilio']).optional().default('kapso'),
   webhookUrl: z.string().optional(),
   kapsoCustomerId: z.string().optional(),
   kapsoSetupLink: z.string().optional(),
   kapsoSetupLinkUrl: z.string().optional(),
   kapsoDisplayPhone: z.string().optional(),
+  kapsoApiKey: z.string().optional(),
+  webhookSecret: z.string().optional(),
+  accountSid: z.string().optional(),
+  authToken: z.string().optional(),
+  phoneNumber: z.string().optional(),
 }).passthrough()
 
 const slackConfigSchema = z.object({
@@ -103,6 +109,9 @@ const sensitiveKeys = new Set([
   'password',
   'secret',
   'token',
+  'accountSid',
+  'authToken',
+  'kapsoApiKey',
   'kapsoWebhookSecret',
 ])
 
@@ -201,8 +210,83 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       finalConfig.apiKey = crypto.randomUUID()
     }
 
-    if (channel === 'whatsapp' && config.provider === 'kapso') {
+    if (channel === 'whatsapp' && config.provider === 'twilio') {
+      if (!config.accountSid || !config.authToken || !config.phoneNumber) {
+        throw new AppError(400, 'Twilio credentials required: provide Account SID, Auth Token, and Phone Number. Each deployment needs its own Twilio credentials.')
+      }
+
+      const sameNumber = await prisma.deployment.findFirst({
+        where: {
+          channel: 'whatsapp',
+          status: 'active',
+          config: { path: ['phoneNumber'], equals: config.phoneNumber as string },
+        },
+        select: { id: true, agentId: true },
+      })
+      if (sameNumber) {
+        throw new AppError(409, `Phone number ${config.phoneNumber} is already in use by another deployment`, 'CONFLICT')
+      }
+
+      finalConfig.accountSid = config.accountSid as string
+      finalConfig.authToken = config.authToken as string
+      finalConfig.phoneNumber = config.phoneNumber as string
+
+      const deployment = await prisma.deployment.create({
+        data: { agentId, channel, config: finalConfig as any, status: 'active' },
+      })
+      return { data: maskSensitive(deployment) }
+    }
+
+    if (channel === 'whatsapp' && (!config.provider || config.provider === 'kapso')) {
       const webhookBaseUrl = (config.webhookUrl as string) || fastify.config.PUBLIC_URL
+
+      // Use own Kapso API key — skip the org-level setup link flow
+      if (config.kapsoApiKey) {
+        const phoneNumberId = config.phoneNumberId as string | undefined
+        if (!phoneNumberId) {
+          throw new AppError(400, 'phoneNumberId is required when using your own Kapso API key')
+        }
+
+        const existing = await prisma.deployment.findFirst({
+          where: {
+            channel: 'whatsapp',
+            status: 'active',
+            config: { path: ['phoneNumberId'], equals: phoneNumberId },
+          },
+          select: { id: true, agentId: true },
+        })
+        if (existing) {
+          throw new AppError(409, `This WhatsApp number is already used by deployment ${existing.agentId}`, 'CONFLICT')
+        }
+
+        finalConfig.kapsoApiKey = config.kapsoApiKey
+
+        const messageWebhookUrl = `${webhookBaseUrl}/api/deployments/PLACEHOLDER/kapso-webhook`
+
+        const deployment = await prisma.deployment.create({
+          data: { agentId, channel, config: finalConfig as any, status: 'pending' },
+        })
+
+        try {
+          const wh = await registerMessageWebhook(
+            phoneNumberId,
+            messageWebhookUrl.replace('PLACEHOLDER', deployment.id),
+            config.webhookSecret as string | undefined,
+            config.kapsoApiKey as string
+          )
+          finalConfig.kapsoWebhookSecret = wh.secretKey
+        } catch (err) {
+          await prisma.deployment.delete({ where: { id: deployment.id } }).catch(() => {})
+          throw new AppError(502, `Failed to register Kapso webhook: ${(err as Error).message}`)
+        }
+
+        const updated = await prisma.deployment.update({
+          where: { id: deployment.id },
+          data: { config: finalConfig as any, status: 'active' },
+        })
+
+        return { data: maskSensitive(updated) }
+      }
 
       // Reuse an already-connected number instead of running the setup link
       // flow again. Kapso's free plan allows only one connected number, so a
@@ -729,7 +813,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     // Kapso's delivery timeout (~5s); if we wait for it, Kapso marks the
     // delivery failed and retries up to 3 times, producing duplicate replies.
     // Process the message after responding instead.
-    void processIncomingMessage(id, from, text, contactName, messageId)
+    void processKapsoIncomingMessage(id, from, text, contactName, messageId)
       .then((result) => {
         if (result.error) {
           request.log.error({ error: result.error, from, deploymentId: id }, 'Kapso webhook: processing failed')
@@ -773,6 +857,111 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     }
 
     return reply.code(200).send('OK')
+  })
+
+  // POST /api/twilio-webhook — Receive Twilio WhatsApp messages (generic, routes by To number)
+  // Users configure this single URL in Twilio console. We look up the deployment
+  // by matching the To phone number against deployment configs.
+  fastify.post('/twilio-webhook', async (request, reply) => {
+    const payload = request.body as Record<string, string>
+    const toNumber = (payload.To || '').replace('whatsapp:', '')
+    const fromNumber = (payload.From || '').replace('whatsapp:', '')
+    request.log.info({ to: toNumber, from: fromNumber, messageSid: payload.MessageSid, messageStatus: payload.MessageStatus }, 'Twilio webhook: received')
+
+    if (!toNumber) {
+      request.log.warn({ payload: Object.keys(payload) }, 'Twilio webhook: missing To number')
+      return reply.code(200).send('<Response></Response>')
+    }
+
+    let deployment = await prisma.deployment.findFirst({
+      where: {
+        channel: 'whatsapp',
+        config: { path: ['phoneNumber'], equals: toNumber },
+        status: 'active',
+      },
+      include: { agent: true },
+    }).catch(() => null)
+
+    if (!deployment) {
+      deployment = await prisma.deployment.findFirst({
+        where: {
+          channel: 'whatsapp',
+          config: { path: ['phoneNumber'], equals: `whatsapp:${toNumber}` },
+          status: 'active',
+        },
+        include: { agent: true },
+      }).catch(() => null)
+    }
+
+    if (!deployment) {
+      request.log.warn({ toNumber }, 'Twilio webhook: no active deployment found for this number')
+      return reply.code(200).send('<Response></Response>')
+    }
+
+    const config = deployment.config as Record<string, unknown>
+    const deploymentId = deployment.id
+
+    if (config.provider !== 'twilio') {
+      request.log.warn({ deploymentId }, 'Twilio webhook: deployment provider is not twilio')
+      return reply.code(200).send('<Response></Response>')
+    }
+
+    const authToken = config.authToken as string
+
+    if (!authToken) {
+      request.log.warn({ deploymentId }, 'Twilio webhook: missing auth token')
+      return reply.code(200).send('<Response></Response>')
+    }
+
+    const signature = request.headers['x-twilio-signature'] as string | undefined
+    const webhookUrl = `${fastify.config.PUBLIC_URL}/api/twilio-webhook`
+
+    if (signature) {
+      const valid = verifyTwilioSignature(authToken, webhookUrl, payload, signature)
+      if (!valid) {
+        request.log.warn({ deploymentId }, 'Twilio webhook: invalid signature')
+        return reply.code(401).send('<Response></Response>')
+      }
+    }
+
+    if (payload.MessageStatus) {
+      request.log.info({ deploymentId, messageSid: payload.MessageSid, status: payload.MessageStatus }, 'Twilio webhook: message status callback')
+      return reply.code(200).send('<Response></Response>')
+    }
+
+    const from = payload.From
+    const text = payload.Body
+
+    if (!from) {
+      request.log.warn({ deploymentId }, 'Twilio webhook: missing From number')
+      return reply.code(200).send('<Response></Response>')
+    }
+
+    request.log.info({ from, deploymentId, messageSid: payload.MessageSid, textLength: text?.length }, 'Twilio webhook: processing incoming message')
+
+    void processIncomingMessage(deploymentId, config, {
+      MessageSid: payload.MessageSid || '',
+      From: from,
+      To: payload.To || '',
+      Body: text || '',
+      NumMedia: payload.NumMedia,
+      MediaUrl0: payload.MediaUrl0,
+      MediaContentType0: payload.MediaContentType0,
+      ProfileName: payload.ProfileName,
+      SmsStatus: payload.SmsStatus,
+    })
+      .then((result) => {
+        if (result.error) {
+          request.log.error({ error: result.error, from, deploymentId }, 'Twilio webhook: processing failed')
+        } else {
+          request.log.info({ from, deploymentId }, 'Twilio webhook: processing succeeded')
+        }
+      })
+      .catch((err) => {
+        request.log.error({ err, from, deploymentId }, 'Twilio webhook: processing threw')
+      })
+
+    return reply.code(200).send('<Response></Response>')
   })
 
   // POST /api/discord/interactions — Generic Discord interactions endpoint (one-click OAuth2 flow)

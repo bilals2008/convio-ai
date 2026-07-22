@@ -184,17 +184,23 @@ export default function DeploymentsPage() {
         <DeploymentForm
           agents={agentsData}
           onSave={async (data) => {
-            const res = await createMutation.mutate(data)
-            const body = res?.data
-            const config = body?.data?.config || {}
-            const deploymentId = body?.data?.id
-            const setupLinkUrl = config.kapsoSetupLinkUrl as string | undefined
-            if (setupLinkUrl) {
+            try {
+              const res = await createMutation.mutate(data)
+              const body = res?.data
+              const config = body?.data?.config || {}
+              const deploymentId = body?.data?.id
+              const setupLinkUrl = config.kapsoSetupLinkUrl as string | undefined
+              if (setupLinkUrl) {
+                createMutation.onSuccess()
+                return { setupLinkUrl, deploymentId }
+              }
               createMutation.onSuccess()
-              return { setupLinkUrl, deploymentId }
+              setEditing(null)
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Failed to create deployment'
+              toast.error(message)
+              throw err
             }
-            createMutation.onSuccess()
-            setEditing(null)
           }}
           onCancel={() => setEditing(null)}
         />
