@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Check, X } from 'lucide-react'
+import { Zap, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSession } from '@/lib/hooks/useAuth'
 import { usePlan } from '@/lib/hooks/use-billing'
@@ -50,7 +50,7 @@ export function ProClaimModal() {
 
             <div className="flex flex-col items-center text-center">
               <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 mb-4">
-                <Sparkles className="size-7 text-emerald-500" />
+                <Zap className="size-7 text-emerald-500" />
               </div>
 
               <h2 className="text-xl font-semibold text-foreground">
@@ -85,7 +85,7 @@ export function ProClaimModal() {
                     navigate('/settings/billing?claim=pro')
                   }}
                 >
-                  <Sparkles className="size-4" />
+                  <Zap className="size-4" />
                   Activate Pro Free
                 </Button>
                 <Button
