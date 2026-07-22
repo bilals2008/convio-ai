@@ -100,7 +100,7 @@ export function AgentDetailLayout({
 
   return (
     <div className="flex flex-col h-full overflow-x-hidden">
-      <div className="px-6 pt-6 pb-0">
+      <div className="px-6 pt-2 pb-0">
         <Breadcrumb className="mb-5">
           <BreadcrumbList className="text-sm text-muted-foreground">
             <BreadcrumbItem>
