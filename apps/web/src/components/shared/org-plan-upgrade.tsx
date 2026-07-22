@@ -11,9 +11,9 @@ interface OrgPlanUpgradeProps {
 }
 
 const PLANS = [
-  { key: 'pro', name: 'Pro', orgs: 3, price: '$39/mo', icon: Zap, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { key: 'business', name: 'Business', orgs: 5, price: '$99/mo', icon: Crown, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-  { key: 'enterprise', name: 'Enterprise', orgs: 'Unlimited', price: 'Custom', icon: Shield, color: 'text-violet-500', bg: 'bg-violet-500/10' },
+  { key: 'pro', name: 'Pro', orgs: 3, price: '$39/mo', icon: Zap, color: 'text-emerald-500', bg: 'bg-emerald-500/10', comingSoon: true },
+  { key: 'business', name: 'Business', orgs: 5, price: '$99/mo', icon: Crown, color: 'text-amber-500', bg: 'bg-amber-500/10', comingSoon: true },
+  { key: 'enterprise', name: 'Enterprise', orgs: 'Unlimited', price: 'Custom', icon: Shield, color: 'text-violet-500', bg: 'bg-violet-500/10', comingSoon: true },
 ]
 
 export function OrgPlanUpgrade({ currentOrgs, currentPlan, limit }: OrgPlanUpgradeProps) {
@@ -55,7 +55,7 @@ export function OrgPlanUpgrade({ currentOrgs, currentPlan, limit }: OrgPlanUpgra
                 type="button"
                 onClick={() => navigate(`/settings/billing?plan=${plan.key}`)}
                 className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent disabled:opacity-50"
-                disabled={isCurrent}
+                disabled={isCurrent || plan.comingSoon}
               >
                 <div className={cn('flex size-8 items-center justify-center rounded-lg', plan.bg)}>
                   <Icon className={cn('size-4', plan.color)} />
@@ -66,6 +66,9 @@ export function OrgPlanUpgrade({ currentOrgs, currentPlan, limit }: OrgPlanUpgra
                     {isCurrent && (
                       <span className="text-[10px] text-muted-foreground">(Current)</span>
                     )}
+                    {plan.comingSoon && !isCurrent && (
+                      <span className="text-[10px] text-muted-foreground">(Coming Soon)</span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {typeof plan.orgs === 'number' ? `Up to ${plan.orgs} organizations` : `${plan.orgs} organizations`}
@@ -74,7 +77,7 @@ export function OrgPlanUpgrade({ currentOrgs, currentPlan, limit }: OrgPlanUpgra
                 <div className="text-right shrink-0">
                   <p className="text-sm font-semibold">{plan.price}</p>
                 </div>
-                {!isCurrent && (
+                {!isCurrent && !plan.comingSoon && (
                   <ArrowUpRight className="size-3.5 text-muted-foreground shrink-0" />
                 )}
               </button>

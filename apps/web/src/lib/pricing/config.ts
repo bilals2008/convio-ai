@@ -11,6 +11,7 @@ export interface PlanConfig {
   yearlyPrice?: string
   period: string
   badge?: string
+  comingSoon?: boolean
   features: PlanFeature[]
   cta: string
   href: string
@@ -67,6 +68,7 @@ export const pricingConfig: PricingConfig = {
       yearlyPrice: '$31',
       period: '/month',
       badge: 'Most Popular',
+      comingSoon: true,
       features: [
         { text: '5 agents' },
         { text: '10 knowledge bases' },
@@ -89,6 +91,7 @@ export const pricingConfig: PricingConfig = {
       yearlyPrice: '$79',
       period: '/month',
       badge: 'Best Value',
+      comingSoon: true,
       features: [
         { text: 'Unlimited agents' },
         { text: '50 knowledge bases' },
@@ -110,6 +113,7 @@ export const pricingConfig: PricingConfig = {
       description: 'For large organizations',
       price: 'Custom',
       period: '',
+      comingSoon: true,
       features: [
         { text: 'Unlimited agents' },
         { text: 'Unlimited knowledge bases' },

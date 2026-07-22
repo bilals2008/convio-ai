@@ -1,8 +1,9 @@
 import { AlertTriangle, ArrowUpRight, Zap } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useUsage, usePlan, useCheckout } from '@/lib/hooks/use-billing'
+import { useUsage, usePlan } from '@/lib/hooks/use-billing'
 
 interface UsageAlertMock {
   planName: 'free' | 'pro' | 'enterprise'
@@ -40,9 +41,9 @@ export function UsageAlert({
   className,
   mock,
 }: UsageAlertProps) {
+  const navigate = useNavigate()
   const { data: usage, isLoading: usageLoading } = useUsage()
   const { data: plan, isLoading: planLoading } = usePlan()
-  const checkout = useCheckout()
 
   const isLoading = mock ? false : usageLoading || planLoading
   const resolvedUsage = mock
@@ -137,8 +138,7 @@ export function UsageAlert({
                 size="sm"
                 variant={isUrgent ? 'default' : 'outline'}
                 className="h-6 text-[10px] gap-1 shrink-0"
-                onClick={() => { if (!mock) checkout.mutate({ planKey: 'pro', billingPeriod: 'monthly' }) }}
-                disabled={mock ? false : checkout.isPending}
+                onClick={() => navigate('/pricing')}
               >
                 <ArrowUpRight className="size-2.5" />
                 {resolvedPlan.name === 'free' ? 'Upgrade' : isUrgent ? 'Upgrade now' : 'Upgrade plan'}
@@ -184,8 +184,7 @@ export function UsageAlert({
             size="sm"
             variant={isUrgent ? 'default' : 'outline'}
             className="h-7 text-xs gap-1 shrink-0"
-            onClick={() => { if (!mock) checkout.mutate({ planKey: 'pro', billingPeriod: 'monthly' }) }}
-            disabled={mock ? false : checkout.isPending}
+            onClick={() => navigate('/pricing')}
           >
             <ArrowUpRight className="size-3" />
             {resolvedPlan.name === 'free' ? 'Upgrade' : isUrgent ? 'Upgrade now' : 'Upgrade plan'}

@@ -161,6 +161,13 @@ export default function BillingPage() {
   useEffect(() => {
     if (pendingPlan && orgId && !checkoutTriggered.current && !checkout.isPending) {
       checkoutTriggered.current = true
+      const paidPlans = ['pro', 'business', 'enterprise']
+      if (paidPlans.includes(pendingPlan)) {
+        toast.info('Paid plans are coming soon!')
+        setSearchParams({}, { replace: true })
+        checkoutTriggered.current = false
+        return
+      }
       toast.info('Redirecting to secure checkout...')
       checkout.mutate(
         { planKey: pendingPlan, billingPeriod: pendingPeriod || 'monthly' },
@@ -188,7 +195,7 @@ export default function BillingPage() {
       window.open('https://convio.ai/contact', '_blank', 'noopener,noreferrer')
       return
     }
-    checkout.mutate({ planKey: 'pro', billingPeriod: 'monthly' })
+    toast.info('Paid plans are coming soon! Stay tuned.')
   }
 
   const pageLoading = orgLoading
@@ -468,16 +475,13 @@ function PlanCard({
         </Button>
       ) : isFreePlan ? (
         <Button
-          className="mt-6 w-full bg-emerald-600 hover:bg-emerald-700"
+          className="mt-6 w-full"
+          variant="outline"
           onClick={onUpgrade}
-          disabled={checkoutPending}
+          disabled
         >
-          {checkoutPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Star className="size-4" />
-          )}
-          {checkoutPending ? 'Redirecting...' : 'Upgrade Plan'}
+          <Star className="size-4" />
+          Coming Soon
         </Button>
       ) : (
         <Button

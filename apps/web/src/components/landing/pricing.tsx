@@ -33,6 +33,7 @@ function PlanCard({ plan, isYearly, onAction }: { plan: PlanConfig; isYearly: bo
         plan.highlighted
           ? 'border-primary/60 shadow-lg shadow-primary/10 hover:shadow-xl hover:shadow-primary/15 ring-1 ring-primary/20'
           : 'border-border hover:border-primary/30 hover:shadow-md',
+        plan.comingSoon && 'opacity-70',
       )}
     >
       {plan.highlighted && (
@@ -51,7 +52,11 @@ function PlanCard({ plan, isYearly, onAction }: { plan: PlanConfig; isYearly: bo
           )}
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-            {plan.badge && (
+            {plan.comingSoon ? (
+              <Badge className="bg-muted text-muted-foreground border border-border hover:bg-muted shrink-0 text-[10px] px-1.5 py-0 h-4">
+                Coming Soon
+              </Badge>
+            ) : plan.badge && (
               <Badge className="bg-primary/15 text-primary border border-primary/20 hover:bg-primary/15 shrink-0 text-[10px] px-1.5 py-0 h-4">
                 {plan.badge}
               </Badge>
@@ -93,8 +98,9 @@ function PlanCard({ plan, isYearly, onAction }: { plan: PlanConfig; isYearly: bo
           variant={plan.variant}
           className="w-full mt-auto py-2.5 md:py-3 text-[13px] md:text-[14px] h-auto transition-transform duration-200 group-hover:scale-[1.02]"
           onClick={() => onAction?.(plan)}
+          disabled={plan.comingSoon}
         >
-          {plan.cta}
+          {plan.comingSoon ? 'Coming Soon' : plan.cta}
         </Button>
       </div>
     </div>

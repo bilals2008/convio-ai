@@ -121,6 +121,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
     await fastify.ensureAdmin(request.userId!, orgId)
 
+    const paidPlans = ['pro', 'business', 'enterprise']
+    if (paidPlans.includes(planKey)) {
+      throw new AppError(400, 'Paid plans are coming soon! Only the Free plan is available right now.', 'COMING_SOON')
+    }
+
     const planDef = PLANS[planKey]
     if (!planDef) {
       throw new AppError(400, `Checkout not available for this plan`, 'CHECKOUT_UNAVAILABLE')
