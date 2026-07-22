@@ -9,7 +9,7 @@ import {
   BookOpen,
   Users,
   User,
-  Link as LinkIcon,
+  Globe,
   ChevronLeft,
   Shield,
   Building2,
@@ -42,10 +42,11 @@ function useSettingsItems() {
   const isAdmin = role === 'owner' || role === 'admin'
 
   return [
+    { icon: Building2, label: 'Organization', href: '/settings/organization', adminOnly: false },
+    { icon: Users, label: 'Team', href: '/settings/team', adminOnly: false },
     { icon: User, label: 'Profile', href: '/settings/profile', adminOnly: false },
     { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
     { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true },
-    { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments', adminOnly: false },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
     { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
   ].filter((item) => !item.adminOnly || isAdmin)
@@ -158,11 +159,7 @@ export function Sidebar() {
           <SidebarGroup label="Channels">
             <SidebarItem icon={MessageSquare} label="Conversations" href="/conversations" />
             <SidebarItem icon={MessageCircle} label="Widgets" href="/widgets" />
-          </SidebarGroup>
-
-          <SidebarGroup label="Workspace">
-            <SidebarItem icon={Building2} label="Organization" href="/settings/organization" />
-            <SidebarItem icon={Users} label="Team" href="/settings/team" />
+            <SidebarItem icon={Globe} label="Deployments" href="/settings/deployments" />
           </SidebarGroup>
 
           {org?.role === 'owner' && (
@@ -333,13 +330,14 @@ export function Sidebar() {
 function getMobileNavGroups(role?: string) {
   const isAdmin = role === 'owner' || role === 'admin'
   const settingsItems = [
+    { icon: Building2, label: 'Organization', href: '/settings/organization' },
+    { icon: Users, label: 'Team', href: '/settings/team' },
     { icon: User, label: 'Profile', href: '/settings/profile' },
     ...(isAdmin ? [
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
       { icon: Database, label: 'Data', href: '/settings/data' },
     ] : []),
-    { icon: LinkIcon, label: 'Deployments', href: '/settings/deployments' },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
   ]
 
@@ -363,13 +361,7 @@ function getMobileNavGroups(role?: string) {
       items: [
         { icon: MessageSquare, label: 'Conversations', href: '/conversations' },
         { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
-      ],
-    },
-    {
-      label: 'Workspace',
-      items: [
-        { icon: Building2, label: 'Organization', href: '/settings/organization' },
-        { icon: Users, label: 'Team', href: '/settings/team' },
+        { icon: Globe, label: 'Deployments', href: '/settings/deployments' },
       ],
     },
     {
