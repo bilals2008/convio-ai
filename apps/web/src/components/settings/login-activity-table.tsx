@@ -1,9 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   flexRender,
   type SortingState,
   type ColumnDef,
@@ -22,70 +21,26 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { useLoginActivity, type LoginActivityItem } from '@/lib/hooks/use-login-activity'
 
-interface LoginActivity {
-  id: string
-  device: string
-  browser: string
-  os: string
-  location: string
-  ipAddress: string
-  time: string
-  status: 'success' | 'failed' | 'suspicious'
+function formatTime(iso: string): string {
+  const date = new Date(iso)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const hours = Math.floor(diff / 3600000)
+
+  if (hours < 1) return 'Just now'
+  if (hours < 24) return `Today at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) {
+    return `Yesterday at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+  }
+
+  return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) +
+    ` at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
 }
-
-const mockActivity: LoginActivity[] = [
-  {
-    id: '1',
-    device: 'Desktop',
-    browser: 'Chrome',
-    os: 'Windows',
-    location: 'Karachi, Pakistan',
-    ipAddress: '103.247.12.45',
-    time: 'Today at 10:32 AM',
-    status: 'success',
-  },
-  {
-    id: '2',
-    device: 'Desktop',
-    browser: 'Safari',
-    os: 'macOS',
-    location: 'Lahore, Pakistan',
-    ipAddress: '103.247.12.45',
-    time: 'Yesterday at 8:14 PM',
-    status: 'success',
-  },
-  {
-    id: '3',
-    device: 'Mobile',
-    browser: 'Chrome',
-    os: 'Android',
-    location: 'Islamabad, Pakistan',
-    ipAddress: '103.247.12.45',
-    time: '17 Jul, 2026 at 5:22 PM',
-    status: 'success',
-  },
-  {
-    id: '4',
-    device: 'Desktop',
-    browser: 'Firefox',
-    os: 'Linux',
-    location: 'Lahore, Pakistan',
-    ipAddress: '103.247.12.99',
-    time: '15 Jul, 2026 at 2:10 PM',
-    status: 'success',
-  },
-  {
-    id: '5',
-    device: 'Mobile',
-    browser: 'Safari',
-    os: 'iOS',
-    location: 'Karachi, Pakistan',
-    ipAddress: '103.247.12.45',
-    time: '14 Jul, 2026 at 9:45 AM',
-    status: 'failed',
-  },
-]
 
 function getDeviceIcon(device: string) {
   switch (device) {
@@ -140,8 +95,9 @@ const statusVariantMap: Record<string, 'active' | 'failed' | 'secondary'> = {
 
 export function LoginActivityTable() {
   const [sorting, setSorting] = useState<SortingState>([])
+  const { data: activities = [], isError } = useLoginActivity()
 
-  const columns: ColumnDef<LoginActivity, unknown>[] = [
+  const columns = useMemo<ColumnDef<LoginActivityItem, unknown>[]>(() => [
     {
       accessorKey: 'device',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Device" />,
@@ -151,8 +107,8 @@ export function LoginActivityTable() {
             {getDeviceIcon(row.original.device)}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium capitalize">{row.original.os}</p>
-            <p className="text-xs text-muted-foreground">{row.original.browser}</p>
+            <p className="text-sm font-medium capitalize">{row.original.os ?? 'Unknown'}</p>
+            <p className="text-xs text-muted-foreground">{row.original.browser ?? 'Unknown'}</p>
           </div>
         </div>
       ),
@@ -163,7 +119,7 @@ export function LoginActivityTable() {
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
           <Globe className="size-3.5 text-muted-foreground" />
-          <span className="text-sm">{row.original.location}</span>
+          <span className="text-sm">{row.original.location ?? 'Unknown'}</span>
         </div>
       ),
     },
@@ -175,10 +131,10 @@ export function LoginActivityTable() {
       ),
     },
     {
-      accessorKey: 'time',
+      accessorKey: 'createdAt',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Time" />,
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">{row.original.time}</span>
+        <span className="text-sm text-muted-foreground">{formatTime(row.original.createdAt)}</span>
       ),
     },
     {
@@ -190,18 +146,15 @@ export function LoginActivityTable() {
         </Badge>
       ),
     },
-  ]
+  ], [])
 
   const table = useReactTable({
-    data: mockActivity,
+    data: activities,
     columns,
-    state: {
-      sorting,
-    },
+    state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
   })
 
   return (
@@ -211,57 +164,65 @@ export function LoginActivityTable() {
         <CardDescription>Your recent sign-in sessions across devices</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="overflow-hidden rounded-lg border border-border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow
-                  key={headerGroup.id}
-                  className="hover:bg-transparent border-b border-border bg-muted/30"
-                >
-                  {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className={cn(
-                        'text-muted-foreground font-medium h-11 px-4 text-xs uppercase tracking-wide',
-                        header.column.getCanSort() && 'cursor-pointer select-none'
-                      )}
+        {isError ? (
+          <div className="flex h-32 items-center justify-center rounded-lg border border-border">
+            <p className="text-sm text-muted-foreground">Could not load login activity.</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      key={headerGroup.id}
+                      className="hover:bg-transparent border-b border-border bg-muted/30"
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          className={cn(
+                            'text-muted-foreground font-medium h-11 px-4 text-xs uppercase tracking-wide',
+                            header.column.getCanSort() && 'cursor-pointer select-none'
+                          )}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="px-4 py-3">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id} className="px-4 py-3">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                        No login activity found.
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                    No login activity found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Showing {table.getRowModel().rows.length} of {mockActivity.length} sessions
-        </p>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Showing {table.getRowModel().rows.length} session{table.getRowModel().rows.length !== 1 ? 's' : ''}
+            </p>
+          </>
+        )}
       </CardContent>
     </Card>
   )

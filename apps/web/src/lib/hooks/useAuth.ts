@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import api from '@/lib/api'
 import { toast } from '@/lib/toast'
 
 export interface User {
@@ -53,6 +54,7 @@ export function useLogin() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['auth', 'session'] })
+      api.post('/auth/login-activity', { userAgent: navigator.userAgent }).catch(() => {})
       const pendingRedirect = sessionStorage.getItem('pendingBillingRedirect')
       if (pendingRedirect) {
         sessionStorage.removeItem('pendingBillingRedirect')
