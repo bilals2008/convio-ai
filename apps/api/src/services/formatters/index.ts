@@ -14,7 +14,7 @@ import { formatForTelegram } from './telegram.js'
 import { formatForDiscord } from './discord.js'
 import { formatForWeb } from './web.js'
 
-export type ChannelFormat = 'whatsapp' | 'telegram' | 'discord' | 'web' | 'slack' | 'api'
+export type ChannelFormat = 'whatsapp' | 'telegram' | 'discord' | 'web' | 'slack' | 'api' | 'twilio'
 
 export function formatResponse(channel: string, text: string): string {
   if (!text) return text
@@ -32,6 +32,8 @@ export function formatResponse(channel: string, text: string): string {
       return formatForWeb(text)
     case 'api':
       return formatForWeb(text)
+    case 'twilio':
+      return formatForWhatsApp(text)
     default:
       return text
   }

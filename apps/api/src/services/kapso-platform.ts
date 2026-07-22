@@ -2,18 +2,19 @@ import crypto from 'node:crypto'
 
 const PLATFORM_API = 'https://api.kapso.ai/platform/v1'
 
-function getApiKey(): string {
+function getApiKey(overrideKey?: string): string {
+  if (overrideKey) return overrideKey
   const key = process.env.KAPSO_ORG_API_KEY
   if (!key) throw new Error('KAPSO_ORG_API_KEY not configured')
   return key
 }
 
-async function platformFetch(path: string, options: RequestInit = {}) {
+async function platformFetch(path: string, options: RequestInit = {}, apiKey?: string) {
   const url = `${PLATFORM_API}${path}`
   const res = await fetch(url, {
     ...options,
     headers: {
-      'X-API-Key': getApiKey(),
+      'X-API-Key': getApiKey(apiKey),
       'Content-Type': 'application/json',
       ...(options.headers || {}),
     },
@@ -25,20 +26,21 @@ async function platformFetch(path: string, options: RequestInit = {}) {
   return res.json()
 }
 
-export async function createKapsoCustomer(name: string, externalId: string) {
+export async function createKapsoCustomer(name: string, externalId: string, apiKey?: string) {
   const data = await platformFetch('/customers', {
     method: 'POST',
     body: JSON.stringify({
       customer: { name, external_customer_id: externalId },
     }),
-  })
+  }, apiKey)
   return data.data as { id: string; name: string }
 }
 
 export async function generateSetupLink(
   customerId: string,
   successRedirectUrl: string,
-  failureRedirectUrl: string
+  failureRedirectUrl: string,
+  apiKey?: string
 ) {
   const data = await platformFetch(`/customers/${customerId}/setup_links`, {
     method: 'POST',
@@ -48,7 +50,7 @@ export async function generateSetupLink(
         failure_redirect_url: failureRedirectUrl,
       },
     }),
-  })
+  }, apiKey)
   return data.data as { id: string; url: string; expires_at: string }
 }
 
@@ -61,8 +63,8 @@ export interface KapsoPhoneNumber {
   customer_id?: string | null
 }
 
-export async function listPhoneNumbers(): Promise<KapsoPhoneNumber[]> {
-  const data = await platformFetch('/whatsapp/phone_numbers')
+export async function listPhoneNumbers(apiKey?: string): Promise<KapsoPhoneNumber[]> {
+  const data = await platformFetch('/whatsapp/phone_numbers', {}, apiKey)
   const arr = (data as { data?: KapsoPhoneNumber[] }).data ?? (data as KapsoPhoneNumber[])
   return Array.isArray(arr) ? arr : []
 }
@@ -70,11 +72,9 @@ export async function listPhoneNumbers(): Promise<KapsoPhoneNumber[]> {
 export async function registerMessageWebhook(
   phoneNumberId: string,
   webhookUrl: string,
-  secretKey?: string
+  secretKey?: string,
+  apiKey?: string
 ) {
-  // Kapso requires a non-blank secret_key when creating a webhook. Generate one
-  // if the caller didn't supply it. The returned secret should be persisted so
-  // incoming deliveries can be verified.
   const secret = secretKey || crypto.randomUUID().replace(/-/g, '')
   const data = await platformFetch(
     `/whatsapp/phone_numbers/${phoneNumberId}/webhooks`,
@@ -89,7 +89,8 @@ export async function registerMessageWebhook(
           secret_key: secret,
         },
       }),
-    }
+    },
+    apiKey
   )
   return { ...(data as Record<string, unknown>), secretKey: secret }
 }
@@ -97,14 +98,15 @@ export async function registerMessageWebhook(
 export async function sendPlatformMessage(
   phoneNumberId: string,
   to: string,
-  body: string
+  body: string,
+  apiKey?: string
 ) {
   const baseUrl = process.env.KAPSO_API_BASE_URL || 'https://api.kapso.ai/meta/whatsapp'
   const url = `${baseUrl}/v24.0/${phoneNumberId}/messages`
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      'X-API-Key': getApiKey(),
+      'X-API-Key': getApiKey(apiKey),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

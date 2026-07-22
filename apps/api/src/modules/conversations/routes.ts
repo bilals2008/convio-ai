@@ -15,7 +15,7 @@ const validTransitions: Record<ConversationStatus, ConversationStatus[]> = {
   archived: [],
 }
 
-const channels = ['web', 'api', 'whatsapp', 'slack', 'discord', 'telegram'] as const
+const channels = ['web', 'api', 'whatsapp', 'slack', 'discord', 'telegram', 'twilio'] as const
 
 const agentParamsSchema = z.object({
   agentId: z.string().uuid(),

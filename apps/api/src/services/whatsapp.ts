@@ -3,6 +3,47 @@ import { sendPlatformMessage } from './kapso-platform.js'
 import { chatWithAgent } from '../modules/ai/routes.js'
 import { formatResponse } from './formatters/index.js'
 
+async function loadAgentToolList(agentId: string): Promise<string> {
+  const agentTools = await prisma.agentTool.findMany({
+    where: { agentId },
+    include: { tool: true },
+  })
+  if (agentTools.length === 0) return ''
+  const lines = agentTools.map((at) => {
+    const t = at.tool
+    const label = (t.config as Record<string, unknown>)?.label || t.name
+    const desc = t.description || ''
+    return `  • \`${label}\` — ${desc}`
+  })
+  return '\n\n**Available tools:**\n' + lines.join('\n')
+}
+
+async function findOrCreateConversation(
+  agentId: string,
+  channel: string,
+  contactPhone: string,
+  contactName?: string
+) {
+  for (let i = 0; i < 3; i++) {
+    let conversation = await prisma.conversation.findFirst({
+      where: { agentId, channel, contactPhone, status: { not: 'closed' } },
+      orderBy: { createdAt: 'desc' },
+    })
+    if (conversation) return conversation
+
+    try {
+      conversation = await prisma.conversation.create({
+        data: { agentId, channel, status: 'active', contactName: contactName || null, contactPhone },
+      })
+      return conversation
+    } catch (err: any) {
+      if (err?.code === 'P2002') continue
+      throw err
+    }
+  }
+  throw new Error('Failed to create conversation after 3 retries')
+}
+
 export async function sendWhatsAppMessage(
   deploymentId: string,
   to: string,
@@ -67,33 +108,18 @@ export async function processIncomingMessage(
       }
     }
 
-    let conversation = await prisma.conversation.findFirst({
-      where: { agentId, channel: 'whatsapp', contactPhone: fromNumber, status: { not: 'closed' } },
-      orderBy: { createdAt: 'desc' },
+    let conversation = await findOrCreateConversation(agentId, 'whatsapp', fromNumber, contactName)
+
+    const existingCount = await prisma.conversation.count({
+      where: { agentId, channel: 'whatsapp', contactPhone: fromNumber },
     })
 
-    if (!conversation) {
-      conversation = await prisma.conversation.create({
-        data: {
-          agentId,
-          channel: 'whatsapp',
-          status: 'active',
-          contactName: contactName || null,
-          contactPhone: fromNumber,
-        },
+    if (existingCount <= 1) {
+      const toolList = await loadAgentToolList(agentId)
+      const welcome = `👋 Hi! I'm *${deployment.agent.name || 'your AI assistant'}*. How can I help you today?\n\n📌 _Commands:_ Send "clear" or "reset" anytime to start a fresh conversation.${toolList}`
+      sendWhatsAppMessage(deploymentId, fromNumber, welcome).catch((err) => {
+        console.error('[WhatsApp] Failed to send welcome message:', err)
       })
-
-      const existingCount = await prisma.conversation.count({
-        where: { agentId, channel: 'whatsapp', contactPhone: fromNumber },
-      })
-
-      if (existingCount <= 1) {
-        const welcome = `👋 Hi! I'm *${deployment.agent.name || 'your AI assistant'}*. How can I help you today?\n\n` +
-          `📌 _Tip:_ Send "clear" or "reset" anytime to start a fresh conversation.`
-        sendWhatsAppMessage(deploymentId, fromNumber, welcome).catch((err) => {
-          console.error('[WhatsApp] Failed to send welcome message:', err)
-        })
-      }
     } else if (contactName && !conversation.contactName) {
       conversation = await prisma.conversation.update({
         where: { id: conversation.id },
