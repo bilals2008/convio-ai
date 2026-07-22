@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils'
 const createSchema = z.object({
   name: z.string().trim().min(1, 'Agent name is required').max(50, 'Name must be 50 characters or less'),
   description: z.string(),
-  avatarUrl: z.string(),
+  avatar: z.string(),
   model: z.string().min(1, 'Please select a model'),
   systemPrompt: z.string(),
   temperature: z.number().min(0).max(2),
@@ -49,7 +49,7 @@ const DEFAULT_DEPLOYMENTS = [
 const DEFAULT_FORM_VALUES: CreateAgentValues = {
   name: '',
   description: '',
-  avatarUrl: '',
+  avatar: '',
   model: '',
   systemPrompt: '',
   temperature: 0.7,
@@ -139,7 +139,7 @@ export default function CreateAgentPage() {
       createMutation.mutate({
         name: data.name,
         description: data.description || undefined,
-        avatar: data.avatarUrl || undefined,
+        avatar: data.avatar || undefined,
         model,
         systemPrompt: data.systemPrompt || `You are ${data.name}, a helpful AI assistant.`,
         temperature: data.temperature,
