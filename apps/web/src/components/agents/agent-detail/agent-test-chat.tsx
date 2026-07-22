@@ -840,8 +840,9 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
         </div>
 
         {/* Messages — fills remaining space, scrollable */}
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="flex flex-col min-h-full px-4 py-4">
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="flex flex-col min-h-full px-4 py-4">
             <div className="flex-1" />
             {convsLoading && (
               <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -1078,6 +1079,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
+        </div>
 
         {/* Composer — sticky at bottom, centered */}
         <div className="shrink-0 border-t border-border/40 bg-card">

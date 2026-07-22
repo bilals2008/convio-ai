@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { MessageSquare, Users, Timer, BarChart3, Coins, Radio } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from '@/components/ui/chart'
 import { ChartTooltipContent, ChartLegendContent } from '@/components/application/charts/charts-base'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { analytics as analyticsApi } from '@/lib/api'
@@ -94,10 +96,17 @@ function formatDay(d: Date) {
 }
 
 export function AgentAnalytics({ agentId }: { agentId: string }) {
+  const [range, setRange] = useState('7')
+
+  const fromDate = new Date()
+  fromDate.setDate(fromDate.getDate() - Number(range))
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['agent-analytics', agentId],
+    queryKey: ['agent-analytics', agentId, range],
     queryFn: async () => {
-      const res = await analyticsApi.agent(agentId)
+      const from = fromDate.toISOString().slice(0, 10)
+      const to = new Date().toISOString().slice(0, 10)
+      const res = await analyticsApi.agent(agentId, { from, to })
       return res.data.data as AnalyticsData
     },
     enabled: !!agentId,
@@ -137,18 +146,24 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
 
   const rawDaily = (data.dailyBreakdown || []).map((d) => ({
     ...d,
-    date: new Date(d.date),
+    date: new Date(d.date + 'T00:00:00'),
   }))
 
-  const daily = rawDaily.length <= 1
-    ? [
-        { date: new Date(Date.now() - 2 * 86400000), totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 },
-        { date: new Date(Date.now() - 1 * 86400000), totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 },
-        ...(rawDaily.length === 1 ? [{ ...rawDaily[0] }] : []),
-        { date: new Date(Date.now() + 1 * 86400000), totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 },
-        { date: new Date(Date.now() + 2 * 86400000), totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 },
-      ]
-    : rawDaily
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const start = new Date(fromDate)
+  start.setHours(0, 0, 0, 0)
+
+  const defaultEntry = { totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 }
+
+  const existingMap = new Map(rawDaily.map((d) => [d.date.toISOString().slice(0, 10), d]))
+
+  const daily: typeof rawDaily = []
+  for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+    const key = d.toISOString().slice(0, 10)
+    daily.push(existingMap.get(key) ?? { ...defaultEntry, date: new Date(d) })
+  }
   const hasData = data.totalConversations > 0 || daily.length > 0
 
   if (!hasData) {
@@ -267,8 +282,18 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
 
       {/* Activity Overview */}
       <Card>
-        <CardHeader className="border-b py-4">
+        <CardHeader className="flex flex-row items-center justify-between border-b py-4">
           <CardTitle className="text-base">Activity Overview</CardTitle>
+          <Select value={range} onValueChange={setRange}>
+            <SelectTrigger className="h-7 w-[110px] text-xs" size="sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="15">Last 15 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+            </SelectContent>
+          </Select>
         </CardHeader>
         <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
           <ChartContainer config={activityConfig} className="h-[280px] w-full">
