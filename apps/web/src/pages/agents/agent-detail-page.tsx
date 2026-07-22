@@ -427,6 +427,7 @@ export default function AgentDetailPage() {
               knowledgeBaseId: agent.knowledgeBaseId || null,
               tools: tools.filter((t) => t.enabled).map((t) => t.id),
               mcpServerIds: linkedMcpServerIds,
+              avatar: agent.avatar,
             }}
           />
         </TabsContent>

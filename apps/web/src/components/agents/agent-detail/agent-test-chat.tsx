@@ -41,6 +41,7 @@ import { TypingIndicator } from '@/components/shared/typing-indicator'
 import { AiResponse } from '@/components/shared/ai-response'
 import { agents as agentsApi, conversations as conversationsApi, messages as messagesApi } from '@/lib/api'
 import { usePlan } from '@/lib/hooks/use-billing'
+import { useProfile } from '@/lib/hooks/use-profile'
 import { getReasoningEfforts } from '../reasoning'
 
 interface ToolCallEntry {
@@ -69,6 +70,7 @@ interface AgentTestChatProps {
     knowledgeBaseId?: string | null
     tools?: string[]
     mcpServerIds?: string[]
+    avatar?: string | null
   }
   agentId: string
 }
@@ -180,7 +182,12 @@ function renderToolResultPreview(tool: string, result: unknown): string {
     return String(r.datetime)
   }
   if (tool === 'calculator') {
-    return String(r.result ?? r)
+    const val = r.result ?? r
+    if (val && typeof val === 'object') {
+      if ('value' in val) return String((val as Record<string, unknown>).value)
+      return JSON.stringify(val)
+    }
+    return String(val)
   }
   // MCP tools return { result: stringified_json }
   if (r.result && typeof r.result === 'string') {
@@ -196,6 +203,7 @@ function renderToolResultPreview(tool: string, result: unknown): string {
 }
 
 export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
+  const { data: profile } = useProfile()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConvId, setActiveConvId] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -351,6 +359,14 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       textareaRef.current?.focus()
     }
   }, [streaming])
+
+  // Auto-resize textarea when input changes (including clear after send)
+  useEffect(() => {
+    const ta = textareaRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`
+  }, [inputValue])
 
   const initDone = useRef(false)
   useEffect(() => {
@@ -760,8 +776,12 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3 shrink-0">
             <div className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-                <Bot className="size-3.5 text-primary" />
+              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 overflow-hidden">
+                {agentConfig.avatar ? (
+                  <img src={agentConfig.avatar} alt="" className="size-full object-cover" />
+                ) : (
+                  <Bot className="size-3.5 text-primary" />
+                )}
               </div>
               <span className="text-sm text-muted-foreground">
                 You are chatting with{' '}
@@ -903,14 +923,20 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                     <MessageAvatar>
                       <div
                         className={cn(
-                          'flex size-8 items-center justify-center rounded-full',
+                          'flex size-8 items-center justify-center rounded-full overflow-hidden',
                           isUser
                             ? 'bg-muted'
                             : 'bg-primary/10'
                         )}
                       >
                         {isUser ? (
-                          <User className="size-4 text-muted-foreground" />
+                          profile?.avatar ? (
+                            <img src={profile.avatar} alt="" className="size-full object-cover" />
+                          ) : (
+                            <User className="size-4 text-muted-foreground" />
+                          )
+                        ) : agentConfig.avatar ? (
+                          <img src={agentConfig.avatar} alt="" className="size-full object-cover" />
                         ) : (
                           <Bot className="size-4 text-primary" />
                         )}
@@ -1034,8 +1060,12 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                 <div ref={(el) => { if (el) streamingEndRef.current = el }}>
                 <Message align="start">
                   <MessageAvatar>
-                    <div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
-                      <Bot className="size-4 text-primary" />
+                    <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 overflow-hidden">
+                      {agentConfig.avatar ? (
+                        <img src={agentConfig.avatar} alt="" className="size-full object-cover" />
+                      ) : (
+                        <Bot className="size-4 text-primary" />
+                      )}
                     </div>
                   </MessageAvatar>
                   <MessageContent>
@@ -1109,7 +1139,11 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
               <textarea
                 ref={textareaRef}
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={(e) => {
+                  setInputValue(e.target.value)
+                  e.target.style.height = 'auto'
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder={canSend ? 'Message the agent…' : 'Configure agent to start'}
                 disabled={streaming || !canSend}
@@ -1119,7 +1153,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                   'placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50',
                   'min-h-[34px] max-h-[140px]'
                 )}
-                style={{ fieldSizing: 'content' } as React.CSSProperties}
               />
               <div className="flex items-center justify-between gap-2 px-2.5 pb-1.5">
                 <div className="flex min-w-0 items-center gap-1.5">
