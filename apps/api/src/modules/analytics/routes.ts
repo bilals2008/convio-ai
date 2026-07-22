@@ -37,7 +37,7 @@ const snapshotBodySchema = z.object({
 
 function getDefaultDateRange(from?: string, to?: string) {
   const now = new Date()
-  const toDate = to ? new Date(to) : now
+  const toDate = to ? new Date(to + 'T23:59:59.999Z') : now
   const fromDate = from ? new Date(from) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   return { fromDate, toDate }
 }
@@ -378,7 +378,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     const prevFromDate = new Date(fromDate.getTime() - rangeMs)
     const prevToDate = new Date(fromDate.getTime() - 1)
 
-    const [records, prevRecords] = await Promise.all([
+    const [records, prevRecords, tokenResult, dailyTokens] = await Promise.all([
       prisma.analytics.findMany({
         where: { agentId, date: { gte: fromDate, lte: toDate } },
         orderBy: { date: 'asc' },
@@ -388,15 +388,40 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
         where: { agentId, date: { gte: prevFromDate, lte: prevToDate } },
         take: 365,
       }),
+      prisma.$queryRaw<{ input: bigint | null; output: bigint | null }[]>`
+        SELECT SUM("input_tokens") as input, SUM("output_tokens") as output
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."agentId" = ${agentId}
+          AND m."role" = 'assistant'
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+      `,
+      prisma.$queryRaw<{ date: Date; input: bigint | null; output: bigint | null }[]>`
+        SELECT DATE(m."createdAt") as date, SUM(m."input_tokens") as input, SUM(m."output_tokens") as output
+        FROM "Message" m
+        JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE c."agentId" = ${agentId}
+          AND m."role" = 'assistant'
+          AND m."createdAt" >= ${fromDate}
+          AND m."createdAt" <= ${toDate}
+        GROUP BY DATE(m."createdAt")
+        ORDER BY date ASC
+      `,
     ])
 
-    const calcTotals = (recs: typeof records) =>
-      recs.reduce(
+    const realtimeInputTokens = tokenResult[0]?.input ? Number(tokenResult[0].input) : 0
+    const realtimeOutputTokens = tokenResult[0]?.output ? Number(tokenResult[0].output) : 0
+
+    const dailyTokenMap = new Map(dailyTokens.map((r) => [r.date.toISOString().slice(0, 10), { input: Number(r.input || 0), output: Number(r.output || 0) }]))
+
+    const calcTotals = (recs: typeof records) => {
+      const sum = recs.reduce(
         (acc, r) => ({
           totalConversations: acc.totalConversations + r.totalConversations,
           totalMessages: acc.totalMessages + r.totalMessages,
           uniqueUsers: acc.uniqueUsers + r.uniqueUsers,
-          avgResponseTime: recs.length > 0 ? acc.avgResponseTime + r.avgResponseTime : 0,
+          avgResponseTimeSum: acc.avgResponseTimeSum + r.avgResponseTime,
           satisfactionScores: r.satisfactionScore != null
             ? [...acc.satisfactionScores, r.satisfactionScore]
             : acc.satisfactionScores,
@@ -405,10 +430,18 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
           totalConversations: 0,
           totalMessages: 0,
           uniqueUsers: 0,
-          avgResponseTime: 0,
+          avgResponseTimeSum: 0,
           satisfactionScores: [] as number[],
         },
       )
+      return {
+        totalConversations: sum.totalConversations,
+        totalMessages: sum.totalMessages,
+        uniqueUsers: sum.uniqueUsers,
+        avgResponseTime: recs.length > 0 ? Math.round((sum.avgResponseTimeSum / recs.length) * 100) / 100 : 0,
+        satisfactionScores: sum.satisfactionScores,
+      }
+    }
 
     let totals = calcTotals(records)
     const prevTotals = calcTotals(prevRecords)
@@ -424,13 +457,12 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       totalMessages: r.totalMessages,
       uniqueUsers: r.uniqueUsers,
       avgResponseTime: r.avgResponseTime,
+      inputTokens: dailyTokenMap.get(r.date.toISOString().slice(0, 10))?.input ?? 0,
+      outputTokens: dailyTokenMap.get(r.date.toISOString().slice(0, 10))?.output ?? 0,
     }))
 
-    let realtimeInputTokens = 0
-    let realtimeOutputTokens = 0
-
     if (dailyBreakdown.length === 0 || totals.totalConversations === 0) {
-      const [convByDate, msgByDate, responseTimeResult, tokenResult, dailyTokens, rtByDate, uniqueUsersResult] = await Promise.all([
+      const [convByDate, msgByDate, responseTimeResult, rtByDate, uniqueUsersResult] = await Promise.all([
         prisma.conversation.groupBy({
           by: ['createdAt'],
           where: { agentId, createdAt: { gte: fromDate, lte: toDate } },
@@ -456,26 +488,6 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
             AND m."createdAt" >= ${fromDate}
             AND m."createdAt" <= ${toDate}
         `,
-        prisma.$queryRaw<{ input: bigint | null; output: bigint | null }[]>`
-          SELECT SUM("input_tokens") as input, SUM("output_tokens") as output
-          FROM "Message" m
-          JOIN "Conversation" c ON c."id" = m."conversationId"
-          WHERE c."agentId" = ${agentId}
-            AND m."role" = 'assistant'
-            AND m."createdAt" >= ${fromDate}
-            AND m."createdAt" <= ${toDate}
-        `,
-        prisma.$queryRaw<{ date: Date; input: bigint | null; output: bigint | null }[]>`
-          SELECT DATE(m."createdAt") as date, SUM(m."input_tokens") as input, SUM(m."output_tokens") as output
-          FROM "Message" m
-          JOIN "Conversation" c ON c."id" = m."conversationId"
-          WHERE c."agentId" = ${agentId}
-            AND m."role" = 'assistant'
-            AND m."createdAt" >= ${fromDate}
-            AND m."createdAt" <= ${toDate}
-          GROUP BY DATE(m."createdAt")
-          ORDER BY date ASC
-        `,
         prisma.$queryRaw<{ date: Date; avg: number | null }[]>`
           SELECT DATE(m."createdAt") as date, AVG(m."response_time_ms") as avg
           FROM "Message" m
@@ -498,11 +510,8 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       const realAvgRT = responseTimeResult[0]?.avg
         ? Math.round((responseTimeResult[0].avg / 1000) * 100) / 100
         : 0
-      realtimeInputTokens = tokenResult[0]?.input ? Number(tokenResult[0].input) : 0
-      realtimeOutputTokens = tokenResult[0]?.output ? Number(tokenResult[0].output) : 0
 
       const msgMap = new Map(msgByDate.map((r) => [r.date.toISOString().slice(0, 10), Number(r.count)]))
-      const dailyTokenMap = new Map(dailyTokens.map((r) => [r.date.toISOString().slice(0, 10), { input: Number(r.input || 0), output: Number(r.output || 0) }]))
       const dailyMap = new Map<string, { date: string; totalConversations: number; totalMessages: number; uniqueUsers: number; avgResponseTime: number; inputTokens: number; outputTokens: number }>()
 
       for (const r of convByDate) {

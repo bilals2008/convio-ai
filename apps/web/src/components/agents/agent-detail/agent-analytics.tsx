@@ -164,7 +164,7 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
     const key = d.toISOString().slice(0, 10)
     daily.push(existingMap.get(key) ?? { ...defaultEntry, date: new Date(d) })
   }
-  const hasData = data.totalConversations > 0 || daily.length > 0
+  const hasData = data.totalConversations > 0 || daily.some((d) => d.totalConversations > 0 || d.totalMessages > 0)
 
   if (!hasData) {
     return (
@@ -228,7 +228,7 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
     },
   ]
 
-  const channelData = data.channelBreakdown.map((c, i) => ({
+  const channelData = (data.channelBreakdown || []).map((c, i) => ({
     name: CHANNEL_LABELS[c.channel] || c.channel,
     count: c.count,
     fill: CHANNEL_COLORS[c.channel] || CHANNEL_COLORS_FALLBACK[i % CHANNEL_COLORS_FALLBACK.length],
