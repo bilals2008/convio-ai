@@ -23,7 +23,7 @@ AI Chatbot & Agent Management Platform
 | Auth | Supabase Auth |
 | Database | Supabase PostgreSQL |
 | Realtime | Supabase Realtime + SSE |
-| AI | Vercel AI SDK |
+| AI | Vercel AI SDK (local embeddings via `@huggingface/transformers` + `all-MiniLM-L6-v2`) |
 | Monorepo | Turborepo + pnpm |
 
 ## Getting Started
