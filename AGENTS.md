@@ -10,6 +10,13 @@ Rules for AI agents working on this codebase.
 - If a .env.example file does not exist, create one with placeholder values and ask the user to add the actual environment variables themselves.
 - Never generate, expose, modify, or commit real secrets, API keys, tokens, passwords, or credentials on the user's behalf.
 
+## Data Fetching (imp)
+
+- NEVER use `useEffect` for data fetching — it causes double-renders, race conditions, and cache invalidation issues also  on performance issues 
+- ALWAYS use TanStack Query (`useQuery`, `useMutation`, `useInfiniteQuery`) for all server state
+- Never put fetch logic in components — abstract into custom hooks in `lib/hooks/`
+- `queryFn` must be a pure function that returns data — never call `setState` inside it
+
 ## Design Tokens
 
 - NEVER use hardcoded colors (`bg-orange-500`, `text-white`, `bg-zinc-900`)
@@ -28,12 +35,6 @@ Rules for AI agents working on this codebase.
 - Use shadcn Form components
 - Validate on both client and server
 
-## Data Fetching
-
-- NEVER use `useEffect` for data fetching — it causes double-renders, race conditions, and cache invalidation issues
-- ALWAYS use TanStack Query (`useQuery`, `useMutation`, `useInfiniteQuery`) for all server state
-- Never put fetch logic in components — abstract into custom hooks in `lib/hooks/`
-- `queryFn` must be a pure function that returns data — never call `setState` inside it
 
 ## File Structure
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import {
   Search,
   Plus,
@@ -21,7 +21,6 @@ import {
   Pencil,
   RefreshCw,
 } from 'lucide-react'
-import { toast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -206,7 +205,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([])
   const [error, setError] = useState('')
   const [inputValue, setInputValue] = useState('')
-  const [showReasoning, setShowReasoning] = useState(true)
+  const [showReasoning, setShowReasoning] = useState(false)
   const [reasoningOverride, setReasoningOverride] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [useKnowledge, setUseKnowledge] = useState(true)
@@ -216,9 +215,8 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const abortRef = useRef<AbortController | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const streamingEndRef = useRef<HTMLDivElement | null>(null)
   const configRef = useRef(agentConfig)
-  const streamFrameRef = useRef<number | null>(null)
-  const streamBufferRef = useRef('')
   const queryClient = useQueryClient()
   const { data: plan } = usePlan()
 
@@ -226,14 +224,24 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const toolsAllowed = !!plan && plan.name !== 'free'
   const agentHasTools = !!(agentConfig.tools && agentConfig.tools.length > 0)
 
-  const { data: convsData, isLoading: convsLoading } = useQuery({
+  const {
+    data: convsPages,
+    isLoading: convsLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['conversations', agentId],
-    queryFn: async () => {
-      const res = await conversationsApi.listByAgent(agentId!, { limit: 50 })
-      return (res.data.data || []) as Record<string, unknown>[]
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
+      const res = await conversationsApi.listByAgent(agentId!, { limit: 20, cursor: pageParam })
+      return res.data as { data: Record<string, unknown>[]; nextCursor: string | null }
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!agentId,
   })
+
+  const convsData = useMemo(() => convsPages?.pages.flatMap((p) => p.data) ?? [], [convsPages])
 
   const { data: convDetail } = useQuery({
     queryKey: ['conversation', activeConvId],
@@ -246,12 +254,31 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
   const createConv = useMutation({
     mutationFn: () => conversationsApi.create(agentId!, { channel: 'api' }),
-    onSuccess: (res) => {
-      const newConv = res.data.data as Record<string, unknown>
-      const mapped = mapDbConv(newConv)
-      setConversations((prev) => [mapped, ...prev])
-      setActiveConvId(mapped.id)
+    onMutate: async () => {
+      const tempConv: Conversation = {
+        id: `temp-${crypto.randomUUID()}`,
+        title: 'Conversation',
+        preview: 'Start a new chat...',
+        timestamp: 'Just now',
+        messages: [],
+      }
+      setConversations((prev) => [tempConv, ...prev])
+      setActiveConvId(tempConv.id)
+      return tempConv
+    },
+    onSuccess: (res, _vars, tempConv) => {
+      if (!tempConv) return
+      const realConv = res.data.data as Record<string, unknown>
+      setConversations((prev) =>
+        prev.map((c) => (c.id === tempConv.id ? { ...c, id: realConv.id as string } : c))
+      )
+      setActiveConvId((prev) => (prev === tempConv.id ? (realConv.id as string) : prev))
       queryClient.invalidateQueries({ queryKey: ['conversations', agentId] })
+    },
+    onError: (_err, _vars, tempConv) => {
+      if (tempConv) {
+        setConversations((prev) => prev.filter((c) => c.id !== tempConv.id))
+      }
     },
   })
 
@@ -279,9 +306,45 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     [conversations, searchQuery]
   )
 
+  // Scroll to bottom helper — targets Radix ScrollArea viewport directly
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    // Prefer scrolling to the streaming bubble when it exists
+    const target = streamingEndRef.current || messagesEndRef.current
+    if (!target) return
+    // Find the Radix ScrollArea viewport (the actual scrollable element)
+    const viewport = target.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null
+    if (viewport) {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior })
+    } else {
+      target.scrollIntoView({ behavior, block: 'end' })
+    }
+  }, [])
+
+  // Track streaming content changes for smooth scroll during generation
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth' })
-  }, [messages, streaming, streamingContent])
+    if (streaming && streamingContent) {
+      scrollToBottom('auto')
+    }
+  }, [streamingContent, streaming, scrollToBottom])
+
+  // When streaming starts, jump to bottom immediately
+  useEffect(() => {
+    if (streaming) {
+      scrollToBottom('auto')
+    }
+  }, [streaming, scrollToBottom])
+
+  // When streaming ends, smooth scroll to bottom
+  useEffect(() => {
+    if (!streaming && messages.length > 0) {
+      scrollToBottom('smooth')
+    }
+  }, [streaming, messages.length, scrollToBottom])
+
+  // When conversation changes (switch conv), scroll to bottom
+  useEffect(() => {
+    scrollToBottom('auto')
+  }, [activeConvId, scrollToBottom])
 
   useEffect(() => {
     if (!streaming) {
@@ -289,28 +352,22 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     }
   }, [streaming])
 
-  const initRef = useRef<string | null>(null)
+  const initDone = useRef(false)
   useEffect(() => {
-    if (!convsData) return
-    if (initRef.current === agentId) return
-    initRef.current = agentId
+    if (initDone.current) return
+    if (convsLoading) return
+    initDone.current = true
 
-    if (convsData.length === 0) {
+    if (!convsData.length) {
       createConv.mutate()
-    } else {
-      const mapped = convsData.map(mapDbConv)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setConversations(mapped)
-      setActiveConvId(mapped[0].id)
+      return
     }
 
+    const mapped = convsData.map(mapDbConv)
+    setConversations(mapped)
+    setActiveConvId(mapped[0].id)
     textareaRef.current?.focus()
-
-    return () => {
-      if (initRef.current === agentId) initRef.current = null
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [convsData])
+  }, [convsData, convsLoading])
 
   useEffect(() => {
     if (!convDetail) return
@@ -330,15 +387,8 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     [activeConvId]
   )
 
-  const queueStreamingContent = useCallback((content: string) => {
-    streamBufferRef.current = content
-    if (streamFrameRef.current) return
-
-    streamFrameRef.current = requestAnimationFrame(() => {
-      setStreamingContent(streamBufferRef.current)
-      streamFrameRef.current = null
-    })
-  }, [])
+  const contentRef = useRef('')
+  const reasoningRef = useRef('')
 
   // Core streaming routine shared by send / regenerate / edit.
   // `prompt` is the current user turn; `history` is everything before it.
@@ -353,7 +403,8 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     setStreaming(true)
     setStreamingContent('')
     setStreamingReasoning('')
-    streamBufferRef.current = ''
+    contentRef.current = ''
+    reasoningRef.current = ''
 
     const convId = activeConvId
     const controller = new AbortController()
@@ -386,8 +437,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
       const decoder = new TextDecoder()
       let buffer = ''
-      let assistantContent = ''
-      let assistantReasoning = ''
       let finalUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
       const completedToolCalls: string[] = []
 
@@ -406,12 +455,11 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
             try {
               const parsed = JSON.parse(data)
               if (parsed.type === 'reasoning') {
-                assistantReasoning += parsed.content
-                setStreamingReasoning(assistantReasoning)
-                queueStreamingContent(assistantContent)
+                reasoningRef.current += parsed.content
+                setStreamingReasoning(reasoningRef.current)
               } else if (parsed.type === 'text' && parsed.content) {
-                assistantContent += parsed.content
-                queueStreamingContent(assistantContent)
+                contentRef.current += parsed.content
+                setStreamingContent(contentRef.current)
               } else if (parsed.type === 'tool_call') {
                 setToolCalls(prev => [...prev, { tool: parsed.tool, args: parsed.args, status: 'calling' }])
               } else if (parsed.type === 'tool_result') {
@@ -438,12 +486,18 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       setStreamingContent('')
       setToolCalls([])
 
-      if (assistantContent || completedToolCalls.length > 0) {
+      const finalContent = contentRef.current
+      const finalReasoning = reasoningRef.current
+
+      // Hide streaming bubble BEFORE adding message to avoid duplicate rendering
+      setStreaming(false)
+
+      if (finalContent || completedToolCalls.length > 0) {
         const assistantMessage: MessageItem = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: assistantContent || 'I used the available tools to look that up.',
-          reasoning: assistantReasoning || undefined,
+          content: finalContent || 'I used the available tools to look that up.',
+          reasoning: finalReasoning || undefined,
           usage: finalUsage,
           createdAt: new Date().toISOString(),
         }
@@ -452,9 +506,9 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
           messages: [...conv.messages, assistantMessage],
         }))
 
-        if (convId) {
+        if (convId && !convId.startsWith('temp-')) {
           try {
-            await messagesApi.send(convId, assistantContent || 'I used the available tools to look that up.', 'assistant', {
+            await messagesApi.send(convId, finalContent || 'I used the available tools to look that up.', 'assistant', {
               ...(finalUsage ? { inputTokens: finalUsage.promptTokens, outputTokens: finalUsage.completionTokens } : {}),
               responseTimeMs: Date.now() - streamStartTime,
             })
@@ -471,7 +525,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       setToolCalls([])
       abortRef.current = null
     }
-  }, [queueStreamingContent, updateActiveConversation, reasoningOverride, activeConvId, useKnowledge, useTools, toolsAllowed])
+  }, [updateActiveConversation, reasoningOverride, activeConvId, useKnowledge, useTools, toolsAllowed])
 
   const handleSendMessage = useCallback(async () => {
     const trimmed = inputValue.trim()
@@ -497,7 +551,10 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       timestamp: 'Just now',
     }))
 
-    if (activeConvId) {
+    // Scroll to bottom immediately after user message is added
+    requestAnimationFrame(() => scrollToBottom('auto'))
+
+    if (activeConvId && !activeConvId.startsWith('temp-')) {
       try {
         await messagesApi.send(activeConvId, trimmed, 'user')
       } catch { /* non-blocking */ }
@@ -542,7 +599,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       timestamp: 'Just now',
     }))
 
-    if (activeConvId) {
+    if (activeConvId && !activeConvId.startsWith('temp-')) {
       try {
         await messagesApi.send(activeConvId, trimmed, 'user')
       } catch { /* non-blocking */ }
@@ -566,11 +623,13 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
   const handleClearConversations = useCallback(() => {
     if (abortRef.current) abortRef.current.abort()
+    initDone.current = false
     setStreaming(false)
     setStreamingContent('')
     setStreamingReasoning('')
     setToolCalls([])
     setError('')
+    setConversations([])
 
     for (const conv of conversations) {
       deleteConv.mutate(conv.id)
@@ -656,14 +715,29 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                   <p className="text-xs">No conversations</p>
                 </div>
               ) : (
-                filteredConversations.map((conv) => (
-                  <ConversationItem
-                    key={conv.id}
-                    conversation={conv}
-                    isActive={conv.id === activeConvId}
-                    onClick={() => setActiveConvId(conv.id)}
-                  />
-                ))
+                <>
+                  {filteredConversations.map((conv) => (
+                    <ConversationItem
+                      key={conv.id}
+                      conversation={conv}
+                      isActive={conv.id === activeConvId}
+                      onClick={() => setActiveConvId(conv.id)}
+                    />
+                  ))}
+                  {hasNextPage && (
+                    <button
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
+                      className="w-full text-center py-2 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                    >
+                      {isFetchingNextPage ? (
+                        <Loader2 className="size-3 animate-spin mx-auto" />
+                      ) : (
+                        'Load more'
+                      )}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -770,7 +844,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                     {reasoningOptions && (
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium">Reasoning effort</Label>
-                        <Select value={reasoningOverride} onValueChange={setReasoningOverride}>
+                        <Select value={reasoningOverride} onValueChange={(v) => setReasoningOverride(v)}>
                           <SelectTrigger className="h-9">
                             <SelectValue placeholder="Agent default" />
                           </SelectTrigger>
@@ -957,6 +1031,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
               })}
 
               {streaming && (
+                <div ref={(el) => { if (el) streamingEndRef.current = el }}>
                 <Message align="start">
                   <MessageAvatar>
                     <div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
@@ -1008,13 +1083,16 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                       <BubbleContent>
                         {streamingContent ? (
                           <AiResponse content={streamingContent} isStreaming showActions={false} />
-                        ) : streaming ? (
+                        ) : showReasoning && streamingReasoning ? (
                           <TypingIndicator />
-                        ) : null}
+                        ) : (
+                          <TypingIndicator />
+                        )}
                       </BubbleContent>
                     </Bubble>
                   </MessageContent>
                 </Message>
+                </div>
               )}
               {error && (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
