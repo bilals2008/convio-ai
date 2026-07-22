@@ -1,7 +1,7 @@
 import { generateText, streamText, jsonSchema } from 'ai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
-import { toProviderError } from './errors.js'
+import { toProviderError, isUpstreamFailure, sleep } from './errors.js'
 
 const ZEN_API_BASE = 'https://opencode.ai/zen/v1'
 
@@ -33,26 +33,34 @@ export class OpenCodeProvider implements AIProvider {
   }
 
   async generate(params: GenerateParams): Promise<GenerateResult> {
-    try {
-      const result = await generateText({
-        model: this.getClient(params.apiKey).chatModel(stripPrefix(params.model)),
-        messages: params.messages,
-        allowSystemInMessages: true,
-        temperature: params.temperature,
-        maxOutputTokens: params.maxTokens,
-      })
+    const maxRetries = 2
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await generateText({
+          model: this.getClient(params.apiKey).chatModel(stripPrefix(params.model)),
+          messages: params.messages,
+          allowSystemInMessages: true,
+          temperature: params.temperature,
+          maxOutputTokens: params.maxTokens,
+        })
 
-      return {
-        content: result.text,
-        usage: {
-          promptTokens: result.usage.inputTokens ?? 0,
-          completionTokens: result.usage.outputTokens ?? 0,
-          totalTokens: result.usage.totalTokens ?? 0,
-        },
+        return {
+          content: result.text,
+          usage: {
+            promptTokens: result.usage.inputTokens ?? 0,
+            completionTokens: result.usage.outputTokens ?? 0,
+            totalTokens: result.usage.totalTokens ?? 0,
+          },
+        }
+      } catch (error) {
+        if (attempt < maxRetries && isUpstreamFailure(error)) {
+          await sleep(1000 * attempt)
+          continue
+        }
+        throw toProviderError(error, 'OpenCode')
       }
-    } catch (error) {
-      throw toProviderError(error, 'OpenCode')
     }
+    throw new Error('Unreachable')
   }
 
   async *stream(params: GenerateParams): AsyncIterable<StreamChunk> {
@@ -61,47 +69,55 @@ export class OpenCodeProvider implements AIProvider {
       return acc
     }, {} as any)
 
-    try {
-      const result = streamText({
-        model: this.getClient(params.apiKey).chatModel(stripPrefix(params.model)),
-        messages: params.messages,
-        allowSystemInMessages: true,
-        temperature: params.temperature,
-        maxOutputTokens: params.maxTokens,
-        ...(tools && Object.keys(tools).length > 0 && { tools }),
-      })
+    const maxRetries = 2
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = streamText({
+          model: this.getClient(params.apiKey).chatModel(stripPrefix(params.model)),
+          messages: params.messages,
+          allowSystemInMessages: true,
+          temperature: params.temperature,
+          maxOutputTokens: params.maxTokens,
+          ...(tools && Object.keys(tools).length > 0 && { tools }),
+        })
 
-      for await (const chunk of result.fullStream) {
-        if (chunk.type === 'text-delta' && chunk.text) {
-          yield { type: 'text', content: chunk.text }
-        }
-        if (chunk.type === 'reasoning-delta' && chunk.text) {
-          yield { type: 'reasoning', content: chunk.text }
-        }
-        if (chunk.type === 'tool-call') {
-          yield {
-            type: 'tool_call',
-            toolCall: {
-              id: chunk.toolCallId,
-              name: chunk.toolName,
-              arguments: chunk.input as Record<string, unknown>,
-            },
+        for await (const chunk of result.fullStream) {
+          if (chunk.type === 'text-delta' && chunk.text) {
+            yield { type: 'text', content: chunk.text }
+          }
+          if (chunk.type === 'reasoning-delta' && chunk.text) {
+            yield { type: 'reasoning', content: chunk.text }
+          }
+          if (chunk.type === 'tool-call') {
+            yield {
+              type: 'tool_call',
+              toolCall: {
+                id: chunk.toolCallId,
+                name: chunk.toolName,
+                arguments: chunk.input as Record<string, unknown>,
+              },
+            }
+          }
+          if (chunk.type === 'finish') {
+            const u = chunk.totalUsage
+            yield {
+              type: 'done',
+              usage: u ? {
+                promptTokens: u.inputTokens ?? 0,
+                completionTokens: u.outputTokens ?? 0,
+                totalTokens: u.totalTokens ?? 0,
+              } : undefined,
+            }
           }
         }
-        if (chunk.type === 'finish') {
-          const u = chunk.totalUsage
-          yield {
-            type: 'done',
-            usage: u ? {
-              promptTokens: u.inputTokens ?? 0,
-              completionTokens: u.outputTokens ?? 0,
-              totalTokens: u.totalTokens ?? 0,
-            } : undefined,
-          }
+        return
+      } catch (error) {
+        if (attempt < maxRetries && isUpstreamFailure(error)) {
+          await sleep(1000 * attempt)
+          continue
         }
+        throw toProviderError(error, 'OpenCode')
       }
-    } catch (error) {
-      throw toProviderError(error, 'OpenCode')
     }
   }
 
@@ -134,9 +150,9 @@ export class OpenCodeProvider implements AIProvider {
       return [
         { id: 'opencode/deepseek-v4-flash-free', name: 'DeepSeek V4 Flash Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
         { id: 'opencode/mimo-v2.5-free', name: 'Mimo 2.5 Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
-        { id: 'opencode/hy3-free', name: 'Hy3 Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
         { id: 'opencode/nemotron-3-ultra-free', name: 'Nemotron 3 Ultra Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
         { id: 'opencode/north-mini-code-free', name: 'North Mini Code Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
+        { id: 'opencode/laguna-s-2.1-free', name: 'Laguna S 2.1 Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
       ]
     }
   }

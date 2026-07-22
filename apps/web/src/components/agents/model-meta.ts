@@ -23,7 +23,7 @@ export function getModelBadges(model: { id: string; name: string; provider?: str
   if (/vision/.test(haystack)) {
     badges.push({ label: "Vision", tone: "vision" })
   }
-  if (/(o1|o3|o4|r1|reasoning|thinking|qwq|deepseek-r1)/.test(haystack)) {
+  if (/(o1|o3|o4|r1|reasoning|thinking|qwq|deepseek-r1|deepseek-v4)/.test(haystack)) {
     badges.push({ label: "Reasoning", tone: "reasoning" })
   }
 

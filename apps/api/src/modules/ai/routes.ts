@@ -76,22 +76,27 @@ export async function chatWithAgent(
   let firstResponseText = ''
   const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
 
-  const stream = provider.stream({
-    model: agent.model,
-    messages: systemMessages,
-    temperature: agent.temperature ?? 0.7,
-    maxTokens: agent.maxTokens ?? 2048,
-    apiKey,
-    tools: toolDefs.length > 0 ? toolDefs : undefined,
-  })
+  try {
+    const stream = provider.stream({
+      model: agent.model,
+      messages: systemMessages,
+      temperature: agent.temperature ?? 0.7,
+      maxTokens: agent.maxTokens ?? 2048,
+      apiKey,
+      tools: toolDefs.length > 0 ? toolDefs : undefined,
+    })
 
-  for await (const chunk of stream) {
-    if (chunk.type === 'text' && chunk.content) {
-      firstResponseText += chunk.content
-    } else if (chunk.type === 'tool_call' && chunk.toolCall) {
-      toolCallsFromStream.push({ tool: chunk.toolCall.name, args: chunk.toolCall.arguments })
+    for await (const chunk of stream) {
+      if (chunk.type === 'text' && chunk.content) {
+        firstResponseText += chunk.content
+      } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+        toolCallsFromStream.push({ tool: chunk.toolCall.name, args: chunk.toolCall.arguments })
+      }
+      if (chunk.type === 'done') break
     }
-    if (chunk.type === 'done') break
+  } catch (error) {
+    const rawMessage = error instanceof Error ? error.message : 'Generation failed'
+    throw new Error(rawMessage)
   }
 
   if (toolCallsFromStream.length === 0) {
@@ -112,23 +117,27 @@ export async function chatWithAgent(
     .join('\n\n')
 
   let finalResponse = ''
-  const finalStream = provider.stream({
-    model: agent.model,
-    messages: [
-      ...systemMessages,
-      { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
-      { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
-    ],
-    temperature: agent.temperature ?? 0.7,
-    maxTokens: agent.maxTokens ?? 2048,
-    apiKey,
-  })
+  try {
+    const finalStream = provider.stream({
+      model: agent.model,
+      messages: [
+        ...systemMessages,
+        { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
+        { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
+      ],
+      temperature: agent.temperature ?? 0.7,
+      maxTokens: agent.maxTokens ?? 2048,
+      apiKey,
+    })
 
-  for await (const chunk of finalStream) {
-    if (chunk.type === 'text' && chunk.content) {
-      finalResponse += chunk.content
+    for await (const chunk of finalStream) {
+      if (chunk.type === 'text' && chunk.content) {
+        finalResponse += chunk.content
+      }
+      if (chunk.type === 'done') break
     }
-    if (chunk.type === 'done') break
+  } catch {
+    return firstResponseText
   }
 
   return finalResponse || firstResponseText

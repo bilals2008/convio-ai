@@ -40,6 +40,9 @@ export function getReasoningEfforts(model: { id: string; provider?: string }): R
       if (/(r1|reasoner)/.test(id)) return null
       if (/v4/.test(id)) return options(["high", "max"])
       return null
+    case "opencode":
+      if (/deepseek-v4/.test(id)) return options(["high", "max"])
+      return null
     case "anthropic":
       return options(["low", "medium", "high"])
     case "local":
