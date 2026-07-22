@@ -334,6 +334,7 @@ export default function AgentDetailPage() {
         agentName={values.name || agent.name}
         agentAvatar={agent.avatar}
         agentDescription={values.description || agent.description}
+        activeTab={activeTab}
         isSaving={updateMutation.isPending}
         onSave={handleSave}
         onCopyLink={() => navigator.clipboard.writeText(window.location.href)}

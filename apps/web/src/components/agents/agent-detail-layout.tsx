@@ -26,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 function ScrollableTabs({ children }: { children: ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -73,6 +74,7 @@ interface AgentDetailLayoutProps {
   agentName: string
   agentAvatar?: string | null
   agentDescription?: string | null
+  activeTab?: string
   isSaving?: boolean
   onSave?: () => void
   onCopyLink?: () => void
@@ -87,6 +89,7 @@ export function AgentDetailLayout({
   agentName,
   agentAvatar,
   agentDescription,
+  activeTab,
   isSaving = false,
   onSave,
   onCopyLink,
@@ -199,7 +202,14 @@ export function AgentDetailLayout({
       <ScrollableTabs>{tabs}</ScrollableTabs>
       <Separator />
 
-      <div className="flex-1 min-h-0 overflow-auto px-6 py-5">{children}</div>
+      <div className={cn(
+        'flex-1 min-h-0',
+        activeTab === 'test-chat'
+          ? 'overflow-hidden flex flex-col'
+          : 'overflow-auto px-6 py-5'
+      )}>
+        {children}
+      </div>
     </div>
   )
 }
