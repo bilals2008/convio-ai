@@ -109,6 +109,34 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     return { data: invoices }
   })
 
+  // POST /api/organizations/:orgId/billing/claim-pro — Temporary: grant Pro plan for free
+  fastify.post('/organizations/:orgId/billing/claim-pro', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: orgParamsSchema }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+
+    await fastify.ensureAdmin(request.userId!, orgId)
+
+    const org = await prisma.organization.findUnique({ where: { id: orgId } })
+    if (!org) throw new AppError(404, 'Organization not found')
+
+    if (org.plan === 'pro') {
+      return { data: { plan: 'pro', message: 'Pro plan already active' } }
+    }
+
+    await prisma.organization.update({
+      where: { id: orgId },
+      data: { plan: 'pro' },
+    })
+
+    fastify.log.info({ orgId }, 'Pro plan claimed for free (temporary promotion)')
+
+    return { data: { plan: 'pro', message: 'Pro plan activated!' } }
+  })
+
   // POST /api/organizations/:orgId/billing/checkout
   fastify.post('/organizations/:orgId/billing/checkout', {
     preHandler: [

@@ -28,6 +28,7 @@
     "@fastify/swagger": "^9.0.0",
     "@fastify/swagger-ui": "^5.0.0",
     "@fastify/type-provider-typebox": "^5.0.0",
+    "@huggingface/transformers": "^3.8.1",
     "@kapso/whatsapp-cloud-api": "^0.2.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@opendataloader/pdf": "^2.4.7",

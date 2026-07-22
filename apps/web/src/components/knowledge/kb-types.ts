@@ -16,8 +16,8 @@ export interface KbSettings {
 }
 
 export const DEFAULT_KB_SETTINGS: KbSettings = {
-  embeddingModel: 'text-embedding-3-small',
-  embeddingDimensions: 1536,
+  embeddingModel: 'all-MiniLM-L6-v2',
+  embeddingDimensions: 384,
   chunkSize: 1000,
   chunkOverlap: 40,
   retrieverTopK: 5,

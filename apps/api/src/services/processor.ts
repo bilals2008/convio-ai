@@ -55,9 +55,8 @@ function chunkText(text: string): string[] {
 }
 
 /**
- * text-embedding-3-small is 1536-d — matches DocumentChunk vector(1536).
- * Prefers OpenAI when OPENAI_API_KEY is set, else falls back to the local
- * (GitHub Models) provider via GITHUB_PAT.
+ * all-MiniLM-L6-v2 is 384-d — matches DocumentChunk vector(384).
+ * Prefers OpenAI when OPENAI_API_KEY is set, else uses local transformers.js model.
  */
 export async function embedText(text: string): Promise<number[] | null> {
   const providerId = process.env.OPENAI_API_KEY ? 'openai' : 'local'
@@ -260,7 +259,7 @@ export async function processDocument(
     const embeddedCount = Number(withEmbeddings[0]?.count ?? 0)
     if (embeddedCount === 0) {
       throw new Error(
-        'Chunks stored but embeddings failed. Configure a GitHub PAT with models:read scope in OmniRoute for text-embedding-3-small.',
+        'Chunks stored but embeddings failed. The all-MiniLM-L6-v2 model may still be downloading.',
       )
     }
 

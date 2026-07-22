@@ -230,7 +230,7 @@ model DocumentChunk {
   id         String                 @id @default(uuid())
   documentId String
   content    String
-  embedding  Unsupported("vector(1536)")?
+  embedding  Unsupported("vector(384)")?
   createdAt  DateTime               @default(now()) @db.Timestamptz(6)
   document   Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
 

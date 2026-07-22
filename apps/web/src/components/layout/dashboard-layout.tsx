@@ -5,6 +5,7 @@ import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { SidebarContext } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
+import { ProClaimModal } from '@/components/landing/pro-claim-modal'
 
 export function DashboardLayout() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -38,6 +39,7 @@ export function DashboardLayout() {
             <Outlet />
           </main>
         </div>
+        <ProClaimModal />
       </div>
     </SidebarContext.Provider>
   )

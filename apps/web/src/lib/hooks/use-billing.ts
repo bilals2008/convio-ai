@@ -86,6 +86,20 @@ export function useCheckout() {
   })
 }
 
+export function useClaimPro() {
+  const { orgId } = useOrg()
+
+  return useMutation({
+    mutationFn: () => billing.claimPro(orgId!),
+    onSuccess: () => {
+      toast.success('Pro plan activated! Welcome to Pro.')
+    },
+    onError: () => {
+      toast.error('Failed to claim Pro plan. Please try again.')
+    },
+  })
+}
+
 export function usePortal() {
   const { orgId } = useOrg()
 

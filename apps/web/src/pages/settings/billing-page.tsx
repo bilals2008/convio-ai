@@ -15,6 +15,7 @@ import {
   Loader2,
   Search,
   X,
+  Sparkles,
 } from 'lucide-react'
 import { InvoiceTable, type Invoice } from '@/components/settings/invoice-table'
 import { PageHeader } from '@/components/shared/page-header'
@@ -31,6 +32,7 @@ import {
   useInvoices,
   useCheckout,
   usePortal,
+  useClaimPro,
 } from '@/lib/hooks/use-billing'
 
 interface PlanData {
@@ -142,11 +144,14 @@ export default function BillingPage() {
   const invoices = useInvoices()
   const checkout = useCheckout()
   const portal = usePortal()
+  const claimPro = useClaimPro()
 
   const pendingPlan = searchParams.get('plan')
   const pendingPeriod = searchParams.get('billing')
   const checkoutSuccess = searchParams.get('checkout') === 'success'
+  const claimProParam = searchParams.get('claim') === 'pro'
   const checkoutTriggered = useRef(false)
+  const claimTriggered = useRef(false)
 
   // Show success toast when returning from checkout
   useEffect(() => {
@@ -181,12 +186,24 @@ export default function BillingPage() {
     }
   }, [pendingPlan, pendingPeriod, orgId, checkout, setSearchParams])
 
-  const handlePortal = () => {
-    if (!subscription.data) {
-      toast.error('No active subscription found. Upgrade to a paid plan first.')
-      return
+  // Auto-claim Pro when arriving with ?claim=pro
+  useEffect(() => {
+    if (claimProParam && orgId && !claimTriggered.current && !claimPro.isPending) {
+      claimTriggered.current = true
+      claimPro.mutate(undefined, {
+        onSuccess: () => {
+          setSearchParams({}, { replace: true })
+          plan.refetch()
+        },
+        onError: () => {
+          setSearchParams({}, { replace: true })
+        },
+      })
     }
-    portal.mutate()
+  }, [claimProParam, orgId, claimPro, setSearchParams, plan])
+
+  const handlePortal = () => {
+    toast.info('Subscription management coming soon.')
   }
 
   const handleUpgrade = () => {
@@ -195,11 +212,15 @@ export default function BillingPage() {
       window.open('https://convio.ai/contact', '_blank', 'noopener,noreferrer')
       return
     }
+    if (plan.data.name === 'free') {
+      claimPro.mutate()
+      return
+    }
     toast.info('Paid plans are coming soon! Stay tuned.')
   }
 
   const pageLoading = orgLoading
-  const isCheckoutRedirecting = checkout.isPending
+  const isCheckoutRedirecting = checkout.isPending || claimPro.isPending
 
   return (
     <div className="space-y-6">
@@ -234,6 +255,19 @@ export default function BillingPage() {
         </div>
       )}
 
+      {/* Temporary: Promo banner for free users */}
+      {plan.data?.name === 'free' && (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+          <Sparkles className="size-4 shrink-0 text-emerald-500" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              Limited time offer — get <span className="text-emerald-500">Pro plan</span> free!
+            </p>
+            <p className="text-xs text-muted-foreground">No credit card required. Claim below.</p>
+          </div>
+        </div>
+      )}
+
       <KPISection
         orgLoading={pageLoading}
         invoices={invoices.data}
@@ -257,7 +291,7 @@ export default function BillingPage() {
           onRetry={() => plan.refetch()}
           onUpgrade={handleUpgrade}
           onPortal={handlePortal}
-          checkoutPending={checkout.isPending}
+          checkoutPending={checkout.isPending || claimPro.isPending}
           portalPending={portal.isPending}
         />
         <BillingHistoryCard
@@ -475,23 +509,35 @@ function PlanCard({
         </Button>
       ) : isFreePlan ? (
         <Button
-          className="mt-6 w-full"
-          variant="outline"
+          className="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 text-white"
           onClick={onUpgrade}
-          disabled
+          disabled={checkoutPending}
         >
-          <Star className="size-4" />
-          Coming Soon
+          {checkoutPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Star className="size-4" />
+          )}
+          {checkoutPending ? 'Activating...' : 'Claim Pro Free'}
         </Button>
-      ) : (
+      ) : hasSubscription ? (
         <Button
           variant="outline"
           className="mt-6 w-full"
           onClick={onPortal}
-          disabled={portalPending || !hasSubscription}
+          disabled={portalPending}
         >
           {portalPending ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
           {portalPending ? 'Opening portal...' : 'Manage Subscription'}
+        </Button>
+      ) : (
+        <Button
+          className="mt-6 w-full"
+          variant="outline"
+          disabled
+        >
+          <Star className="size-4" />
+          Pro Active
         </Button>
       )}
     </div>

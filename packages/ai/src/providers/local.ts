@@ -3,6 +3,15 @@ import { toProviderError } from './errors.js'
 
 const LOCAL_BASE = process.env.LOCAL_API_URL || 'http://localhost:20128/v1'
 
+let embedPipeline: any = null
+async function getEmbedPipeline() {
+  if (!embedPipeline) {
+    const { pipeline } = await import('@huggingface/transformers')
+    embedPipeline = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2')
+  }
+  return embedPipeline
+}
+
 export class LocalProvider implements AIProvider {
   id = 'local'
   name = 'OmniRoute'
@@ -148,28 +157,9 @@ export class LocalProvider implements AIProvider {
 
   async embed(text: string): Promise<number[]> {
     try {
-      const apiKey = process.env.GITHUB_PAT || process.env.LOCAL_API_KEY
-      const baseUrl = process.env.EMBEDDING_BASE_URL || 'https://models.inference.ai.azure.com'
-
-      const res = await fetch(`${baseUrl}/embeddings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'text-embedding-3-small',
-          input: text,
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.text().catch(() => res.statusText)
-        throw new Error(`Embedding API error (${res.status}): ${err}`)
-      }
-
-      const data = await res.json() as { data: Array<{ embedding: number[] }> }
-      return data.data?.[0]?.embedding ?? []
+      const pipe = await getEmbedPipeline()
+      const result = await pipe(text, { pooling: 'mean', normalize: true })
+      return Array.from(result.data) as number[]
     } catch (error) {
       throw toProviderError(error, 'OmniRoute')
     }

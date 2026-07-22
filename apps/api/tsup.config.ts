@@ -21,5 +21,6 @@ export default defineConfig({
     '@prisma/client',
     '@prisma/adapter-pg',
     '@prisma/driver-adapter-utils',
+    '@huggingface/transformers',
   ],
 })
