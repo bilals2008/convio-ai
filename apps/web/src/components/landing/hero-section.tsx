@@ -52,7 +52,6 @@ export function HeroSection() {
                 <path d="M2 9C60 3 240 3 298 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
               </svg>
             </span>
-            .
           </h1>
 
           <p className="mt-5 max-w-[520px] text-[clamp(15px,1.5vw,18px)] leading-[1.6] text-muted-foreground">
@@ -77,21 +76,21 @@ export function HeroSection() {
             <span className="inline-flex items-center gap-1">
               <Check className="size-3.5 text-primary" /> Free forever plan
             </span>
-            <span className="opacity-40">·</span>
+
             <span className="inline-flex items-center gap-1">
               <Check className="size-3.5 text-primary" /> No credit card
             </span>
           </div>
 
-          <div className="mt-6 flex items-center gap-6 text-[13px] text-muted-foreground">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <Globe className="size-3.5 text-primary/70" /> 5 channels
+              <Globe className="size-3.5 shrink-0 text-primary/70" /> 5 channels
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <MessageSquare className="size-3.5 text-primary/70" /> Unlimited agents
+              <MessageSquare className="size-3.5 shrink-0 text-primary/70" /> Unlimited agents
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <BarChart3 className="size-3.5 text-primary/70" /> Built-in analytics
+              <BarChart3 className="size-3.5 shrink-0 text-primary/70" /> Built-in analytics
             </span>
           </div>
         </div>
