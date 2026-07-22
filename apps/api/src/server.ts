@@ -16,6 +16,7 @@ import billingLimitsPlugin from './plugins/billing-limits.js'
 import auditLoggerPlugin from './plugins/audit-logger.js'
 import swaggerPlugin from './plugins/swagger.js'
 import rateLimitPlugin from './plugins/rate-limit.js'
+import helmetPlugin from './plugins/helmet.js'
 import multipart from '@fastify/multipart'
 import formbody from '@fastify/formbody'
 
@@ -47,6 +48,7 @@ async function buildServer() {
 
   // Plugins
   await app.register(configPlugin)
+  await app.register(helmetPlugin)
   await app.register(errorHandlerPlugin)
   await app.register(corsPlugin)
   await app.register(authPlugin)

@@ -435,9 +435,18 @@ model Invoice {
   @@map("invoices")
 }
 
+model LoginActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  ipAddress String   @map("ip_address")
+  device    String?
+  browser   String?
+  os        String?
+  location  String?
+  status    String   @default("success")
+  createdAt DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
 
-
-
-
-
-
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("login_activity")
+}

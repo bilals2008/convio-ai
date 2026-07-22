@@ -34,8 +34,6 @@ class EmailService {
 
     const roleLabel = role.charAt(0).toUpperCase() + role.slice(1)
 
-    console.log(`[Email] Sending invite to ${to} for ${orgName}...`)
-
     const html = await render(
       <InviteEmail
         inviterName={inviterName}

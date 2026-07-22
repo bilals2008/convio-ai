@@ -9,7 +9,7 @@
     "test:watch": "vitest",
     "dev": "tsx watch src/server.ts",
     "build": "tsup",
-    "start": "node dist/server.js",
+    "start": "node dist/server.cjs",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/"
   },
@@ -22,6 +22,7 @@
     "@fastify/cors": "^10.0.0",
     "@fastify/error": "^4.0.0",
     "@fastify/formbody": "^8.0.2",
+    "@fastify/helmet": "^12.0.0",
     "@fastify/multipart": "^10.1.0",
     "@fastify/rate-limit": "^10.0.0",
     "@fastify/swagger": "^9.0.0",
