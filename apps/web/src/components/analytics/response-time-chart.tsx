@@ -3,6 +3,7 @@ import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/
 import { ChartTooltipContent } from '@/components/application/charts/charts-base'
 import { Line, LineChart, CartesianGrid, XAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Timer } from 'lucide-react'
 
 interface ChartDataPoint {
   date: string
@@ -35,6 +36,14 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (
           <Skeleton className="h-[200px] w-full" />
+        ) : chartData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-amber-500/10 mb-3">
+              <Timer className="size-5 text-amber-500" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No response time data</p>
+            <p className="text-xs text-muted-foreground mt-1">Response time trends will appear once your agents handle conversations.</p>
+          </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
             <LineChart data={chartData}>

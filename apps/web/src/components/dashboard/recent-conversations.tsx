@@ -87,8 +87,17 @@ export function RecentConversations() {
         </Link>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="divide-y divide-border">
-          {conversations.map((conv: { id: string; agentName: string; channel: string; status: string; lastMessage: string; timestamp: string }) => (
+        {conversations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-info/10 mb-3">
+              <MessageSquare className="size-5 text-info" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No conversations yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Conversations will appear here once users start chatting with your agents.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {conversations.map((conv: { id: string; agentName: string; channel: string; status: string; lastMessage: string; timestamp: string }) => (
             <div key={conv.id} className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
               <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
                 <MessageSquare className="size-4 text-primary" />
@@ -112,7 +121,8 @@ export function RecentConversations() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

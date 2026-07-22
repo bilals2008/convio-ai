@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
+import { Globe } from 'lucide-react'
 
 const channelLabels: Record<string, string> = {
   web: 'Web',
@@ -22,18 +23,13 @@ interface ChannelPerformanceChartProps {
 }
 
 export function ChannelPerformanceChart({ data, loading }: ChannelPerformanceChartProps) {
-  const chartData = (data || []).length > 0
-    ? data.map((d) => ({
+  const hasData = (data || []).length > 0 && data!.some((d) => d.count > 0)
+  const chartData = hasData
+    ? data!.map((d) => ({
         channel: channelLabels[d.channel] || d.channel.charAt(0).toUpperCase() + d.channel.slice(1),
         conversations: d.count,
       }))
-    : [
-        { channel: 'Web', conversations: 0 },
-        { channel: 'WhatsApp', conversations: 0 },
-        { channel: 'Discord', conversations: 0 },
-        { channel: 'Slack', conversations: 0 },
-        { channel: 'Telegram', conversations: 0 },
-      ]
+    : []
 
   return (
     <Card>
@@ -46,6 +42,14 @@ export function ChannelPerformanceChart({ data, loading }: ChannelPerformanceCha
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (
           <Skeleton className="h-[200px] w-full" />
+        ) : !hasData ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-violet-500/10 mb-3">
+              <Globe className="size-5 text-violet-500" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No channel data yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Channel performance will appear once conversations come in.</p>
+          </div>
         ) : (
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">

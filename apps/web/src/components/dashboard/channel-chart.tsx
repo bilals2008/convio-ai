@@ -3,6 +3,7 @@ import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/
 import { ChartTooltipContent } from '@/components/application/charts/charts-base'
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
+import { MessageSquare } from 'lucide-react'
 
 interface ChartDataPoint {
   date: string
@@ -35,6 +36,14 @@ export function ChannelChart({ data, loading }: ChannelChartProps) {
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (
           <Skeleton className="h-[200px] w-full" />
+        ) : chartData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 mb-3">
+              <MessageSquare className="size-5 text-primary" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No conversations yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Data will appear here once your agents start receiving conversations.</p>
+          </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
             <BarChart data={chartData}>

@@ -231,8 +231,14 @@ export function TopAgentsTable() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  No agents found.
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 mb-2">
+                      <Bot className="size-5 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">No agents yet</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Create an agent to see its performance here.</p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}

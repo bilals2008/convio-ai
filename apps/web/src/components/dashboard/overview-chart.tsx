@@ -3,6 +3,7 @@ import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from '@/c
 import { ChartTooltipContent, ChartLegendContent } from '@/components/application/charts/charts-base'
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BarChart3 } from 'lucide-react'
 
 interface ChartDataPoint {
   date: string
@@ -40,6 +41,14 @@ export function OverviewChart({ data, loading }: OverviewChartProps) {
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (
           <Skeleton className="h-[280px] w-full" />
+        ) : chartData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-blue-500/10 mb-3">
+              <BarChart3 className="size-6 text-blue-500" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No analytics data yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Conversation and message trends will appear here once activity starts.</p>
+          </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[280px] w-full">
             <AreaChart data={chartData}>
