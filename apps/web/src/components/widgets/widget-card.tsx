@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Archive, Bot, Check, Clock, Copy, Eye, Globe2, LayoutDashboard, MoreVertical } from 'lucide-react'
+import { Bot, Check, Clock, Copy, Eye, Globe2, LayoutDashboard, MoreVertical, Trash2 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -13,7 +13,7 @@ import type { WidgetSummary } from '@/lib/hooks/use-widgets'
 interface WidgetCardProps {
   widget: WidgetSummary
   onCopyEmbed: (widget: WidgetSummary) => void
-  onArchive: (widget: WidgetSummary) => void
+  onDelete: (widget: WidgetSummary) => void
   selectionMode?: boolean
   isSelected?: boolean
   onToggleSelect?: () => void
@@ -23,7 +23,6 @@ const STATUS_META: Record<string, { label: string; className: string; dot: strin
   active: { label: 'Live', className: 'border-success/20 bg-success/10 text-success', dot: 'bg-success' },
   paused: { label: 'Paused', className: 'border-warning/20 bg-warning/10 text-warning', dot: 'bg-warning' },
   draft: { label: 'Draft', className: 'border-border bg-muted/40 text-muted-foreground', dot: 'bg-muted-foreground' },
-  archived: { label: 'Archived', className: 'border-border bg-muted/40 text-muted-foreground', dot: 'bg-muted-foreground' },
 }
 
 function statusMeta(status: string) {
@@ -66,7 +65,7 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-export function WidgetCard({ widget, onCopyEmbed, onArchive, selectionMode, isSelected, onToggleSelect }: WidgetCardProps) {
+export function WidgetCard({ widget, onCopyEmbed, onDelete, selectionMode, isSelected, onToggleSelect }: WidgetCardProps) {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
 
@@ -174,10 +173,10 @@ export function WidgetCard({ widget, onCopyEmbed, onArchive, selectionMode, isSe
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
-                  onClick={(e) => { e.stopPropagation(); onArchive(widget) }}
+                  onClick={(e) => { e.stopPropagation(); onDelete(widget) }}
                 >
-                  <Archive className="size-4" />
-                  Archive
+                  <Trash2 className="size-4" />
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

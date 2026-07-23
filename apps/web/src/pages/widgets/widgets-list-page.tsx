@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { LayoutDashboard, Plus, Rocket, Globe2, Clock, ArrowDownAZ, ArrowUpAZ, SlidersHorizontal, AlertCircle, Archive, CheckSquare, Square } from 'lucide-react'
+import { LayoutDashboard, Plus, Rocket, Globe2, Clock, ArrowDownAZ, ArrowUpAZ, SlidersHorizontal, AlertCircle, CheckSquare, Square, Trash2 } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageContainer } from '@/components/shared/page-container'
@@ -43,7 +43,7 @@ const createWidgetSchema = z.object({
 })
 type CreateWidgetValues = z.infer<typeof createWidgetSchema>
 
-type FilterStatus = 'all' | 'active' | 'paused' | 'archived'
+type FilterStatus = 'all' | 'active' | 'paused'
 type SortOption = 'updated' | 'newest' | 'oldest' | 'domains'
 
 export default function WidgetsListPage() {
@@ -55,8 +55,8 @@ export default function WidgetsListPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterStatus>('all')
   const [sort, setSort] = useState<SortOption>('updated')
-  const [archiveTarget, setArchiveTarget] = useState<WidgetSummary | null>(null)
-  const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<WidgetSummary | null>(null)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
 
   const form = useForm<CreateWidgetValues>({
     resolver: zodResolver(createWidgetSchema),
@@ -81,14 +81,14 @@ export default function WidgetsListPage() {
     onError: (error: Error) => toast.error(error.message || 'Could not create widget'),
   })
 
-  const archiveWidget = useMutation({
+  const deleteWidget = useMutation({
     mutationFn: (id: string) => widgetsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['widgets', orgId] })
-      toast.success('Widget archived')
-      setArchiveTarget(null)
+      toast.success('Widget deleted')
+      setDeleteTarget(null)
     },
-    onError: (error: Error) => toast.error(error.message || 'Could not archive widget'),
+    onError: (error: Error) => toast.error(error.message || 'Could not delete widget'),
   })
 
   const copyEmbed = async (widget: WidgetSummary) => {
@@ -132,18 +132,18 @@ export default function WidgetsListPage() {
 
   const bulk = useBulkSelection(filtered)
 
-  const bulkArchiveMutation = useMutation({
+  const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       await Promise.all(ids.map((id) => widgetsApi.delete(id)))
     },
     onSuccess: (_, ids) => {
-      toast.success(`${ids.length} widget${ids.length !== 1 ? 's' : ''} archived`)
+      toast.success(`${ids.length} widget${ids.length !== 1 ? 's' : ''} deleted`)
       queryClient.invalidateQueries({ queryKey: ['widgets', orgId] })
       bulk.exitSelectionMode()
-      setBulkArchiveOpen(false)
+      setBulkDeleteOpen(false)
     },
     onError: () => {
-      toast.error('Failed to archive some widgets')
+      toast.error('Failed to delete some widgets')
     },
   })
 
@@ -180,10 +180,10 @@ export default function WidgetsListPage() {
                   variant="destructive"
                   size="sm"
                   disabled={bulk.selectedCount === 0}
-                  onClick={() => setBulkArchiveOpen(true)}
+                  onClick={() => setBulkDeleteOpen(true)}
                 >
-                  <Archive className="size-4" />
-                  Archive {bulk.selectedCount > 0 ? `(${bulk.selectedCount})` : ''}
+                  <Trash2 className="size-4" />
+                  Delete {bulk.selectedCount > 0 ? `(${bulk.selectedCount})` : ''}
                 </Button>
               }
             />
@@ -221,7 +221,7 @@ export default function WidgetsListPage() {
                 <SelectItem value="all">All status</SelectItem>
                 <SelectItem value="active">Live</SelectItem>
                 <SelectItem value="paused">Paused</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
+
               </SelectContent>
             </Select>
 
@@ -332,7 +332,7 @@ export default function WidgetsListPage() {
                 key={widget.id}
                 widget={widget}
                 onCopyEmbed={copyEmbed}
-                onArchive={(item) => setArchiveTarget(item)}
+                onDelete={(item) => setDeleteTarget(item)}
                 selectionMode={bulk.selectionMode}
                 isSelected={bulk.isSelected(widget.id)}
                 onToggleSelect={() => bulk.toggleSelect(widget.id)}
@@ -342,47 +342,47 @@ export default function WidgetsListPage() {
         </>
       )}
 
-      {/* Bulk archive confirmation */}
-      <AlertDialog open={bulkArchiveOpen} onOpenChange={setBulkArchiveOpen}>
+      {/* Bulk delete confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive {bulk.selectedCount} widget{bulk.selectedCount !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {bulk.selectedCount} widget{bulk.selectedCount !== 1 ? 's' : ''}?</AlertDialogTitle>
             <AlertDialogDescription>
-              {bulk.selectedCount} widget{bulk.selectedCount !== 1 ? 's' : ''} will be archived. You can restore them later from the Archived filter.
+              This will permanently delete {bulk.selectedCount} widget{bulk.selectedCount !== 1 ? 's' : ''}. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkArchiveMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              disabled={bulkArchiveMutation.isPending}
-              onClick={() => bulkArchiveMutation.mutate(Array.from(bulk.selectedIds))}
+              disabled={bulkDeleteMutation.isPending}
+              onClick={() => bulkDeleteMutation.mutate(Array.from(bulk.selectedIds))}
             >
-              {bulkArchiveMutation.isPending ? 'Archiving...' : `Archive ${bulk.selectedCount} widget${bulk.selectedCount !== 1 ? 's' : ''}`}
+              {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete ${bulk.selectedCount} widget${bulk.selectedCount !== 1 ? 's' : ''}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Archive confirmation (single) */}
-      <AlertDialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(null)}>
+      {/* Delete confirmation (single) */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive widget</AlertDialogTitle>
+            <AlertDialogTitle>Delete widget</AlertDialogTitle>
             <AlertDialogDescription>
-              {archiveTarget
-                ? `"${archiveTarget.name}" will be archived. You can restore it later from the Archived filter.`
-                : 'This widget will be archived.'}
+              {deleteTarget
+                ? `"${deleteTarget.name}" will be permanently deleted. This action cannot be undone.`
+                : 'This widget will be permanently deleted.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={archiveWidget.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteWidget.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              disabled={archiveWidget.isPending}
-              onClick={() => archiveTarget && archiveWidget.mutate(archiveTarget.id)}
+              disabled={deleteWidget.isPending}
+              onClick={() => deleteTarget && deleteWidget.mutate(deleteTarget.id)}
             >
-              {archiveWidget.isPending ? 'Archiving...' : 'Archive'}
+              {deleteWidget.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
