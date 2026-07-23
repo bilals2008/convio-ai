@@ -170,6 +170,7 @@ function formatModelLabel(id: string): string {
   return part
     .replace(/[-_]/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/ free$/i, "")
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }

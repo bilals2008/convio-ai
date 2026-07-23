@@ -100,7 +100,7 @@ function statusVariant(status: string) {
 
 function formatModelName(model: string): string {
   const part = model.includes('/') ? model.split('/').slice(1).join('/') : model
-  return part.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim()
+  return part.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').replace(/ free$/i, '').trim()
 }
 
 function formatDate(dateString: string) {

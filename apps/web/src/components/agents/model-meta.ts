@@ -27,8 +27,9 @@ export function getModelBadges(model: { id: string; name: string; provider?: str
     badges.push({ label: "Reasoning", tone: "reasoning" })
   }
 
-  const isFree = model.provider === "local" || /free/.test(haystack)
-  badges.push(isFree ? { label: "Free", tone: "free" } : { label: "Paid", tone: "paid" })
+  if (model.provider === "local") {
+    badges.push({ label: "Free", tone: "free" })
+  }
 
   return badges
 }

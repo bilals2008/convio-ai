@@ -140,7 +140,7 @@ export class OpenCodeProvider implements AIProvider {
         .filter((m: ZenModel) => m.id.endsWith('-free'))
         .map((m: ZenModel) => ({
           id: toPrefixedId(m.id),
-          name: m.id,
+          name: m.id.replace(/-free$/i, ''),
           provider: 'opencode',
           maxTokens: 128000,
           supportsTools: m.id.includes('codex') || !m.id.includes('nano'),
@@ -148,11 +148,11 @@ export class OpenCodeProvider implements AIProvider {
         }))
     } catch {
       return [
-        { id: 'opencode/deepseek-v4-flash-free', name: 'DeepSeek V4 Flash Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
-        { id: 'opencode/mimo-v2.5-free', name: 'Mimo 2.5 Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
-        { id: 'opencode/nemotron-3-ultra-free', name: 'Nemotron 3 Ultra Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
-        { id: 'opencode/north-mini-code-free', name: 'North Mini Code Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
-        { id: 'opencode/laguna-s-2.1-free', name: 'Laguna S 2.1 Free', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
+        { id: 'opencode/deepseek-v4-flash-free', name: 'DeepSeek V4 Flash', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
+        { id: 'opencode/mimo-v2.5-free', name: 'Mimo 2.5', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
+        { id: 'opencode/nemotron-3-ultra-free', name: 'Nemotron 3 Ultra', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
+        { id: 'opencode/north-mini-code-free', name: 'North Mini Code', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
+        { id: 'opencode/laguna-s-2.1-free', name: 'Laguna S 2.1', provider: 'opencode', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
       ]
     }
   }

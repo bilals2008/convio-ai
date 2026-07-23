@@ -153,7 +153,7 @@ export function ModelPicker({
             <ProviderLogo provider={selectedModel.provider} className="size-4" />
             <span className="truncate font-medium">{selectedModel.name}</span>
             <span className="truncate text-xs text-muted-foreground">
-              {selectedModel.id}
+              {selectedModel.id.replace(/-free$/i, '')}
             </span>
           </span>
         ) : loading ? (
@@ -276,7 +276,7 @@ export function ModelPicker({
                             <span className="flex min-w-0 flex-1 flex-col">
                               <span className="truncate text-sm font-medium">{m.name}</span>
                               <span className="truncate font-mono text-[11px] text-muted-foreground">
-                                {m.id}
+                                {m.id.replace(/-free$/i, '')}
                               </span>
                             </span>
                             <ModelBadges badges={badges} className="hidden sm:flex" />

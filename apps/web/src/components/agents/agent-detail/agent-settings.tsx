@@ -21,7 +21,7 @@ function WhatsAppLogo({ className }: { className?: string }) {
 
 function formatModelName(model: string): string {
   const part = model.includes('/') ? model.split('/').slice(1).join('/') : model
-  return part.replace(/[-_]/g, ' ').trim()
+  return part.replace(/[-_]/g, ' ').replace(/ free$/i, '').trim()
 }
 
 interface AgentSettingsProps {

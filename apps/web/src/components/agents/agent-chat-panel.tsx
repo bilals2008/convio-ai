@@ -163,7 +163,7 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
           <span className="text-sm font-semibold">Live Test</span>
           {agentConfig.model && (
             <Badge variant="secondary" className="text-[10px] font-normal">
-              {agentConfig.model}
+              {agentConfig.model.replace(/-free$/i, '').replace(/^[^/]+\//, '')}
             </Badge>
           )}
           {agentConfig.knowledgeBaseId ? (
