@@ -39,6 +39,7 @@ FROM installer AS builder
 WORKDIR /app
 
 # Copy all source code
+COPY apps/api/tsup.config.ts apps/api/tsconfig.json apps/api/
 COPY apps/api/src/ apps/api/src/
 COPY packages/database/src/ packages/database/src/
 COPY packages/config/src/ packages/config/src/
