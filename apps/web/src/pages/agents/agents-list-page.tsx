@@ -33,7 +33,6 @@ import { SearchInput } from '@/components/shared/search-input'
 import { BulkActionBar } from '@/components/shared/bulk-action-bar'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -153,10 +152,10 @@ function AgentCard({
       <CardContent className="flex h-full flex-col gap-3 p-4">
       <div className="flex items-start gap-3">
         {showCheckbox && (
-          <div className="pt-0.5">
+          <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
             <Checkbox
               checked={isSelected}
-              onClick={(e) => { e.stopPropagation(); onToggleSelect() }}
+              onCheckedChange={onToggleSelect}
               className="size-4"
             />
           </div>
@@ -173,9 +172,15 @@ function AgentCard({
             {agent.description || 'No description'}
           </p>
         </div>
-        <Badge variant={statusVariant(agent.status)} className="text-[10px] font-medium capitalize">
-          {agent.status}
-        </Badge>
+        <span className={cn(
+          'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border shrink-0',
+          agent.status === 'active' && 'bg-success/10 text-success border-success/30',
+          agent.status === 'draft' && 'bg-warning/10 text-warning border-warning/30',
+          agent.status === 'paused' && 'bg-warning/10 text-warning border-warning/30',
+          agent.status === 'archived' && 'bg-muted text-muted-foreground border-border',
+        )}>
+          {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+        </span>
       </div>
 
       <div className="flex items-center gap-1.5">
@@ -336,18 +341,22 @@ export default function AgentsListPage() {
     columnHelper.display({
       id: 'select',
       header: () => (
-        <Checkbox
-          checked={bulk.isAllSelected}
-          onClick={(e) => { e.stopPropagation(); bulk.toggleSelectAll() }}
-          className="size-4"
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={bulk.isAllSelected}
+            onCheckedChange={() => bulk.toggleSelectAll()}
+            className="size-4"
+          />
+        </div>
       ),
       cell: ({ row }) => (
-        <Checkbox
-          checked={bulk.isSelected(row.original.id)}
-          onClick={(e) => { e.stopPropagation(); bulk.toggleSelect(row.original.id) }}
-          className="size-4"
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={bulk.isSelected(row.original.id)}
+            onCheckedChange={() => bulk.toggleSelect(row.original.id)}
+            className="size-4"
+          />
+        </div>
       ),
       size: 36,
       enableSorting: false,
@@ -414,11 +423,20 @@ export default function AgentsListPage() {
     }),
     columnHelper.accessor('status', {
       header: 'Status',
-      cell: ({ row }) => (
-        <Badge variant={statusVariant(row.original.status)} className="text-[10px] font-medium capitalize">
-          {row.original.status}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const s = row.original.status
+        return (
+          <span className={cn(
+            'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border',
+            s === 'active' && 'bg-success/10 text-success border-success/30',
+            s === 'draft' && 'bg-warning/10 text-warning border-warning/30',
+            s === 'paused' && 'bg-warning/10 text-warning border-warning/30',
+            s === 'archived' && 'bg-muted text-muted-foreground border-border',
+          )}>
+            {s.charAt(0).toUpperCase() + s.slice(1)}
+          </span>
+        )
+      },
     }),
     columnHelper.accessor('updatedAt', {
       header: ({ column }) => (
@@ -701,10 +719,12 @@ export default function AgentsListPage() {
                 onClick={bulk.toggleSelectAll}
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                <Checkbox
-                  checked={bulk.isAllSelected}
-                  className="size-4"
-                />
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={bulk.isAllSelected}
+                    className="size-4"
+                  />
+                </div>
                 {bulk.isAllSelected ? 'Deselect all' : 'Select all'}
               </button>
             ) : hasActiveFilters ? (

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, MessageSquareText, Search, BarChart3, Bot, Database, Radio, Zap, Key, Download, FileText, Code } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MessageSquareText, Search, BarChart3, Bot, Database, Radio, Zap, Key, Download, FileText, Code } from 'lucide-react'
 import { DocHeading } from '@/components/docs/doc-heading'
 import { Button } from '@/components/ui/button'
 
