@@ -7,3 +7,6 @@
 - Use design tokens (bg-background, text-foreground, etc.) from the theme for Tailwind classes; never use hardcoded colors. Confidence: 0.80
 - When using TanStack Query with conditional `enabled`, always check the enabled-condition state (e.g., orgLoading, !orgId) before `isLoading` to avoid infinite skeleton when query is disabled. Use optional chaining (`data?.field`) for all data access after loading checks. Confidence: 0.65
 - When deleting a feature or component, remove ALL related code — not just the main component but also its trigger buttons, state, handlers, mutations, schemas, dialog JSX, helper functions, and unused imports. Leave no dead code behind. Confidence: 0.70
+- Use TanStack Table (`@tanstack/react-table`) for all table implementations — with `useReactTable`, `createColumnHelper`, sortable columns, and `flexRender`. Confidence: 0.80
+- Apply zebra striping to table rows using `even:bg-muted/20` (soft tint) with `hover:bg-muted/40` for row interaction states. Confidence: 0.80
+- Prefer shadcn UI primitives (e.g., `Checkbox`) over custom shared components (e.g., `SelectionCheckbox`) for standard form/selection controls. Confidence: 0.80

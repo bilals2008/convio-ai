@@ -20,6 +20,7 @@ See [design/taste.md](design/taste.md)
 # communication
 - References existing pages/components as design templates rather than describing visual changes in detail (e.g., "make this like @filepath"). Confidence: 0.75
 - Don't invent or fabricate details the user didn't specify — e.g., don't make up domain names for URL displays; slugs should be shown as relative paths like `/{slug}`, not as full URLs with an assumed domain. Confidence: 0.70
+- Gives UX feedback by analyzing pros/cons with references to real SaaS products (OpenAI, Intercom, Zendesk, HubSpot) as benchmarks, often in Roman Urdu mixed with English technical terms. Confidence: 0.75
 
 # billing
 - Use Creem as the payment provider for billing integration (checkout, webhooks, subscription management); migrated from Lemon Squeezy. Confidence: 0.85
