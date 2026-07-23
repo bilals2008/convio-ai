@@ -59,6 +59,8 @@ const badgeVariants = cva(
           "bg-primary/10 text-primary border-primary/20",
         enterprise:
           "bg-info/10 text-info border-info/20",
+        beta:
+          "bg-info/8 text-info/80 border-info/15 h-4 px-1.5 py-0 text-[10px]",
       },
     },
     defaultVariants: {

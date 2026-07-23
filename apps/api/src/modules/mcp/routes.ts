@@ -102,14 +102,40 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
       apiKey: existing.apiKey,
     })
 
+    let testResult
     try {
       const tools = await client.listTools()
       await client.disconnect()
-      return { data: { connected: true, tools: tools.map((t) => ({ name: t.name, description: t.description })) } }
+      testResult = { connected: true, tools: tools.map((t) => ({ name: t.name, description: t.description })) }
     } catch (err) {
       await client.disconnect().catch(() => {})
-      return { data: { connected: false, error: (err as Error).message } }
+      testResult = { connected: false, error: (err as Error).message }
     }
+
+    await prisma.mcpServer.update({
+      where: { id },
+      data: {
+        lastTestResult: testResult as any,
+        lastTestedAt: new Date(),
+      },
+    })
+
+    return { data: testResult }
+  })
+
+  // POST /api/mcp-servers/:id/clear-test — Clear test result
+  fastify.post('/mcp-servers/:id/clear-test', {
+    preHandler: [fastify.authenticate, validate({ params: mcpParamsSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const existing = await prisma.mcpServer.findUnique({ where: { id } })
+    if (!existing) throw new AppError(404, 'MCP server not found')
+    await fastify.ensureAdmin(request.userId!, existing.organizationId)
+    await prisma.mcpServer.update({
+      where: { id },
+      data: { lastTestResult: null as any, lastTestedAt: null },
+    })
+    return { data: null }
   })
 
   // POST /api/agents/:agentId/mcp-servers/:serverId — Link MCP server to agent

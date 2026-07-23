@@ -261,6 +261,8 @@ model McpServer {
   url            String?
   apiKey         String?
   enabled        Boolean      @default(true)
+  lastTestResult Json?
+  lastTestedAt   DateTime?
   createdAt      DateTime     @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
   organization   Organization @relation(fields: [organizationId], references: [id])

@@ -228,6 +228,7 @@ export const mcpServers = {
   update: (id: string, data: Record<string, unknown>) => api.patch(`/mcp-servers/${id}`, data),
   delete: (id: string) => api.delete(`/mcp-servers/${id}`),
   test: (id: string) => api.post(`/mcp-servers/${id}/test`),
+  clearTest: (id: string) => api.post(`/mcp-servers/${id}/clear-test`),
   listByAgent: (agentId: string) => api.get(`/agents/${agentId}/mcp-servers`),
   linkToAgent: (agentId: string, serverId: string) =>
     api.post(`/agents/${agentId}/mcp-servers/${serverId}`),
