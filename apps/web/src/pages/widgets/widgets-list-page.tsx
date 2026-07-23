@@ -1,9 +1,35 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { LayoutDashboard, Plus, Rocket, Globe2, Clock, ArrowDownAZ, ArrowUpAZ, SlidersHorizontal, AlertCircle, CheckSquare, Square, Trash2 } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Plus,
+  Rocket,
+  Globe2,
+  AlertCircle,
+  CheckSquare,
+  Square,
+  Trash2,
+  MoreVertical,
+  Copy,
+  Eye,
+  Check,
+  Bot,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageContainer } from '@/components/shared/page-container'
@@ -11,9 +37,18 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { SearchInput } from '@/components/shared/search-input'
 import { BulkActionBar } from '@/components/shared/bulk-action-bar'
 import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -31,11 +66,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { WidgetCard, WidgetCardSkeleton } from '@/components/widgets/widget-card'
 import { agents as agentsApi, widgets as widgetsApi } from '@/lib/api'
 import { useWidgets, type WidgetSummary } from '@/lib/hooks/use-widgets'
 import { useOrg } from '@/lib/org-context'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
+import { cn } from '@/lib/utils'
 
 const createWidgetSchema = z.object({
   name: z.string().trim().min(1, 'Widget name is required').max(100),
@@ -44,7 +79,20 @@ const createWidgetSchema = z.object({
 type CreateWidgetValues = z.infer<typeof createWidgetSchema>
 
 type FilterStatus = 'all' | 'active' | 'paused'
-type SortOption = 'updated' | 'newest' | 'oldest' | 'domains'
+
+function timeAgo(date: string) {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return `${Math.floor(days / 30)}mo ago`
+}
+
+const column = createColumnHelper<WidgetSummary>()
 
 export default function WidgetsListPage() {
   const navigate = useNavigate()
@@ -54,9 +102,9 @@ export default function WidgetsListPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterStatus>('all')
-  const [sort, setSort] = useState<SortOption>('updated')
   const [deleteTarget, setDeleteTarget] = useState<WidgetSummary | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const form = useForm<CreateWidgetValues>({
     resolver: zodResolver(createWidgetSchema),
@@ -94,6 +142,8 @@ export default function WidgetsListPage() {
   const copyEmbed = async (widget: WidgetSummary) => {
     const response = await widgetsApi.getEmbed(widget.id)
     await navigator.clipboard.writeText(response.data.data.snippet)
+    setCopiedId(widget.id)
+    setTimeout(() => setCopiedId(null), 2000)
     toast.success('Embed code copied')
   }
 
@@ -113,22 +163,8 @@ export default function WidgetsListPage() {
       result = result.filter((w) => w.status === filter)
     }
 
-    result = [...result].sort((a, b) => {
-      switch (sort) {
-        case 'newest':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        case 'domains':
-          return b.allowedDomains.length - a.allowedDomains.length
-        case 'updated':
-        default:
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      }
-    })
-
     return result
-  }, [widgets, search, filter, sort])
+  }, [widgets, search, filter])
 
   const bulk = useBulkSelection(filtered)
 
@@ -147,13 +183,165 @@ export default function WidgetsListPage() {
     },
   })
 
-  const hasActiveFilters = !!search.trim() || filter !== 'all' || sort !== 'updated'
+  const columns = useMemo(
+    () => [
+      column.display({
+        id: 'select',
+        size: 32,
+        enableSorting: false,
+        header: () => (
+          <button
+            type="button"
+            onClick={bulk.toggleSelectAll}
+            className="flex items-center justify-center"
+          >
+            {bulk.isAllSelected ? (
+              <CheckSquare className="size-4 text-primary" />
+            ) : (
+              <Square className="size-4 text-muted-foreground" />
+            )}
+          </button>
+        ),
+        cell: ({ row }) => (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); bulk.toggleSelect(row.original.id) }}
+            className="flex items-center justify-center"
+          >
+            {bulk.isSelected(row.original.id) ? (
+              <CheckSquare className="size-4 text-primary" />
+            ) : (
+              <Square className="size-4 text-muted-foreground" />
+            )}
+          </button>
+        ),
+      }),
+      column.accessor('name', {
+        header: 'Widget',
+        cell: ({ row }) => {
+          const w = row.original
+          return (
+            <div className="flex items-center gap-2.5">
+              <Avatar className="size-8 shrink-0 rounded-lg">
+                {w.agent.avatar ? (
+                  <AvatarImage src={w.agent.avatar} alt={w.agent.name} className="object-cover" />
+                ) : null}
+                <AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+                  <LayoutDashboard className="size-4" />
+                </AvatarFallback>
+              </Avatar>
+              <p className="text-sm font-medium text-foreground truncate min-w-0">{w.name}</p>
+            </div>
+          )
+        },
+      }),
+      column.accessor('agent.name', {
+        header: 'Agent',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2 min-w-0">
+            <Avatar className="size-7 shrink-0 rounded-full">
+              {row.original.agent.avatar ? (
+                <AvatarImage src={row.original.agent.avatar} alt={row.original.agent.name} className="object-cover" />
+              ) : null}
+              <AvatarFallback className="rounded-full bg-muted text-[10px] font-medium">
+                <Bot className="size-3.5" />
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-foreground truncate">{row.original.agent.name}</span>
+          </div>
+        ),
+      }),
+      column.accessor('status', {
+        header: 'Status',
+        cell: ({ getValue }) => {
+          const status = getValue()
+          const variant = status === 'active' ? 'active' : status === 'paused' ? 'pending' : 'draft'
+          const label = status === 'active' ? 'Live' : status === 'paused' ? 'Paused' : 'Draft'
+          return (
+            <Badge variant={variant} className="rounded-sm border-0">
+              {label}
+            </Badge>
+          )
+        },
+      }),
+      column.accessor('allowedDomains', {
+        header: 'Domains',
+        cell: ({ getValue }) => {
+          const count = getValue().length
+          return (
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Globe2 className="size-3.5" />
+              {count > 0 ? count : <span className="text-muted-foreground/50">—</span>}
+            </span>
+          )
+        },
+      }),
+      column.accessor('updatedAt', {
+        header: 'Updated',
+        cell: ({ getValue }) => (
+          <span className="text-sm text-muted-foreground whitespace-nowrap">{timeAgo(getValue())}</span>
+        ),
+      }),
+      column.display({
+        id: 'actions',
+        size: 48,
+        enableSorting: false,
+        header: '',
+        cell: ({ row }) => {
+          const w = row.original
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                onClick={(e) => e.stopPropagation()}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <MoreVertical className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); copyEmbed(w) }}>
+                  {copiedId === w.id ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+                  {copiedId === w.id ? 'Copied!' : 'Copy embed code'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    window.open(`/widget/demo?embed=true&widgetKey=${w.publicKey}`, '_blank')
+                  }}
+                >
+                  <Eye className="size-4" />
+                  Preview
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(w) }}
+                >
+                  <Trash2 className="size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
+        },
+      }),
+    ],
+    [bulk, navigate, copyEmbed],
+  )
+
+  const table = useReactTable({
+    data: filtered,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+  })
+
+  const hasActiveFilters = !!search.trim() || filter !== 'all'
   const loading = orgLoading || isLoading
 
   const clearFilters = () => {
     setSearch('')
     setFilter('all')
-    setSort('updated')
   }
 
   return (
@@ -165,10 +353,10 @@ export default function WidgetsListPage() {
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
               <LayoutDashboard className="size-4 text-primary" />
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">Website widgets</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Widgets</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Create, test, and publish a chat experience without changing your agent.
+            Create and manage your AI assistants on any website.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -209,7 +397,7 @@ export default function WidgetsListPage() {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Search widgets by name or agent..."
+              placeholder="Search widgets..."
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -218,35 +406,9 @@ export default function WidgetsListPage() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All status</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Live</SelectItem>
                 <SelectItem value="paused">Paused</SelectItem>
-
-              </SelectContent>
-            </Select>
-
-            <Select value={sort} onValueChange={(v) => setSort((v ?? 'updated') as SortOption)}>
-              <SelectTrigger className="h-9 w-[180px]">
-                <SlidersHorizontal className="size-3.5" />
-                <SelectValue placeholder="Sort" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="updated">
-                  <Clock className="size-3.5" />
-                  Recently updated
-                </SelectItem>
-                <SelectItem value="newest">
-                  <ArrowDownAZ className="size-3.5" />
-                  Newest
-                </SelectItem>
-                <SelectItem value="oldest">
-                  <ArrowUpAZ className="size-3.5" />
-                  Oldest
-                </SelectItem>
-                <SelectItem value="domains">
-                  <Globe2 className="size-3.5" />
-                  Most domains
-                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -271,9 +433,19 @@ export default function WidgetsListPage() {
 
       {/* Loading state */}
       {!isError && loading && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }, (_, i) => (
-            <WidgetCardSkeleton key={i} />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="flex items-center gap-4 rounded-lg border border-border bg-card p-4">
+              <div className="size-9 rounded-lg bg-muted animate-pulse" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-40 rounded bg-muted animate-pulse" />
+                <div className="h-3 w-28 rounded bg-muted animate-pulse" />
+              </div>
+              <div className="h-4 w-16 rounded bg-muted animate-pulse" />
+              <div className="h-4 w-20 rounded bg-muted animate-pulse" />
+              <div className="h-4 w-16 rounded bg-muted animate-pulse" />
+              <div className="h-8 w-16 rounded bg-muted animate-pulse" />
+            </div>
           ))}
         </div>
       )}
@@ -298,48 +470,104 @@ export default function WidgetsListPage() {
         />
       )}
 
-      {/* List */}
+      {/* Table */}
       {!loading && !isError && filtered.length > 0 && (
-        <>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {filtered.length} widget{filtered.length !== 1 ? 's' : ''}
-              {hasActiveFilters ? ' found' : ''}
-            </p>
-            {bulk.selectionMode ? (
-              <button
-                type="button"
-                onClick={bulk.toggleSelectAll}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {bulk.isAllSelected ? (
-                  <CheckSquare className="size-4 text-primary" />
-                ) : (
-                  <Square className="size-4" />
-                )}
-                {bulk.isAllSelected ? 'Deselect all' : 'Select all'}
-              </button>
-            ) : hasActiveFilters ? (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            ) : null}
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id} className="border-b border-border bg-muted/30">
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className={cn(
+                          "px-4 py-3 text-left text-xs font-medium text-muted-foreground",
+                          header.column.getCanSort() && "cursor-pointer select-none hover:text-foreground",
+                        )}
+                        style={{ width: header.getSize() }}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getCanSort() && (
+                            <span className="text-muted-foreground/50">
+                              {header.column.getIsSorted() === 'asc' ? (
+                                <ArrowUp className="size-3" />
+                              ) : header.column.getIsSorted() === 'desc' ? (
+                                <ArrowDown className="size-3" />
+                              ) : (
+                                <ArrowUpDown className="size-3" />
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    onClick={() => navigate(`/widgets/${row.original.id}`)}
+                    className={cn(
+                      "border-b border-border last:border-0 cursor-pointer transition-colors hover:bg-muted/30",
+                      bulk.isSelected(row.original.id) && "bg-primary/5",
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((widget) => (
-              <WidgetCard
-                key={widget.id}
-                widget={widget}
-                onCopyEmbed={copyEmbed}
-                onDelete={(item) => setDeleteTarget(item)}
-                selectionMode={bulk.selectionMode}
-                isSelected={bulk.isSelected(widget.id)}
-                onToggleSelect={() => bulk.toggleSelect(widget.id)}
-              />
-            ))}
+          {/* Pagination footer */}
+          <div className="flex items-center justify-between border-t border-border px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
+              {Math.min(
+                (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+                filtered.length,
+              )}{' '}
+              of {filtered.length} widget{filtered.length !== 1 ? 's' : ''}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              {table.getPageOptions().map((page) => (
+                <Button
+                  key={page}
+                  variant={table.getState().pagination.pageIndex === page ? 'default' : 'outline'}
+                  size="icon-sm"
+                  onClick={() => table.setPageIndex(page)}
+                >
+                  {page + 1}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Bulk delete confirmation */}

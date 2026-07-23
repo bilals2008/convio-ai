@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bot, Check, Clock, Copy, Eye, Globe2, LayoutDashboard, MoreVertical, Trash2 } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { SelectionCheckbox } from '@/components/shared/selection-checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -19,20 +17,14 @@ interface WidgetCardProps {
   onToggleSelect?: () => void
 }
 
-const STATUS_META: Record<string, { label: string; className: string; dot: string }> = {
-  active: { label: 'Live', className: 'border-success/20 bg-success/10 text-success', dot: 'bg-success' },
-  paused: { label: 'Paused', className: 'border-warning/20 bg-warning/10 text-warning', dot: 'bg-warning' },
-  draft: { label: 'Draft', className: 'border-border bg-muted/40 text-muted-foreground', dot: 'bg-muted-foreground' },
+const STATUS_META: Record<string, { label: string; dot: string }> = {
+  active: { label: 'Live', dot: 'bg-emerald-500' },
+  paused: { label: 'Paused', dot: 'bg-amber-500' },
+  draft: { label: 'Draft', dot: 'bg-muted-foreground' },
 }
 
 function statusMeta(status: string) {
-  return (
-    STATUS_META[status] ?? {
-      label: status.charAt(0).toUpperCase() + status.slice(1),
-      className: 'border-border bg-muted/40 text-muted-foreground',
-      dot: 'bg-muted-foreground',
-    }
-  )
+  return STATUS_META[status] ?? { label: status.charAt(0).toUpperCase() + status.slice(1), dot: 'bg-muted-foreground' }
 }
 
 function timeAgo(date: string) {
@@ -43,26 +35,8 @@ function timeAgo(date: string) {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
   if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
-  return `${months}mo ago`
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const meta = statusMeta(status)
-  return (
-    <span
-      className={cn(
-        'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-        meta.className,
-      )}
-    >
-      <span className={cn('size-1.5 rounded-full', meta.dot)} />
-      {meta.label}
-    </span>
-  )
+  return `${Math.floor(days / 30)}mo ago`
 }
 
 export function WidgetCard({ widget, onCopyEmbed, onDelete, selectionMode, isSelected, onToggleSelect }: WidgetCardProps) {
@@ -70,7 +44,6 @@ export function WidgetCard({ widget, onCopyEmbed, onDelete, selectionMode, isSel
   const [copied, setCopied] = useState(false)
 
   const open = () => navigate(`/widgets/${widget.id}`)
-
   const handleClick = selectionMode && onToggleSelect ? onToggleSelect : open
 
   const handleCopy = async () => {
@@ -79,11 +52,12 @@ export function WidgetCard({ widget, onCopyEmbed, onDelete, selectionMode, isSel
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const meta = statusMeta(widget.status)
   const domainCount = widget.allowedDomains.length
   const firstDomain = widget.allowedDomains[0]
 
   return (
-    <Card
+    <div
       role="button"
       tabIndex={0}
       onClick={handleClick}
@@ -94,117 +68,98 @@ export function WidgetCard({ widget, onCopyEmbed, onDelete, selectionMode, isSel
         }
       }}
       className={cn(
-        "group cursor-pointer rounded-xl border border-border bg-card p-0 outline-none transition-all duration-200",
-        isSelected && "border-primary/60 bg-primary/5 ring-1 ring-primary/20",
-        !isSelected && "hover:-translate-y-0.5 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring",
+        "group flex items-center gap-3 rounded-lg border bg-card p-4 cursor-pointer outline-none transition-colors duration-150",
+        isSelected
+          ? "border-primary/50 bg-primary/5"
+          : "border-border hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-ring",
       )}
     >
-      <CardContent className="flex h-full flex-col gap-3 p-4">
-        {/* Header */}
-        <div className="flex items-start gap-3">
-          {selectionMode && onToggleSelect && (
-            <SelectionCheckbox isSelected={!!isSelected} onToggle={onToggleSelect} />
-          )}
-          <Avatar className="size-11 rounded-xl">
-            {widget.agent.avatar ? (
-              <AvatarImage src={widget.agent.avatar} alt={widget.agent.name} className="object-cover" />
-            ) : null}
-            <AvatarFallback className="rounded-xl bg-primary/10 text-primary">
-              <LayoutDashboard className="size-5" />
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold text-foreground">{widget.name}</h3>
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-              <Bot className="size-3 shrink-0" />
-              <span className="truncate">{widget.agent.name}</span>
-            </p>
-          </div>
-          {!selectionMode && <StatusBadge status={widget.status} />}
-        </div>
+      {selectionMode && onToggleSelect && (
+        <SelectionCheckbox isSelected={!!isSelected} onToggle={onToggleSelect} />
+      )}
 
-        {/* Domains row */}
-        <div className="flex items-center gap-1.5">
-          {domainCount > 0 ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              <Globe2 className="size-3.5" />
-              <span className="max-w-[140px] truncate">{firstDomain}</span>
-              {domainCount > 1 && (
-                <span className="text-muted-foreground/70">+{domainCount - 1}</span>
-              )}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground/70">
-              <Globe2 className="size-3.5" />
-              No domains
-            </span>
-          )}
-        </div>
+      <Avatar className="size-10 shrink-0 rounded-lg">
+        {widget.agent.avatar ? (
+          <AvatarImage src={widget.agent.avatar} alt={widget.agent.name} className="object-cover" />
+        ) : null}
+        <AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+          <LayoutDashboard className="size-5" />
+        </AvatarFallback>
+      </Avatar>
 
-        {/* Footer */}
-        <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-2.5">
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Clock className="size-3" />
-            Edited {timeAgo(widget.updatedAt)}
-          </div>
-
-          {!selectionMode && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                onClick={(e) => e.stopPropagation()}
-                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'text-muted-foreground hover:text-foreground')}
-              >
-                <MoreVertical className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCopy() }}>
-                  {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
-                  {copied ? 'Copied!' : 'Copy embed code'}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    window.open(`/widget/demo?embed=true&widgetKey=${widget.publicKey}`, '_blank')
-                  }}
-                >
-                  <Eye className="size-4" />
-                  Preview
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={(e) => { e.stopPropagation(); onDelete(widget) }}
-                >
-                  <Trash2 className="size-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-foreground truncate">{widget.name}</h3>
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className={cn('size-1.5 rounded-full', meta.dot)} />
+            {meta.label}
+          </span>
         </div>
-      </CardContent>
-    </Card>
+        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+          <Bot className="size-3 shrink-0" />
+          <span className="truncate">{widget.agent.name}</span>
+          {domainCount > 0 && (
+            <>
+              <span className="text-border">·</span>
+              <Globe2 className="size-3 shrink-0" />
+              <span className="truncate">{firstDomain}</span>
+              {domainCount > 1 && <span className="text-muted-foreground/60 shrink-0">+{domainCount - 1}</span>}
+            </>
+          )}
+          <span className="text-border">·</span>
+          <Clock className="size-3 shrink-0" />
+          <span className="shrink-0">{timeAgo(widget.updatedAt)}</span>
+        </div>
+      </div>
+
+      {!selectionMode && (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors",
+              "opacity-0 group-hover:opacity-100",
+            )}
+          >
+            <MoreVertical className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCopy() }}>
+              {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+              {copied ? 'Copied!' : 'Copy embed code'}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation()
+                window.open(`/widget/demo?embed=true&widgetKey=${widget.publicKey}`, '_blank')
+              }}
+            >
+              <Eye className="size-4" />
+              Preview
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={(e) => { e.stopPropagation(); onDelete(widget) }}
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
   )
 }
 
 export function WidgetCardSkeleton() {
   return (
-    <Card className="rounded-xl border border-border p-0">
-      <CardContent className="flex flex-col gap-3 p-4">
-        <div className="flex items-start gap-3">
-          <Skeleton className="size-11 rounded-xl" />
-          <div className="flex-1 space-y-2 pt-0.5">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-          <Skeleton className="h-5 w-14 rounded-full" />
-        </div>
-        <Skeleton className="h-5 w-36 rounded-md" />
-        <div className="flex items-center justify-between border-t border-border/60 pt-2.5">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="size-7 rounded-md" />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4">
+      <Skeleton className="size-10 rounded-lg shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3.5 w-56" />
+      </div>
+    </div>
   )
 }
