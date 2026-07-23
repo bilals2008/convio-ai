@@ -661,7 +661,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
 
     const allAgents = await prisma.agent.findMany({
       where: { organizationId: orgId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, avatar: true },
     })
     const agentIds = allAgents.map((a) => a.id)
 
@@ -687,11 +687,13 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
 
     if (records.length > 0) {
       const agentMap = new Map(allAgents.map((b) => [b.id, b.name]))
+      const avatarMap = new Map(allAgents.map((b) => [b.id, b.avatar]))
 
       return {
         data: records.map((r) => ({
           agentId: r.agentId,
           agentName: agentMap.get(r.agentId) || 'Unknown',
+          agentAvatar: avatarMap.get(r.agentId) || null,
           totalConversations: r._sum.totalConversations || 0,
           totalMessages: r._sum.totalMessages || 0,
           avgResponseTime: r._avg.avgResponseTime
@@ -766,6 +768,7 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
       return {
         agentId: agent.id,
         agentName: agent.name,
+        agentAvatar: agent.avatar,
         totalConversations,
         totalMessages: msgMap.get(agent.id) || 0,
         avgResponseTime: rtMap.get(agent.id) || 0,

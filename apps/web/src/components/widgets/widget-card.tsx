@@ -4,6 +4,7 @@ import { Archive, Bot, Check, Clock, Copy, Eye, Globe2, LayoutDashboard, MoreVer
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { SelectionCheckbox } from '@/components/shared/selection-checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -13,6 +14,9 @@ interface WidgetCardProps {
   widget: WidgetSummary
   onCopyEmbed: (widget: WidgetSummary) => void
   onArchive: (widget: WidgetSummary) => void
+  selectionMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: () => void
 }
 
 const STATUS_META: Record<string, { label: string; className: string; dot: string }> = {
@@ -62,11 +66,13 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-export function WidgetCard({ widget, onCopyEmbed, onArchive }: WidgetCardProps) {
+export function WidgetCard({ widget, onCopyEmbed, onArchive, selectionMode, isSelected, onToggleSelect }: WidgetCardProps) {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
 
   const open = () => navigate(`/widgets/${widget.id}`)
+
+  const handleClick = selectionMode && onToggleSelect ? onToggleSelect : open
 
   const handleCopy = async () => {
     await onCopyEmbed(widget)
@@ -81,18 +87,25 @@ export function WidgetCard({ widget, onCopyEmbed, onArchive }: WidgetCardProps) 
     <Card
       role="button"
       tabIndex={0}
-      onClick={open}
+      onClick={handleClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          open()
+          handleClick()
         }
       }}
-      className="group [--card-spacing:0px] cursor-pointer rounded-xl border border-border bg-card p-0 outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "group cursor-pointer rounded-xl border border-border bg-card p-0 outline-none transition-all duration-200",
+        isSelected && "border-primary/60 bg-primary/5 ring-1 ring-primary/20",
+        !isSelected && "hover:-translate-y-0.5 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring",
+      )}
     >
-      <CardContent className="flex h-full flex-col gap-4 p-4">
+      <CardContent className="flex h-full flex-col gap-3 p-4">
         {/* Header */}
         <div className="flex items-start gap-3">
+          {selectionMode && onToggleSelect && (
+            <SelectionCheckbox isSelected={!!isSelected} onToggle={onToggleSelect} />
+          )}
           <Avatar className="size-11 rounded-xl">
             {widget.agent.avatar ? (
               <AvatarImage src={widget.agent.avatar} alt={widget.agent.name} className="object-cover" />
@@ -108,7 +121,7 @@ export function WidgetCard({ widget, onCopyEmbed, onArchive }: WidgetCardProps) 
               <span className="truncate">{widget.agent.name}</span>
             </p>
           </div>
-          <StatusBadge status={widget.status} />
+          {!selectionMode && <StatusBadge status={widget.status} />}
         </div>
 
         {/* Domains row */}
@@ -130,43 +143,45 @@ export function WidgetCard({ widget, onCopyEmbed, onArchive }: WidgetCardProps) 
         </div>
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-3">
+        <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-2.5">
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Clock className="size-3" />
             Edited {timeAgo(widget.updatedAt)}
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              onClick={(e) => e.stopPropagation()}
-              className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'text-muted-foreground hover:text-foreground')}
-            >
-              <MoreVertical className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCopy() }}>
-                {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
-                {copied ? 'Copied!' : 'Copy embed code'}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation()
-                  window.open(`/widget/demo?embed=true&widgetKey=${widget.publicKey}`, '_blank')
-                }}
+          {!selectionMode && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                onClick={(e) => e.stopPropagation()}
+                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'text-muted-foreground hover:text-foreground')}
               >
-                <Eye className="size-4" />
-                Preview
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={(e) => { e.stopPropagation(); onArchive(widget) }}
-              >
-                <Archive className="size-4" />
-                Archive
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <MoreVertical className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCopy() }}>
+                  {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+                  {copied ? 'Copied!' : 'Copy embed code'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    window.open(`/widget/demo?embed=true&widgetKey=${widget.publicKey}`, '_blank')
+                  }}
+                >
+                  <Eye className="size-4" />
+                  Preview
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={(e) => { e.stopPropagation(); onArchive(widget) }}
+                >
+                  <Archive className="size-4" />
+                  Archive
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -175,8 +190,8 @@ export function WidgetCard({ widget, onCopyEmbed, onArchive }: WidgetCardProps) 
 
 export function WidgetCardSkeleton() {
   return (
-    <Card className="[--card-spacing:0px] rounded-xl border border-border p-0">
-      <CardContent className="flex flex-col gap-4 p-4">
+    <Card className="rounded-xl border border-border p-0">
+      <CardContent className="flex flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
           <Skeleton className="size-11 rounded-xl" />
           <div className="flex-1 space-y-2 pt-0.5">
@@ -186,7 +201,7 @@ export function WidgetCardSkeleton() {
           <Skeleton className="h-5 w-14 rounded-full" />
         </div>
         <Skeleton className="h-5 w-36 rounded-md" />
-        <div className="flex items-center justify-between border-t border-border/60 pt-3">
+        <div className="flex items-center justify-between border-t border-border/60 pt-2.5">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="size-7 rounded-md" />
         </div>

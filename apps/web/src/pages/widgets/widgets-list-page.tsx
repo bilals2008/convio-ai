@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { LayoutDashboard, Plus, Rocket, Globe2, Clock, ArrowDownAZ, ArrowUpAZ, SlidersHorizontal, AlertCircle } from 'lucide-react'
+import { LayoutDashboard, Plus, Rocket, Globe2, Clock, ArrowDownAZ, ArrowUpAZ, SlidersHorizontal, AlertCircle, Archive, CheckSquare, Square } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { SearchInput } from '@/components/shared/search-input'
+import { BulkActionBar } from '@/components/shared/bulk-action-bar'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -34,6 +35,7 @@ import { WidgetCard, WidgetCardSkeleton } from '@/components/widgets/widget-card
 import { agents as agentsApi, widgets as widgetsApi } from '@/lib/api'
 import { useWidgets, type WidgetSummary } from '@/lib/hooks/use-widgets'
 import { useOrg } from '@/lib/org-context'
+import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 
 const createWidgetSchema = z.object({
   name: z.string().trim().min(1, 'Widget name is required').max(100),
@@ -54,6 +56,7 @@ export default function WidgetsListPage() {
   const [filter, setFilter] = useState<FilterStatus>('all')
   const [sort, setSort] = useState<SortOption>('updated')
   const [archiveTarget, setArchiveTarget] = useState<WidgetSummary | null>(null)
+  const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false)
 
   const form = useForm<CreateWidgetValues>({
     resolver: zodResolver(createWidgetSchema),
@@ -127,6 +130,23 @@ export default function WidgetsListPage() {
     return result
   }, [widgets, search, filter, sort])
 
+  const bulk = useBulkSelection(filtered)
+
+  const bulkArchiveMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => widgetsApi.delete(id)))
+    },
+    onSuccess: (_, ids) => {
+      toast.success(`${ids.length} widget${ids.length !== 1 ? 's' : ''} archived`)
+      queryClient.invalidateQueries({ queryKey: ['widgets', orgId] })
+      bulk.exitSelectionMode()
+      setBulkArchiveOpen(false)
+    },
+    onError: () => {
+      toast.error('Failed to archive some widgets')
+    },
+  })
+
   const hasActiveFilters = !!search.trim() || filter !== 'all' || sort !== 'updated'
   const loading = orgLoading || isLoading
 
@@ -137,7 +157,7 @@ export default function WidgetsListPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer className="space-y-4 [&>:last-child]:mb-0">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
@@ -151,10 +171,35 @@ export default function WidgetsListPage() {
             Create, test, and publish a chat experience without changing your agent.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-          <Plus className="size-4" />
-          Create Widget
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {bulk.selectionMode ? (
+            <BulkActionBar
+              onExitSelectionMode={bulk.exitSelectionMode}
+              action={
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={bulk.selectedCount === 0}
+                  onClick={() => setBulkArchiveOpen(true)}
+                >
+                  <Archive className="size-4" />
+                  Archive {bulk.selectedCount > 0 ? `(${bulk.selectedCount})` : ''}
+                </Button>
+              }
+            />
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={bulk.enterSelectionMode}>
+                <CheckSquare className="size-4" />
+                Select
+              </Button>
+              <Button onClick={() => setCreateOpen(true)} className="shrink-0">
+                <Plus className="size-4" />
+                Create Widget
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -261,11 +306,24 @@ export default function WidgetsListPage() {
               {filtered.length} widget{filtered.length !== 1 ? 's' : ''}
               {hasActiveFilters ? ' found' : ''}
             </p>
-            {hasActiveFilters && (
+            {bulk.selectionMode ? (
+              <button
+                type="button"
+                onClick={bulk.toggleSelectAll}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {bulk.isAllSelected ? (
+                  <CheckSquare className="size-4 text-primary" />
+                ) : (
+                  <Square className="size-4" />
+                )}
+                {bulk.isAllSelected ? 'Deselect all' : 'Select all'}
+              </button>
+            ) : hasActiveFilters ? (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
                 Clear filters
               </Button>
-            )}
+            ) : null}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -275,13 +333,38 @@ export default function WidgetsListPage() {
                 widget={widget}
                 onCopyEmbed={copyEmbed}
                 onArchive={(item) => setArchiveTarget(item)}
+                selectionMode={bulk.selectionMode}
+                isSelected={bulk.isSelected(widget.id)}
+                onToggleSelect={() => bulk.toggleSelect(widget.id)}
               />
             ))}
           </div>
         </>
       )}
 
-      {/* Archive confirmation */}
+      {/* Bulk archive confirmation */}
+      <AlertDialog open={bulkArchiveOpen} onOpenChange={setBulkArchiveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive {bulk.selectedCount} widget{bulk.selectedCount !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulk.selectedCount} widget{bulk.selectedCount !== 1 ? 's' : ''} will be archived. You can restore them later from the Archived filter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkArchiveMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={bulkArchiveMutation.isPending}
+              onClick={() => bulkArchiveMutation.mutate(Array.from(bulk.selectedIds))}
+            >
+              {bulkArchiveMutation.isPending ? 'Archiving...' : `Archive ${bulk.selectedCount} widget${bulk.selectedCount !== 1 ? 's' : ''}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Archive confirmation (single) */}
       <AlertDialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { MessageSquare, Clock, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -72,6 +73,7 @@ export function RecentConversations() {
   const conversations = (data || []).slice(0, 5).map((conv: Record<string, unknown>) => ({
     id: conv.id as string,
     agentName: (conv.agent as Record<string, unknown>)?.name as string || 'Unknown',
+    agentAvatar: (conv.agent as Record<string, unknown>)?.avatar as string | undefined,
     channel: conv.channel as string,
     status: conv.status as string,
     lastMessage: ((conv.messages as Record<string, unknown>[])?.[0]?.content as string) || '',
@@ -97,11 +99,14 @@ export function RecentConversations() {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {conversations.map((conv: { id: string; agentName: string; channel: string; status: string; lastMessage: string; timestamp: string }) => (
+            {conversations.map((conv: { id: string; agentName: string; agentAvatar?: string; channel: string; status: string; lastMessage: string; timestamp: string }) => (
             <div key={conv.id} className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
-              <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                <MessageSquare className="size-4 text-primary" />
-              </div>
+              <Avatar className="size-9 rounded-full">
+                {conv.agentAvatar && <AvatarImage src={conv.agentAvatar} alt={conv.agentName} />}
+                <AvatarFallback className="rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  {conv.agentName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{conv.agentName}</p>

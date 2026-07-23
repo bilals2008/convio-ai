@@ -11,6 +11,7 @@ import {
 } from '@tanstack/react-table'
 import { useState } from 'react'
 import { Bot, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import {
   Table,
   TableBody,
@@ -30,6 +31,7 @@ import { formatResponseTime } from '@/lib/analytics'
 interface Agent {
   id: string
   name: string
+  avatar?: string
   status: string
   totalConversations?: number
   successRate?: number
@@ -87,6 +89,7 @@ export function TopAgentsTable() {
     return (topAgentsData || []).map((item: Record<string, unknown>) => ({
       id: item.agentId as string,
       name: item.agentName as string,
+      avatar: item.agentAvatar as string | undefined,
       status: 'active',
       totalConversations: (item.totalConversations as number) || 0,
       successRate: (item.successRate as number) ?? 95,
@@ -100,9 +103,12 @@ export function TopAgentsTable() {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Agent" />,
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
-            <Bot className="size-4 text-primary" />
-          </div>
+          <Avatar className="size-9 rounded-full">
+            {row.original.avatar && <AvatarImage src={row.original.avatar} alt={row.original.name} />}
+            <AvatarFallback className="rounded-full bg-primary/10 text-sm font-semibold text-primary">
+              {row.original.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{row.original.name}</p>
             <p className="text-xs text-muted-foreground capitalize">{row.original.status}</p>

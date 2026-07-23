@@ -1,11 +1,13 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Brain, Clock, Pencil, Trash2, MoreVertical, AlertCircle, CheckSquare, Square, X } from 'lucide-react'
+import { Plus, Brain, Clock, Pencil, Trash2, MoreVertical, AlertCircle, CheckSquare, Square } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
+import { BulkActionBar } from '@/components/shared/bulk-action-bar'
+import { SelectionCheckbox } from '@/components/shared/selection-checkbox'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +40,7 @@ import { AgentDeleteDialog } from '@/components/agents/agent-delete-dialog'
 import { ProviderLogo } from '@/components/agents/provider-logos'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
+import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { cn } from '@/lib/utils'
 
 interface Agent {
@@ -120,17 +123,7 @@ function AgentCard({
       <CardContent className="flex h-full flex-col gap-3 p-4">
       <div className="flex items-start gap-3">
         {selectionMode && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleSelect() }}
-            className="mt-0.5 shrink-0"
-          >
-            {isSelected ? (
-              <CheckSquare className="size-5 text-primary" />
-            ) : (
-              <Square className="size-5 text-muted-foreground/50" />
-            )}
-          </button>
+          <SelectionCheckbox isSelected={isSelected} onToggle={onToggleSelect} />
         )}
         <Avatar className="size-11 rounded-xl">
           {agent.avatar && <AvatarImage src={agent.avatar} alt={agent.name} />}
@@ -231,8 +224,6 @@ export default function AgentsListPage() {
   const [modelFilter, setModelFilter] = useState('all')
   const [sortBy, setSortBy] = useState('recent')
   const [deleteAgent, setDeleteAgent] = useState<Agent | null>(null)
-  const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
 
   const { data: agentsData, isLoading, isError, refetch } = useQuery({
@@ -242,34 +233,6 @@ export default function AgentsListPage() {
       return (res.data.data || []) as Agent[]
     },
     enabled: !!orgId,
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => agentsApi.delete(id),
-    onSuccess: () => {
-      toast.success('Agent deleted')
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
-      setDeleteAgent(null)
-    },
-    onError: () => {
-      toast.error('Failed to delete agent')
-    },
-  })
-
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map((id) => agentsApi.delete(id)))
-    },
-    onSuccess: (_, ids) => {
-      toast.success(`${ids.length} agent${ids.length !== 1 ? 's' : ''} deleted`)
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
-      setSelectedIds(new Set())
-      setSelectionMode(false)
-      setBulkDeleteOpen(false)
-    },
-    onError: () => {
-      toast.error('Failed to delete some agents')
-    },
   })
 
   const agents = useMemo(() => agentsData ?? [], [agentsData])
@@ -306,6 +269,35 @@ export default function AgentsListPage() {
     return list
   }, [agents, search, statusFilter, modelFilter, sortBy])
 
+  const bulk = useBulkSelection(displayAgents)
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => agentsApi.delete(id),
+    onSuccess: () => {
+      toast.success('Agent deleted')
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      setDeleteAgent(null)
+    },
+    onError: () => {
+      toast.error('Failed to delete agent')
+    },
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => agentsApi.delete(id)))
+    },
+    onSuccess: (_, ids) => {
+      toast.success(`${ids.length} agent${ids.length !== 1 ? 's' : ''} deleted`)
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      bulk.exitSelectionMode()
+      setBulkDeleteOpen(false)
+    },
+    onError: () => {
+      toast.error('Failed to delete some agents')
+    },
+  })
+
   const hasActiveFilters = !!search.trim() || statusFilter !== 'all' || modelFilter !== 'all'
 
   const clearFilters = () => {
@@ -313,28 +305,6 @@ export default function AgentsListPage() {
     setStatusFilter('all')
     setModelFilter('all')
   }
-
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
-  const toggleSelectAll = useCallback(() => {
-    if (selectedIds.size === displayAgents.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(displayAgents.map((a) => a.id)))
-    }
-  }, [selectedIds.size, displayAgents])
-
-  const exitSelectionMode = useCallback(() => {
-    setSelectionMode(false)
-    setSelectedIds(new Set())
-  }, [])
 
   const loading = orgLoading || isLoading
 
@@ -352,25 +322,24 @@ export default function AgentsListPage() {
           <p className="text-sm text-muted-foreground">Create, manage, and deploy your AI agents.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {selectionMode ? (
-            <>
-              <Button variant="outline" size="sm" onClick={exitSelectionMode}>
-                <X className="size-4" />
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={selectedIds.size === 0}
-                onClick={() => setBulkDeleteOpen(true)}
-              >
-                <Trash2 className="size-4" />
-                Delete {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
-              </Button>
-            </>
+          {bulk.selectionMode ? (
+            <BulkActionBar
+              onExitSelectionMode={bulk.exitSelectionMode}
+              action={
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={bulk.selectedCount === 0}
+                  onClick={() => setBulkDeleteOpen(true)}
+                >
+                  <Trash2 className="size-4" />
+                  Delete {bulk.selectedCount > 0 ? `(${bulk.selectedCount})` : ''}
+                </Button>
+              }
+            />
           ) : (
             <>
-              <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+              <Button variant="outline" size="sm" onClick={bulk.enterSelectionMode}>
                 <CheckSquare className="size-4" />
                 Select
               </Button>
@@ -481,28 +450,25 @@ export default function AgentsListPage() {
               {displayAgents.length} agent{displayAgents.length !== 1 ? 's' : ''}
               {hasActiveFilters ? ' found' : ''}
             </p>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            )}
-          </div>
-
-          {selectionMode && (
-            <div className="flex items-center justify-between">
+            {bulk.selectionMode ? (
               <button
                 type="button"
-                onClick={toggleSelectAll}
+                onClick={bulk.toggleSelectAll}
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                {selectedIds.size === displayAgents.length ? (
+                {bulk.isAllSelected ? (
                   <CheckSquare className="size-4 text-primary" />
                 ) : (
                   <Square className="size-4" />
                 )}
-                {selectedIds.size === displayAgents.length ? 'Deselect all' : 'Select all'}
+                {bulk.isAllSelected ? 'Deselect all' : 'Select all'}
               </button>
-            </div>
+            ) : hasActiveFilters ? (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            ) : null}
+          </div>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -513,9 +479,9 @@ export default function AgentsListPage() {
                 onOpen={() => navigate(`/agents/${agent.id}/edit`)}
                 onEdit={() => navigate(`/agents/${agent.id}/edit`)}
                 onDelete={() => setDeleteAgent(agent)}
-                selectionMode={selectionMode}
-                isSelected={selectedIds.has(agent.id)}
-                onToggleSelect={() => toggleSelect(agent.id)}
+                selectionMode={bulk.selectionMode}
+                isSelected={bulk.isSelected(agent.id)}
+                onToggleSelect={() => bulk.toggleSelect(agent.id)}
               />
             ))}
           </div>
@@ -535,9 +501,9 @@ export default function AgentsListPage() {
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedIds.size} agent{selectedIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {bulk.selectedCount} agent{bulk.selectedCount !== 1 ? 's' : ''}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete {selectedIds.size} agent{selectedIds.size !== 1 ? 's' : ''} and all their conversations. This action cannot be undone.
+              This will permanently delete {bulk.selectedCount} agent{bulk.selectedCount !== 1 ? 's' : ''} and all their conversations. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -545,9 +511,9 @@ export default function AgentsListPage() {
             <AlertDialogAction
               variant="destructive"
               disabled={bulkDeleteMutation.isPending}
-              onClick={() => bulkDeleteMutation.mutate(Array.from(selectedIds))}
+              onClick={() => bulkDeleteMutation.mutate(Array.from(bulk.selectedIds))}
             >
-              {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete ${selectedIds.size} agent${selectedIds.size !== 1 ? 's' : ''}`}
+              {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete ${bulk.selectedCount} agent${bulk.selectedCount !== 1 ? 's' : ''}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

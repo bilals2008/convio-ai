@@ -161,13 +161,18 @@ export function WidgetHeader({
             Get Code
           </Button>
 
-          <Switch
-            size="sm"
-            checked={isLive}
-            onCheckedChange={handlePublishToggle}
-            disabled={savePending}
-            aria-label={isLive ? 'Pause widget' : 'Publish widget'}
-          />
+          <span className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5">
+            <Switch
+              size="sm"
+              checked={isLive}
+              onCheckedChange={handlePublishToggle}
+              disabled={savePending}
+              aria-label={isLive ? 'Pause widget' : 'Resume widget'}
+            />
+            <span className="text-xs font-medium text-muted-foreground select-none">
+              {isLive ? 'Live' : 'Paused'}
+            </span>
+          </span>
 
           <DropdownMenu>
             <DropdownMenuTrigger
