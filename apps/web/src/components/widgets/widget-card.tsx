@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bot, Check, Clock, Copy, Eye, Globe2, MoreVertical, Trash2 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -81,10 +80,10 @@ export function WidgetCard({ widget, onCopyEmbed, onDelete, isSelected, onToggle
       <CardContent className="flex h-full flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
           {showCheckbox && (
-            <div className="pt-0.5">
+            <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
               <Checkbox
                 checked={!!isSelected}
-                onClick={(e) => { e.stopPropagation(); onToggleSelect?.() }}
+                onCheckedChange={onToggleSelect}
                 className="size-4"
               />
             </div>
@@ -101,9 +100,14 @@ export function WidgetCard({ widget, onCopyEmbed, onDelete, isSelected, onToggle
               {widget.agent.name}
             </p>
           </div>
-          <Badge variant={statusVariant(widget.status)} className="text-[10px] font-medium capitalize">
-            {statusLabel(widget.status)}
-          </Badge>
+          <span className={cn(
+            'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border shrink-0',
+            widget.status === 'active' && 'bg-success/10 text-success border-success/30',
+            widget.status === 'paused' && 'bg-warning/10 text-warning border-warning/30',
+            widget.status === 'draft' && 'bg-muted text-muted-foreground border-border',
+          )}>
+            {widget.status === 'active' ? 'Live' : widget.status.charAt(0).toUpperCase() + widget.status.slice(1)}
+          </span>
         </div>
 
         <div className="flex items-center gap-1.5">

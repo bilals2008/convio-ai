@@ -40,7 +40,6 @@ import { SearchInput } from '@/components/shared/search-input'
 import { BulkActionBar } from '@/components/shared/bulk-action-bar'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -117,7 +116,7 @@ export default function WidgetsListPage() {
   const [deleteTarget, setDeleteTarget] = useState<WidgetSummary | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [sorting, setSorting] = useState<SortingState>([])
 
   const form = useForm<CreateWidgetValues>({
@@ -204,18 +203,22 @@ export default function WidgetsListPage() {
         size: 36,
         enableSorting: false,
         header: () => (
-          <Checkbox
-            checked={bulk.isAllSelected}
-            onClick={(e) => { e.stopPropagation(); bulk.toggleSelectAll() }}
-            className="size-4"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={bulk.isAllSelected}
+              onCheckedChange={() => bulk.toggleSelectAll()}
+              className="size-4"
+            />
+          </div>
         ),
         cell: ({ row }) => (
-          <Checkbox
-            checked={bulk.isSelected(row.original.id)}
-            onClick={(e) => { e.stopPropagation(); bulk.toggleSelect(row.original.id) }}
-            className="size-4"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={bulk.isSelected(row.original.id)}
+              onCheckedChange={() => bulk.toggleSelect(row.original.id)}
+              className="size-4"
+            />
+          </div>
         ),
       }),
       column.accessor('name', {
@@ -257,12 +260,15 @@ export default function WidgetsListPage() {
         header: 'Status',
         cell: ({ getValue }) => {
           const status = getValue()
-          const variant = status === 'active' ? 'active' : status === 'paused' ? 'pending' : 'draft'
-          const label = status === 'active' ? 'Live' : status === 'paused' ? 'Paused' : 'Draft'
           return (
-            <Badge variant={variant} className="rounded-sm border-0">
-              {label}
-            </Badge>
+            <span className={cn(
+              'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border',
+              status === 'active' && 'bg-success/10 text-success border-success/30',
+              status === 'paused' && 'bg-warning/10 text-warning border-warning/30',
+              status === 'draft' && 'bg-muted text-muted-foreground border-border',
+            )}>
+              {status === 'active' ? 'Live' : status.charAt(0).toUpperCase() + status.slice(1)}
+            </span>
           )
         },
       }),
