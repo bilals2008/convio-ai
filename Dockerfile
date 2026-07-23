@@ -49,9 +49,7 @@ COPY packages/utils/src/ packages/utils/src/
 COPY packages/ui/src/ packages/ui/src/
 COPY packages/sdk/src/ packages/sdk/src/
 
-# Generate Prisma client (dummy URL — generate doesn't need a real DB)
-ENV DIRECT_URL=postgresql://dummy:dummy@localhost:5432/dummy
-ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
+# Generate Prisma client & build API
 RUN pnpm exec prisma generate
 RUN pnpm --filter @convio/api build
 
