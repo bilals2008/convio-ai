@@ -22,6 +22,11 @@ function formatDate(value?: string) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value))
 }
 
+function formatModelName(model: string): string {
+  const part = model.includes('/') ? model.split('/').slice(1).join('/') : model
+  return part.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').replace(/ free$/i, '').trim()
+}
+
 export function AgentOverview({
   agentName,
   agentDescription,
@@ -41,7 +46,7 @@ export function AgentOverview({
   ]
 
   const stats = [
-    { icon: Cpu, label: 'Model', value: agentModel || 'Not selected', color: 'bg-primary/10 text-primary' as const },
+    { icon: Cpu, label: 'Model', value: agentModel ? formatModelName(agentModel) : 'Not selected', color: 'bg-primary/10 text-primary' as const },
     { icon: BookOpen, label: 'Knowledge', value: hasKnowledgeBase ? 'Connected' : 'Not connected', color: hasKnowledgeBase ? ('bg-emerald-500/10 text-emerald-500' as const) : ('bg-muted text-muted-foreground' as const) },
     { icon: Calendar, label: 'Created', value: formatDate(agentCreatedAt), color: 'bg-info/10 text-info' as const },
     { icon: RefreshCw, label: 'Updated', value: formatDate(agentUpdatedAt), color: 'bg-warning/10 text-warning' as const },
