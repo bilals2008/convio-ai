@@ -10,3 +10,4 @@
 - Use TanStack Table (`@tanstack/react-table`) for all table implementations — with `useReactTable`, `createColumnHelper`, sortable columns, and `flexRender`. Confidence: 0.80
 - Apply zebra striping to table rows using `even:bg-muted/20` (soft tint) with `hover:bg-muted/40` for row interaction states. Confidence: 0.80
 - Prefer shadcn UI primitives (e.g., `Checkbox`) over custom shared components (e.g., `SelectionCheckbox`) for standard form/selection controls. Confidence: 0.80
+- When placing interactive elements (Checkbox, DropdownMenu, etc.) inside clickable rows or cards, wrap each in `<div onClick={(e) => e.stopPropagation()}>` to prevent the parent's click handler from firing. Use `onCheckedChange` on Checkbox (not `onClick`). Confidence: 0.85

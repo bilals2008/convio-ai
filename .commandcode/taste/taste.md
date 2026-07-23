@@ -18,9 +18,11 @@ See [design/taste.md](design/taste.md)
 - Stream AI responses word-by-word with markdown rendering (like ChatGPT), not all at once after completion. Build this as a reusable component. Confidence: 0.65
 
 # communication
-- References existing pages/components as design templates rather than describing visual changes in detail (e.g., "make this like @filepath"). Confidence: 0.75
+- References existing pages/components as design templates rather than describing visual changes in detail (e.g., "make this like @filepath", "convert this page to table same like this"). Often instructs to read the reference file first before making changes. Confidence: 0.80
 - Don't invent or fabricate details the user didn't specify — e.g., don't make up domain names for URL displays; slugs should be shown as relative paths like `/{slug}`, not as full URLs with an assumed domain. Confidence: 0.70
 - Gives UX feedback by analyzing pros/cons with references to real SaaS products (OpenAI, Intercom, Zendesk, HubSpot) as benchmarks, often in Roman Urdu mixed with English technical terms. Confidence: 0.75
+- Explicitly invites honest/direct technical pushback — prefers candid recommendations (e.g., "don't add this yet, wait for real data") over blind compliance. Assistant should give a genuine opinion when asked, not just agree. Confidence: 0.85
+- Communicates task instructions in Roman Urdu mixed with English (e.g., "es page mein jo documents card tu theek ha likn table nahi ha"). Assistant should parse the Urdu naturally and respond in English. Confidence: 0.80
 
 # billing
 - Use Creem as the payment provider for billing integration (checkout, webhooks, subscription management); migrated from Lemon Squeezy. Confidence: 0.85
