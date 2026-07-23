@@ -840,9 +840,8 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
         </div>
 
         {/* Messages — fills remaining space, scrollable */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="flex flex-col min-h-full px-4 py-4">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="flex flex-col min-h-full px-3 py-2">
             <div className="flex-1" />
             {convsLoading && (
               <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -1072,82 +1071,79 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
               </div>
             )}
             {error && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
                 {error}
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
-        </div>
 
-        {/* Composer — sticky at bottom, centered */}
-        <div className="shrink-0 border-t border-border/40 bg-card">
-          <div className="px-4 py-3">
-            <div className="rounded-xl border border-border bg-card transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
-              <textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={(e) => {
-                  setInputValue(e.target.value)
-                  e.target.style.height = 'auto'
-                  e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder={canSend ? 'Message the agent…' : 'Configure agent to start'}
-                disabled={streaming || !canSend}
-                rows={1}
-                className={cn(
-                  'block w-full resize-none bg-transparent px-3 py-2 text-sm leading-6 text-foreground outline-none',
-                  'placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50',
-                  'min-h-[38px] max-h-[140px]'
-                )}
-              />
-              <div className="flex items-center justify-between gap-2 px-2.5 pb-2">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-muted/70 px-2 py-0.5 text-[11px] font-medium text-foreground/80">
-                    <Bot className="size-3 shrink-0 text-primary/70" />
-                    <span className="truncate">{formatModelLabel(agentConfig.model)}</span>
+        {/* Composer — sticky at bottom */}
+        <div className="shrink-0 border-t border-border/40 bg-card px-3 py-2">
+          <div className="rounded-xl border border-border bg-card transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => {
+                setInputValue(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={canSend ? 'Message the agent…' : 'Configure agent to start'}
+              disabled={streaming || !canSend}
+              rows={1}
+              className={cn(
+                'block w-full resize-none bg-transparent px-3 py-2 text-sm leading-6 text-foreground outline-none',
+                'placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50',
+                'min-h-[38px] max-h-[140px]'
+              )}
+            />
+            <div className="flex items-center justify-between gap-2 px-2.5 pb-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-muted/70 px-2 py-0.5 text-[11px] font-medium text-foreground/80">
+                  <Bot className="size-3 shrink-0 text-primary/70" />
+                  <span className="truncate">{formatModelLabel(agentConfig.model)}</span>
+                </span>
+                {agentConfig.knowledgeBaseId && (
+                  <span
+                    className={cn(
+                      'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
+                      useKnowledge
+                        ? 'border-success/20 bg-success/10 text-success'
+                        : 'border-border bg-muted/40 text-muted-foreground'
+                    )}
+                  >
+                    {useKnowledge ? 'Knowledge: On' : 'Knowledge: Off'}
                   </span>
-                  {agentConfig.knowledgeBaseId && (
-                    <span
-                      className={cn(
-                        'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
-                        useKnowledge
-                          ? 'border-success/20 bg-success/10 text-success'
-                          : 'border-border bg-muted/40 text-muted-foreground'
-                      )}
-                    >
-                      {useKnowledge ? 'Knowledge: On' : 'Knowledge: Off'}
-                    </span>
-                  )}
-                  {agentHasTools && (
-                    <span
-                      className={cn(
-                        'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
-                        useTools && toolsAllowed
-                          ? 'border-success/20 bg-success/10 text-success'
-                          : 'border-border bg-muted/40 text-muted-foreground'
-                      )}
-                    >
-                      {toolsAllowed ? (useTools ? 'Tools: On' : 'Tools: Off') : 'Tools: Pro'}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!inputValue.trim() || streaming || !canSend}
-                  size="icon-xs"
-                  className="shrink-0 rounded-lg"
-                  aria-label="Send message"
-                >
-                  {streaming ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <Send className="size-3.5" />
-                  )}
-                </Button>
+                )}
+                {agentHasTools && (
+                  <span
+                    className={cn(
+                      'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
+                      useTools && toolsAllowed
+                        ? 'border-success/20 bg-success/10 text-success'
+                        : 'border-border bg-muted/40 text-muted-foreground'
+                    )}
+                  >
+                    {toolsAllowed ? (useTools ? 'Tools: On' : 'Tools: Off') : 'Tools: Pro'}
+                  </span>
+                )}
               </div>
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() || streaming || !canSend}
+                size="icon-xs"
+                className="shrink-0 rounded-lg"
+                aria-label="Send message"
+              >
+                {streaming ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Send className="size-3.5" />
+                )}
+              </Button>
             </div>
           </div>
         </div>

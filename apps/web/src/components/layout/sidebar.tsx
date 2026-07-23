@@ -7,7 +7,6 @@ import {
   MessageSquare,
   MessageCircle,
   BookOpen,
-  Users,
   User,
   Globe,
   ChevronLeft,
@@ -43,7 +42,6 @@ function useSettingsItems() {
 
   return [
     { icon: Building2, label: 'Organization', href: '/settings/organization', adminOnly: false },
-    { icon: Users, label: 'Team', href: '/settings/team', adminOnly: false },
     { icon: User, label: 'Profile', href: '/settings/profile', adminOnly: false },
     { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
     { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true },
@@ -331,7 +329,6 @@ function getMobileNavGroups(role?: string) {
   const isAdmin = role === 'owner' || role === 'admin'
   const settingsItems = [
     { icon: Building2, label: 'Organization', href: '/settings/organization' },
-    { icon: Users, label: 'Team', href: '/settings/team' },
     { icon: User, label: 'Profile', href: '/settings/profile' },
     ...(isAdmin ? [
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },

@@ -29,7 +29,6 @@ import WidgetConfigPage from '@/pages/widgets/widget-config-page'
 import WidgetDemoPage from '@/pages/widget/WidgetDemo'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import OrganizationSettingsPage from '@/pages/settings/organization-settings-page'
-import TeamMembersPage from '@/pages/settings/team-members-page'
 import DeploymentsPage from '@/pages/settings/deployments-page'
 import ProviderKeysPage from '@/pages/settings/provider-keys-page'
 import ProfilePage from '@/pages/settings/profile-page'
@@ -112,7 +111,6 @@ export function App() {
                 <Route index element={<OrganizationSettingsPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="organization" element={<OrganizationSettingsPage />} />
-                <Route path="team" element={<TeamMembersPage />} />
                 <Route path="deployments" element={<DeploymentsPage />} />
                 <Route path="provider-keys" element={<ProviderKeysPage />} />
                 <Route path="mcp-servers" element={<McpServersPage />} />

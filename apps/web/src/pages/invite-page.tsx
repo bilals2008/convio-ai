@@ -38,7 +38,7 @@ export default function InvitePage() {
       queryClient.invalidateQueries({ queryKey: ['members'] })
       const orgId = res.data?.data?.organizationId as string
       if (orgId) {
-        navigate(`/settings/team?orgId=${orgId}`)
+        navigate(`/settings/organization?orgId=${orgId}`)
       } else {
         navigate('/dashboard')
       }

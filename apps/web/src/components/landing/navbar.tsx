@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, X, LogOut, LayoutDashboard, User, Sun, Moon, Sparkles } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, User, Sun, Moon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
 import { useTheme } from 'next-themes'
@@ -38,7 +39,7 @@ export function Navbar() {
 
   return (
     <header className="fixed top-0 inset-x-0 z-[200]">
-      <PromoBanner />
+      <PromoBanner hidden={scrolled} />
       <div
         className={`transition-[background-color,border-color,backdrop-filter] duration-300 ${
           scrolled
@@ -50,6 +51,7 @@ export function Navbar() {
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <img src="/logo.png" alt="Convio" className="h-6 w-auto" />
             <span className="text-base font-bold font-heading">Convio</span>
+            <Badge variant="beta" className="ml-1 relative -top-0.5">Beta</Badge>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">

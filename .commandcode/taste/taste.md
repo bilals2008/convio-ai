@@ -1,14 +1,11 @@
 # Taste (Continuously Learned by [CommandCode][cmd])
 
 [cmd]: https://commandcode.ai/
-
 
 # code-style
 See [code-style/taste.md](code-style/taste.md)
 # design
-- For channel/service setup flows, use a hybrid approach: default to a simple one-click OAuth2 flow (no config needed), with an optional "Advanced" toggle revealing manual credential fields for users who want their own branded/custom setup. Confidence: 0.85
-- Keep dashboard stats cards compact with a horizontal row layout (icon, label+value, change badge in one line); use p-3.5, size-9 icons, text-lg for values, and small change badges. Confidence: 0.75
-
+See [design/taste.md](design/taste.md)
 # database
 - Use DIRECT_URL (port 5432, no pgbouncer) for Prisma schema changes like `db push` and `migrate`; the pooler URL (port 6543, ?pgbouncer=true) blocks DDL in transaction mode. Confidence: 0.85
 - Use getPrisma() from @convio/database instead of new PrismaClient() for seed scripts and any direct DB access; the project uses a singleton with pg Pool adapter. Confidence: 0.70
@@ -19,6 +16,10 @@ See [code-style/taste.md](code-style/taste.md)
 
 # ui
 - Stream AI responses word-by-word with markdown rendering (like ChatGPT), not all at once after completion. Build this as a reusable component. Confidence: 0.65
+
+# communication
+- References existing pages/components as design templates rather than describing visual changes in detail (e.g., "make this like @filepath"). Confidence: 0.75
+- Don't invent or fabricate details the user didn't specify — e.g., don't make up domain names for URL displays; slugs should be shown as relative paths like `/{slug}`, not as full URLs with an assumed domain. Confidence: 0.70
 
 # billing
 - Use Creem as the payment provider for billing integration (checkout, webhooks, subscription management); migrated from Lemon Squeezy. Confidence: 0.85

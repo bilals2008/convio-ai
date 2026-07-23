@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
 
-export function PromoBanner() {
+export function PromoBanner({ hidden }: { hidden?: boolean }) {
   const [visible, setVisible] = useState(() => {
     return !sessionStorage.getItem('promo-banner-dismissed')
   })
 
-  if (!visible) return null
+  if (!visible || hidden) return null
 
   const dismiss = () => {
     sessionStorage.setItem('promo-banner-dismissed', 'true')

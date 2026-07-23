@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -42,6 +43,7 @@ interface Member {
   email: string
   role: MemberRole
   joinedAt: string
+  avatar?: string
 }
 
 interface MemberTableProps {
@@ -123,16 +125,28 @@ export function MemberTable({ members, onRoleChange, onRemove, loading, removing
     {
       accessorKey: 'name',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
-      cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-full bg-muted shrink-0">
-            <User className="size-4 text-muted-foreground" />
+      cell: ({ row }) => {
+        const member = row.original
+        const initials = member.name
+          .split(' ')
+          .map((n) => n[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase()
+        return (
+          <div className="flex items-center gap-3">
+            <Avatar className="size-9 shrink-0 rounded-full">
+              {member.avatar && <AvatarImage src={member.avatar} alt={member.name} />}
+              <AvatarFallback className="bg-muted text-xs font-medium text-muted-foreground">
+                {initials || <User className="size-3.5" />}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{member.name}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{row.original.name}</p>
-          </div>
-        </div>
-      ),
+        )
+      },
     },
     {
       accessorKey: 'role',

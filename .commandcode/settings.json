@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(pnpm:*)",
+      "Shell(npx tsc --noEmit --project apps/web/tsconfig.json 2 >& 1)",
+      "powershell"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}
