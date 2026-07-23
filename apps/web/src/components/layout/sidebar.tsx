@@ -160,11 +160,9 @@ export function Sidebar() {
             <SidebarItem icon={Globe} label="Deployments" href="/settings/deployments" />
           </SidebarGroup>
 
-          {org?.role === 'owner' && (
-            <SidebarGroup label="Development">
-              <SidebarItem icon={BookOpen} label="Docs" href="/docs" />
-            </SidebarGroup>
-          )}
+          <SidebarGroup label="Development">
+            <SidebarItem icon={BookOpen} label="Docs" href="/docs" />
+          </SidebarGroup>
 
           <SettingsGroup collapsed={collapsed} />
         </nav>

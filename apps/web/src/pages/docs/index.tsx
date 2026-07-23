@@ -1,13 +1,17 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, BookOpen, ListChecks, Cpu, DollarSign, Mic, Plug, LayoutTemplate } from 'lucide-react'
+import { ArrowRight, BookOpen, ListChecks, Cpu, DollarSign, Mic, Plug, LayoutTemplate, Globe, Code, type LucideIcon } from 'lucide-react'
 import { DocHeading } from '@/components/docs/doc-heading'
 import { Button } from '@/components/ui/button'
 
-const quickLinks = [
+const quickLinks: { icon?: LucideIcon; label: string; href: string; desc: string; logo?: string }[] = [
   { icon: ListChecks, label: 'Integration Plan', href: '/docs/plan', desc: 'Phase-by-phase plan for adding awesome-llm-apps features' },
   { icon: Cpu, label: 'RAG Improvements', href: '/docs/corrective-rag', desc: 'Corrective RAG, Hybrid Search, Agentic RAG & more' },
   { icon: DollarSign, label: 'Cost Optimization', href: '/docs/token-optimization', desc: 'Reduce LLM API costs by 30-90%' },
   { icon: Mic, label: 'Voice AI', href: '/docs/voice', desc: 'Speech-in, speech-out voice agents' },
+  { logo: 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/whatsapp/wordmark.svg', label: 'WhatsApp Features', href: '/docs/whatsapp-features', desc: 'Typing indicators, buttons, templates & more' },
+  { logo: 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/discord/wordmark.svg', label: 'Discord Features', href: '/docs/discord-features', desc: 'Components, permissions, voice & more' },
+  { icon: Globe, label: 'Widget Features', href: '/docs/widget-features', desc: 'Chat bubble, themes, uploads & analytics' },
+  { icon: Code, label: 'API Features', href: '/docs/api-features', desc: 'Conversations, analytics, webhooks & more' },
   { icon: Plug, label: 'MCP Integration', href: '/docs/mcp', desc: 'Model Context Protocol agents' },
   { icon: LayoutTemplate, label: 'Generative UI', href: '/docs/generative-ui', desc: 'Interactive UI from agents' },
 ]
@@ -38,7 +42,11 @@ export default function DocsOverviewPage() {
             className="group flex items-start gap-3 rounded-xl border p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.02]"
           >
             <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              <item.icon className="size-4 text-primary" />
+              {item.logo ? (
+                <img src={item.logo} alt="" className="h-4 object-contain" />
+              ) : item.icon ? (
+                <item.icon className="size-4 text-primary" />
+              ) : null}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium group-hover:text-primary transition-colors">{item.label}</p>

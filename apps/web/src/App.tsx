@@ -45,6 +45,10 @@ import TokenOptimizationPage from '@/pages/docs/token-optimization'
 import ContextOptimizationPage from '@/pages/docs/context-optimization'
 import VoicePage from '@/pages/docs/voice'
 import McpPage from '@/pages/docs/mcp'
+import WhatsAppFeaturesPage from '@/pages/docs/whatsapp-features'
+import DiscordFeaturesPage from '@/pages/docs/discord-features'
+import WidgetFeaturesPage from '@/pages/docs/widget-features'
+import ApiFeaturesPage from '@/pages/docs/api-features'
 import GenerativeUiPage from '@/pages/docs/generative-ui'
 import MemoryPage from '@/pages/docs/memory'
 import MultiAgentPage from '@/pages/docs/multi-agent'
@@ -89,6 +93,10 @@ export function App() {
               <Route path="/docs/context-optimization" element={<ContextOptimizationPage />} />
               <Route path="/docs/voice" element={<VoicePage />} />
               <Route path="/docs/mcp" element={<McpPage />} />
+              <Route path="/docs/whatsapp-features" element={<WhatsAppFeaturesPage />} />
+              <Route path="/docs/discord-features" element={<DiscordFeaturesPage />} />
+              <Route path="/docs/widget-features" element={<WidgetFeaturesPage />} />
+              <Route path="/docs/api-features" element={<ApiFeaturesPage />} />
               <Route path="/docs/generative-ui" element={<GenerativeUiPage />} />
               <Route path="/docs/memory" element={<MemoryPage />} />
               <Route path="/docs/multi-agent" element={<MultiAgentPage />} />

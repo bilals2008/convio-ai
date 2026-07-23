@@ -12,6 +12,10 @@ import {
   LayoutTemplate,
   Database,
   Users,
+  MessageCircle,
+  MessageSquare,
+  Globe,
+  Code,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -20,6 +24,7 @@ export interface DocItem {
   href: string
   icon: LucideIcon
   description?: string
+  logo?: string
 }
 
 export interface DocSection {
@@ -55,6 +60,15 @@ export const docSections: DocSection[] = [
     title: 'Voice & Multimodal',
     items: [
       { title: 'Voice AI Agents', href: '/docs/voice', icon: Mic, description: 'Speech-in, speech-out agents' },
+    ],
+  },
+  {
+    title: 'Channels',
+    items: [
+      { title: 'WhatsApp', href: '/docs/whatsapp-features', icon: MessageCircle, description: 'Typing indicators, buttons, templates & more', logo: 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/whatsapp/wordmark.svg' },
+      { title: 'Discord', href: '/docs/discord-features', icon: MessageSquare, description: 'Components, permissions, voice & more', logo: 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/discord/wordmark.svg' },
+      { title: 'Widget', href: '/docs/widget-features', icon: Globe, description: 'Chat bubble, themes, uploads & analytics' },
+      { title: 'API', href: '/docs/api-features', icon: Code, description: 'Conversations, analytics, webhooks & more' },
     ],
   },
   {

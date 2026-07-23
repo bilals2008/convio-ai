@@ -26,8 +26,14 @@ export function DocsSidebar() {
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                   )}
                 >
-                  <item.icon className={cn('size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground/60')} />
-                  <span className="truncate">{item.title}</span>
+                  {item.logo ? (
+                    <img src={item.logo} alt={item.title} className="h-4 shrink-0 object-contain" />
+                  ) : (
+                    <>
+                      <item.icon className={cn('size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground/60')} />
+                      <span className="truncate">{item.title}</span>
+                    </>
+                  )}
                 </Link>
               )
             })}

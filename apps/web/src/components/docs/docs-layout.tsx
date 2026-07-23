@@ -44,11 +44,6 @@ export function DocsLayout() {
     return <Navigate to="/login" replace />
   }
 
-  const role = org?.role
-  if (role !== 'owner' && role !== 'admin') {
-    return <Navigate to="/dashboard" replace />
-  }
-
   return (
     <div className="min-h-screen bg-background">
       {/* Topbar */}
