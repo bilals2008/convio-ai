@@ -42,3 +42,6 @@ coverage/
 
 # Misc
 *.tsbuildinfo
+
+# AI agent config
+.commandcode/
