@@ -1,17 +1,46 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Brain, Clock, Pencil, Trash2, MoreVertical, AlertCircle, CheckSquare, Square } from 'lucide-react'
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  createColumnHelper,
+  type SortingState,
+} from '@tanstack/react-table'
+import {
+  Plus,
+  Brain,
+  Clock,
+  Pencil,
+  Trash2,
+  MoreVertical,
+  AlertCircle,
+  LayoutGrid,
+  List,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
+} from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
 import { BulkActionBar } from '@/components/shared/bulk-action-bar'
-import { SelectionCheckbox } from '@/components/shared/selection-checkbox'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -41,7 +70,7 @@ import { ProviderLogo } from '@/components/agents/provider-logos'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
-import { cn } from '@/lib/utils'
+import { cn, formatRelativeTime } from '@/lib/utils'
 
 interface Agent {
   id: string
@@ -89,41 +118,45 @@ function AgentCard({
   onOpen,
   onEdit,
   onDelete,
-  selectionMode,
   isSelected,
   onToggleSelect,
+  showCheckbox,
 }: {
   agent: Agent
   onOpen: () => void
   onEdit: () => void
   onDelete: () => void
-  selectionMode: boolean
   isSelected: boolean
   onToggleSelect: () => void
+  showCheckbox: boolean
 }) {
-  const handleClick = selectionMode ? onToggleSelect : onOpen
-
   return (
     <Card
       role="button"
       tabIndex={0}
-      onClick={handleClick}
+      onClick={onOpen}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          handleClick()
+          onOpen()
         }
       }}
       className={cn(
-        "group cursor-pointer p-0 outline-none transition-all duration-200",
+        "group relative cursor-pointer p-0 outline-none transition-all duration-200",
         isSelected && "border-primary/60 bg-primary/5 ring-1 ring-primary/20",
         !isSelected && "hover:-translate-y-0.5 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
       )}
     >
       <CardContent className="flex h-full flex-col gap-3 p-4">
       <div className="flex items-start gap-3">
-        {selectionMode && (
-          <SelectionCheckbox isSelected={isSelected} onToggle={onToggleSelect} />
+        {showCheckbox && (
+          <div className="pt-0.5">
+            <Checkbox
+              checked={isSelected}
+              onClick={(e) => { e.stopPropagation(); onToggleSelect() }}
+              className="size-4"
+            />
+          </div>
         )}
         <Avatar className="size-11 rounded-xl">
           {agent.avatar && <AvatarImage src={agent.avatar} alt={agent.name} />}
@@ -137,11 +170,9 @@ function AgentCard({
             {agent.description || 'No description'}
           </p>
         </div>
-        {!selectionMode && (
-          <Badge variant={statusVariant(agent.status)} className="text-[10px] font-medium capitalize">
-            {agent.status}
-          </Badge>
-        )}
+        <Badge variant={statusVariant(agent.status)} className="text-[10px] font-medium capitalize">
+          {agent.status}
+        </Badge>
       </div>
 
       <div className="flex items-center gap-1.5">
@@ -151,38 +182,32 @@ function AgentCard({
         </span>
       </div>
 
-      <p className="line-clamp-2 text-[11px] leading-relaxed text-muted-foreground/80">
-        {agent.systemPrompt || 'No system prompt configured.'}
-      </p>
-
       <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-3">
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Clock className="size-3" />
           {formatDate(agent.updatedAt || agent.createdAt)}
         </div>
-        {!selectionMode && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <MoreVertical className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit() }}>
+              <Pencil className="size-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={(e) => { e.stopPropagation(); onDelete() }}
             >
-              <MoreVertical className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit() }}>
-                <Pencil className="size-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={(e) => { e.stopPropagation(); onDelete() }}
-              >
-                <Trash2 className="size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+              <Trash2 className="size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       </CardContent>
     </Card>
@@ -225,6 +250,8 @@ export default function AgentsListPage() {
   const [sortBy, setSortBy] = useState('recent')
   const [deleteAgent, setDeleteAgent] = useState<Agent | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const { data: agentsData, isLoading, isError, refetch } = useQuery({
     queryKey: ['agents', orgId],
@@ -300,6 +327,159 @@ export default function AgentsListPage() {
 
   const hasActiveFilters = !!search.trim() || statusFilter !== 'all' || modelFilter !== 'all'
 
+  const columnHelper = createColumnHelper<Agent>()
+
+  const columns = useMemo(() => [
+    columnHelper.display({
+      id: 'select',
+      header: () => (
+        <Checkbox
+          checked={bulk.isAllSelected}
+          onClick={(e) => { e.stopPropagation(); bulk.toggleSelectAll() }}
+          className="size-4"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={bulk.isSelected(row.original.id)}
+          onClick={(e) => { e.stopPropagation(); bulk.toggleSelect(row.original.id) }}
+          className="size-4"
+        />
+      ),
+      size: 36,
+      enableSorting: false,
+    }),
+    columnHelper.accessor('name', {
+      header: ({ column }) => (
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 -ml-1.5 font-medium text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Agent
+          {column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="size-3.5" />
+          ) : column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="size-3.5" />
+          ) : (
+            <ArrowUpDown className="size-3.5 text-muted-foreground/50" />
+          )}
+        </button>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="size-8 rounded-lg">
+            {row.original.avatar && <AvatarImage src={row.original.avatar} alt={row.original.name} />}
+            <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+              {row.original.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate text-foreground">{row.original.name}</p>
+            <p className="text-xs text-muted-foreground truncate max-w-[240px]">
+              {row.original.description || 'No description'}
+            </p>
+          </div>
+        </div>
+      ),
+      sortingFn: 'text',
+    }),
+    columnHelper.accessor('model', {
+      header: ({ column }) => (
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 -ml-1.5 font-medium text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Model
+          {column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="size-3.5" />
+          ) : column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="size-3.5" />
+          ) : (
+            <ArrowUpDown className="size-3.5 text-muted-foreground/50" />
+          )}
+        </button>
+      ),
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <ProviderLogo provider={row.original.model.split('/')[0] || 'other'} className="size-3.5 rounded-[3px]" />
+          <span className="truncate max-w-[160px]">{formatModelName(row.original.model)}</span>
+        </span>
+      ),
+      sortingFn: 'text',
+    }),
+    columnHelper.accessor('status', {
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge variant={statusVariant(row.original.status)} className="text-[10px] font-medium capitalize">
+          {row.original.status}
+        </Badge>
+      ),
+    }),
+    columnHelper.accessor('updatedAt', {
+      header: ({ column }) => (
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 -ml-1.5 font-medium text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Updated
+          {column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="size-3.5" />
+          ) : column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="size-3.5" />
+          ) : (
+            <ArrowUpDown className="size-3.5 text-muted-foreground/50" />
+          )}
+        </button>
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {formatRelativeTime(row.original.updatedAt || row.original.createdAt)}
+        </span>
+      ),
+      sortingFn: 'datetime',
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <MoreVertical className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => navigate(`/agents/${row.original.id}/edit`)}>
+              <Pencil className="size-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => setDeleteAgent(row.original)}
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+      size: 48,
+    }),
+  ], [bulk.isAllSelected, bulk.isSelected, bulk.toggleSelect, bulk.toggleSelectAll, navigate])
+
+  const table = useReactTable({
+    data: displayAgents,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
+
   const clearFilters = () => {
     setSearch('')
     setStatusFilter('all')
@@ -322,32 +502,25 @@ export default function AgentsListPage() {
           <p className="text-sm text-muted-foreground">Create, manage, and deploy your AI agents.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {bulk.selectionMode ? (
+          {bulk.selectedCount > 0 ? (
             <BulkActionBar
               onExitSelectionMode={bulk.exitSelectionMode}
               action={
                 <Button
                   variant="destructive"
                   size="sm"
-                  disabled={bulk.selectedCount === 0}
                   onClick={() => setBulkDeleteOpen(true)}
                 >
                   <Trash2 className="size-4" />
-                  Delete {bulk.selectedCount > 0 ? `(${bulk.selectedCount})` : ''}
+                  Delete ({bulk.selectedCount})
                 </Button>
               }
             />
           ) : (
-            <>
-              <Button variant="outline" size="sm" onClick={bulk.enterSelectionMode}>
-                <CheckSquare className="size-4" />
-                Select
-              </Button>
-              <Button onClick={() => navigate('/agents/new')} className="shrink-0">
-                <Plus className="size-4" />
-                Create Agent
-              </Button>
-            </>
+            <Button onClick={() => navigate('/agents/new')} className="shrink-0">
+              <Plus className="size-4" />
+              Create Agent
+            </Button>
           )}
         </div>
       </div>
@@ -396,6 +569,35 @@ export default function AgentsListPage() {
               <SelectItem value="oldest">Oldest</SelectItem>
             </SelectContent>
           </Select>
+
+          <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={cn(
+                'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
+                viewMode === 'grid'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={cn(
+                'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
+                viewMode === 'table'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              aria-label="Table view"
+            >
+              <List className="size-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -415,11 +617,46 @@ export default function AgentsListPage() {
 
       {/* Loading */}
       {!isError && loading && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 8 }, (_, i) => (
-            <AgentCardSkeleton key={i} />
-          ))}
-        </div>
+        viewMode === 'grid' ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 8 }, (_, i) => (
+              <AgentCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b border-border">
+                  <TableHead className="text-muted-foreground font-medium h-11 px-4 text-sm">Agent</TableHead>
+                  <TableHead className="text-muted-foreground font-medium h-11 px-4 text-sm">Model</TableHead>
+                  <TableHead className="text-muted-foreground font-medium h-11 px-4 text-sm">Status</TableHead>
+                  <TableHead className="text-muted-foreground font-medium h-11 px-4 text-sm">Updated</TableHead>
+                  <TableHead className="h-11 w-12" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }, (_, i) => (
+                  <TableRow key={i} className={cn('border-b border-border/60', i % 2 === 1 && 'bg-muted/20')}>
+                    <TableCell className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="size-8 rounded-lg" />
+                        <div className="space-y-1.5">
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-3 w-40" />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
+                    <TableCell className="px-4 py-3"><Skeleton className="h-3 w-16" /></TableCell>
+                    <TableCell className="px-4 py-3"><Skeleton className="size-7 rounded-md" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )
       )}
 
       {/* Empty: no agents */}
@@ -450,17 +687,16 @@ export default function AgentsListPage() {
               {displayAgents.length} agent{displayAgents.length !== 1 ? 's' : ''}
               {hasActiveFilters ? ' found' : ''}
             </p>
-            {bulk.selectionMode ? (
+            {bulk.selectedCount > 0 ? (
               <button
                 type="button"
                 onClick={bulk.toggleSelectAll}
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                {bulk.isAllSelected ? (
-                  <CheckSquare className="size-4 text-primary" />
-                ) : (
-                  <Square className="size-4" />
-                )}
+                <Checkbox
+                  checked={bulk.isAllSelected}
+                  className="size-4"
+                />
                 {bulk.isAllSelected ? 'Deselect all' : 'Select all'}
               </button>
             ) : hasActiveFilters ? (
@@ -469,22 +705,69 @@ export default function AgentsListPage() {
               </Button>
             ) : null}
           </div>
-          )}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {displayAgents.map((agent) => (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                onOpen={() => navigate(`/agents/${agent.id}/edit`)}
-                onEdit={() => navigate(`/agents/${agent.id}/edit`)}
-                onDelete={() => setDeleteAgent(agent)}
-                selectionMode={bulk.selectionMode}
-                isSelected={bulk.isSelected(agent.id)}
-                onToggleSelect={() => bulk.toggleSelect(agent.id)}
-              />
-            ))}
-          </div>
+          {viewMode === 'grid' ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {displayAgents.map((agent) => (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  onOpen={() => navigate(`/agents/${agent.id}/edit`)}
+                  onEdit={() => navigate(`/agents/${agent.id}/edit`)}
+                  onDelete={() => setDeleteAgent(agent)}
+                  isSelected={bulk.isSelected(agent.id)}
+                  onToggleSelect={() => bulk.toggleSelect(agent.id)}
+                  showCheckbox={bulk.selectedCount > 0}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      key={headerGroup.id}
+                      className="hover:bg-transparent border-b border-border"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          className={cn(
+                            'text-muted-foreground font-medium h-11 px-4 text-sm',
+                            header.column.getCanSort() && 'cursor-pointer select-none'
+                          )}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.map((row, index) => (
+                    <TableRow
+                      key={row.id}
+                      onClick={() => navigate(`/agents/${row.original.id}/edit`)}
+                      className={cn(
+                        'border-b border-border/60 last:border-0 cursor-pointer transition-colors',
+                        index % 2 === 1 && 'bg-muted/20',
+                        'hover:bg-muted/40'
+                      )}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="px-4 py-3">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </>
       )}
 
