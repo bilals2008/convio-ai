@@ -4,6 +4,7 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
   flexRender,
   type SortingState,
   type ColumnDef,
@@ -22,6 +23,8 @@ import {
   ArrowUp,
   CheckCircle2,
   XCircle,
+  Search,
+  X,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -149,6 +152,7 @@ export default function McpServersPage() {
   })
 
   const [sorting, setSorting] = useState<SortingState>([])
+  const [globalFilter, setGlobalFilter] = useState('')
 
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -427,10 +431,13 @@ export default function McpServersPage() {
   const table = useReactTable({
     data: servers || [],
     columns,
-    state: { sorting },
+    state: { sorting, globalFilter },
     onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: 'includesString',
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
   })
 
   if (orgLoading || isLoading) {
@@ -520,9 +527,30 @@ export default function McpServersPage() {
         {!servers || servers.length === 0 ? (
           <EmptyState icon={Plug} title="No MCP servers" description="Add an MCP server to get started." />
         ) : (
-          <Card className="rounded-xl border-border/60">
-            <CardContent className="p-0">
-              <Table>
+          <div className="space-y-3">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search servers..."
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="pl-8 pr-8"
+              />
+              {globalFilter && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
+                  onClick={() => setGlobalFilter('')}
+                >
+                  <X className="size-3" />
+                </Button>
+              )}
+            </div>
+            <Card className="rounded-xl border-border/60">
+              <CardContent className="p-0">
+                <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow
@@ -562,7 +590,7 @@ export default function McpServersPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                        No servers found.
+                        {globalFilter ? `No servers matching "${globalFilter}"` : 'No servers found.'}
                       </TableCell>
                     </TableRow>
                   )}
@@ -570,6 +598,7 @@ export default function McpServersPage() {
               </Table>
             </CardContent>
           </Card>
+          </div>
         )}
       </div>
 
