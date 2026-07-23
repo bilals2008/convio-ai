@@ -77,8 +77,8 @@ COPY packages/sdk/ packages/sdk/
 # Copy Prisma config
 COPY prisma.config.ts ./
 
-# Install production dependencies (frozen lockfile)
-RUN pnpm install --prod --frozen-lockfile
+# Install all dependencies (frozen lockfile ensures reproducibility)
+RUN pnpm install --frozen-lockfile
 
 # Copy built artifacts from builder (overwrites workspace source with built output)
 COPY --from=builder /app/packages/database/src/generated/ ./packages/database/src/generated/
