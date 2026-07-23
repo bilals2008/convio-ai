@@ -5,6 +5,7 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   flexRender,
   createColumnHelper,
   type SortingState,
@@ -22,6 +23,8 @@ import {
   ArrowUpDown,
   ArrowDown,
   ArrowUp,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -471,6 +474,9 @@ export default function AgentsListPage() {
     }),
   ], [bulk.isAllSelected, bulk.isSelected, bulk.toggleSelect, bulk.toggleSelectAll, navigate])
 
+  const PAGE_SIZE = 15
+  const showPagination = displayAgents.length > PAGE_SIZE
+
   const table = useReactTable({
     data: displayAgents,
     columns,
@@ -478,6 +484,8 @@ export default function AgentsListPage() {
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    ...(showPagination ? { getPaginationRowModel: getPaginationRowModel() } : {}),
+    initialState: { pagination: { pageSize: PAGE_SIZE } },
   })
 
   const clearFilters = () => {
@@ -766,6 +774,47 @@ export default function AgentsListPage() {
                   ))}
                 </TableBody>
               </Table>
+
+              {showPagination && (
+                <div className="flex items-center justify-between border-t border-border px-4 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    Showing {table.getState().pagination.pageIndex * PAGE_SIZE + 1} to{' '}
+                    {Math.min(
+                      (table.getState().pagination.pageIndex + 1) * PAGE_SIZE,
+                      displayAgents.length,
+                    )}{' '}
+                    of {displayAgents.length} agents
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => table.previousPage()}
+                      disabled={!table.getCanPreviousPage()}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    {table.getPageOptions().map((page) => (
+                      <Button
+                        key={page}
+                        variant={table.getState().pagination.pageIndex === page ? 'default' : 'outline'}
+                        size="icon-sm"
+                        onClick={() => table.setPageIndex(page)}
+                      >
+                        {page + 1}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => table.nextPage()}
+                      disabled={!table.getCanNextPage()}
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>

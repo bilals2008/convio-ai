@@ -10,3 +10,5 @@
 - Provide Grid/Table view toggles on list pages when the entity count could grow large (15+ items). Default to Table view — the user explicitly prefers table as the starting view. Confidence: 0.85
 - Use soft, muted background tints (e.g. `bg-muted/20`, `bg-muted/30`) rather than hard/opaque backgrounds for table rows, containers, and inactive states. Confidence: 0.80
 - Use shadcn `Checkbox` (size-4, 16px) for bulk selection. On **tables**, always show the select column. On **cards**, hide checkboxes by default and only reveal them contextually when `selectedCount > 0`. Bulk actions appear when items are checked. No separate "Select" button or selection-mode toggle. Confidence: 0.85
+- Hide pagination when item count is below the page size threshold (e.g., ≤15). Only show pagination footer when data exceeds the threshold. Use a consistent page size of 15 across all list pages. Confidence: 0.85
+- Keep all list pages (agents, widgets, etc.) visually consistent — same table component style, zebra striping, pagination behavior, and toolbar layout. Treat them as a single design pattern. Confidence: 0.85

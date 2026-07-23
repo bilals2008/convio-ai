@@ -6,7 +6,9 @@ import {
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
   useReactTable,
+  type SortingState,
 } from '@tanstack/react-table'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -16,8 +18,6 @@ import {
   Rocket,
   Globe2,
   AlertCircle,
-  CheckSquare,
-  Square,
   Trash2,
   MoreVertical,
   Copy,
@@ -29,6 +29,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  LayoutGrid,
+  List,
 } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -39,9 +41,18 @@ import { BulkActionBar } from '@/components/shared/bulk-action-bar'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +79,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { agents as agentsApi, widgets as widgetsApi } from '@/lib/api'
 import { useWidgets, type WidgetSummary } from '@/lib/hooks/use-widgets'
+import { WidgetCard } from '@/components/widgets/widget-card'
 import { useOrg } from '@/lib/org-context'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { cn } from '@/lib/utils'
@@ -105,6 +117,8 @@ export default function WidgetsListPage() {
   const [deleteTarget, setDeleteTarget] = useState<WidgetSummary | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const form = useForm<CreateWidgetValues>({
     resolver: zodResolver(createWidgetSchema),
@@ -187,33 +201,21 @@ export default function WidgetsListPage() {
     () => [
       column.display({
         id: 'select',
-        size: 32,
+        size: 36,
         enableSorting: false,
         header: () => (
-          <button
-            type="button"
-            onClick={bulk.toggleSelectAll}
-            className="flex items-center justify-center"
-          >
-            {bulk.isAllSelected ? (
-              <CheckSquare className="size-4 text-primary" />
-            ) : (
-              <Square className="size-4 text-muted-foreground" />
-            )}
-          </button>
+          <Checkbox
+            checked={bulk.isAllSelected}
+            onClick={(e) => { e.stopPropagation(); bulk.toggleSelectAll() }}
+            className="size-4"
+          />
         ),
         cell: ({ row }) => (
-          <button
-            type="button"
+          <Checkbox
+            checked={bulk.isSelected(row.original.id)}
             onClick={(e) => { e.stopPropagation(); bulk.toggleSelect(row.original.id) }}
-            className="flex items-center justify-center"
-          >
-            {bulk.isSelected(row.original.id) ? (
-              <CheckSquare className="size-4 text-primary" />
-            ) : (
-              <Square className="size-4 text-muted-foreground" />
-            )}
-          </button>
+            className="size-4"
+          />
         ),
       }),
       column.accessor('name', {
@@ -325,15 +327,21 @@ export default function WidgetsListPage() {
         },
       }),
     ],
-    [bulk, navigate, copyEmbed],
+    [bulk.isAllSelected, bulk.isSelected, bulk.toggleSelect, bulk.toggleSelectAll, navigate, copiedId],
   )
+
+  const PAGE_SIZE = 15
+  const showPagination = filtered.length > PAGE_SIZE
 
   const table = useReactTable({
     data: filtered,
     columns,
+    state: { sorting },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
+    getSortedRowModel: getSortedRowModel(),
+    ...(showPagination ? { getPaginationRowModel: getPaginationRowModel() } : {}),
+    initialState: { pagination: { pageSize: PAGE_SIZE } },
   })
 
   const hasActiveFilters = !!search.trim() || filter !== 'all'
@@ -360,32 +368,25 @@ export default function WidgetsListPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {bulk.selectionMode ? (
+          {bulk.selectedCount > 0 ? (
             <BulkActionBar
               onExitSelectionMode={bulk.exitSelectionMode}
               action={
                 <Button
                   variant="destructive"
                   size="sm"
-                  disabled={bulk.selectedCount === 0}
                   onClick={() => setBulkDeleteOpen(true)}
                 >
                   <Trash2 className="size-4" />
-                  Delete {bulk.selectedCount > 0 ? `(${bulk.selectedCount})` : ''}
+                  Delete ({bulk.selectedCount})
                 </Button>
               }
             />
           ) : (
-            <>
-              <Button variant="outline" size="sm" onClick={bulk.enterSelectionMode}>
-                <CheckSquare className="size-4" />
-                Select
-              </Button>
-              <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-                <Plus className="size-4" />
-                Create Widget
-              </Button>
-            </>
+            <Button onClick={() => setCreateOpen(true)} className="shrink-0">
+              <Plus className="size-4" />
+              Create Widget
+            </Button>
           )}
         </div>
       </div>
@@ -411,6 +412,35 @@ export default function WidgetsListPage() {
                 <SelectItem value="paused">Paused</SelectItem>
               </SelectContent>
             </Select>
+
+            <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
+                  viewMode === 'grid'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                aria-label="Grid view"
+              >
+                <LayoutGrid className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={cn(
+                  'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
+                  viewMode === 'table'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                aria-label="Table view"
+              >
+                <List className="size-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -470,104 +500,125 @@ export default function WidgetsListPage() {
         />
       )}
 
-      {/* Table */}
+      {/* List */}
       {!loading && !isError && filtered.length > 0 && (
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
-              <thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id} className="border-b border-border bg-muted/30">
-                    {headerGroup.headers.map((header) => (
-                      <th
-                        key={header.id}
-                        className={cn(
-                          "px-4 py-3 text-left text-xs font-medium text-muted-foreground",
-                          header.column.getCanSort() && "cursor-pointer select-none hover:text-foreground",
-                        )}
-                        style={{ width: header.getSize() }}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getCanSort() && (
-                            <span className="text-muted-foreground/50">
-                              {header.column.getIsSorted() === 'asc' ? (
-                                <ArrowUp className="size-3" />
-                              ) : header.column.getIsSorted() === 'desc' ? (
-                                <ArrowDown className="size-3" />
-                              ) : (
-                                <ArrowUpDown className="size-3" />
-                              )}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    onClick={() => navigate(`/widgets/${row.original.id}`)}
-                    className={cn(
-                      "border-b border-border last:border-0 cursor-pointer transition-colors hover:bg-muted/30",
-                      bulk.isSelected(row.original.id) && "bg-primary/5",
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination footer */}
-          <div className="flex items-center justify-between border-t border-border px-4 py-3">
-            <p className="text-xs text-muted-foreground">
-              Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
-              {Math.min(
-                (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                filtered.length,
-              )}{' '}
-              of {filtered.length} widget{filtered.length !== 1 ? 's' : ''}
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronLeft className="size-4" />
-              </Button>
-              {table.getPageOptions().map((page) => (
-                <Button
-                  key={page}
-                  variant={table.getState().pagination.pageIndex === page ? 'default' : 'outline'}
-                  size="icon-sm"
-                  onClick={() => table.setPageIndex(page)}
-                >
-                  {page + 1}
-                </Button>
+        <>
+          {viewMode === 'grid' ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((widget) => (
+                <WidgetCard
+                  key={widget.id}
+                  widget={widget}
+                  onCopyEmbed={copyEmbed}
+                  onDelete={setDeleteTarget}
+                  isSelected={bulk.isSelected(widget.id)}
+                  onToggleSelect={() => bulk.toggleSelect(widget.id)}
+                  showCheckbox={bulk.selectedCount > 0}
+                />
               ))}
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronRight className="size-4" />
-              </Button>
             </div>
-          </div>
-        </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      key={headerGroup.id}
+                      className="hover:bg-transparent border-b border-border"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          className={cn(
+                            'text-muted-foreground font-medium h-11 px-4 text-sm',
+                            header.column.getCanSort() && 'cursor-pointer select-none'
+                          )}
+                          style={{ width: header.getSize() }}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                            {header.column.getCanSort() && (
+                              <span className="text-muted-foreground/50">
+                                {header.column.getIsSorted() === 'asc' ? (
+                                  <ArrowUp className="size-3" />
+                                ) : header.column.getIsSorted() === 'desc' ? (
+                                  <ArrowDown className="size-3" />
+                                ) : (
+                                  <ArrowUpDown className="size-3" />
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.map((row, index) => (
+                    <TableRow
+                      key={row.id}
+                      onClick={() => navigate(`/widgets/${row.original.id}`)}
+                      className={cn(
+                        'border-b border-border/60 last:border-0 cursor-pointer transition-colors',
+                        index % 2 === 1 && 'bg-muted/20',
+                        'hover:bg-muted/40'
+                      )}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="px-4 py-3">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {showPagination && (
+                <div className="flex items-center justify-between border-t border-border px-4 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    Showing {table.getState().pagination.pageIndex * PAGE_SIZE + 1} to{' '}
+                    {Math.min(
+                      (table.getState().pagination.pageIndex + 1) * PAGE_SIZE,
+                      filtered.length,
+                    )}{' '}
+                    of {filtered.length} widget{filtered.length !== 1 ? 's' : ''}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => table.previousPage()}
+                      disabled={!table.getCanPreviousPage()}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    {table.getPageOptions().map((page) => (
+                      <Button
+                        key={page}
+                        variant={table.getState().pagination.pageIndex === page ? 'default' : 'outline'}
+                        size="icon-sm"
+                        onClick={() => table.setPageIndex(page)}
+                      >
+                        {page + 1}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => table.nextPage()}
+                      disabled={!table.getCanNextPage()}
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Bulk delete confirmation */}
