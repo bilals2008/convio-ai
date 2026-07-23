@@ -77,5 +77,5 @@ COPY --from=builder /app/package.json ./
 # Expose API port
 EXPOSE 3000
 
-# Run database migrations on startup, then start the server
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node apps/api/dist/server.cjs"]
+# Run database migrations (best-effort), then start the server
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy 2>/dev/null; node apps/api/dist/server.cjs"]
