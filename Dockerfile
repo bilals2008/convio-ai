@@ -60,19 +60,29 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 WORKDIR /app
 
-# Copy built output and node_modules from builder
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/ ./packages/
-COPY --from=builder /app/apps/api/dist/ ./apps/api/dist/
-COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+# Copy manifests for pnpm install
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 
-# Copy Prisma generated client and migrations
+# Copy workspace packages (needed for pnpm link resolution)
+COPY apps/api/package.json apps/api/
+COPY packages/database/ packages/database/
+COPY packages/config/ packages/config/
+COPY packages/types/ packages/types/
+COPY packages/ai/ packages/ai/
+COPY packages/validation/ packages/validation/
+COPY packages/utils/ packages/utils/
+COPY packages/ui/ packages/ui/
+COPY packages/sdk/ packages/sdk/
+
+# Copy Prisma config
+COPY prisma.config.ts ./
+
+# Install production dependencies (frozen lockfile)
+RUN pnpm install --prod --frozen-lockfile
+
+# Copy built artifacts from builder (overwrites workspace source with built output)
 COPY --from=builder /app/packages/database/src/generated/ ./packages/database/src/generated/
-COPY --from=builder /app/packages/database/prisma/ ./packages/database/prisma/
-COPY --from=builder /app/prisma.config.ts ./
-
-# Copy root package.json (for workspace resolution)
-COPY --from=builder /app/package.json ./
+COPY --from=builder /app/apps/api/dist/ ./apps/api/dist/
 
 # Expose API port
 EXPOSE 3000

@@ -8,13 +8,22 @@ export default defineConfig({
   outDir: 'dist',
   clean: true,
   sourcemap: true,
-  shims: true,       // Add require() shims for packages using dynamic require()
-  splitting: false,  // Single file output
+  shims: true,
+  splitting: false,
   outExtension: ({ format }) => format === 'cjs' ? '.cjs' : '.js',
-  // Bundle workspace packages (they are TypeScript sources that need transpilation)
   noExternal: ['@convio/ai', '@convio/config', '@convio/database', '@convio/types', '@convio/validation'],
-  // Keep packages with Node.js native addons or dynamic require() external
   external: [
+    'fastify',
+    'fastify-plugin',
+    '@fastify/cors',
+    '@fastify/error',
+    '@fastify/formbody',
+    '@fastify/helmet',
+    '@fastify/multipart',
+    '@fastify/rate-limit',
+    '@fastify/swagger',
+    '@fastify/swagger-ui',
+    '@fastify/type-provider-typebox',
     'pg',
     'pg-native',
     'pgpass',
