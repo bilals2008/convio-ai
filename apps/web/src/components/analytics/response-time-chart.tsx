@@ -46,7 +46,7 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
           </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
-            <LineChart data={chartData}>
+            <LineChart data={chartData} margin={{ top: 13, right: 10, bottom: 0, left: -10 }}>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="date"

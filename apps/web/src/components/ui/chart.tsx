@@ -47,7 +47,7 @@ function ChartContainer({
       id={chartId}
       style={cssVars as React.CSSProperties}
       className={cn(
-        "flex aspect-video w-full justify-center text-xs [&_.recharts-cartesian-axis-line]:stroke-border [&_.recharts-cartesian-grid_line]:stroke-border [&_.recharts-cartesian-axis-tick]:fill-muted-foreground",
+        "flex w-full justify-center text-xs [&_.recharts-cartesian-axis-line]:stroke-border [&_.recharts-cartesian-grid_line]:stroke-border [&_.recharts-cartesian-axis-tick]:fill-muted-foreground",
         className
       )}
     >
