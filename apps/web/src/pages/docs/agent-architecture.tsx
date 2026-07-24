@@ -25,10 +25,10 @@ export default function AgentArchitecturePage() {
 
       <DocHeading>Avatar System</DocHeading>
       <ul className="space-y-2 text-sm text-muted-foreground mb-6 list-disc pl-5">
-        <li><strong>Avatar presets JSON</strong> — <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">lib/config/avatar-presets.json</code> contains an array of <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">{`{ id, name, category, url }`}</code> objects</li>
+        <li><strong>Avatar presets JSON</strong> — <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">lib/config/avatar-presets.json</code> contains an array of <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">&#123; id, name, category, url &#125;</code> objects</li>
         <li><strong>Categories</strong> — support, business, education, developer, researcher</li>
         <li><strong>Modal</strong> — 80vw × 80vh with search + category tabs + grid</li>
-        <li><strong>Upload</strong> — Goes to Supabase Storage <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">avatars</code> bucket at <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">agents/{`{orgId}`}/{`{uuid}`}.{ext}</code></li>
+        <li><strong>Upload</strong> — Goes to Supabase Storage <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">avatars</code> bucket at <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">agents/&#123;orgId&#125;/&#123;uuid&#125;.&#123;ext&#125;</code></li>
         <li><strong>File validation</strong> — JPG, PNG, WebP, GIF only. Max 2MB.</li>
         <li><strong>Hook</strong> — <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">use-agent-avatar-upload.ts</code> handles the upload + public URL retrieval</li>
       </ul>
