@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Loader2, Plus, Globe, Link, Code, Plug } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Globe, Link, Code, Plug, User, BrainCircuit, BookOpen, Wrench, Zap, LayoutTemplate } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
@@ -203,9 +203,14 @@ export default function CreateAgentPage() {
           <div className="space-y-6 lg:col-span-3">
             {/* Template picker */}
             <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 shadow-sm">
-              <div>
-                <p className="text-sm font-medium">Start from a template</p>
-                <p className="text-xs text-muted-foreground">Prefill the prompt and settings, then customize.</p>
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500">
+                  <LayoutTemplate className="size-4.5" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Start from a template</p>
+                  <p className="text-xs text-muted-foreground">Prefill the prompt and settings, then customize.</p>
+                </div>
               </div>
               <Button type="button" variant="outline" size="sm" onClick={() => setTemplateModalOpen(true)} disabled={saving}>
                 Browse templates
@@ -214,9 +219,14 @@ export default function CreateAgentPage() {
 
             {/* Identity */}
             <Card>
-              <CardHeader>
-                <CardTitle>Identity</CardTitle>
-                <CardDescription>Make your agent recognizable.</CardDescription>
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+                  <User className="size-4.5" />
+                </div>
+                <div>
+                  <CardTitle>Identity</CardTitle>
+                  <CardDescription>Make your agent recognizable.</CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 <AgentBasicInfo control={form.control} disabled={saving} />
@@ -225,9 +235,14 @@ export default function CreateAgentPage() {
 
             {/* Model & Behavior */}
             <Card>
-              <CardHeader>
-                <CardTitle>Model & Behavior</CardTitle>
-                <CardDescription>Choose a model and define how the agent responds.</CardDescription>
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
+                  <BrainCircuit className="size-4.5" />
+                </div>
+                <div>
+                  <CardTitle>Model & Behavior</CardTitle>
+                  <CardDescription>Choose a model and define how the agent responds.</CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 {form.formState.errors.model && (
@@ -248,9 +263,14 @@ export default function CreateAgentPage() {
 
             {/* Knowledge */}
             <Card>
-              <CardHeader>
-                <CardTitle>Knowledge</CardTitle>
-                <CardDescription>Connect a knowledge base for RAG.</CardDescription>
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                  <BookOpen className="size-4.5" />
+                </div>
+                <div>
+                  <CardTitle>Knowledge</CardTitle>
+                  <CardDescription>Connect a knowledge base for RAG.</CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 <AgentKnowledgeSources
@@ -267,9 +287,14 @@ export default function CreateAgentPage() {
             <div className="lg:sticky lg:top-6 lg:space-y-6">
               {/* Tools */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Tools</CardTitle>
-                  <CardDescription>Built-in tools your agent can use.</CardDescription>
+                <CardHeader className="flex flex-row items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+                    <Wrench className="size-4.5" />
+                  </div>
+                  <div>
+                    <CardTitle>Tools</CardTitle>
+                    <CardDescription>Built-in tools your agent can use.</CardDescription>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <AgentToolPicker
@@ -282,9 +307,14 @@ export default function CreateAgentPage() {
 
               {/* MCP Servers */}
               <Card>
-                <CardHeader>
-                  <CardTitle>MCP Servers</CardTitle>
-                  <CardDescription>Link external tools via MCP.</CardDescription>
+                <CardHeader className="flex flex-row items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-500">
+                    <Plug className="size-4.5" />
+                  </div>
+                  <div>
+                    <CardTitle>MCP Servers</CardTitle>
+                    <CardDescription>Link external tools via MCP.</CardDescription>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {!mcpServers || mcpServers.length === 0 ? (
@@ -336,9 +366,14 @@ export default function CreateAgentPage() {
 
               {/* Capabilities */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Capabilities</CardTitle>
-                  <CardDescription>Choose what your agent can do.</CardDescription>
+                <CardHeader className="flex flex-row items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+                    <Zap className="size-4.5" />
+                  </div>
+                  <div>
+                    <CardTitle>Capabilities</CardTitle>
+                    <CardDescription>Choose what your agent can do.</CardDescription>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-0.5">
@@ -376,9 +411,14 @@ export default function CreateAgentPage() {
 
               {/* Deployment */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Deployment</CardTitle>
-                  <CardDescription>Where your agent will be available.</CardDescription>
+                <CardHeader className="flex flex-row items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
+                    <Globe className="size-4.5" />
+                  </div>
+                  <div>
+                    <CardTitle>Deployment</CardTitle>
+                    <CardDescription>Where your agent will be available.</CardDescription>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-0.5">
