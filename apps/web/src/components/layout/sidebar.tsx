@@ -122,7 +122,7 @@ export function Sidebar() {
       aria-label="Main navigation"
     >
       {/* Logo area */}
-      <div className="flex items-center py-4 px-3 border-b border-border/50 gap-2">
+      <Link to="/" className="flex items-center py-4 px-3 border-b border-border/50 gap-2 hover:opacity-80 transition-opacity">
         {!collapsed && (
           <img src="/logo.png" alt="Convio" className="h-7 w-auto shrink-0" />
         )}
@@ -141,7 +141,7 @@ export function Sidebar() {
             className={cn('size-4 transition-transform duration-200', collapsed && 'rotate-180')}
           />
         </Button>
-      </div>
+      </Link>
 
       <ScrollArea className="flex-1 min-h-0">
         <nav className="flex flex-col px-2 py-2">
@@ -242,10 +242,10 @@ export function Sidebar() {
               </Button>
               {/* Mobile always expanded */}
               <aside className="flex flex-col h-full bg-card border-r w-[280px] overflow-hidden">
-                <div className="flex items-center h-14 px-4 border-b shrink-0">
+                <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center h-14 px-4 border-b shrink-0 hover:opacity-80 transition-opacity">
             <img src="/logo.png" alt="Convio" className="h-9 w-auto" />
                   <span className="ml-2 text-lg font-semibold">Convio</span>
-                </div>
+                </Link>
 
                 <ScrollArea className="flex-1 min-h-0">
                   <nav className="flex flex-col px-3 py-2">

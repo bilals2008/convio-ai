@@ -127,6 +127,7 @@ export const messages = {
 
 export const knowledge = {
   list: (orgId: string) => api.get(`/organizations/${orgId}/knowledge-bases`),
+    templates: (orgId: string) => api.get(`/organizations/${orgId}/knowledge-templates`),
   get: (id: string) => api.get(`/knowledge-bases/${id}`),
   create: (body: Record<string, unknown>) => {
     const { orgId, data } = extractOrgId(body)

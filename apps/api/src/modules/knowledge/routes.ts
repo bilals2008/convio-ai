@@ -8,6 +8,7 @@ import { processDocument, processPdf, embedText } from '../../services/processor
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
+import { getKnowledgeTemplate, listKnowledgeTemplates } from './knowledge-templates.js'
 
 const documentTypes = ['txt', 'pdf', 'csv', 'md', 'json', 'url'] as const
 type DocumentType = (typeof documentTypes)[number]
@@ -40,6 +41,7 @@ const docListQuerySchema = z.object({
 const createKbBodySchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(500).optional(),
+  templateId: z.string().optional(),
 })
 
 const updateKbBodySchema = z.object({
@@ -103,13 +105,41 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    const { name, description } = request.body as { name: string; description?: string }
+    const { name, description, templateId } = request.body as { name: string; description?: string; templateId?: string }
 
     await fastify.getMembership(request.userId!, orgId)
 
     const kb = await prisma.knowledgeBase.create({
       data: { organizationId: orgId, name, description },
     })
+
+    if (templateId) {
+      const template = getKnowledgeTemplate(templateId)
+      if (template) {
+        await Promise.all(
+          template.documents.map((doc) =>
+            prisma.document.create({
+              data: {
+                knowledgeBaseId: kb.id,
+                name: doc.name,
+                type: doc.type,
+                content: doc.content,
+                status: 'pending',
+              },
+            })
+          )
+        )
+
+        for (const doc of template.documents) {
+          const created = await prisma.document.findFirst({
+            where: { knowledgeBaseId: kb.id, name: doc.name, type: doc.type },
+          })
+          if (created) {
+            runIndexing(created.id, request.log)
+          }
+        }
+      }
+    }
 
     return { data: kb }
   })
@@ -163,8 +193,20 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
           updatedAt: kb.updatedAt,
         }
       }),
-      nextCursor: hasNextPage ? items[items.length - 1].id : null,
+       nextCursor: hasNextPage ? items[items.length - 1].id : null,
     }
+  })
+
+  // GET /api/organizations/:orgId/knowledge-templates — List available KB templates
+  fastify.get('/organizations/:orgId/knowledge-templates', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: orgParamsSchema }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+    await fastify.getMembership(request.userId!, orgId)
+    return { data: listKnowledgeTemplates() }
   })
 
   // GET /api/knowledge-bases/:id — Get knowledge base by ID (member only, include documents count)

@@ -485,7 +485,7 @@ export default function KnowledgeDetailPage() {
       </Tabs>
 
       <Dialog open={!!viewDocId} onOpenChange={(open) => !open && setViewDocId(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0">
+        <DialogContent style={{ maxWidth: '80vw' }} className="h-[80vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
             <DialogTitle className="flex flex-wrap items-center gap-2">
               {viewDoc && <FileIcon type={viewDoc.type} size={20} />}
@@ -512,7 +512,7 @@ export default function KnowledgeDetailPage() {
               </TabsList>
               <Separator />
               <TabsContent value="content" className="flex-1 overflow-auto mt-3">
-                <ScrollArea className="h-[50vh] rounded-lg border border-border/60 bg-muted/20 p-4">
+                <ScrollArea className="h-full rounded-lg p-4">
                   {viewLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -525,7 +525,7 @@ export default function KnowledgeDetailPage() {
                 </ScrollArea>
               </TabsContent>
               <TabsContent value="chunks" className="flex-1 overflow-auto mt-3">
-                <ScrollArea className="h-[50vh] rounded-lg border border-border/60 bg-muted/20 p-4">
+                <ScrollArea className="h-full rounded-lg p-4">
                   {viewDocChunks.length === 0 ? (
                     <p className="py-8 text-center text-xs text-muted-foreground">No chunks yet</p>
                   ) : (
