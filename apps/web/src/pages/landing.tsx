@@ -1,4 +1,4 @@
-import { Navbar, HeroSection, TrustedBySection, ChannelsSection, Pricing, CTA, Footer } from '@/components/landing'
+import { Navbar, HeroSection, TrustedBySection, EverythingSection, Pricing, CTA, Footer } from '@/components/landing'
 
 export default function Landing() {
   return (
@@ -7,7 +7,7 @@ export default function Landing() {
       <main>
         <HeroSection />
         <TrustedBySection />
-        <ChannelsSection />
+        <EverythingSection />
         <Pricing />
         <CTA />
       </main>
