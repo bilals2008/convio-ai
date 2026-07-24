@@ -39,7 +39,8 @@ export const docSections: DocSection[] = [
     title: 'Getting Started',
     items: [
       { title: 'Overview', href: '/docs', icon: Home, description: 'Documentation overview and setup guide' },
-      { title: 'Integration Plan', href: '/docs/plan', icon: ListChecks, description: 'Phase-by-phase plan for awesome-llm-apps' },
+      { title: 'Roadmap', href: '/docs/roadmap', icon: ListChecks, description: 'Product roadmap — phase by phase' },
+      { title: 'Integration Plan', href: '/docs/plan', icon: GitBranch, description: 'Phase-by-phase plan for awesome-llm-apps' },
     ],
   },
   {
