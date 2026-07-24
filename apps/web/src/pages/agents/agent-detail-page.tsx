@@ -178,11 +178,23 @@ export default function AgentDetailPage() {
     },
   })
 
+  const channelBase = {
+    'web-chat-widget': agentDeployments.some((d) => d.channel === 'web'),
+    'api-access': agentDeployments.some((d) => d.channel === 'api'),
+    'whatsapp': agentDeployments.some((d) => d.channel === 'whatsapp'),
+  }
+  const [channelOptimistic, setChannelOptimistic] = useState<Record<string, boolean | null>>({})
+
+  const effectiveChannelEnabled = (id: string): boolean => {
+    const opt = channelOptimistic[id]
+    return opt !== null && opt !== undefined ? opt : (channelBase as Record<string, boolean>)[id] ?? false
+  }
+
   const deploymentOptions = [
-    { id: 'web-chat-widget', enabled: agentDeployments.some((d) => d.channel === 'web'), deploymentId: agentDeployments.find((d) => d.channel === 'web')?.id },
+    { id: 'web-chat-widget', enabled: effectiveChannelEnabled('web-chat-widget'), deploymentId: agentDeployments.find((d) => d.channel === 'web')?.id },
     { id: 'shareable-link', enabled: shareLinkEnabled },
-    { id: 'api-access', enabled: agentDeployments.some((d) => d.channel === 'api'), deploymentId: agentDeployments.find((d) => d.channel === 'api')?.id },
-    { id: 'whatsapp', enabled: agentDeployments.some((d) => d.channel === 'whatsapp'), deploymentId: agentDeployments.find((d) => d.channel === 'whatsapp')?.id },
+    { id: 'api-access', enabled: effectiveChannelEnabled('api-access'), deploymentId: agentDeployments.find((d) => d.channel === 'api')?.id },
+    { id: 'whatsapp', enabled: effectiveChannelEnabled('whatsapp'), deploymentId: agentDeployments.find((d) => d.channel === 'whatsapp')?.id },
   ]
 
   const toggleDeployment = useMutation({
@@ -198,6 +210,10 @@ export default function AgentDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agent-deployments', id] })
+      setChannelOptimistic({})
+    },
+    onError: () => {
+      setChannelOptimistic({})
     },
   })
 
@@ -300,6 +316,7 @@ export default function AgentDetailPage() {
     const channelMap: Record<string, string> = { 'web-chat-widget': 'web', 'api-access': 'api', 'whatsapp': 'whatsapp' }
     const channel = channelMap[optionId]
     if (!channel) return
+    setChannelOptimistic((prev) => ({ ...prev, [optionId]: enabled }))
     toggleDeployment.mutate({ deploymentId: option.deploymentId, channel, enabled })
   }
 
@@ -393,7 +410,7 @@ export default function AgentDetailPage() {
             knowledgeBaseCount={agent.knowledgeBaseId ? 1 : 0}
             toolsEnabledCount={tools.filter((t) => t.enabled).length}
             mcpServersCount={linkedMcpServerIds.length}
-            deploymentsCount={agentDeployments.length}
+            deploymentsCount={deploymentOptions.filter((o) => o.enabled).length}
             onNavigateToTab={setActiveTab}
           />
         </TabsContent>

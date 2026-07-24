@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Globe, Link, Code, MessageCircle, Loader2, Copy, Check, ExternalLink, Rocket, Radio, Settings as SettingsIcon } from 'lucide-react'
 import { AgentDeployment } from '@/components/agents/agent-deployment'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ export function AgentDeployments({
   disabled,
 }: AgentDeploymentsProps) {
   const [copied, setCopied] = useState(false)
+  const navigate = useNavigate()
 
   const shareLinkEnabled = deploymentOptions.find((o) => o.id === 'shareable-link')?.enabled ?? false
 
@@ -138,18 +140,32 @@ export function AgentDeployments({
           </div>
         </div>
         <div className="space-y-3">
-          <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-            <p className="text-xs font-medium mb-1.5">Web Widget</p>
+          <button
+            type="button"
+            onClick={() => navigate('/widgets')}
+            className="w-full rounded-lg border border-border/60 bg-muted/20 p-3 text-left transition-colors hover:bg-muted/40"
+          >
+            <p className="text-xs font-medium mb-1.5 flex items-center gap-1.5">
+              Web Widget
+              <ExternalLink className="size-2.5 text-muted-foreground" />
+            </p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Add the Convio widget script to your website. The widget will appear as a chat bubble.
             </p>
-          </div>
-          <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-            <p className="text-xs font-medium mb-1.5">API Integration</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/docs/api-features')}
+            className="w-full rounded-lg border border-border/60 bg-muted/20 p-3 text-left transition-colors hover:bg-muted/40"
+          >
+            <p className="text-xs font-medium mb-1.5 flex items-center gap-1.5">
+              API Integration
+              <ExternalLink className="size-2.5 text-muted-foreground" />
+            </p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Use the REST API endpoint to send messages and receive responses programmatically.
             </p>
-          </div>
+          </button>
         </div>
       </div>
     </div>

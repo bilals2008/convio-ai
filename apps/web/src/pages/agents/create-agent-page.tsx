@@ -16,11 +16,11 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
-import { AgentTemplatePicker, type AgentTemplate } from '@/components/agents/agent-template-picker'
 import { defaultCapabilities } from '@/components/agents/agent-capabilities'
 import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
 import { AgentKnowledgeSources } from '@/components/agents/agent-knowledge-sources'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
+import { AgentTemplateModal, type AgentTemplate } from '@/components/agents/agent-template-modal'
 import { agents as agentsApi, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
@@ -70,6 +70,7 @@ export default function CreateAgentPage() {
   const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<string[]>([])
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] = useState<string>('')
   const [mcpModalOpen, setMcpModalOpen] = useState(false)
+  const [templateModalOpen, setTemplateModalOpen] = useState(false)
 
   const { data: mcpServers } = useQuery({
     queryKey: ['mcp-servers', orgId],
@@ -201,19 +202,15 @@ export default function CreateAgentPage() {
           {/* Main form — 3/5 */}
           <div className="space-y-6 lg:col-span-3">
             {/* Template picker */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Start from a template</CardTitle>
-                <CardDescription>Optional. Prefill the prompt and settings, then customize.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AgentTemplatePicker
-                  selectedId={activeTemplate ?? undefined}
-                  onSelect={applyTemplate}
-                  disabled={saving}
-                />
-              </CardContent>
-            </Card>
+            <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 shadow-sm">
+              <div>
+                <p className="text-sm font-medium">Start from a template</p>
+                <p className="text-xs text-muted-foreground">Prefill the prompt and settings, then customize.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setTemplateModalOpen(true)} disabled={saving}>
+                Browse templates
+              </Button>
+            </div>
 
             {/* Identity */}
             <Card>
@@ -468,6 +465,14 @@ export default function CreateAgentPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AgentTemplateModal
+        open={templateModalOpen}
+        onOpenChange={setTemplateModalOpen}
+        activeTemplateId={activeTemplate}
+        onSelect={applyTemplate}
+        disabled={saving}
+      />
     </PageContainer>
   )
 }

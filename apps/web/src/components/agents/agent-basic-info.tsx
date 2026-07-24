@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useController, type Control } from "react-hook-form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PresetAvatarPicker } from "@/components/agents/preset-avatar-picker"
 
 interface AgentBasicInfoProps {
   control: Control
@@ -12,9 +13,6 @@ export function AgentBasicInfo({ control, disabled }: AgentBasicInfoProps) {
   const { field: nameField, fieldState: nameState } = useController({ name: 'name', control })
   const { field: descField } = useController({ name: 'description', control })
   const { field: avatarField } = useController({ name: 'avatar', control })
-  const [imgError, setImgError] = useState(false)
-
-  const showPreview = avatarField.value && !imgError
 
   return (
     <div className="space-y-4">
@@ -51,30 +49,11 @@ export function AgentBasicInfo({ control, disabled }: AgentBasicInfoProps) {
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="agent-avatar" className="text-xs font-medium">Avatar URL</Label>
-        <div className="flex items-center gap-3">
-          <Input
-            id="agent-avatar"
-            placeholder="https://example.com/avatar.png"
-            value={avatarField.value || ""}
-            onChange={(e) => {
-              setImgError(false)
-              avatarField.onChange(e.target.value)
-            }}
-            disabled={disabled}
-            className="h-9 flex-1 font-mono text-xs"
-          />
-          {showPreview && (
-            <img
-              src={avatarField.value}
-              alt="Avatar preview"
-              className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-border"
-              onError={() => setImgError(true)}
-            />
-          )}
-        </div>
-      </div>
+      <PresetAvatarPicker
+        value={avatarField.value || ''}
+        onChange={(url) => avatarField.onChange(url)}
+        disabled={disabled}
+      />
     </div>
   )
 }

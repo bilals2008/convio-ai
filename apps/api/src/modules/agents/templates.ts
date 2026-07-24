@@ -12,6 +12,8 @@ export type AgentTemplateType =
   | 'translator'
   | 'custom'
 
+export type AgentTemplateCategory = 'support' | 'business' | 'education' | 'productivity' | 'custom'
+
 export interface AgentTemplate {
   id: AgentTemplateType
   name: string
@@ -19,6 +21,8 @@ export interface AgentTemplate {
   systemPrompt: string
   suggestedModel: string
   suggestedTemperature: number
+  category: AgentTemplateCategory
+  suggestedTools: string[]
 }
 
 const templates: Record<AgentTemplateType, AgentTemplate> = {
@@ -34,6 +38,8 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     ].join(' '),
     suggestedModel: 'gpt-4o-mini',
     suggestedTemperature: 0.4,
+    category: 'support',
+    suggestedTools: ['knowledge-search'],
   },
   sales: {
     id: 'sales',
@@ -41,12 +47,14 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     description: 'Qualifies leads and highlights value without being pushy.',
     systemPrompt: [
       'You are a knowledgeable sales representative.',
-      'Understand the prospect’s needs through thoughtful questions before recommending a product or plan.',
+      'Understand the prospect\'s needs through thoughtful questions before recommending a product or plan.',
       'Highlight relevant benefits and value, address objections honestly, and guide the conversation toward a clear next step.',
       'Be persuasive but never pushy or misleading. Only make claims you can support.',
     ].join(' '),
     suggestedModel: 'gpt-4o',
     suggestedTemperature: 0.7,
+    category: 'business',
+    suggestedTools: ['generate-leads'],
   },
   faq: {
     id: 'faq',
@@ -59,6 +67,8 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     ].join(' '),
     suggestedModel: 'gpt-4o-mini',
     suggestedTemperature: 0.2,
+    category: 'support',
+    suggestedTools: ['knowledge-search'],
   },
   onboarding: {
     id: 'onboarding',
@@ -71,6 +81,8 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     ].join(' '),
     suggestedModel: 'gpt-4o-mini',
     suggestedTemperature: 0.5,
+    category: 'productivity',
+    suggestedTools: [],
   },
   interviewer: {
     id: 'interviewer',
@@ -83,18 +95,22 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     ].join(' '),
     suggestedModel: 'gpt-4o',
     suggestedTemperature: 0.6,
+    category: 'business',
+    suggestedTools: [],
   },
   tutor: {
     id: 'tutor',
     name: 'Tutor',
-    description: 'Teaches patiently and adapts to the learner’s level.',
+    description: 'Teaches patiently and adapts to the learner\'s level.',
     systemPrompt: [
       'You are a patient tutor.',
-      'Explain concepts clearly, adapt to the learner’s level, and use examples and analogies.',
+      'Explain concepts clearly, adapt to the learner\'s level, and use examples and analogies.',
       'Encourage the learner to reason through problems themselves before revealing answers, and check for understanding along the way.',
     ].join(' '),
     suggestedModel: 'gpt-4o',
     suggestedTemperature: 0.5,
+    category: 'education',
+    suggestedTools: ['knowledge-search'],
   },
   translator: {
     id: 'translator',
@@ -107,6 +123,8 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     ].join(' '),
     suggestedModel: 'gpt-4o-mini',
     suggestedTemperature: 0.3,
+    category: 'productivity',
+    suggestedTools: [],
   },
   custom: {
     id: 'custom',
@@ -115,6 +133,8 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     systemPrompt: '',
     suggestedModel: 'gpt-4o-mini',
     suggestedTemperature: 0.7,
+    category: 'custom',
+    suggestedTools: [],
   },
 }
 
