@@ -329,7 +329,7 @@ export default function AgentDetailPage() {
   const values = form.watch()
 
   return (
-    <Tabs ref={tabsRootRef} value={activeTab} onValueChange={setActiveTab}>
+    <Tabs ref={tabsRootRef} value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
       <AgentDetailLayout
         agentName={values.name || agent.name}
         agentAvatar={agent.avatar}
@@ -414,7 +414,7 @@ export default function AgentDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="test-chat">
+        <TabsContent value="test-chat" className="flex flex-col min-h-0">
           <AgentTestChat
             agentId={id!}
             agentConfig={{

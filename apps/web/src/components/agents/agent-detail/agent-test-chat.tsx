@@ -22,11 +22,12 @@ import {
   RefreshCw,
   SquarePen,
   PanelLeftOpen,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -35,7 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { TooltipProvider } from '@/components/ui/tooltip'
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { cn, formatTokenCount } from '@/lib/utils'
@@ -138,9 +139,9 @@ function ConversationItem({
     <button
       onClick={onClick}
       className={cn(
-        'w-full text-left px-3 py-2.5 rounded-lg transition-colors duration-150',
+        'w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150',
         isActive
-          ? 'bg-primary/10'
+          ? 'bg-primary/10 shadow-sm'
           : 'hover:bg-muted/50'
       )}
     >
@@ -192,7 +193,6 @@ function renderToolResultPreview(tool: string, result: unknown): string {
     }
     return String(val)
   }
-  // MCP tools return { result: stringified_json }
   if (r.result && typeof r.result === 'string') {
     try {
       const parsed = JSON.parse(r.result)
@@ -232,7 +232,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const queryClient = useQueryClient()
   const { data: plan } = usePlan()
 
-  // Web-search / tool execution is a Pro+ feature. Free plans can't use it.
   const toolsAllowed = !!plan && plan.name !== 'free'
   const agentHasTools = !!(agentConfig.tools && agentConfig.tools.length > 0)
 
@@ -255,7 +254,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
   const convsData = useMemo(() => convsPages?.pages.flatMap((p) => p.data) ?? [], [convsPages])
 
-  const { data: convDetail } = useQuery({
+  const { data: convDetail, isLoading: convDetailLoading } = useQuery({
     queryKey: ['conversation', activeConvId],
     queryFn: async () => {
       const res = await conversationsApi.get(activeConvId!)
@@ -302,28 +301,45 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     configRef.current = agentConfig
   })
 
-  const activeConversation = conversations.find((c) => c.id === activeConvId)
-  const messages = useMemo(
-    () => activeConversation?.messages ?? [],
-    [activeConversation?.messages]
-  )
+  const serverConvs = useMemo(() => convsData.map(mapDbConv), [convsData])
+
+  const allConvs = useMemo(() => {
+    const server = [...serverConvs]
+    for (const local of conversations) {
+      const idx = server.findIndex(s => s.id === local.id)
+      if (idx >= 0) {
+        server[idx] = local
+      } else {
+        server.push(local)
+      }
+    }
+    return server
+  }, [serverConvs, conversations])
+
+  const activeConversation = allConvs.find((c) => c.id === activeConvId)
+
+  const messages = useMemo(() => {
+    if (activeConversation?.messages && activeConversation.messages.length > 0) {
+      return activeConversation.messages
+    }
+    if (!convDetail) return []
+    const msgs = ((convDetail as Record<string, unknown>)?.messages || []) as Record<string, unknown>[]
+    return msgs.map(mapDbMsg)
+  }, [activeConversation?.messages?.length, activeConversation?.messages, convDetail])
 
   const filteredConversations = useMemo(
     () =>
-      conversations.filter(
+      allConvs.filter(
         (c) =>
           c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           c.preview.toLowerCase().includes(searchQuery.toLowerCase())
       ),
-    [conversations, searchQuery]
+    [allConvs, searchQuery]
   )
 
-  // Scroll to bottom helper — targets Radix ScrollArea viewport directly
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    // Prefer scrolling to the streaming bubble when it exists
     const target = streamingEndRef.current || messagesEndRef.current
     if (!target) return
-    // Find the Radix ScrollArea viewport (the actual scrollable element)
     const viewport = target.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null
     if (viewport) {
       viewport.scrollTo({ top: viewport.scrollHeight, behavior })
@@ -332,28 +348,24 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     }
   }, [])
 
-  // Track streaming content changes for smooth scroll during generation
   useEffect(() => {
     if (streaming && streamingContent) {
       scrollToBottom('auto')
     }
   }, [streamingContent, streaming, scrollToBottom])
 
-  // When streaming starts, jump to bottom immediately
   useEffect(() => {
     if (streaming) {
       scrollToBottom('auto')
     }
   }, [streaming, scrollToBottom])
 
-  // When streaming ends, smooth scroll to bottom
   useEffect(() => {
     if (!streaming && messages.length > 0) {
       scrollToBottom('smooth')
     }
   }, [streaming, messages.length, scrollToBottom])
 
-  // When conversation changes (switch conv), scroll to bottom
   useEffect(() => {
     scrollToBottom('auto')
   }, [activeConvId, scrollToBottom])
@@ -364,54 +376,26 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     }
   }, [streaming])
 
-  // Auto-resize textarea when input changes (including clear after send)
-  useEffect(() => {
-    const ta = textareaRef.current
-    if (!ta) return
-    ta.style.height = 'auto'
-    ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`
-  }, [inputValue])
-
-  const initDone = useRef(false)
-  useEffect(() => {
-    if (initDone.current) return
-    if (convsLoading) return
-    initDone.current = true
-
-    if (!convsData.length) {
-      createConv.mutate()
-      return
-    }
-
-    const mapped = convsData.map(mapDbConv)
-    setConversations(mapped)
-    setActiveConvId(mapped[0].id)
-    textareaRef.current?.focus()
-  }, [convsData, convsLoading])
-
-  useEffect(() => {
-    if (!convDetail) return
-    const msgs = ((convDetail as Record<string, unknown>)?.messages || []) as Record<string, unknown>[]
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setConversations((prev) =>
-      prev.map((c) => (c.id === activeConvId ? { ...c, messages: msgs.map(mapDbMsg) } : c))
-    )
-  }, [convDetail, activeConvId])
-
   const updateActiveConversation = useCallback(
     (updater: (conv: Conversation) => Conversation) => {
-      setConversations((prev) =>
-        prev.map((c) => (c.id === activeConvId ? updater(c) : c))
-      )
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.id === activeConvId)
+        if (idx >= 0) {
+          return prev.map((c) => (c.id === activeConvId ? updater(c) : c))
+        }
+        const serverConv = allConvs.find((c) => c.id === activeConvId)
+        if (serverConv) {
+          return [...prev, updater(serverConv)]
+        }
+        return prev
+      })
     },
-    [activeConvId]
+    [activeConvId, allConvs]
   )
 
   const contentRef = useRef('')
   const reasoningRef = useRef('')
 
-  // Core streaming routine shared by send / regenerate / edit.
-  // `prompt` is the current user turn; `history` is everything before it.
   const streamAssistant = useCallback(async (
     prompt: string,
     history: Array<{ role: 'user' | 'assistant'; content: string }>,
@@ -427,7 +411,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     contentRef.current = ''
     reasoningRef.current = ''
 
-    // Force scroll to bottom immediately so the streaming bubble is visible
     requestAnimationFrame(() => scrollToBottom('auto'))
 
     const convId = activeConvId
@@ -513,7 +496,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       const finalContent = contentRef.current
       const finalReasoning = reasoningRef.current
 
-      // Hide streaming bubble BEFORE adding message to avoid duplicate rendering
       setStreaming(false)
 
       if (finalContent || completedToolCalls.length > 0) {
@@ -575,7 +557,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       timestamp: 'Just now',
     }))
 
-    // Set streaming true BEFORE any async work so the bubble renders immediately
     setStreaming(true)
     setStreamingContent('')
     setStreamingReasoning('')
@@ -583,7 +564,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     contentRef.current = ''
     reasoningRef.current = ''
 
-    // Scroll to bottom immediately — twice for safety (sync + frame)
     scrollToBottom('auto')
     requestAnimationFrame(() => scrollToBottom('auto'))
 
@@ -596,7 +576,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     await streamAssistant(trimmed, history)
   }, [inputValue, streaming, messages, updateActiveConversation, activeConvId, streamAssistant, scrollToBottom])
 
-  // Re-run the last user turn, replacing the last assistant reply.
   const handleRegenerate = useCallback(async () => {
     if (streaming) return
     const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === 'user')
@@ -605,7 +584,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     const prompt = messages[idx].content
     const history = messages.slice(0, idx).map((m) => ({ role: m.role, content: m.content }))
 
-    // Drop everything after (and including) the assistant reply that followed.
     updateActiveConversation((conv) => ({
       ...conv,
       messages: conv.messages.slice(0, idx + 1),
@@ -614,7 +592,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     await streamAssistant(prompt, history)
   }, [streaming, messages, updateActiveConversation, streamAssistant])
 
-  // Edit a past user message: truncate the conversation after it and resend.
   const handleEditResend = useCallback(async (messageId: string, newContent: string) => {
     if (streaming) return
     const trimmed = newContent.trim()
@@ -656,7 +633,6 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
   const handleClearConversations = useCallback(() => {
     if (abortRef.current) abortRef.current.abort()
-    initDone.current = false
     setStreaming(false)
     setStreamingContent('')
     setStreamingReasoning('')
@@ -664,12 +640,12 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     setError('')
     setConversations([])
 
-    for (const conv of conversations) {
-      deleteConv.mutate(conv.id)
+    for (const conv of allConvs) {
+      if (!conv.id.startsWith('temp-')) {
+        deleteConv.mutate(conv.id)
+      }
     }
-
-    createConv.mutate()
-  }, [conversations, createConv, deleteConv])
+  }, [allConvs, deleteConv])
 
   const handleResetChat = useCallback(() => {
     if (abortRef.current) abortRef.current.abort()
@@ -706,497 +682,557 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-full bg-card overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 shrink-0 border-b border-border/40">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Open conversations"
-            >
-              <PanelLeftOpen className="size-4" />
-            </button>
-            <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 overflow-hidden">
-              {agentConfig.avatar ? (
-                <img src={agentConfig.avatar} alt="" className="size-full object-cover" />
-              ) : (
-                <Bot className="size-3.5 text-primary" />
-              )}
-            </div>
-            <span className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">{agentConfig.name}</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleNewConversation}
-              className="text-muted-foreground hover:text-foreground text-xs h-7 px-2 gap-1.5"
-            >
-              <SquarePen className="size-3.5" />
-            </Button>
-            <Popover>
-              <PopoverTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground hover:text-foreground text-xs h-7 px-2 gap-1.5"
-                  />
-                }
-              >
-                <Settings2 className="size-3" />
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-72 p-3">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Settings2 className="size-4 text-primary" />
-                    <h4 className="text-sm font-semibold">Test settings</h4>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium">Show reasoning</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        Display model reasoning live
-                      </p>
-                    </div>
-                    <Switch
-                      size="sm"
-                      checked={showReasoning}
-                      onCheckedChange={setShowReasoning}
+      <div className="flex flex-col flex-1 min-h-0 bg-card overflow-hidden">
+        {/* Sticky Header */}
+        <div className="shrink-0 border-b border-border/40">
+          {/* Top bar */}
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      onClick={() => setSidebarOpen(true)}
+                      className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     />
-                  </div>
-                  {agentConfig.knowledgeBaseId && (
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium">Knowledge base</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Use retrieved context (RAG)
+                  }
+                >
+                  <PanelLeftOpen className="size-4" />
+                </TooltipTrigger>
+                <TooltipContent>Conversations</TooltipContent>
+              </Tooltip>
+              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 overflow-hidden">
+                {agentConfig.avatar ? (
+                  <img src={agentConfig.avatar} alt="" className="size-full object-cover" />
+                ) : (
+                  <Bot className="size-3.5 text-primary" />
+                )}
+              </div>
+              <span className="text-sm font-semibold text-foreground">{agentConfig.name}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleNewConversation}
+                      className="text-muted-foreground hover:text-foreground text-xs h-7 px-2 gap-1.5"
+                    />
+                  }
+                >
+                  <SquarePen className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>New chat</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleResetChat}
+                      className="text-muted-foreground hover:text-foreground text-xs h-7 px-2 gap-1.5"
+                    />
+                  }
+                >
+                  <RotateCcw className="size-3" />
+                </TooltipTrigger>
+                <TooltipContent>Reset chat</TooltipContent>
+              </Tooltip>
+              <Popover>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <PopoverTrigger
+                        className="inline-flex items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground size-8"
+                      />
+                    }
+                  >
+                    <Settings2 className="size-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent>Settings</TooltipContent>
+                </Tooltip>
+                <PopoverContent align="end" sideOffset={8} className="w-96 p-0">
+                  <div className="p-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Settings2 className="size-4 text-primary" />
+                      <h4 className="text-sm font-semibold">Test Settings</h4>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-medium">Show reasoning</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Display model's reasoning process in real-time
                         </p>
                       </div>
                       <Switch
-                        size="sm"
-                        checked={useKnowledge}
-                        onCheckedChange={setUseKnowledge}
+                        checked={showReasoning}
+                        onCheckedChange={setShowReasoning}
                       />
                     </div>
-                  )}
-                  {agentHasTools && (
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-medium">Tools</p>
-                          {!toolsAllowed && (
-                            <span className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                              Pro
-                            </span>
-                          )}
+                    {reasoningOptions && (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium">Reasoning effort</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Control how much reasoning the model performs
+                          </p>
                         </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          {toolsAllowed
-                            ? 'Web search, calculator, and more'
-                            : 'Upgrade to Pro to enable tools'}
-                        </p>
+                        <Select value={reasoningOverride} onValueChange={(v) => setReasoningOverride(v)}>
+                          <SelectTrigger className="h-9 w-auto min-w-[120px]">
+                            <SelectValue placeholder="Default" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Default</SelectItem>
+                            {reasoningOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Switch
-                        size="sm"
-                        checked={useTools && toolsAllowed}
-                        disabled={!toolsAllowed}
-                        onCheckedChange={setUseTools}
-                      />
-                    </div>
-                  )}
-                  {reasoningOptions && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Reasoning effort</Label>
-                      <Select value={reasoningOverride} onValueChange={(v) => setReasoningOverride(v)}>
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Agent default" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Agent default</SelectItem>
-                          {reasoningOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleResetChat}
-              className="text-muted-foreground hover:text-foreground text-xs h-7 px-2 gap-1.5"
-            >
-              <RotateCcw className="size-3" />
-            </Button>
+                    )}
+                    {agentConfig.knowledgeBaseId && (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium">Knowledge base</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Use retrieved context (RAG)
+                          </p>
+                        </div>
+                        <Switch
+                          checked={useKnowledge}
+                          onCheckedChange={setUseKnowledge}
+                        />
+                      </div>
+                    )}
+                    {agentHasTools && (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <Label className="text-sm font-medium">Tools</Label>
+                            {!toolsAllowed && (
+                              <span className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                                Pro
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {toolsAllowed
+                              ? 'Web search, calculator, and more'
+                              : 'Upgrade to Pro to enable tools'}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={useTools && toolsAllowed}
+                          disabled={!toolsAllowed}
+                          onCheckedChange={setUseTools}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 border-t border-border">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full"
+                      onClick={handleClearConversations}
+                    >
+                      <Trash2 className="size-3.5 mr-1.5" />
+                      Clear Conversations
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </div>
 
-        {/* Messages — fills remaining space, scrollable */}
+        {/* Content Area */}
         <ScrollArea className="flex-1 min-h-0">
-          <div className="flex flex-col min-h-full px-3 py-2">
-            <div className="flex-1" />
-            {convsLoading && (
-              <div className="flex items-center justify-center py-16 text-muted-foreground">
-                <Loader2 className="size-5 animate-spin" />
-              </div>
-            )}
-            {!convsLoading && messages.length === 0 && !streaming && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 mb-3">
-                  <Bot className="size-6 text-primary" />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Send a message to test {agentConfig.name}
-                </p>
-              </div>
-            )}
-
-            {messages.map((msg, msgIndex) => {
-              const isUser = msg.role === 'user'
-              const isCopied = copiedId === msg.id
-              const isEditing = editingId === msg.id
-              const isLast = msgIndex === messages.length - 1
-              return (
-                <Message key={msg.id} align={isUser ? 'end' : 'start'}>
-                  <MessageAvatar>
-                    <div
-                      className={cn(
-                        'flex size-8 items-center justify-center rounded-full overflow-hidden',
-                        isUser
-                          ? 'bg-muted'
-                          : 'bg-primary/10'
-                      )}
-                    >
-                      {isUser ? (
-                        profile?.avatar ? (
-                          <img src={profile.avatar} alt="" className="size-full object-cover" />
-                        ) : (
-                          <User className="size-4 text-muted-foreground" />
-                        )
-                      ) : agentConfig.avatar ? (
+              <div className="flex flex-col min-h-full px-4 py-4">
+                <div className="flex-1" />
+                {convsLoading && (
+                  <div className="flex items-center justify-center py-16 text-muted-foreground">
+                    <Loader2 className="size-5 animate-spin" />
+                  </div>
+                )}
+                {!convsLoading && convDetailLoading && activeConvId && messages.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <Loader2 className="size-8 text-primary animate-spin mb-3" />
+                    <p className="text-sm text-muted-foreground">Loading conversation…</p>
+                  </div>
+                )}
+                {!convsLoading && !convDetailLoading && messages.length === 0 && !streaming && (
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 mb-4 overflow-hidden">
+                      {agentConfig.avatar ? (
                         <img src={agentConfig.avatar} alt="" className="size-full object-cover" />
                       ) : (
-                        <Bot className="size-4 text-primary" />
+                        <Bot className="size-8 text-primary" />
                       )}
                     </div>
-                  </MessageAvatar>
-                  <MessageContent>
-                    <Bubble variant={isUser ? 'default' : 'muted'}>
-                      {!isUser && showReasoning && msg.reasoning && (
-                        <details className="px-3 pt-2 pb-1 text-xs text-muted-foreground border-b border-border/40 mb-2">
-                          <summary className="cursor-pointer select-none font-medium text-foreground/60 hover:text-foreground transition-colors">
-                            Show reasoning
-                          </summary>
-                          <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
-                             {msg.reasoning}
-                           </div>
-                        </details>
-                      )}
-                      <BubbleContent>
-                        {isUser ? (
-                          isEditing ? (
-                            <div className="space-y-2">
-                              <textarea
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault()
-                                    handleEditResend(msg.id, editValue)
-                                  } else if (e.key === 'Escape') {
-                                    setEditingId(null)
-                                  }
-                                }}
-                                rows={2}
-                                autoFocus
-                                className="block w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                                style={{ fieldSizing: 'content' } as React.CSSProperties}
-                              />
-                              <div className="flex items-center justify-end gap-1.5">
-                                <Button variant="ghost" size="xs" onClick={() => setEditingId(null)}>
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="xs"
-                                  onClick={() => handleEditResend(msg.id, editValue)}
-                                  disabled={!editValue.trim() || streaming}
-                                >
-                                  Send
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="whitespace-pre-wrap">{msg.content}</span>
-                          )
-                        ) : (
-                          <AiResponse content={msg.content} showActions={false} />
-                        )}
-                      </BubbleContent>
-                    </Bubble>
-                    {!isEditing && (
-                      <MessageFooter className="gap-2">
-                        <span>{formatTime(msg.createdAt)}</span>
-                        {!isUser && msg.usage && (
-                          <span className="text-muted-foreground/60 text-[11px]" title={`Prompt: ${msg.usage.promptTokens}, Completion: ${msg.usage.completionTokens}`}>
-                            {formatTokenCount(msg.usage.totalTokens)} tokens
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(msg.id, msg.content)}
-                          className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          aria-label={isCopied ? 'Copied' : isUser ? 'Copy message' : 'Copy response'}
-                        >
-                          <span className="relative flex size-3.5 items-center justify-center">
-                            <Copy
-                              className={cn(
-                                'absolute size-3.5 transition-all duration-200 ease-out',
-                                isCopied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
-                              )}
-                            />
-                            <Check
-                              className={cn(
-                                'absolute size-3.5 text-success transition-all duration-200 ease-out',
-                                isCopied ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
-                              )}
-                            />
-                          </span>
-                        </button>
-                        {isUser && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditValue(msg.content)
-                              setEditingId(msg.id)
-                            }}
-                            disabled={streaming}
-                            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-                            aria-label="Edit message"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                        )}
-                        {!isUser && isLast && (
-                          <button
-                            type="button"
-                            onClick={handleRegenerate}
-                            disabled={streaming}
-                            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-                            aria-label="Regenerate response"
-                          >
-                            <RefreshCw className="size-3.5" />
-                          </button>
-                        )}
-                      </MessageFooter>
-                    )}
-                  </MessageContent>
-                </Message>
-              )
-            })}
+                    <h3 className="text-lg font-semibold text-foreground mb-1">
+                      Test {agentConfig.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground max-w-xs">
+                      Send a message to start testing your agent's responses and behavior
+                    </p>
+                  </div>
+                )}
 
-            {streaming && (
-              <div ref={(el) => { if (el) streamingEndRef.current = el }}>
-              <Message align="start">
-                <MessageAvatar>
-                  <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 overflow-hidden">
-                    {agentConfig.avatar ? (
-                      <img src={agentConfig.avatar} alt="" className="size-full object-cover" />
-                    ) : (
-                      <Bot className="size-4 text-primary" />
+                {messages.map((msg, msgIndex) => {
+                  const isUser = msg.role === 'user'
+                  const isCopied = copiedId === msg.id
+                  const isEditing = editingId === msg.id
+                  const isLast = msgIndex === messages.length - 1
+                  return (
+                    <Message key={msg.id} align={isUser ? 'end' : 'start'}>
+                      <MessageAvatar>
+                        <div
+                          className={cn(
+                            'flex size-8 items-center justify-center rounded-full overflow-hidden',
+                            isUser
+                              ? 'bg-muted'
+                              : 'bg-primary/10'
+                          )}
+                        >
+                          {isUser ? (
+                            profile?.avatar ? (
+                              <img src={profile.avatar} alt="" className="size-full object-cover" />
+                            ) : (
+                              <User className="size-4 text-muted-foreground" />
+                            )
+                          ) : agentConfig.avatar ? (
+                            <img src={agentConfig.avatar} alt="" className="size-full object-cover" />
+                          ) : (
+                            <Bot className="size-4 text-primary" />
+                          )}
+                        </div>
+                      </MessageAvatar>
+                      <MessageContent>
+                        <Bubble variant={isUser ? 'default' : 'muted'}>
+                          {!isUser && showReasoning && msg.reasoning && (
+                            <details className="px-3 pt-2 pb-1 text-xs text-muted-foreground border-b border-border/40 mb-2">
+                              <summary className="cursor-pointer select-none font-medium text-foreground/60 hover:text-foreground transition-colors">
+                                Show reasoning
+                              </summary>
+                              <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                                {msg.reasoning}
+                              </div>
+                            </details>
+                          )}
+                          <BubbleContent>
+                            {isUser ? (
+                              isEditing ? (
+                                <div className="space-y-2">
+                                  <textarea
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.currentTarget.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault()
+                                        handleEditResend(msg.id, editValue)
+                                      } else if (e.key === 'Escape') {
+                                        setEditingId(null)
+                                      }
+                                    }}
+                                    rows={2}
+                                    autoFocus
+                                    className="block w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                                    style={{ fieldSizing: 'content' } as React.CSSProperties}
+                                  />
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <Button variant="ghost" size="xs" onClick={() => setEditingId(null)}>
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      onClick={() => handleEditResend(msg.id, editValue)}
+                                      disabled={!editValue.trim() || streaming}
+                                    >
+                                      Send
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="whitespace-pre-wrap">{msg.content}</span>
+                              )
+                            ) : (
+                              <AiResponse content={msg.content} showActions={false} />
+                            )}
+                          </BubbleContent>
+                        </Bubble>
+                        {!isEditing && (
+                          <MessageFooter className="gap-2">
+                            <span>{formatTime(msg.createdAt)}</span>
+                            {!isUser && msg.usage && (
+                              <span className="text-muted-foreground/60 text-[11px]" title={`Prompt: ${msg.usage.promptTokens}, Completion: ${msg.usage.completionTokens}`}>
+                                {formatTokenCount(msg.usage.totalTokens)} tokens
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(msg.id, msg.content)}
+                              className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              aria-label={isCopied ? 'Copied' : isUser ? 'Copy message' : 'Copy response'}
+                            >
+                              <span className="relative flex size-3.5 items-center justify-center">
+                                <Copy
+                                  className={cn(
+                                    'absolute size-3.5 transition-all duration-200 ease-out',
+                                    isCopied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
+                                  )}
+                                />
+                                <Check
+                                  className={cn(
+                                    'absolute size-3.5 text-success transition-all duration-200 ease-out',
+                                    isCopied ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+                                  )}
+                                />
+                              </span>
+                            </button>
+                            {isUser && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditValue(msg.content)
+                                  setEditingId(msg.id)
+                                }}
+                                disabled={streaming}
+                                className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                                aria-label="Edit message"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                            )}
+                            {!isUser && isLast && (
+                              <button
+                                type="button"
+                                onClick={handleRegenerate}
+                                disabled={streaming}
+                                className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                                aria-label="Regenerate response"
+                              >
+                                <RefreshCw className="size-3.5" />
+                              </button>
+                            )}
+                          </MessageFooter>
+                        )}
+                      </MessageContent>
+                    </Message>
+                  )
+                })}
+
+                {streaming && (
+                  <div ref={(el) => { if (el) streamingEndRef.current = el }}>
+                  <Message align="start">
+                    <MessageAvatar>
+                      <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 overflow-hidden">
+                        {agentConfig.avatar ? (
+                          <img src={agentConfig.avatar} alt="" className="size-full object-cover" />
+                        ) : (
+                          <Bot className="size-4 text-primary" />
+                        )}
+                      </div>
+                    </MessageAvatar>
+                    <MessageContent>
+                      <Bubble variant="muted">
+                        {showReasoning && streamingReasoning && (
+                          <details className="px-3 pt-2 pb-1 text-xs text-muted-foreground border-b border-border/40 mb-2" open>
+                            <summary className="flex cursor-pointer select-none items-center gap-1.5 font-medium text-foreground/60 hover:text-foreground transition-colors">
+                              <Loader2 className="size-3 animate-spin" />
+                              Reasoning…
+                            </summary>
+                            <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
+                              {streamingReasoning}
+                            </div>
+                          </details>
+                        )}
+                        {toolCalls.length > 0 && (
+                          <div className="px-3 py-2 space-y-1.5 border-b border-border/40">
+                            {toolCalls.map((tc, i) => {
+                              const Icon = toolIcons[tc.tool] || Plug
+                              const isDone = tc.status === 'done'
+                              return (
+                                <div
+                                  key={`${tc.tool}-${i}`}
+                                  className="flex items-center gap-2 text-xs"
+                                >
+                                  {isDone ? (
+                                    <Check className="size-3 text-success shrink-0" />
+                                  ) : (
+                                    <Loader2 className="size-3 animate-spin shrink-0" />
+                                  )}
+                                  <Icon className="size-3 text-muted-foreground shrink-0" />
+                                  <span className="text-muted-foreground">
+                                    {tc.tool.replace(/-/g, ' ')}
+                                  </span>
+                                  {isDone && tc.result && (
+                                    <span className="text-[11px] text-muted-foreground/60 truncate max-w-[200px]">
+                                      {renderToolResultPreview(tc.tool, tc.result)}
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                        <BubbleContent>
+                          {streamingContent ? (
+                            <AiResponse content={streamingContent} isStreaming showActions={false} />
+                          ) : (
+                            <TypingIndicator />
+                          )}
+                        </BubbleContent>
+                      </Bubble>
+                    </MessageContent>
+                  </Message>
+                  </div>
+                )}
+                {error && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
+                    {error}
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+        {/* Sticky Composer */}
+        <div className="shrink-0 border-t border-border/40 bg-card/80 backdrop-blur-xl px-4 py-3">
+            <div className="max-w-3xl mx-auto">
+              <div className="rounded-xl border border-border bg-muted/30 shadow-sm transition-all focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
+                <textarea
+                  ref={textareaRef}
+                  value={inputValue}
+                  onChange={(e) => {
+                    setInputValue(e.currentTarget.value)
+                    e.currentTarget.style.height = 'auto'
+                    e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 140)}px`
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder={canSend ? 'Message the agent…' : 'Configure agent to start'}
+                  disabled={streaming || !canSend}
+                  rows={1}
+                  className={cn(
+                    'block w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-foreground outline-none',
+                    'placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50',
+                    'min-h-[44px] max-h-[140px]'
+                  )}
+                />
+                <div className="flex items-center justify-between gap-2 px-3 pb-2.5">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-muted/70 px-2 py-0.5 text-[11px] font-medium text-foreground/80">
+                      <Bot className="size-3 shrink-0 text-primary/70" />
+                      <span className="truncate">{formatModelLabel(agentConfig.model)}</span>
+                    </span>
+                    {agentConfig.knowledgeBaseId && (
+                      <span
+                        className={cn(
+                          'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
+                          useKnowledge
+                            ? 'border-success/20 bg-success/10 text-success'
+                            : 'border-border bg-muted/40 text-muted-foreground'
+                        )}
+                      >
+                        {useKnowledge ? 'Knowledge: On' : 'Knowledge: Off'}
+                      </span>
+                    )}
+                    {agentHasTools && (
+                      <span
+                        className={cn(
+                          'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
+                          useTools && toolsAllowed
+                            ? 'border-success/20 bg-success/10 text-success'
+                            : 'border-border bg-muted/40 text-muted-foreground'
+                        )}
+                      >
+                        {toolsAllowed ? (useTools ? 'Tools: On' : 'Tools: Off') : 'Tools: Pro'}
+                      </span>
                     )}
                   </div>
-                </MessageAvatar>
-                <MessageContent>
-                  <Bubble variant="muted">
-                    {showReasoning && streamingReasoning && (
-                      <details className="px-3 pt-2 pb-1 text-xs text-muted-foreground border-b border-border/40 mb-2" open>
-                        <summary className="flex cursor-pointer select-none items-center gap-1.5 font-medium text-foreground/60 hover:text-foreground transition-colors">
-                          <Loader2 className="size-3 animate-spin" />
-                          Reasoning…
-                        </summary>
-                         <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
-                           {streamingReasoning}
-                         </div>
-                      </details>
-                    )}
-                    {toolCalls.length > 0 && (
-                      <div className="px-3 py-2 space-y-1.5 border-b border-border/40">
-                        {toolCalls.map((tc, i) => {
-                          const Icon = toolIcons[tc.tool] || Plug
-                          const isDone = tc.status === 'done'
-                          return (
-                            <div
-                              key={`${tc.tool}-${i}`}
-                              className="flex items-center gap-2 text-xs"
-                            >
-                              {isDone ? (
-                                <Check className="size-3 text-success shrink-0" />
-                              ) : (
-                                <Loader2 className="size-3 animate-spin shrink-0" />
-                              )}
-                              <Icon className="size-3 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">
-                                {tc.tool.replace(/-/g, ' ')}
-                              </span>
-                              {isDone && tc.result && (
-                                <span className="text-[11px] text-muted-foreground/60 truncate max-w-[200px]">
-                                  {renderToolResultPreview(tc.tool, tc.result)}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                    <BubbleContent>
-                      {streamingContent ? (
-                        <AiResponse content={streamingContent} isStreaming showActions={false} />
-                      ) : showReasoning && streamingReasoning ? (
-                        <TypingIndicator />
-                      ) : (
-                        <TypingIndicator />
-                      )}
-                    </BubbleContent>
-                  </Bubble>
-                </MessageContent>
-              </Message>
-              </div>
-            )}
-            {error && (
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
-                {error}
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-
-        {/* Composer — sticky at bottom */}
-        <div className="shrink-0 border-t border-border/40 bg-card px-3 py-2">
-          <div className="rounded-xl border border-border bg-card transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
-            <textarea
-              ref={textareaRef}
-              value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value)
-                e.target.style.height = 'auto'
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder={canSend ? 'Message the agent…' : 'Configure agent to start'}
-              disabled={streaming || !canSend}
-              rows={1}
-              className={cn(
-                'block w-full resize-none bg-transparent px-3 py-2 text-sm leading-6 text-foreground outline-none',
-                'placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50',
-                'min-h-[38px] max-h-[140px]'
-              )}
-            />
-            <div className="flex items-center justify-between gap-2 px-2.5 pb-2">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-muted/70 px-2 py-0.5 text-[11px] font-medium text-foreground/80">
-                  <Bot className="size-3 shrink-0 text-primary/70" />
-                  <span className="truncate">{formatModelLabel(agentConfig.model)}</span>
-                </span>
-                {agentConfig.knowledgeBaseId && (
-                  <span
-                    className={cn(
-                      'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
-                      useKnowledge
-                        ? 'border-success/20 bg-success/10 text-success'
-                        : 'border-border bg-muted/40 text-muted-foreground'
-                    )}
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!inputValue.trim() || streaming || !canSend}
+                    size="icon-sm"
+                    className="shrink-0 rounded-lg"
+                    aria-label="Send message"
                   >
-                    {useKnowledge ? 'Knowledge: On' : 'Knowledge: Off'}
-                  </span>
-                )}
-                {agentHasTools && (
-                  <span
-                    className={cn(
-                      'hidden items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] sm:inline-flex',
-                      useTools && toolsAllowed
-                        ? 'border-success/20 bg-success/10 text-success'
-                        : 'border-border bg-muted/40 text-muted-foreground'
+                    {streaming ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Send className="size-4" />
                     )}
-                  >
-                    {toolsAllowed ? (useTools ? 'Tools: On' : 'Tools: Off') : 'Tools: Pro'}
-                  </span>
-                )}
+                  </Button>
+                </div>
               </div>
-              <Button
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim() || streaming || !canSend}
-                size="icon-xs"
-                className="shrink-0 rounded-lg"
-                aria-label="Send message"
-              >
-                {streaming ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Send className="size-3.5" />
-                )}
-              </Button>
+              <p className="text-[11px] text-muted-foreground/50 text-center mt-2">
+                Press Enter to send, Shift+Enter for new line
+              </p>
             </div>
           </div>
-        </div>
       </div>
 
-      {/* Sidebar overlay — slides in from left */}
+      {/* Sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-[100] flex">
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
-          {/* Panel */}
-          <div className="relative flex flex-col w-72 h-full bg-card border-r border-border/50 shadow-xl animate-in slide-in-from-left duration-200">
-            <div className="p-4 pb-2">
+          <div className="relative flex flex-col w-80 h-full bg-card border-r border-border/50 shadow-xl animate-in slide-in-from-left duration-200">
+            <div className="p-4 pb-3 border-b border-border/40">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="text-sm font-semibold text-foreground">
                   Conversations
                 </span>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => { handleNewConversation(); setSidebarOpen(false) }}
-                  className="text-primary hover:text-primary/80 h-6 px-1.5 text-xs gap-1"
-                >
-                  <Plus className="size-3" />
-                  New
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => { handleNewConversation(); setSidebarOpen(false) }}
+                    className="text-primary hover:text-primary/80 h-7 px-2 text-xs gap-1.5"
+                  >
+                    <Plus className="size-3.5" />
+                    New
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => setSidebarOpen(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
               </div>
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search..."
+                  placeholder="Search conversations..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-8 pl-8 pr-3 text-sm rounded-lg border-0 bg-muted/50 placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none transition-colors"
+                  onChange={(e) => setSearchQuery(e.currentTarget.value)}
+                  className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-border bg-muted/30 placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto px-2">
-              <div className="space-y-0.5 py-1">
+            <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2">
+              <div className="space-y-1">
                 {convsLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <Loader2 className="size-4 animate-spin" />
                   </div>
                 ) : filteredConversations.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                    <MessageSquare className="size-7 mb-2 opacity-30" />
-                    <p className="text-xs">No conversations</p>
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                    <MessageSquare className="size-8 mb-3 opacity-30" />
+                    <p className="text-sm font-medium">No conversations</p>
+                    <p className="text-xs mt-1">Start a new chat to begin</p>
                   </div>
                 ) : (
                   <>
@@ -1212,7 +1248,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                       <button
                         onClick={() => fetchNextPage()}
                         disabled={isFetchingNextPage}
-                        className="w-full text-center py-2 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                        className="w-full text-center py-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                       >
                         {isFetchingNextPage ? (
                           <Loader2 className="size-3 animate-spin mx-auto" />
@@ -1226,7 +1262,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
               </div>
             </div>
 
-            <div className="p-3">
+            <div className="p-3 border-t border-border/40">
               <Button
                 variant="ghost"
                 size="sm"
