@@ -14,6 +14,9 @@ const RESPONSE_TYPE_DEFERRED_CHANNEL_MESSAGE = 5
 
 const BOT_COLOR = 0x22c55e
 
+const processedInteractions = new Set<string>()
+const MAX_CACHED_INTERACTIONS = 500
+
 interface DiscordInteractionOption {
   name: string
   type: number
@@ -235,6 +238,12 @@ export async function processDiscordInteraction(
   deploymentId: string,
   interaction: DiscordInteraction
 ): Promise<{ type: number; data?: { content?: string; flags?: number } }> {
+  if (processedInteractions.has(interaction.id)) {
+    return { type: RESPONSE_TYPE_DEFERRED_CHANNEL_MESSAGE }
+  }
+  if (processedInteractions.size >= MAX_CACHED_INTERACTIONS) processedInteractions.clear()
+  processedInteractions.add(interaction.id)
+
   // Respond to Discord's PING handshake
   if (interaction.type === INTERACTION_TYPE_PING) {
     return { type: RESPONSE_TYPE_PONG }

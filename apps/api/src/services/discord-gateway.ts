@@ -19,6 +19,9 @@ let sessionId: string | null = null
 let reconnectAttempts = 0
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
+const processedMessageIds = new Set<string>()
+const MAX_CACHED_IDS = 500
+
 async function sendEmbedMessage(channelId: string, text: string, botToken: string): Promise<string | null> {
   const url = `${DISCORD_API}/channels/${channelId}/messages`
   const res = await fetch(url, {
@@ -67,7 +70,11 @@ async function createThread(
 }
 
 async function handleMessageCreate(data: any, botToken: string) {
-  if (!botUserId || data.author?.id === botUserId) return
+  if (!data.id || data.author?.bot || data.author?.id === botUserId) return
+
+  if (processedMessageIds.has(data.id)) return
+  if (processedMessageIds.size >= MAX_CACHED_IDS) processedMessageIds.clear()
+  processedMessageIds.add(data.id)
 
   const isDM = data.guild_id === undefined
 
