@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Loader2, Plus, Globe, Link, Code, Lightbulb, ExternalLink, Plug } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Globe, Link, Code, Plug } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
@@ -11,6 +11,7 @@ const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
 import { PageContainer } from '@/components/shared/page-container'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -67,6 +68,8 @@ export default function CreateAgentPage() {
   const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
   const [deploymentOptions, setDeploymentOptions] = useState(DEFAULT_DEPLOYMENTS)
   const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<string[]>([])
+  const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] = useState<string>('')
+  const [mcpModalOpen, setMcpModalOpen] = useState(false)
 
   const { data: mcpServers } = useQuery({
     queryKey: ['mcp-servers', orgId],
@@ -144,6 +147,7 @@ export default function CreateAgentPage() {
         systemPrompt: data.systemPrompt || `You are ${data.name}, a helpful AI assistant.`,
         temperature: data.temperature,
         reasoningEffort: data.reasoningEffort,
+        knowledgeBaseId: selectedKnowledgeBaseId || null,
         maxTokens: 2048,
         organizationId: orgId,
         capabilities: capabilities.filter((c) => c.enabled).map((c) => c.id),
@@ -249,10 +253,14 @@ export default function CreateAgentPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Knowledge</CardTitle>
-                <CardDescription>Optional. Add sources after creation.</CardDescription>
+                <CardDescription>Connect a knowledge base for RAG.</CardDescription>
               </CardHeader>
               <CardContent>
-                <AgentKnowledgeSources />
+                <AgentKnowledgeSources
+                  value={selectedKnowledgeBaseId}
+                  onChange={setSelectedKnowledgeBaseId}
+                  disabled={saving}
+                />
               </CardContent>
             </Card>
           </div>
@@ -289,7 +297,7 @@ export default function CreateAgentPage() {
                     </p>
                   ) : (
                     <div className="space-y-1">
-                      {mcpServers.map((server) => {
+                      {mcpServers.slice(0, 3).map((server) => {
                         const checked = selectedMcpServerIds.includes(server.id)
                         return (
                           <label
@@ -315,6 +323,15 @@ export default function CreateAgentPage() {
                           </label>
                         )
                       })}
+                      {mcpServers.length > 3 && (
+                        <button
+                          type="button"
+                          onClick={() => setMcpModalOpen(true)}
+                          className="w-full text-center text-xs text-primary hover:underline py-1.5"
+                        >
+                          See all {mcpServers.length} servers
+                        </button>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -410,44 +427,47 @@ export default function CreateAgentPage() {
                 </CardContent>
               </Card>
 
-              {/* Tips */}
-              <Card className="border-border/50 bg-muted/20">
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex size-6 items-center justify-center rounded-md bg-primary/10">
-                      <Lightbulb className="size-3.5 text-primary" />
-                    </div>
-                    <span className="text-sm font-medium">Tips</span>
-                  </div>
-                  <ul className="space-y-1.5 text-xs text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 size-1 shrink-0 rounded-full bg-muted-foreground/40" />
-                      Start with a clear name and description.
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 size-1 shrink-0 rounded-full bg-muted-foreground/40" />
-                      Add knowledge sources to improve accuracy.
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 size-1 shrink-0 rounded-full bg-muted-foreground/40" />
-                      You can always change settings later.
-                    </li>
-                  </ul>
-                  <a
-                    href="https://docs.convio.ai/agents"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                  >
-                    Learn more
-                    <ExternalLink className="size-3" />
-                  </a>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </div>
       </form>
+
+      <Dialog open={mcpModalOpen} onOpenChange={setMcpModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>MCP Servers</DialogTitle>
+            <DialogDescription>Select servers to link to this agent.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1 max-h-80 overflow-y-auto">
+            {mcpServers?.map((server) => {
+              const checked = selectedMcpServerIds.includes(server.id)
+              return (
+                <label
+                  key={server.id}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={saving}
+                    onChange={() =>
+                      setSelectedMcpServerIds((prev) =>
+                        checked ? prev.filter((s) => s !== server.id) : [...prev, server.id]
+                      )
+                    }
+                    className="size-4 accent-primary"
+                  />
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Plug className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="text-xs">{server.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">({server.type})</span>
+                  </div>
+                </label>
+              )
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   )
 }

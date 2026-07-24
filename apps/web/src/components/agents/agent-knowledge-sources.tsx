@@ -1,42 +1,130 @@
-import { BookOpen } from 'lucide-react'
-import { FileIcon } from '@/components/shared/file-icon'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { BookOpen, CheckCircle2, ExternalLink } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { knowledge as knowledgeApi } from '@/lib/api'
+import { useOrg } from '@/lib/org-context'
 
-const categories = [
-  { type: 'document', label: 'Files', examples: 'PDF, DOCX, CSV, TXT' },
-  { type: 'web', label: 'Web', examples: 'Website, Sitemap, URLs' },
-  { type: 'integration', label: 'Integrations', examples: 'Notion, Google Drive, GitHub' },
-  { type: 'structured', label: 'Structured', examples: 'JSON, FAQ, Tables' },
-]
+interface KnowledgeBase {
+  id: string
+  name: string
+  description?: string
+  documentCount: number
+  readyCount?: number
+  processingCount?: number
+  errorCount?: number
+}
 
-export function AgentKnowledgeSources() {
+interface AgentKnowledgeSourcesProps {
+  value?: string
+  onChange?: (kbId: string) => void
+  disabled?: boolean
+}
+
+export function AgentKnowledgeSources({ value, onChange, disabled }: AgentKnowledgeSourcesProps) {
+  const { orgId } = useOrg()
+
+  const { data: knowledgeBases = [], isLoading } = useQuery({
+    queryKey: ['knowledge-bases', orgId],
+    queryFn: async () => {
+      const res = await knowledgeApi.list(orgId!)
+      return (res.data.data || []) as KnowledgeBase[]
+    },
+    enabled: !!orgId,
+  })
+
+  const selectedKb = knowledgeBases.find((kb) => kb.id === value)
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-          <BookOpen className="size-4 text-muted-foreground" />
-        </div>
-        <div className="flex-1">
-          <h4 className="text-sm font-medium">No knowledge sources yet</h4>
-          <p className="text-xs text-muted-foreground">
-            Add documents, websites, or integrations after creation to make your agent smarter.
-          </p>
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Link a knowledge base</Label>
+        <p className="text-xs text-muted-foreground">
+          Connect an existing knowledge base so this agent can retrieve relevant documents at chat
+          time.
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Select
+            value={value || ''}
+            onValueChange={(v) => onChange?.(v || '')}
+            disabled={disabled || isLoading}
+          >
+            <SelectTrigger className="w-full sm:flex-1">
+              <SelectValue placeholder={isLoading ? 'Loading…' : 'Choose a knowledge base'} />
+            </SelectTrigger>
+            <SelectContent>
+              {knowledgeBases.length === 0 ? (
+                <SelectItem value="__empty" disabled>
+                  No knowledge bases yet
+                </SelectItem>
+              ) : (
+                knowledgeBases.map((kb) => (
+                  <SelectItem key={kb.id} value={kb.id}>
+                    {kb.name}
+                    {typeof kb.documentCount === 'number' ? ` (${kb.documentCount} docs)` : ''}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {categories.map((cat) => (
-          <div
-            key={cat.label}
-            className="flex items-center gap-2 rounded-lg border border-dashed border-border/60 px-3 py-2 opacity-60"
-          >
-            <FileIcon type={cat.type} size={16} className="shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium leading-tight">{cat.label}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{cat.examples}</p>
-            </div>
+      {selectedKb && (
+        <div className="flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+            <CheckCircle2 className="size-4 text-emerald-500" />
           </div>
-        ))}
-      </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">{selectedKb.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {selectedKb.documentCount} documents
+              {typeof selectedKb.readyCount === 'number' ? ` · ${selectedKb.readyCount} ready` : ''}
+            </p>
+          </div>
+          <Link
+            to={`/knowledge/${selectedKb.id}`}
+            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline shrink-0"
+          >
+            View
+            <ExternalLink className="size-3" />
+          </Link>
+        </div>
+      )}
+
+      {!isLoading && knowledgeBases.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          No knowledge bases in this organization.{' '}
+          <Link
+            to="/knowledge/new"
+            className="text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            Create one
+          </Link>
+          .
+        </p>
+      )}
+
+      {!isLoading && knowledgeBases.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Need a new one?{' '}
+          <Link
+            to="/knowledge/new"
+            className="text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            Create knowledge base
+          </Link>
+        </p>
+      )}
     </div>
   )
 }

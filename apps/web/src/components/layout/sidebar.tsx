@@ -167,10 +167,7 @@ export function Sidebar() {
 
           <SettingsGroup collapsed={collapsed} />
 
-          <SidebarGroup label="Feedback">
-            <SidebarItem icon={Lightbulb} label="Suggestions" href="/suggestions" />
-          </SidebarGroup>
-        </nav>
+          </nav>
       </ScrollArea>
 
       {/* User section */}
@@ -376,9 +373,7 @@ function getMobileNavGroups(role?: string) {
     },
     {
       label: 'Feedback',
-      items: [
-        { icon: Lightbulb, label: 'Suggestions', href: '/suggestions' },
-      ],
+      items: [],
     },
   ]
 }
