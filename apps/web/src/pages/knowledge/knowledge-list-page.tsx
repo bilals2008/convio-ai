@@ -87,6 +87,7 @@ import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { KnowledgeCard, KnowledgeCardSkeleton } from '@/components/knowledge/knowledge-card'
 import { KnowledgeTemplateModal, type KbTemplate } from '@/components/knowledge/knowledge-template-modal'
 import { SourcePickerModal, type SourceType } from '@/components/knowledge/source-picker-modal'
+import { FileIcon } from '@/components/shared/file-icon'
 import { toast } from 'sonner'
 
 interface KnowledgeBase {
@@ -245,8 +246,8 @@ export default function KnowledgeListPage() {
       ),
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <BookOpen className="size-4" />
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/50">
+            <FileIcon type="document" size={16} />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium truncate text-foreground">{row.original.name}</p>
