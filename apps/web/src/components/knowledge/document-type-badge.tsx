@@ -19,5 +19,5 @@ interface DocumentTypeBadgeProps {
 
 export function DocumentTypeBadge({ type, className }: DocumentTypeBadgeProps) {
   const config = typeConfig[type] || typeConfig.txt
-  return <Badge className={cn(config.className, className)}>{config.label}</Badge>
+  return <Badge className={cn('rounded h-4 px-1.5 py-0 text-[10px]', config.className, className)}>{config.label}</Badge>
 }

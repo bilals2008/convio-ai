@@ -468,7 +468,7 @@ function PlanCard({
             {subStatusLabel[subStatus]}
           </Badge>
         ) : (
-          <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+           <span className="inline-flex items-center rounded bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
             {isFreePlan ? 'Free' : 'Active'}
           </span>
         )}

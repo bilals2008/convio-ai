@@ -93,7 +93,7 @@ function AgentStatusBadge({ status }: { status: string }) {
     dot: 'bg-muted-foreground',
   }
   return (
-    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium', meta.className)}>
+     <span className={cn('inline-flex shrink-0 items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-medium', meta.className)}>
       <span className={cn('size-1.5 rounded-full', meta.dot)} />
       {meta.label}
     </span>
@@ -267,7 +267,7 @@ export function ConversationsLayout() {
               key={tab.value}
               onClick={() => setStatusFilter(tab.value)}
               className={cn(
-                'px-2.5 py-1 text-xs font-medium rounded-full transition-colors',
+                 'px-2.5 py-1 text-xs font-medium rounded transition-colors',
                 statusFilter === tab.value
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-muted'

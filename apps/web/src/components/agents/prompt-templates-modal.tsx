@@ -329,7 +329,7 @@ export function PromptTemplatesModal({ open, onOpenChange, onSelect }: PromptTem
                     type="button"
                     onClick={() => setActiveCategory(cat.id)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                       "inline-flex items-center gap-1 rounded border px-2.5 py-1 text-xs font-medium transition-colors",
                       isActive
                         ? "border-primary/30 bg-primary/10 text-foreground"
                         : "border-border bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"

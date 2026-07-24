@@ -117,7 +117,7 @@ export function WidgetPreview({
                   {prompts.slice(0, 2).map((p) => (
                     <span
                       key={p.id}
-                      className="inline-block rounded-full border px-2 py-0.5 text-[9px]"
+                       className="inline-block rounded border px-2 py-0.5 text-[9px]"
                       style={{
                         borderColor: `color-mix(in srgb, ${primaryColor} 40%, transparent)`,
                         color: primaryColor,

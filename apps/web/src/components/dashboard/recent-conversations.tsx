@@ -110,14 +110,14 @@ export function RecentConversations() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{conv.agentName}</p>
-                  <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium', getChannelBadge(conv.channel))}>
+                   <span className={cn('inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium', getChannelBadge(conv.channel))}>
                     {conv.channel}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusColor(conv.status))}>
+                 <span className={cn('inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium', getStatusColor(conv.status))}>
                   {conv.status}
                 </span>
                 <span className="flex items-center gap-1 text-[10px] text-muted-foreground">

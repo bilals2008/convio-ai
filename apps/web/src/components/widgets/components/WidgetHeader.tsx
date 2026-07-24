@@ -103,7 +103,7 @@ export function WidgetHeader({
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
               <span
                 className={cn(
-                  'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+                   'inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium',
                   isLive
                     ? 'bg-success/10 text-success'
                     : widget.status === 'paused'
@@ -140,7 +140,7 @@ export function WidgetHeader({
               {isDirty && (
                 <>
                   <span className="h-3 w-px bg-border" aria-hidden="true" />
-                  <span className="inline-flex items-center gap-1 rounded-full border border-warning/20 bg-warning/5 px-2 py-0.5 text-[11px] font-medium text-warning" role="status">
+                   <span className="inline-flex items-center gap-1 rounded border border-warning/20 bg-warning/5 px-2 py-0.5 text-[11px] font-medium text-warning" role="status">
                     <span className="size-1.5 rounded-full bg-warning" aria-hidden="true" />
                     Unsaved
                   </span>

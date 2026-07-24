@@ -439,7 +439,7 @@ export default function KnowledgeDetailPage() {
               <t.icon className="size-4" />
               {t.label}
               {t.value === 'sources' && detail.documentCount > 0 && (
-                <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
+                 <span className="ml-1 rounded bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
                   {detail.documentCount}
                 </span>
               )}

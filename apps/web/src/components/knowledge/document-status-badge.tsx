@@ -33,5 +33,5 @@ interface DocumentStatusBadgeProps {
 
 export function DocumentStatusBadge({ status, className }: DocumentStatusBadgeProps) {
   const config = statusConfig[status] || statusConfig.pending
-  return <Badge className={cn(config.className, className)}>{config.label}</Badge>
+  return <Badge className={cn('rounded h-4 px-1.5 py-0 text-[10px]', config.className, className)}>{config.label}</Badge>
 }

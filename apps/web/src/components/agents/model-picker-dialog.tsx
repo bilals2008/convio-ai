@@ -237,7 +237,7 @@ export function ModelPicker({
                   >
                     <ProviderLogo provider={provider} className="size-4" />
                     <span className="text-xs font-semibold">{providerLabel(provider)}</span>
-                    <span className="rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                     <span className="rounded bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
                       {filtered[provider].length}
                     </span>
                     {!isSearching && (

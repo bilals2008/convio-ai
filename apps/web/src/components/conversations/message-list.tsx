@@ -64,7 +64,7 @@ export function MessageList({ messages, loading, streamingMessage, streamingReas
     if (showDateSeparator) {
       elements.push(
         <div key={`date-${msg.id}`} className="flex justify-center py-2">
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
             {msgDate}
           </span>
         </div>

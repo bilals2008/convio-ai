@@ -56,7 +56,7 @@ export function RecentKbUpdates() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{update.name}</p>
-                  <span className={cn('inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase', getTypeBadge(update.type))}>
+                   <span className={cn('inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-medium uppercase', getTypeBadge(update.type))}>
                     {update.type}
                   </span>
                 </div>

@@ -462,7 +462,7 @@ export default function DataManagementPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-foreground">{cat.label}</span>
                       {cat.warning && count > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-warning/10 px-1.5 py-0 text-[9px] font-medium text-warning">
+                         <span className="inline-flex items-center rounded bg-warning/10 px-1.5 py-0 text-[9px] font-medium text-warning">
                           CASCADE
                         </span>
                       )}

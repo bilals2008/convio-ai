@@ -9,7 +9,7 @@ export function ModelBadges({ badges, className }: { badges: ModelBadge[]; class
         <span
           key={badge.label}
           className={cn(
-            "inline-flex h-4 items-center rounded-full border px-1.5 text-[10px] font-medium leading-none",
+            "inline-flex h-4 items-center rounded border px-1.5 text-[10px] font-medium leading-none",
             BADGE_CLASSES[badge.tone]
           )}
         >

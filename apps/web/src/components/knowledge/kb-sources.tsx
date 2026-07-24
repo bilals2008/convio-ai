@@ -223,37 +223,11 @@ export function KbSources({
     }),
     columnHelper.accessor('type', {
       header: 'Type',
-      cell: ({ row }) => (
-        <span className={cn(
-          'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border',
-          row.original.type === 'pdf' && 'bg-destructive/10 text-destructive border-destructive/30',
-          row.original.type === 'md' && 'bg-info/10 text-info border-info/30',
-          row.original.type === 'csv' && 'bg-chart-2/10 text-chart-2 border-chart-2/30',
-          row.original.type === 'json' && 'bg-warning/10 text-warning border-warning/30',
-          row.original.type === 'url' && 'bg-chart-4/10 text-chart-4 border-chart-4/30',
-          row.original.type === 'txt' && 'bg-muted text-muted-foreground border-border',
-        )}>
-          {row.original.type}
-        </span>
-      ),
+      cell: ({ row }) => <DocumentTypeBadge type={row.original.type} />,
     }),
     columnHelper.accessor('status', {
       header: 'Status',
-      cell: ({ row }) => {
-        const s = row.original.status
-        return (
-          <span className={cn(
-            'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border',
-            s === 'ready' && 'bg-success/10 text-success border-success/30',
-            s === 'processing' && 'bg-info/10 text-info border-info/30',
-            s === 'pending' && 'bg-warning/10 text-warning border-warning/30',
-            s === 'error' && 'bg-destructive/10 text-destructive border-destructive/30',
-            s === 'archived' && 'bg-muted text-muted-foreground border-border',
-          )}>
-            {s === 'processing' ? 'Indexing' : s.charAt(0).toUpperCase() + s.slice(1)}
-          </span>
-        )
-      },
+      cell: ({ row }) => <DocumentStatusBadge status={row.original.status} />,
     }),
     columnHelper.accessor('chunkCount', {
       header: ({ column }) => (
