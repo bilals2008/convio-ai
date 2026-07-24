@@ -32,6 +32,7 @@ const schema = Type.Object({
   DISCORD_BOT_TOKEN: Type.Optional(Type.String()),
   DISCORD_APPLICATION_ID: Type.Optional(Type.String()),
   DISCORD_PUBLIC_KEY: Type.Optional(Type.String()),
+  DISCORD_GATEWAY_ENABLED: Type.Boolean({ default: true }),
   TWILIO_ACCOUNT_SID: Type.Optional(Type.String()),
   TWILIO_AUTH_TOKEN: Type.Optional(Type.String()),
   TWILIO_NUMBER: Type.Optional(Type.String()),
