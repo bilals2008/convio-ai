@@ -24,6 +24,7 @@ import KnowledgeListPage from '@/pages/knowledge/knowledge-list-page'
 import KnowledgeDetailPage from '@/pages/knowledge/knowledge-detail-page'
 
 import AnalyticsPage from '@/pages/analytics/analytics-page'
+import SuggestionsPage from '@/pages/suggestions/suggestions-page'
 import WidgetsListPage from '@/pages/widgets/widgets-list-page'
 import WidgetConfigPage from '@/pages/widgets/widget-config-page'
 import WidgetDemoPage from '@/pages/widget/WidgetDemo'
@@ -125,6 +126,7 @@ export function App() {
                 <Route path="billing" element={<BillingPage />} />
                 <Route path="data" element={<DataManagementPage />} />
               </Route>
+              <Route path="/suggestions" element={<SuggestionsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

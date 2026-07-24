@@ -102,7 +102,7 @@ export function AgentDetailLayout({
   const navigate = useNavigate()
 
   return (
-    <div className="flex flex-col h-full overflow-x-hidden">
+    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden">
       <div className="px-6 pt-2 pb-0">
         <Breadcrumb className="mb-5">
           <BreadcrumbList className="text-sm text-muted-foreground">

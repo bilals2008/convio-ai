@@ -18,6 +18,7 @@ import {
   CreditCard,
   Database,
   Plug,
+  Lightbulb,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -165,6 +166,10 @@ export function Sidebar() {
           </SidebarGroup>
 
           <SettingsGroup collapsed={collapsed} />
+
+          <SidebarGroup label="Feedback">
+            <SidebarItem icon={Lightbulb} label="Suggestions" href="/suggestions" />
+          </SidebarGroup>
         </nav>
       </ScrollArea>
 
@@ -360,8 +365,20 @@ function getMobileNavGroups(role?: string) {
       ],
     },
     {
+      label: 'Development',
+      items: [
+        { icon: BookOpen, label: 'Docs', href: '/docs' },
+      ],
+    },
+    {
       label: 'Settings',
       items: settingsItems,
+    },
+    {
+      label: 'Feedback',
+      items: [
+        { icon: Lightbulb, label: 'Suggestions', href: '/suggestions' },
+      ],
     },
   ]
 }
