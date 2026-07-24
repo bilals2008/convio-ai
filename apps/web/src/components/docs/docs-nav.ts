@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Globe,
   Code,
+  Layers,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -69,6 +70,12 @@ export const docSections: DocSection[] = [
       { title: 'Discord', href: '/docs/discord-features', icon: MessageSquare, description: 'Components, permissions, voice & more', logo: 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/discord/wordmark.svg' },
       { title: 'Widget', href: '/docs/widget-features', icon: Globe, description: 'Chat bubble, themes, uploads & analytics' },
       { title: 'API', href: '/docs/api-features', icon: Code, description: 'Conversations, analytics, webhooks & more' },
+    ],
+  },
+  {
+    title: 'Agents',
+    items: [
+      { title: 'Agent Templates', href: '/docs/templates', icon: Layers, description: 'Pre-built agent prompts and settings' },
     ],
   },
   {
