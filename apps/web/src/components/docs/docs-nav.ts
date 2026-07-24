@@ -17,6 +17,7 @@ import {
   Globe,
   Code,
   Layers,
+  Bot,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -76,6 +77,7 @@ export const docSections: DocSection[] = [
     title: 'Agents',
     items: [
       { title: 'Agent Templates', href: '/docs/templates', icon: Layers, description: 'Pre-built agent prompts and settings' },
+      { title: 'Agent Architecture', href: '/docs/agent-architecture', icon: Bot, description: 'Create flow, avatar system, tools, KB & more' },
     ],
   },
   {

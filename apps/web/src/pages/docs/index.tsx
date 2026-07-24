@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, BookOpen, ListChecks, Cpu, DollarSign, Mic, Plug, LayoutTemplate, Globe, Code, Layers, type LucideIcon } from 'lucide-react'
+import { ArrowRight, BookOpen, ListChecks, Cpu, DollarSign, Mic, Plug, LayoutTemplate, Globe, Code, Layers, Bot, type LucideIcon } from 'lucide-react'
 import { DocHeading } from '@/components/docs/doc-heading'
 import { Button } from '@/components/ui/button'
 
@@ -15,6 +15,7 @@ const quickLinks: { icon?: LucideIcon; label: string; href: string; desc: string
   { icon: Plug, label: 'MCP Integration', href: '/docs/mcp', desc: 'Model Context Protocol agents' },
   { icon: LayoutTemplate, label: 'Generative UI', href: '/docs/generative-ui', desc: 'Interactive UI from agents' },
   { icon: Layers, label: 'Agent Templates', href: '/docs/templates', desc: 'Pre-built agent prompts and settings' },
+  { icon: Bot, label: 'Agent Architecture', href: '/docs/agent-architecture', desc: 'Create flow, avatar system, tools, KB & more' },
 ]
 
 export default function DocsOverviewPage() {

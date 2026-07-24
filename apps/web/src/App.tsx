@@ -53,6 +53,7 @@ import GenerativeUiPage from '@/pages/docs/generative-ui'
 import MemoryPage from '@/pages/docs/memory'
 import MultiAgentPage from '@/pages/docs/multi-agent'
 import TemplatesPage from '@/pages/docs/templates'
+import AgentArchitecturePage from '@/pages/docs/agent-architecture'
 import { DocsLayout } from '@/components/docs/docs-layout'
 import ComingSoonPage from '@/pages/coming-soon-page'
 import InvitePage from '@/pages/invite-page'
@@ -102,6 +103,7 @@ export function App() {
               <Route path="/docs/memory" element={<MemoryPage />} />
               <Route path="/docs/multi-agent" element={<MultiAgentPage />} />
               <Route path="/docs/templates" element={<TemplatesPage />} />
+              <Route path="/docs/agent-architecture" element={<AgentArchitecturePage />} />
             </Route>
             <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardOverviewPage />} />
