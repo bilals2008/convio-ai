@@ -297,12 +297,6 @@ export function AgentKnowledge({
         </div>
       )}
 
-      <div className="rounded-xl border border-border/60 bg-muted/20 px-5 py-3.5 text-xs text-muted-foreground">
-        At chat time, the last user message is embedded and the top matching chunks (similarity ≥
-        ~0.7) are injected into the system prompt. Requires{' '}
-        <code className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">OPENAI_API_KEY</code>{' '}
-        for embeddings (text-embedding-3-small).
-      </div>
     </div>
   )
 }

@@ -14,6 +14,10 @@ interface AgentOverviewProps {
   hasProviderKey?: boolean
   hasKnowledgeBase?: boolean
   systemPrompt?: string
+  knowledgeBaseCount?: number
+  toolsEnabledCount?: number
+  mcpServersCount?: number
+  deploymentsCount?: number
   onNavigateToTab: (tab: string) => void
 }
 
@@ -36,6 +40,10 @@ export function AgentOverview({
   hasProviderKey,
   hasKnowledgeBase,
   systemPrompt,
+  knowledgeBaseCount = 0,
+  toolsEnabledCount = 0,
+  mcpServersCount = 0,
+  deploymentsCount = 0,
   onNavigateToTab,
 }: AgentOverviewProps) {
   const promptPreview = systemPrompt?.trim() || 'No instructions have been added yet.'
@@ -50,6 +58,13 @@ export function AgentOverview({
     { icon: BookOpen, label: 'Knowledge', value: hasKnowledgeBase ? 'Connected' : 'Not connected', color: hasKnowledgeBase ? ('bg-emerald-500/10 text-emerald-500' as const) : ('bg-muted text-muted-foreground' as const) },
     { icon: Calendar, label: 'Created', value: formatDate(agentCreatedAt), color: 'bg-info/10 text-info' as const },
     { icon: RefreshCw, label: 'Updated', value: formatDate(agentUpdatedAt), color: 'bg-warning/10 text-warning' as const },
+  ]
+
+  const miniStats = [
+    { label: 'Knowledge Bases', value: knowledgeBaseCount, tab: 'knowledge', color: 'text-emerald-500' as const },
+    { label: 'Tools Enabled', value: toolsEnabledCount, tab: 'builder', color: 'text-primary' as const },
+    { label: 'MCP Servers', value: mcpServersCount, tab: 'builder', color: 'text-info' as const },
+    { label: 'Deployments', value: deploymentsCount, tab: 'deployments', color: 'text-warning' as const },
   ]
 
   return (
@@ -87,6 +102,22 @@ export function AgentOverview({
               </div>
             </CardContent>
           </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {miniStats.map((s) => (
+          <button
+            key={s.label}
+            type="button"
+            onClick={() => onNavigateToTab(s.tab)}
+            className="group flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-left transition-all hover:border-border hover:shadow-sm"
+          >
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{s.label}</p>
+              <p className={cn('text-2xl font-bold leading-none tracking-tight', s.color)}>{s.value}</p>
+            </div>
+          </button>
         ))}
       </div>
 

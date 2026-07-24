@@ -13,6 +13,7 @@ import {
   Wrench,
   MessageSquare,
   BarChart3,
+  Rocket,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -26,6 +27,7 @@ import {
   AgentTestChat,
   AgentAnalytics,
   AgentSettings,
+  AgentDeployments,
 } from '@/components/agents/agent-detail'
 import { agents as agentsApi, deployments as deploymentsApi, widgets, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
@@ -352,7 +354,7 @@ export default function AgentDetailPage() {
             </TabsTrigger>
             <TabsTrigger value="builder">
               <Wrench className="size-4" />
-              Builder
+              Configuration
             </TabsTrigger>
             <TabsTrigger value="knowledge">
               <BookOpen className="size-4" />
@@ -365,6 +367,10 @@ export default function AgentDetailPage() {
             <TabsTrigger value="analytics">
               <BarChart3 className="size-4" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="deployments">
+              <Rocket className="size-4" />
+              Deployments
             </TabsTrigger>
             <TabsTrigger value="settings">
               <Settings className="size-4" />
@@ -384,6 +390,10 @@ export default function AgentDetailPage() {
             hasProviderKey={!!agent.providerKeyId}
             hasKnowledgeBase={!!agent.knowledgeBaseId}
             systemPrompt={agent.systemPrompt}
+            knowledgeBaseCount={agent.knowledgeBaseId ? 1 : 0}
+            toolsEnabledCount={tools.filter((t) => t.enabled).length}
+            mcpServersCount={linkedMcpServerIds.length}
+            deploymentsCount={agentDeployments.length}
             onNavigateToTab={setActiveTab}
           />
         </TabsContent>
@@ -437,6 +447,17 @@ export default function AgentDetailPage() {
           <AgentAnalytics agentId={id!} />
         </TabsContent>
 
+        <TabsContent value="deployments">
+          <AgentDeployments
+            agentId={id!}
+            agentName={agent.name}
+            deploymentOptions={deploymentOptions}
+            onDeploymentToggle={handleDeploymentToggle}
+            shareUrl={shareUrl}
+            disabled={updateMutation.isPending || toggleDeployment.isPending || createShareLink.isPending || removeShareLink.isPending}
+          />
+        </TabsContent>
+
         <TabsContent value="settings">
           <AgentSettings
             agentModel={agent.model}
@@ -446,12 +467,9 @@ export default function AgentDetailPage() {
             welcomeMessage={agent.welcomeMessage || ''}
             widgetColor={agent.widgetColor}
             status={agent.status}
-            shareUrl={shareUrl}
-            deploymentOptions={deploymentOptions}
-            onDeploymentToggle={handleDeploymentToggle}
             onSave={(data) => updateMutation.mutate(data)}
             isSaving={updateMutation.isPending}
-            disabled={updateMutation.isPending || toggleDeployment.isPending || createShareLink.isPending || removeShareLink.isPending}
+            disabled={updateMutation.isPending}
           />
         </TabsContent>
       </AgentDetailLayout>

@@ -1,23 +1,9 @@
-import { Globe, Link, Code, MessageCircle, Bot, Database, KeyRound, CalendarDays, Settings as SettingsIcon, ExternalLink, Palette, MessageSquareText, Radio, Loader2, Copy, Check } from 'lucide-react'
-import { AgentDeployment } from '@/components/agents/agent-deployment'
+import { Bot, Database, KeyRound, CalendarDays, Palette, MessageSquareText, Radio, Loader2 } from 'lucide-react'
 import { ProviderLogo } from '@/components/agents/provider-logos'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useState, useEffect } from 'react'
-
-function WhatsAppLogo({ className }: { className?: string }) {
-  const [failed, setFailed] = useState(false)
-  if (failed) return <MessageCircle className={className} />
-  return (
-    <img
-      src="https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/whatsapp/default.svg"
-      alt=""
-      className={className}
-      onError={() => setFailed(true)}
-    />
-  )
-}
 
 function formatModelName(model: string): string {
   const part = model.includes('/') ? model.split('/').slice(1).join('/') : model
@@ -32,9 +18,6 @@ interface AgentSettingsProps {
   welcomeMessage?: string
   widgetColor: string
   status: string
-  shareUrl?: string
-  deploymentOptions: Array<{ id: string; enabled: boolean }>
-  onDeploymentToggle: (id: string, enabled: boolean) => void
   onSave: (data: { welcomeMessage?: string; widgetColor?: string; status?: string }) => void
   isSaving?: boolean
   disabled?: boolean
@@ -206,16 +189,12 @@ export function AgentSettings({
   welcomeMessage = '',
   widgetColor = '#fb923c',
   status = 'draft',
-  shareUrl,
-  deploymentOptions,
-  onDeploymentToggle,
   onSave,
   isSaving,
   disabled,
 }: AgentSettingsProps) {
   const [draftWelcomeMessage, setDraftWelcomeMessage] = useState(welcomeMessage)
   const [draftWidgetColor, setDraftWidgetColor] = useState(widgetColor)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     setDraftWelcomeMessage(welcomeMessage)
@@ -224,103 +203,21 @@ export function AgentSettings({
 
   const hasChanges = draftWelcomeMessage !== welcomeMessage || draftWidgetColor !== widgetColor
 
-  const shareLinkEnabled = deploymentOptions.find((o) => o.id === 'shareable-link')?.enabled ?? false
-
-  const options = [
-    {
-      id: 'web-chat-widget',
-      label: 'Web Chat Widget',
-      description: 'Add to your website',
-      icon: <Globe className="size-4" />,
-      enabled: deploymentOptions.find((o) => o.id === 'web-chat-widget')?.enabled ?? true,
-    },
-    {
-      id: 'shareable-link',
-      label: 'Shareable Link',
-      description: 'Create a public link',
-      icon: <Link className="size-4" />,
-      enabled: deploymentOptions.find((o) => o.id === 'shareable-link')?.enabled ?? false,
-    },
-    {
-      id: 'api-access',
-      label: 'API Access',
-      description: 'Access via API',
-      icon: <Code className="size-4" />,
-      enabled: deploymentOptions.find((o) => o.id === 'api-access')?.enabled ?? false,
-    },
-    {
-      id: 'whatsapp',
-      label: 'WhatsApp',
-      description: 'Connect on WhatsApp',
-      icon: <WhatsAppLogo className="size-4" />,
-      enabled: deploymentOptions.find((o) => o.id === 'whatsapp')?.enabled ?? true,
-    },
-  ]
-
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="grid gap-4 lg:grid-cols-[1fr,1fr]">
-        <AgentInfoCard
-          agentModel={agentModel}
-          hasKnowledgeBase={hasKnowledgeBase}
-          hasProviderKey={hasProviderKey}
-          createdAt={createdAt}
-        />
-
-        <div className="space-y-4">
-          <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Globe className="size-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Channels</h3>
-                <p className="text-xs text-muted-foreground">Where users can reach this agent</p>
-              </div>
-            </div>
-            <AgentDeployment options={options} onToggle={onDeploymentToggle} disabled={disabled} />
-
-            {shareLinkEnabled && shareUrl && (
-              <div className="mt-3 rounded-lg border border-border/60 bg-muted/20 p-3">
-                <div className="mb-1.5 flex items-center gap-1.5">
-                  <Link className="size-3 text-muted-foreground" />
-                  <span className="text-[11px] font-medium text-muted-foreground">Shareable URL</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <code className="flex-1 truncate rounded bg-background px-2 py-1.5 text-xs text-foreground">{shareUrl}</code>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(shareUrl)
-                      setCopied(true)
-                      setTimeout(() => setCopied(false), 2000)
-                    }}
-                    className="flex size-7 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <a
-              href="/settings/deployments"
-              className="mt-3 flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors px-1"
-            >
-              <SettingsIcon className="size-3" />
-              Manage deployments in Settings
-              <ExternalLink className="size-2.5" />
-            </a>
-          </div>
-
-          <StatusSection value={status} onSave={(s) => onSave({ status: s })} isSaving={isSaving} />
-        </div>
-      </div>
+      <AgentInfoCard
+        agentModel={agentModel}
+        hasKnowledgeBase={hasKnowledgeBase}
+        hasProviderKey={hasProviderKey}
+        createdAt={createdAt}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <WelcomeMessageSection value={draftWelcomeMessage} onChange={setDraftWelcomeMessage} isSaving={isSaving} />
         <WidgetColorSection value={draftWidgetColor} onChange={setDraftWidgetColor} isSaving={isSaving} />
       </div>
+
+      <StatusSection value={status} onSave={(s) => onSave({ status: s })} isSaving={isSaving} />
 
       {hasChanges && (
         <div className="sticky bottom-4 flex items-center justify-between rounded-xl border border-border/60 bg-card p-4 shadow-lg">

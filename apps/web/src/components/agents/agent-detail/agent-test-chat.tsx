@@ -84,6 +84,7 @@ interface MessageItem {
   content: string
   reasoning?: string
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
+  toolActivity?: ToolCallEntry[]
   createdAt: string
 }
 
@@ -491,7 +492,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       }
 
       setStreamingContent('')
-      setToolCalls([])
+      setStreamingReasoning('')
 
       const finalContent = contentRef.current
       const finalReasoning = reasoningRef.current
@@ -505,6 +506,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
           content: finalContent || 'I used the available tools to look that up.',
           reasoning: finalReasoning || undefined,
           usage: finalUsage,
+          toolActivity: completedToolCalls.length > 0 ? [...toolCalls] : undefined,
           createdAt: new Date().toISOString(),
         }
         updateActiveConversation((conv) => ({
@@ -966,6 +968,23 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                             )}
                           </BubbleContent>
                         </Bubble>
+                        {!isUser && msg.toolActivity && msg.toolActivity.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {msg.toolActivity.map((tc, i) => {
+                              const Icon = toolIcons[tc.tool] || Plug
+                              return (
+                                <span
+                                  key={`${tc.tool}-${i}`}
+                                  className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 text-[11px] text-emerald-600"
+                                >
+                                  <Check className="size-2.5" />
+                                  <Icon className="size-2.5" />
+                                  {tc.tool.replace(/-/g, ' ')}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
                         {!isEditing && (
                           <MessageFooter className="gap-2">
                             <span>{formatTime(msg.createdAt)}</span>
