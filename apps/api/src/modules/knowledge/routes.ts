@@ -5,6 +5,7 @@ import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
 import { uploadFile, deleteFile } from '../../lib/storage.js'
 import { processDocument, processPdf, embedText } from '../../services/processor.js'
+import { rerank } from '../../services/reranker.js'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
@@ -467,7 +468,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
-    const { q } = request.query as { q?: string }
+    const { q, rerank: useRerank } = request.query as { q?: string; rerank?: string }
     const limit = (request.query as { limit?: string }).limit
     const topK = limit ? Math.min(Math.max(Number(limit) || 10, 1), 50) : 10
 
@@ -484,6 +485,9 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     if (!embedding) return { data: [] }
 
     const vectorStr = `[${embedding.join(',')}]`
+    const candidates = useRerank === 'true' ? 20 : topK
+    const maxDist = useRerank === 'true' ? 0.85 : 0.75
+
     const rows = await prisma.$queryRawUnsafe<
       Array<{
         id: string
@@ -509,12 +513,18 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
       LIMIT $4`,
       id,
       vectorStr,
-      0.75,
-      topK,
+      maxDist,
+      candidates,
     )
 
+    let result = rows
+
+    if (useRerank === 'true' && rows.length > topK) {
+      result = await rerank(q, rows, topK)
+    }
+
     return {
-      data: rows.map((r) => ({
+      data: result.map((r) => ({
         id: r.id,
         content: r.content,
         documentId: r.documentId,

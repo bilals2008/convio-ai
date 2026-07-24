@@ -2,6 +2,7 @@ import { convert } from '@opendataloader/pdf'
 import { prisma } from '@convio/database'
 import { getProviderById } from '@convio/ai/providers'
 import { downloadFile } from '../lib/storage.js'
+import { rerank } from './reranker.js'
 import { mkdtemp, rm, writeFile, readFile, readdir } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
@@ -10,7 +11,9 @@ const CHUNK_SIZE = 1000
 const CHUNK_OVERLAP_WORDS = 40
 /** Cosine distance upper bound (similarity ≈ 1 - distance). 0.75 ≈ 0.25 similarity. */
 const MAX_DISTANCE = 0.75
+const MAX_DISTANCE_RERANK = 0.85
 const DEFAULT_TOP_K = 5
+const RERANK_CANDIDATES = 20
 
 function chunkText(text: string): string[] {
   const paragraphs = text.split(/\n\s*\n/).filter(Boolean)
@@ -298,11 +301,14 @@ export async function retrieveContext(
   query: string,
   knowledgeBaseId: string,
   limit = DEFAULT_TOP_K,
+  useReranker = true,
 ): Promise<string> {
   const embedding = await embedText(query)
   if (!embedding) return ''
 
   const vectorStr = `[${embedding.join(',')}]`
+  const candidates = useReranker ? RERANK_CANDIDATES : limit
+  const maxDist = useReranker ? MAX_DISTANCE_RERANK : MAX_DISTANCE
 
   const rows = await prisma.$queryRawUnsafe<
     Array<{
@@ -327,13 +333,19 @@ export async function retrieveContext(
      LIMIT $3`,
     knowledgeBaseId,
     vectorStr,
-    limit,
-    MAX_DISTANCE,
+    candidates,
+    maxDist,
   )
 
   if (!rows?.length) return ''
 
-  return rows
+  let final = rows
+
+  if (useReranker && rows.length > limit) {
+    final = await rerank(query, rows, limit)
+  }
+
+  return final
     .map(
       (r, i) =>
         `[Source ${i + 1}: ${r.documentName}]\n${r.content}`,
@@ -345,11 +357,15 @@ export async function retrieveChunks(
   query: string,
   knowledgeBaseId: string,
   limit = DEFAULT_TOP_K,
+  useReranker = true,
 ): Promise<RetrievedChunk[]> {
   const embedding = await embedText(query)
   if (!embedding) return []
 
   const vectorStr = `[${embedding.join(',')}]`
+  const candidates = useReranker ? RERANK_CANDIDATES : limit
+  const maxDist = useReranker ? MAX_DISTANCE_RERANK : MAX_DISTANCE
+
   const rows = await prisma.$queryRawUnsafe<RetrievedChunk[]>(
     `SELECT
        dc."content",
@@ -366,9 +382,15 @@ export async function retrieveChunks(
      LIMIT $3`,
     knowledgeBaseId,
     vectorStr,
-    limit,
-    MAX_DISTANCE,
+    candidates,
+    maxDist,
   )
 
-  return rows ?? []
+  if (!rows?.length) return []
+
+  if (useReranker && rows.length > limit) {
+    return rerank(query, rows, limit)
+  }
+
+  return rows
 }
