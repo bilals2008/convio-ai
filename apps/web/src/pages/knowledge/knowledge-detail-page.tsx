@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { LayoutDashboard, Database, FlaskConical, History, Loader2 } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { LayoutDashboard, Database, FlaskConical, History, Loader2, PenLine, Check, X } from 'lucide-react'
 import { FileIcon } from '@/components/shared/file-icon'
 import { z } from 'zod'
 import { PageContainer } from '@/components/shared/page-container'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { SourcePickerModal } from '@/components/knowledge/source-picker-modal'
 import { DocumentTypeBadge } from '@/components/knowledge/document-type-badge'
@@ -86,6 +87,8 @@ export default function KnowledgeDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [viewDocId, setViewDocId] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editContent, setEditContent] = useState('')
   const [hasTested, setHasTested] = useState(false)
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([])
   const [activeTab, setActiveTab] = useState(isCreate ? 'overview' : 'sources')
@@ -280,6 +283,19 @@ export default function KnowledgeDetailPage() {
       setReprocessingId(null)
     }
   }
+
+  const editMutation = useMutation({
+    mutationFn: (data: { content: string }) => knowledgeApi.updateDocument(viewDocId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document', viewDocId] })
+      queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
+      toast.success('Document updated')
+      setIsEditing(false)
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update document')
+    },
+  })
 
   const handleUploadFiles = async (files: File[]) => {
     if (!id || isCreate) return
@@ -484,7 +500,7 @@ export default function KnowledgeDetailPage() {
         )}
       </Tabs>
 
-      <Dialog open={!!viewDocId} onOpenChange={(open) => !open && setViewDocId(null)}>
+      <Dialog open={!!viewDocId} onOpenChange={(open) => { if (!open) { setViewDocId(null); setIsEditing(false) } }}>
         <DialogContent style={{ maxWidth: '80vw' }} className="h-[80vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
             <DialogTitle className="flex flex-wrap items-center gap-2">
@@ -517,6 +533,13 @@ export default function KnowledgeDetailPage() {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="size-5 animate-spin text-muted-foreground" />
                     </div>
+                  ) : isEditing ? (
+                    <Textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="min-h-[50vh] resize-y font-mono text-xs leading-relaxed"
+                      placeholder="Edit document content..."
+                    />
                   ) : (
                     <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground">
                       {viewDoc?.content?.trim() ? viewDoc.content : 'No extracted content yet. Wait for indexing or reprocess the document.'}
@@ -554,19 +577,44 @@ export default function KnowledgeDetailPage() {
           </div>
 
           <div className="flex justify-end gap-2 border-t border-border/60 px-6 py-4">
-            {viewDocId && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={viewDoc?.status === 'processing' || viewDoc?.status === 'pending'}
-                onClick={() => handleReprocess(viewDocId)}
-              >
-                Re-index
-              </Button>
+            {isEditing ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(false)} disabled={editMutation.isPending}>
+                  <X className="size-3.5 mr-1" />
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={() => editMutation.mutate({ content: editContent })} disabled={editMutation.isPending}>
+                  {editMutation.isPending ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <Check className="size-3.5 mr-1" />}
+                  Save
+                </Button>
+              </>
+            ) : (
+              <>
+                {viewDocId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={viewDoc?.status === 'processing' || viewDoc?.status === 'pending'}
+                    onClick={() => handleReprocess(viewDocId)}
+                  >
+                    Re-index
+                  </Button>
+                )}
+                {viewDocId && viewDoc?.type !== 'url' && viewDoc?.type !== 'pdf' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setEditContent(viewDoc?.content || ''); setIsEditing(true) }}
+                  >
+                    <PenLine className="size-3.5 mr-1" />
+                    Edit
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => { setViewDocId(null); setIsEditing(false) }}>
+                  Close
+                </Button>
+              </>
             )}
-            <Button size="sm" onClick={() => setViewDocId(null)}>
-              Close
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

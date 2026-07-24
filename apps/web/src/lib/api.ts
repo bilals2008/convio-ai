@@ -141,9 +141,11 @@ export const knowledge = {
     api.post(`/knowledge-bases/${knowledgeBaseId}/documents/upload`, formData, {
       headers: { 'Content-Type': undefined },
     }),
-  getDocuments: (knowledgeBaseId: string, params?: { cursor?: string; limit?: number; status?: string }) =>
+getDocuments: (knowledgeBaseId: string, params?: { cursor?: string; limit?: number; status?: string }) =>
     api.get(`/knowledge-bases/${knowledgeBaseId}/documents`, { params }),
-  getDocument: (docId: string) => api.get(`/documents/${docId}`),
+   getDocument: (docId: string) => api.get(`/documents/${docId}`),
+   updateDocument: (docId: string, data: { name?: string; content?: string | null }) =>
+     api.patch(`/documents/${docId}`, data),
   searchChunks: (knowledgeBaseId: string, query: string, limit = 10) =>
     api.get(`/knowledge-bases/${knowledgeBaseId}/chunks`, {
       params: { q: query, limit },
