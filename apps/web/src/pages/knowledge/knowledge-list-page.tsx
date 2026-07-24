@@ -36,7 +36,6 @@ import {
   ChevronRight,
   Clock,
   LayoutTemplate,
-  Star,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,6 +85,7 @@ import { knowledge as knowledgeApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { KnowledgeCard, KnowledgeCardSkeleton } from '@/components/knowledge/knowledge-card'
+import { KnowledgeTemplateModal, type KbTemplate } from '@/components/knowledge/knowledge-template-modal'
 import { SourcePickerModal, type SourceType } from '@/components/knowledge/source-picker-modal'
 import { toast } from 'sonner'
 
@@ -99,13 +99,6 @@ interface KnowledgeBase {
   errorCount?: number
   createdAt: string
   updatedAt: string
-}
-
-interface KbTemplate {
-  id: string
-  name: string
-  description: string
-  documents: Array<{ name: string; type: string; content: string }>
 }
 
 const quickSources = [
@@ -140,6 +133,7 @@ export default function KnowledgeListPage() {
   const [createName, setCreateName] = useState('')
   const [createDesc, setCreateDesc] = useState('')
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [sorting, setSorting] = useState<SortingState>([])
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
@@ -149,15 +143,6 @@ export default function KnowledgeListPage() {
     queryFn: async () => {
       const res = await knowledgeApi.list(orgId!)
       return (res.data.data || []) as KnowledgeBase[]
-    },
-    enabled: !!orgId,
-  })
-
-  const { data: templates = [] } = useQuery({
-    queryKey: ['knowledge-templates', orgId],
-    queryFn: async () => {
-      const res = await knowledgeApi.templates(orgId!)
-      return (res.data.data || []) as KbTemplate[]
     },
     enabled: !!orgId,
   })
@@ -458,46 +443,20 @@ export default function KnowledgeListPage() {
        </div>
 
        {/* Templates */}
-       {templates.length > 0 && (
-         <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm space-y-3">
-           <div className="flex items-center gap-2">
-             <div className="flex size-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500">
-               <LayoutTemplate className="size-3.5" />
-             </div>
-             <div>
-               <p className="text-sm font-semibold">Start from a template</p>
-               <p className="text-xs text-muted-foreground">Pre-built knowledge base with seed documents ready to go.</p>
-             </div>
+       <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 shadow-sm">
+         <div className="flex items-center gap-3">
+           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500">
+             <LayoutTemplate className="size-4.5" />
            </div>
-           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-             {templates.map((template) => (
-               <button
-                 key={template.id}
-                 type="button"
-                 onClick={() => {
-                   setCreateName(template.name)
-                   setCreateDesc(template.description)
-                   setSelectedTemplateId(template.id)
-                   setCreateOpen(true)
-                 }}
-                 className="group flex flex-col items-start gap-2 rounded-lg border border-border/60 bg-background p-3 text-left transition-all hover:border-primary/40 hover:shadow-sm"
-               >
-                 <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                   <Star className="size-4" />
-                 </div>
-                 <div className="min-w-0">
-                   <p className="text-xs font-semibold group-hover:text-primary transition-colors">{template.name}</p>
-                   <p className="mt-0.5 text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{template.description}</p>
-                 </div>
-                 <div className="mt-auto flex items-center gap-1 text-[10px] text-muted-foreground/60">
-                   <FileText className="size-3" />
-                   {template.documents.length} docs
-                 </div>
-               </button>
-             ))}
+           <div>
+             <p className="text-sm font-medium">Start from a template</p>
+             <p className="text-xs text-muted-foreground">Pre-built knowledge base with starter documents ready to go.</p>
            </div>
          </div>
-       )}
+         <Button type="button" variant="outline" size="sm" onClick={() => setTemplateModalOpen(true)}>
+           Browse templates
+         </Button>
+       </div>
 
        {/* Toolbar */}
       {knowledgeBases.length > 0 && (
@@ -774,6 +733,18 @@ export default function KnowledgeListPage() {
         open={sourceModalOpen}
         onOpenChange={setSourceModalOpen}
         onSelect={handleSourceSelect}
+      />
+
+      <KnowledgeTemplateModal
+        open={templateModalOpen}
+        onOpenChange={setTemplateModalOpen}
+        activeTemplateId={selectedTemplateId}
+        onSelect={(template) => {
+          setCreateName(template.name)
+          setCreateDesc(template.description)
+          setSelectedTemplateId(template.id)
+          setCreateOpen(true)
+        }}
       />
 
       <Dialog open={createOpen} onOpenChange={(open) => {
