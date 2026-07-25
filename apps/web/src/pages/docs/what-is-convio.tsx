@@ -7,7 +7,7 @@ export default function WhatIsConvioPage() {
     <DocContent>
       <DocPageHeader
         breadcrumb={[
-          { label: 'Documentation', href: '/help' },
+          { label: 'Documentation', href: '/docs' },
           { label: 'What is Convio?' },
         ]}
         title="What is Convio?"
@@ -66,13 +66,13 @@ export default function WhatIsConvioPage() {
 
       <div className="flex flex-col sm:flex-row gap-3 mt-6">
         <Link
-          to="/help/creating-agent"
+          to="/docs/creating-agent"
           className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
         >
           Create your first agent <ArrowRight className="size-4" />
         </Link>
         <Link
-          to="/help/knowledge-bases"
+          to="/docs/knowledge-bases"
           className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
         >
           Set up a knowledge base <ArrowRight className="size-4" />

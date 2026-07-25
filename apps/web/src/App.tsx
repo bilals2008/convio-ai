@@ -35,31 +35,10 @@ import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
 import DataManagementPage from '@/pages/settings/data-management-page'
 import McpServersPage from '@/pages/settings/mcp-servers-page'
-import DocsOverviewPage from '@/pages/docs/index'
-import DocsPlanPage from '@/pages/docs/plan'
-import CorrectiveRagPage from '@/pages/docs/corrective-rag'
-import HybridSearchPage from '@/pages/docs/hybrid-search'
-import AgenticRagPage from '@/pages/docs/agentic-rag'
-import KnowledgeGraphRagPage from '@/pages/docs/knowledge-graph-rag'
-import TokenOptimizationPage from '@/pages/docs/token-optimization'
-import ContextOptimizationPage from '@/pages/docs/context-optimization'
-import VoicePage from '@/pages/docs/voice'
-import McpPage from '@/pages/docs/mcp'
-import WhatsAppFeaturesPage from '@/pages/docs/whatsapp-features'
-import DiscordFeaturesPage from '@/pages/docs/discord-features'
-import WidgetFeaturesPage from '@/pages/docs/widget-features'
-import ApiFeaturesPage from '@/pages/docs/api-features'
-import GenerativeUiPage from '@/pages/docs/generative-ui'
-import MemoryPage from '@/pages/docs/memory'
-import MultiAgentPage from '@/pages/docs/multi-agent'
-import TemplatesPage from '@/pages/docs/templates'
-import AgentArchitecturePage from '@/pages/docs/agent-architecture'
-import { DocsLayout } from '@/components/docs/docs-layout'
 import { HelpLayout } from '@/components/help/help-layout'
-import HelpIndexPage from '@/pages/help/help-index'
-import WhatIsConvioPage from '@/pages/help/what-is-convio'
-import HelpLazyPage from '@/pages/help/help-lazy'
-import RoadmapPage from '@/pages/docs/roadmap'
+import HelpIndexPage from '@/pages/docs/help-index'
+import WhatIsConvioPage from '@/pages/docs/what-is-convio'
+import HelpLazyPage from '@/pages/docs/help-lazy'
 import ComingSoonPage from '@/pages/coming-soon-page'
 import InvitePage from '@/pages/invite-page'
 
@@ -89,92 +68,70 @@ export function App() {
             <Route path="/forgot-password" element={<RedirectAuthenticated><ForgotPasswordPage /></RedirectAuthenticated>} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/widget/demo" element={<WidgetDemoPage />} />
-            <Route element={<DocsLayout />}>
-              <Route path="/docs" element={<DocsOverviewPage />} />
-              <Route path="/docs/plan" element={<DocsPlanPage />} />
-              <Route path="/docs/corrective-rag" element={<CorrectiveRagPage />} />
-              <Route path="/docs/hybrid-search" element={<HybridSearchPage />} />
-              <Route path="/docs/agentic-rag" element={<AgenticRagPage />} />
-              <Route path="/docs/knowledge-graph-rag" element={<KnowledgeGraphRagPage />} />
-              <Route path="/docs/token-optimization" element={<TokenOptimizationPage />} />
-              <Route path="/docs/context-optimization" element={<ContextOptimizationPage />} />
-              <Route path="/docs/voice" element={<VoicePage />} />
-              <Route path="/docs/mcp" element={<McpPage />} />
-              <Route path="/docs/whatsapp-features" element={<WhatsAppFeaturesPage />} />
-              <Route path="/docs/discord-features" element={<DiscordFeaturesPage />} />
-              <Route path="/docs/widget-features" element={<WidgetFeaturesPage />} />
-              <Route path="/docs/api-features" element={<ApiFeaturesPage />} />
-              <Route path="/docs/generative-ui" element={<GenerativeUiPage />} />
-              <Route path="/docs/memory" element={<MemoryPage />} />
-              <Route path="/docs/roadmap" element={<RoadmapPage />} />
-              <Route path="/docs/multi-agent" element={<MultiAgentPage />} />
-              <Route path="/docs/templates" element={<TemplatesPage />} />
-              <Route path="/docs/agent-architecture" element={<AgentArchitecturePage />} />
-            </Route>
             <Route element={<HelpLayout />}>
-              <Route path="/help" element={<HelpIndexPage />} />
-              <Route path="/help/what-is-convio" element={<WhatIsConvioPage />} />
-              <Route path="/help/creating-account" element={<HelpLazyPage />} />
-              <Route path="/help/platform-tour" element={<HelpLazyPage />} />
-              <Route path="/help/first-organization" element={<HelpLazyPage />} />
-              <Route path="/help/vocabulary" element={<HelpLazyPage />} />
-              <Route path="/help/organizations" element={<HelpLazyPage />} />
-              <Route path="/help/roles" element={<HelpLazyPage />} />
-              <Route path="/help/inviting-members" element={<HelpLazyPage />} />
-              <Route path="/help/managing-members" element={<HelpLazyPage />} />
-              <Route path="/help/login-activity" element={<HelpLazyPage />} />
-              <Route path="/help/ai-agents" element={<HelpLazyPage />} />
-              <Route path="/help/creating-agent" element={<HelpLazyPage />} />
-              <Route path="/help/ai-models" element={<HelpLazyPage />} />
-              <Route path="/help/system-prompts" element={<HelpLazyPage />} />
-              <Route path="/help/agent-settings" element={<HelpLazyPage />} />
-              <Route path="/help/agent-playground" element={<HelpLazyPage />} />
-              <Route path="/help/knowledge-bases" element={<HelpLazyPage />} />
-              <Route path="/help/creating-knowledge-base" element={<HelpLazyPage />} />
-              <Route path="/help/supported-documents" element={<HelpLazyPage />} />
-              <Route path="/help/uploading-documents" element={<HelpLazyPage />} />
-              <Route path="/help/vector-search" element={<HelpLazyPage />} />
-              <Route path="/help/tools-overview" element={<HelpLazyPage />} />
-              <Route path="/help/built-in-tools" element={<HelpLazyPage />} />
-              <Route path="/help/custom-tools" element={<HelpLazyPage />} />
-              <Route path="/help/mcp-overview" element={<HelpLazyPage />} />
-              <Route path="/help/mcp-servers" element={<HelpLazyPage />} />
-              <Route path="/help/conversations" element={<HelpLazyPage />} />
-              <Route path="/help/managing-conversations" element={<HelpLazyPage />} />
-              <Route path="/help/leads" element={<HelpLazyPage />} />
-              <Route path="/help/human-handoff" element={<HelpLazyPage />} />
-              <Route path="/help/handoff-setup" element={<HelpLazyPage />} />
-              <Route path="/help/agent-inbox" element={<HelpLazyPage />} />
-              <Route path="/help/web-widget" element={<HelpLazyPage />} />
-              <Route path="/help/widget-appearance" element={<HelpLazyPage />} />
-              <Route path="/help/embedding" element={<HelpLazyPage />} />
-              <Route path="/help/channels" element={<HelpLazyPage />} />
-              <Route path="/help/whatsapp" element={<HelpLazyPage />} />
-              <Route path="/help/telegram" element={<HelpLazyPage />} />
-              <Route path="/help/discord" element={<HelpLazyPage />} />
-              <Route path="/help/slack" element={<HelpLazyPage />} />
-              <Route path="/help/byok" element={<HelpLazyPage />} />
-              <Route path="/help/adding-provider-keys" element={<HelpLazyPage />} />
-              <Route path="/help/supported-providers" element={<HelpLazyPage />} />
-              <Route path="/help/automations" element={<HelpLazyPage />} />
-              <Route path="/help/broadcasts" element={<HelpLazyPage />} />
-              <Route path="/help/webhooks" element={<HelpLazyPage />} />
-              <Route path="/help/analytics" element={<HelpLazyPage />} />
-              <Route path="/help/per-agent-analytics" element={<HelpLazyPage />} />
-              <Route path="/help/audit-logs" element={<HelpLazyPage />} />
-              <Route path="/help/security" element={<HelpLazyPage />} />
-              <Route path="/help/moderation" element={<HelpLazyPage />} />
-              <Route path="/help/data-management" element={<HelpLazyPage />} />
-              <Route path="/help/plans" element={<HelpLazyPage />} />
-              <Route path="/help/subscriptions" element={<HelpLazyPage />} />
-              <Route path="/help/usage-limits" element={<HelpLazyPage />} />
-              <Route path="/help/api-overview" element={<HelpLazyPage />} />
-              <Route path="/help/api-endpoints" element={<HelpLazyPage />} />
-              <Route path="/help/streaming-api" element={<HelpLazyPage />} />
-              <Route path="/help/sdk" element={<HelpLazyPage />} />
-              <Route path="/help/common-issues" element={<HelpLazyPage />} />
-              <Route path="/help/faqs" element={<HelpLazyPage />} />
-              <Route path="/help/best-practices" element={<HelpLazyPage />} />
+              <Route path="/docs" element={<HelpIndexPage />} />
+              <Route path="/docs/what-is-convio" element={<WhatIsConvioPage />} />
+              <Route path="/docs/creating-account" element={<HelpLazyPage />} />
+              <Route path="/docs/platform-tour" element={<HelpLazyPage />} />
+              <Route path="/docs/first-organization" element={<HelpLazyPage />} />
+              <Route path="/docs/vocabulary" element={<HelpLazyPage />} />
+              <Route path="/docs/organizations" element={<HelpLazyPage />} />
+              <Route path="/docs/roles" element={<HelpLazyPage />} />
+              <Route path="/docs/inviting-members" element={<HelpLazyPage />} />
+              <Route path="/docs/managing-members" element={<HelpLazyPage />} />
+              <Route path="/docs/login-activity" element={<HelpLazyPage />} />
+              <Route path="/docs/ai-agents" element={<HelpLazyPage />} />
+              <Route path="/docs/creating-agent" element={<HelpLazyPage />} />
+              <Route path="/docs/ai-models" element={<HelpLazyPage />} />
+              <Route path="/docs/system-prompts" element={<HelpLazyPage />} />
+              <Route path="/docs/agent-settings" element={<HelpLazyPage />} />
+              <Route path="/docs/agent-playground" element={<HelpLazyPage />} />
+              <Route path="/docs/knowledge-bases" element={<HelpLazyPage />} />
+              <Route path="/docs/creating-knowledge-base" element={<HelpLazyPage />} />
+              <Route path="/docs/supported-documents" element={<HelpLazyPage />} />
+              <Route path="/docs/uploading-documents" element={<HelpLazyPage />} />
+              <Route path="/docs/vector-search" element={<HelpLazyPage />} />
+              <Route path="/docs/tools-overview" element={<HelpLazyPage />} />
+              <Route path="/docs/built-in-tools" element={<HelpLazyPage />} />
+              <Route path="/docs/custom-tools" element={<HelpLazyPage />} />
+              <Route path="/docs/mcp-overview" element={<HelpLazyPage />} />
+              <Route path="/docs/mcp-servers" element={<HelpLazyPage />} />
+              <Route path="/docs/conversations" element={<HelpLazyPage />} />
+              <Route path="/docs/managing-conversations" element={<HelpLazyPage />} />
+              <Route path="/docs/leads" element={<HelpLazyPage />} />
+              <Route path="/docs/human-handoff" element={<HelpLazyPage />} />
+              <Route path="/docs/handoff-setup" element={<HelpLazyPage />} />
+              <Route path="/docs/agent-inbox" element={<HelpLazyPage />} />
+              <Route path="/docs/web-widget" element={<HelpLazyPage />} />
+              <Route path="/docs/widget-appearance" element={<HelpLazyPage />} />
+              <Route path="/docs/embedding" element={<HelpLazyPage />} />
+              <Route path="/docs/channels" element={<HelpLazyPage />} />
+              <Route path="/docs/whatsapp" element={<HelpLazyPage />} />
+              <Route path="/docs/telegram" element={<HelpLazyPage />} />
+              <Route path="/docs/discord" element={<HelpLazyPage />} />
+              <Route path="/docs/slack" element={<HelpLazyPage />} />
+              <Route path="/docs/byok" element={<HelpLazyPage />} />
+              <Route path="/docs/adding-provider-keys" element={<HelpLazyPage />} />
+              <Route path="/docs/supported-providers" element={<HelpLazyPage />} />
+              <Route path="/docs/automations" element={<HelpLazyPage />} />
+              <Route path="/docs/broadcasts" element={<HelpLazyPage />} />
+              <Route path="/docs/webhooks" element={<HelpLazyPage />} />
+              <Route path="/docs/analytics" element={<HelpLazyPage />} />
+              <Route path="/docs/per-agent-analytics" element={<HelpLazyPage />} />
+              <Route path="/docs/audit-logs" element={<HelpLazyPage />} />
+              <Route path="/docs/security" element={<HelpLazyPage />} />
+              <Route path="/docs/moderation" element={<HelpLazyPage />} />
+              <Route path="/docs/data-management" element={<HelpLazyPage />} />
+              <Route path="/docs/plans" element={<HelpLazyPage />} />
+              <Route path="/docs/subscriptions" element={<HelpLazyPage />} />
+              <Route path="/docs/usage-limits" element={<HelpLazyPage />} />
+              <Route path="/docs/api-overview" element={<HelpLazyPage />} />
+              <Route path="/docs/api-endpoints" element={<HelpLazyPage />} />
+              <Route path="/docs/streaming-api" element={<HelpLazyPage />} />
+              <Route path="/docs/sdk" element={<HelpLazyPage />} />
+              <Route path="/docs/common-issues" element={<HelpLazyPage />} />
+              <Route path="/docs/faqs" element={<HelpLazyPage />} />
+              <Route path="/docs/best-practices" element={<HelpLazyPage />} />
             </Route>
             <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardOverviewPage />} />

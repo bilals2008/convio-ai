@@ -6,7 +6,7 @@ export default function HelpIndexPage() {
     <DocContent>
       <DocPageHeader
         breadcrumb={[
-          { label: 'Documentation', href: '/help' },
+          { label: 'Documentation', href: '/docs' },
           { label: 'Introduction' },
         ]}
         title="Welcome to Convio 👋"
@@ -25,7 +25,7 @@ export default function HelpIndexPage() {
           iconColor="text-primary"
           title="Create AI Agents"
           description="Configure agents with custom instructions, tools, and knowledge."
-          href="/help/ai-agents"
+          href="/docs/ai-agents"
         />
         <DocFeatureCard
           icon={MessageSquare}
@@ -33,7 +33,7 @@ export default function HelpIndexPage() {
           iconColor="text-info"
           title="Build Chatbots"
           description="Turn agents into chatbots and deploy anywhere."
-          href="/help/web-widget"
+          href="/docs/web-widget"
         />
         <DocFeatureCard
           icon={Share2}
@@ -41,7 +41,7 @@ export default function HelpIndexPage() {
           iconColor="text-warning"
           title="Connect Channels"
           description="Deploy on web, WhatsApp, Telegram, and more."
-          href="/help/channels"
+          href="/docs/channels"
         />
         <DocFeatureCard
           icon={Database}
@@ -49,7 +49,7 @@ export default function HelpIndexPage() {
           iconColor="text-primary"
           title="Knowledge Base"
           description="Upload files, sync websites, and provide custom data."
-          href="/help/knowledge-bases"
+          href="/docs/knowledge-bases"
         />
         <DocFeatureCard
           icon={BarChart3}
@@ -57,7 +57,7 @@ export default function HelpIndexPage() {
           iconColor="text-destructive"
           title="Analytics"
           description="Track performance, interactions, and agent insights."
-          href="/help/analytics"
+          href="/docs/analytics"
         />
         <DocFeatureCard
           icon={Puzzle}
@@ -65,7 +65,7 @@ export default function HelpIndexPage() {
           iconColor="text-info"
           title="Integrations"
           description="Connect with 3rd party tools and APIs."
-          href="/help/channels"
+          href="/docs/channels"
         />
       </DocCardGrid>
 
@@ -76,21 +76,21 @@ export default function HelpIndexPage() {
           iconBg="bg-success/10"
           iconColor="text-success"
           title="Quick Start"
-          href="/help/what-is-convio"
+          href="/docs/what-is-convio"
         />
         <DocNextStepCard
           icon={Bot}
           iconBg="bg-primary/10"
           iconColor="text-primary"
           title="Create Your First Agent"
-          href="/help/creating-agent"
+          href="/docs/creating-agent"
         />
         <DocNextStepCard
           icon={MessageSquare}
           iconBg="bg-info/10"
           iconColor="text-info"
           title="Deploy Your Chatbot"
-          href="/help/embedding"
+          href="/docs/embedding"
         />
       </DocCardGrid>
     </DocContent>

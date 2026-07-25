@@ -16,16 +16,16 @@ const navItems: NavItem[] = [
   {
     label: 'Platform',
     children: [
-      { label: 'AI Agents', href: '/help/ai-agents', description: 'Create and configure intelligent agents' },
-      { label: 'Knowledge Bases', href: '/help/knowledge-bases', description: 'RAG-powered document search' },
-      { label: 'Channels', href: '/help/channels', description: 'WhatsApp, Telegram, Discord, Slack' },
-      { label: 'Widgets', href: '/help/web-widget', description: 'Embeddable chat widget' },
+      { label: 'AI Agents', href: '/docs/ai-agents', description: 'Create and configure intelligent agents' },
+      { label: 'Knowledge Bases', href: '/docs/knowledge-bases', description: 'RAG-powered document search' },
+      { label: 'Channels', href: '/docs/channels', description: 'WhatsApp, Telegram, Discord, Slack' },
+      { label: 'Widgets', href: '/docs/web-widget', description: 'Embeddable chat widget' },
     ],
   },
-  { label: 'Guides', href: '/help' },
-  { label: 'API Reference', href: '/help/api-overview' },
-  { label: 'Integrations', href: '/help/channels' },
-  { label: 'Changelog', href: '/help' },
+  { label: 'Guides', href: '/docs' },
+  { label: 'API Reference', href: '/docs/api-overview' },
+  { label: 'Integrations', href: '/docs/channels' },
+  { label: 'Changelog', href: '/docs' },
 ]
 
 interface HelpTopbarProps {
@@ -53,7 +53,7 @@ export function HelpTopbar({ onMenuToggle, menuOpen }: HelpTopbarProps) {
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-6 px-4 lg:px-6">
         {/* Logo */}
-        <Link to="/help" className="flex items-center gap-2.5 shrink-0">
+        <Link to="/docs" className="flex items-center gap-2.5 shrink-0">
           <img src="/logo.png" alt="Convio" className="h-6 w-auto" />
           <span className="text-[15px] font-bold font-heading tracking-tight hidden sm:block">Convio</span>
         </Link>
