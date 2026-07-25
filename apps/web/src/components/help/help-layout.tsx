@@ -3,7 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { HelpTopbar } from './help-topbar'
 import { HelpSidebar } from './help-sidebar'
-import { HelpPromoCard } from './help-promo-card'
+import { HelpToc } from './help-toc'
 
 export function HelpLayout() {
   const { pathname } = useLocation()
@@ -74,13 +74,11 @@ export function HelpLayout() {
           </div>
         </main>
 
-        {/* Right sidebar — promo */}
-        <aside className="hidden xl:flex flex-col w-[220px] shrink-0 border-l border-border bg-card h-[calc(100vh-56px)] sticky top-14">
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="px-3 pt-6 pb-4">
-              <HelpPromoCard />
-            </div>
-          </ScrollArea>
+        {/* Right sidebar — TOC */}
+        <aside className="hidden xl:flex flex-col w-[220px] shrink-0 border-l border-border h-[calc(100vh-56px)] sticky top-14">
+          <div className="px-4 pt-6 pb-4">
+            <HelpToc />
+          </div>
         </aside>
       </div>
     </div>
