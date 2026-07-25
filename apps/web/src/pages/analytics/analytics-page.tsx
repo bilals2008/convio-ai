@@ -7,6 +7,8 @@ import { OverviewChart } from '@/components/dashboard/overview-chart'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
 import { ChannelPerformanceChart } from '@/components/analytics/channel-performance-chart'
+import { TokenUsageChart } from '@/components/analytics/token-usage-chart'
+import { DailyCostChart } from '@/components/analytics/daily-cost-chart'
 import { AgentPerformanceTable } from '@/components/analytics/agent-performance-table'
 import { EmptyState } from '@/components/shared/empty-state'
 import { useOrgAnalytics } from '@/hooks/use-analytics'
@@ -138,43 +140,16 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      {/* ── New metric cards ──────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatsCard
-          icon={CheckCircle}
-          label="Resolution Rate"
-          value={`${overview.resolutionRate}%`}
-          description="Conversations resolved"
-          iconClassName="bg-green-500/10 text-green-500 dark:text-green-400"
-        />
-        <StatsCard
-          icon={DollarSign}
-          label="Cost"
-          value={`$${overview.totalCost.toFixed(2)}`}
-          description={`${((overview.totalInputTokens + overview.totalOutputTokens) / 1000).toFixed(0)}K tokens`}
-          iconClassName="bg-rose-500/10 text-rose-500 dark:text-rose-400"
-        />
-        <StatsCard
-          icon={Users}
-          label="Returning Users"
-          value={overview.returningUsers.toLocaleString()}
-          description={`of ${overview.uniqueUsers} total users`}
-          iconClassName="bg-sky-500/10 text-sky-500 dark:text-sky-400"
-        />
-        <StatsCard
-          icon={TrendingUp}
-          label="Success Rate"
-          value={`${overview.successRate}%`}
-          description="Conversations with replies"
-          iconClassName="bg-teal-500/10 text-teal-500 dark:text-teal-400"
-        />
-      </div>
-
       <OverviewChart data={chartData} loading={isLoading} />
 
       <div className="grid gap-3 lg:grid-cols-2">
         <ResponseTimeChart data={responseTimeData} loading={isLoading} />
         <ChannelPerformanceChart data={overview.channelBreakdown} loading={isLoading} />
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <TokenUsageChart data={overview.dailyBreakdown} loading={isLoading} />
+        <DailyCostChart data={overview.dailyBreakdown} loading={isLoading} />
       </div>
 
       <AgentPerformanceTable />
