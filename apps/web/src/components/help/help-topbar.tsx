@@ -23,9 +23,7 @@ const navItems: NavItem[] = [
     ],
   },
   { label: 'Guides', href: '/docs' },
-  { label: 'API Reference', href: '/docs/api-overview' },
   { label: 'Integrations', href: '/docs/channels' },
-  { label: 'Changelog', href: '/docs' },
 ]
 
 interface HelpTopbarProps {

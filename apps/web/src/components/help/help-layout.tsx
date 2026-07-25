@@ -1,10 +1,45 @@
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { HelpTopbar } from './help-topbar'
-import { HelpSidebar } from './help-sidebar'
+import { DocsSidebar } from '@/components/docs/docs-sidebar'
 import { HelpToc } from './help-toc'
 import { DocPromoCard } from '@/components/docs/doc-promo-card'
+import { Skeleton } from '@/components/ui/skeleton'
+
+function DocSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6">
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-24 rounded" />
+        <Skeleton className="h-7 w-64 rounded" />
+        <Skeleton className="h-4 w-96 rounded" />
+      </div>
+      <div className="space-y-3 pt-2">
+        <Skeleton className="h-5 w-40 rounded" />
+        <Skeleton className="h-4 w-full rounded" />
+        <Skeleton className="h-4 w-full rounded" />
+        <Skeleton className="h-4 w-3/4 rounded" />
+      </div>
+      <div className="space-y-3 pt-2">
+        <Skeleton className="h-5 w-48 rounded" />
+        <Skeleton className="h-4 w-full rounded" />
+        <Skeleton className="h-4 w-5/6 rounded" />
+        <Skeleton className="h-4 w-full rounded" />
+        <Skeleton className="h-4 w-2/3 rounded" />
+      </div>
+      <div className="grid grid-cols-2 gap-3 pt-2">
+        <Skeleton className="h-20 rounded-lg" />
+        <Skeleton className="h-20 rounded-lg" />
+      </div>
+      <div className="space-y-3 pt-2">
+        <Skeleton className="h-5 w-36 rounded" />
+        <Skeleton className="h-4 w-full rounded" />
+        <Skeleton className="h-4 w-4/5 rounded" />
+      </div>
+    </div>
+  )
+}
 
 export function HelpLayout() {
   const { pathname } = useLocation()
@@ -42,7 +77,7 @@ export function HelpLayout() {
             <div className="flex items-center justify-between h-14 px-4 border-b shrink-0">
               <div className="flex items-center gap-2">
                 <img src="/logo.png" alt="Convio" className="h-5 w-auto" />
-                <span className="text-sm font-semibold font-heading">Help Center</span>
+                <span className="text-sm font-semibold font-heading">Docs</span>
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -54,7 +89,7 @@ export function HelpLayout() {
               </button>
             </div>
             <ScrollArea className="flex-1 min-h-0">
-              <HelpSidebar />
+              <DocsSidebar />
             </ScrollArea>
           </div>
         </div>
@@ -63,24 +98,24 @@ export function HelpLayout() {
       <div className="mx-auto flex max-w-[1440px]">
         {/* Desktop left sidebar */}
         <aside className="hidden lg:flex flex-col w-[240px] shrink-0 border-r border-border bg-card h-[calc(100vh-56px)] sticky top-14">
-          <ScrollArea className="flex-1 min-h-0">
-            <HelpSidebar />
-          </ScrollArea>
+          <DocsSidebar />
         </aside>
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
           <div className="mx-auto max-w-[820px] px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10 lg:px-10 lg:py-12">
-            <Outlet />
+            <Suspense fallback={<DocSkeleton />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
 
-        {/* Right sidebar — TOC + Promo */}
+        {/* Right sidebar — TOC + Help + Promo */}
         <aside className="hidden xl:flex flex-col w-[220px] shrink-0 border-l border-border h-[calc(100vh-56px)] sticky top-14">
           <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4">
             <HelpToc />
           </div>
-          <div className="px-4 pb-4 shrink-0">
+          <div className="px-4 pb-4 shrink-0 space-y-3">
             <DocPromoCard />
           </div>
         </aside>

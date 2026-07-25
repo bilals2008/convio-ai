@@ -139,7 +139,7 @@ export function DocsLayout() {
             </p>
             <DocsToc />
           </div>
-          <div className="px-4 pb-4 shrink-0">
+          <div className="px-4 pb-4 shrink-0 space-y-3">
             <DocPromoCard />
           </div>
         </aside>
