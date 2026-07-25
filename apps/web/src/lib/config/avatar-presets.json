@@ -1,1 +1,122 @@
-[]
+[
+  {
+    "id": 1,
+    "name": "Business Professional",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008222961-00.png",
+    "category": "custom"
+  },
+  {
+    "id": 2,
+    "name": "Startup Founder",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008225151-01.png",
+    "category": "custom"
+  },
+  {
+    "id": 3,
+    "name": "Software Developer",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008226183-02.png",
+    "category": "custom"
+  },
+  {
+    "id": 4,
+    "name": "AI Engineer",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008226776-03.png",
+    "category": "custom"
+  },
+  {
+    "id": 5,
+    "name": "Customer Support Agent",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008227443-04.png",
+    "category": "custom"
+  },
+  {
+    "id": 6,
+    "name": "Sales Representative",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008228026-05.png",
+    "category": "custom"
+  },
+  {
+    "id": 7,
+    "name": "Marketing Specialist",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008228655-06.png",
+    "category": "custom"
+  },
+  {
+    "id": 8,
+    "name": "UI/UX Designer",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008229171-07.png",
+    "category": "custom"
+  },
+  {
+    "id": 9,
+    "name": "Product Manager",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008229978-08.png",
+    "category": "custom"
+  },
+  {
+    "id": 10,
+    "name": "Data Scientist",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008230515-09.png",
+    "category": "custom"
+  },
+  {
+    "id": 11,
+    "name": "Teacher",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008231070-10.png",
+    "category": "custom"
+  },
+  {
+    "id": 12,
+    "name": "Healthcare Assistant",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008231635-11.png",
+    "category": "custom"
+  },
+  {
+    "id": 13,
+    "name": "Financial Advisor",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008232454-12.png",
+    "category": "custom"
+  },
+  {
+    "id": 14,
+    "name": "Lawyer",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008233099-13.png",
+    "category": "custom"
+  },
+  {
+    "id": 15,
+    "name": "HR Manager",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008233605-14.png",
+    "category": "custom"
+  },
+  {
+    "id": 16,
+    "name": "Content Creator",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008234170-15.png",
+    "category": "custom"
+  },
+  {
+    "id": 17,
+    "name": "Gamer",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008234691-16.png",
+    "category": "custom"
+  },
+  {
+    "id": 18,
+    "name": "Student",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008235241-17.png",
+    "category": "custom"
+  },
+  {
+    "id": 19,
+    "name": "AI Robot Assistant",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008235747-18.png",
+    "category": "custom"
+  },
+  {
+    "id": 20,
+    "name": "Female Support Specialist",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008236325-19.png",
+    "category": "custom"
+  }
+]

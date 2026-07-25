@@ -239,6 +239,18 @@ export const mcpServers = {
     api.delete(`/agents/${agentId}/mcp-servers/${serverId}`),
 }
 
+export const avatarPresets = {
+  list: (orgId: string) => api.get(`/organizations/${orgId}/avatar-presets`),
+  create: (orgId: string, data: { url: string; name: string; category?: string }) =>
+    api.post(`/organizations/${orgId}/avatar-presets`, data),
+  delete: (orgId: string, id: string) => api.delete(`/organizations/${orgId}/avatar-presets/${id}`),
+}
+
+export const huggingface = {
+  generate: (orgId: string, data: { prompt: string; model?: string; negativePrompt?: string; width?: number; height?: number }) =>
+    api.post(`/organizations/${orgId}/huggingface/generate`, data),
+}
+
 export const dataManagement = {
   summary: (orgId: string) => api.get(`/organizations/${orgId}/data-summary`),
   listCategory: (orgId: string, category: string, params?: { search?: string; status?: string; limit?: number; offset?: number }) =>

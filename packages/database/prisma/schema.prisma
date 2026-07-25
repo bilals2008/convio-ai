@@ -43,6 +43,7 @@ model Organization {
   ssoConfigs       SsoConfig?
   billingCustomer  BillingCustomer?
   broadcasts       Broadcast[]
+  avatarPresets    AvatarPreset[]
 
 
   @@index([slug])
@@ -481,4 +482,17 @@ model Broadcast {
   @@index([status, scheduleCron])
   @@index([status, scheduleAt])
   @@map("broadcasts")
+}
+
+model AvatarPreset {
+  id             String       @id @default(uuid())
+  organizationId String
+  url            String
+  name           String
+  category       String       @default("custom")
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("avatar_presets")
 }
