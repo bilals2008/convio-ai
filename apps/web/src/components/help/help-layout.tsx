@@ -69,7 +69,7 @@ export function HelpLayout() {
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
-          <div className="mx-auto max-w-[820px] px-5 py-8 md:py-12 md:px-8 lg:px-10">
+          <div className="mx-auto max-w-[820px] px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10 lg:px-10 lg:py-12">
             <Outlet />
           </div>
         </main>
