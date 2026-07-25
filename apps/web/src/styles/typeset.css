@@ -1,0 +1,165 @@
+/* shadcn/typeset
+   One CSS file for styled HTML content.
+   Preset: typeset-help (90ch measure, 1.9 leading, regular flow)
+   See: https://ui.shadcn.com/docs/typeset
+*/
+@layer components {
+  .typeset {
+    --ts-size: 0.9375rem;
+    --ts-leading: 1.9;
+    --ts-flow: 1em;
+    max-width: 90ch;
+    color: var(--foreground);
+    font-size: var(--ts-size);
+    line-height: var(--ts-leading);
+  }
+
+  .typeset :where(p) {
+    margin-block-start: var(--ts-flow);
+    color: var(--muted-foreground);
+  }
+  .typeset :where(:first-child) {
+    margin-block-start: 0;
+  }
+
+  /* Headings — match DocHeading component */
+  .typeset :where(h1, h2, h3, h4, h5, h6) {
+    margin-block-start: calc(var(--ts-flow) * 2.5);
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--foreground);
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+  }
+  .typeset :where(h1) { font-size: 1.875rem; margin-block-start: 0; }
+  .typeset :where(h2) { font-size: 1.25rem; margin-block-start: 2.5rem; }
+  .typeset :where(h3) { font-size: 1rem; margin-block-start: 1.75rem; }
+  .typeset :where(h4) { font-size: 0.9375rem; margin-block-start: 1.5rem; }
+
+  /* Lead paragraph — first p after h1 */
+  .typeset > h1 + p,
+  .typeset > p:first-of-type {
+    color: var(--muted-foreground);
+    font-size: 1rem;
+    margin-block-start: 0.5rem;
+  }
+
+  .typeset :where(a) {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: opacity 0.15s;
+  }
+  .typeset :where(a:hover) {
+    opacity: 0.8;
+  }
+
+  .typeset :where(strong) {
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .typeset :where(ul, ol) {
+    margin-block-start: var(--ts-flow);
+    padding-inline-start: 1.5em;
+  }
+  .typeset :where(li) {
+    margin-block-start: 0.35em;
+    color: var(--muted-foreground);
+  }
+  .typeset :where(li strong) {
+    color: var(--foreground);
+  }
+  .typeset :where(li > ul, li > ol) {
+    margin-block-start: 0.25em;
+  }
+
+  .typeset :where(blockquote) {
+    margin-block-start: var(--ts-flow);
+    border-inline-start: 3px solid var(--primary);
+    padding-inline-start: 1em;
+    color: var(--muted-foreground);
+    font-style: italic;
+  }
+
+  .typeset :where(hr) {
+    margin-block: calc(var(--ts-flow) * 2);
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .typeset :where(pre) {
+    margin-block-start: var(--ts-flow);
+    border-radius: var(--radius);
+    background: var(--muted);
+    border: 1px solid var(--border);
+    padding: 1em;
+    overflow-x: auto;
+    font-size: 0.8125em;
+    line-height: 1.65;
+  }
+  .typeset :where(code) {
+    font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+    font-size: 0.8125em;
+    background: var(--muted);
+    border: 1px solid var(--border);
+    padding: 0.15em 0.4em;
+    border-radius: calc(var(--radius) * 0.5);
+  }
+  .typeset :where(pre code) {
+    background: none;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .typeset :where(table) {
+    margin-block-start: var(--ts-flow);
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875em;
+  }
+  .typeset :where(th, td) {
+    border: 1px solid var(--border);
+    padding: 0.5em 0.75em;
+    text-align: start;
+    vertical-align: top;
+  }
+  .typeset :where(th) {
+    background: var(--muted);
+    font-weight: 600;
+    color: var(--foreground);
+  }
+  .typeset :where(td) {
+    color: var(--muted-foreground);
+  }
+
+  .typeset :where(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    margin-block-start: var(--ts-flow);
+  }
+
+  .typeset :where(figure) {
+    margin-block-start: var(--ts-flow);
+  }
+  .typeset :where(figcaption) {
+    font-size: 0.8em;
+    color: var(--muted-foreground);
+    text-align: center;
+    margin-block-start: 0.5em;
+  }
+
+  .typeset :where(details) {
+    margin-block-start: var(--ts-flow);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75em 1em;
+  }
+  .typeset :where(summary) {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+}

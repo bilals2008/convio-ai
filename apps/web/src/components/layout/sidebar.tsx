@@ -19,6 +19,7 @@ import {
   Database,
   Plug,
   Lightbulb,
+  LifeBuoy,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -162,7 +163,11 @@ export function Sidebar() {
           </SidebarGroup>
 
           <SidebarGroup label="Development">
-            <SidebarItem icon={BookOpen} label="Docs" href="/docs" />
+            <SidebarItem icon={BookOpen} label="Technical Docs" href="/docs" />
+          </SidebarGroup>
+
+          <SidebarGroup label="Support">
+            <SidebarItem icon={LifeBuoy} label="Help Center" href="/help" />
           </SidebarGroup>
 
           <SettingsGroup collapsed={collapsed} />
@@ -364,7 +369,13 @@ function getMobileNavGroups(role?: string) {
     {
       label: 'Development',
       items: [
-        { icon: BookOpen, label: 'Docs', href: '/docs' },
+        { icon: BookOpen, label: 'Technical Docs', href: '/docs' },
+      ],
+    },
+    {
+      label: 'Support',
+      items: [
+        { icon: LifeBuoy, label: 'Help Center', href: '/help' },
       ],
     },
     {

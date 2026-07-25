@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, X, LogOut, LayoutDashboard, User, Sun, Moon } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, User, Sun, Moon, BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
@@ -18,6 +18,7 @@ import {
 
 const navLinks = [
   { label: 'Channels', href: '#channels' },
+  { label: 'Docs', href: '/help' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Contact', href: '/contact' },
 ]
