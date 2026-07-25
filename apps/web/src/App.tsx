@@ -35,6 +35,7 @@ import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
 import DataManagementPage from '@/pages/settings/data-management-page'
 import McpServersPage from '@/pages/settings/mcp-servers-page'
+import AvatarPlaygroundPage from '@/pages/settings/avatar-playground-page'
 import { HelpLayout } from '@/components/help/help-layout'
 import HelpIndexPage from '@/pages/docs/help-index'
 import WhatIsConvioPage from '@/pages/docs/what-is-convio'
@@ -117,8 +118,15 @@ export function App() {
               <Route path="/docs/broadcasts" element={<HelpLazyPage />} />
               <Route path="/docs/webhooks" element={<HelpLazyPage />} />
               <Route path="/docs/analytics" element={<HelpLazyPage />} />
+              <Route path="/docs/dashboard-analytics" element={<HelpLazyPage />} />
               <Route path="/docs/per-agent-analytics" element={<HelpLazyPage />} />
+              <Route path="/docs/key-metrics" element={<HelpLazyPage />} />
+              <Route path="/docs/channel-breakdown" element={<HelpLazyPage />} />
+              <Route path="/docs/date-ranges" element={<HelpLazyPage />} />
+              <Route path="/docs/success-rate" element={<HelpLazyPage />} />
+              <Route path="/docs/token-tracking" element={<HelpLazyPage />} />
               <Route path="/docs/audit-logs" element={<HelpLazyPage />} />
+              <Route path="/docs/exporting-analytics" element={<HelpLazyPage />} />
               <Route path="/docs/security" element={<HelpLazyPage />} />
               <Route path="/docs/moderation" element={<HelpLazyPage />} />
               <Route path="/docs/data-management" element={<HelpLazyPage />} />
@@ -156,6 +164,7 @@ export function App() {
                 <Route path="mcp-servers" element={<McpServersPage />} />
                 <Route path="billing" element={<BillingPage />} />
                 <Route path="data" element={<DataManagementPage />} />
+                <Route path="avatar-playground" element={<AvatarPlaygroundPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>

@@ -20,6 +20,7 @@ import {
   Plug,
   Lightbulb,
   LifeBuoy,
+  Palette,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -41,6 +42,7 @@ function useSettingsItems() {
   const { org } = useOrg()
   const role = org?.role
   const isAdmin = role === 'owner' || role === 'admin'
+  const isOwner = role === 'owner'
 
   return [
     { icon: Building2, label: 'Organization', href: '/settings/organization', adminOnly: false },
@@ -49,7 +51,8 @@ function useSettingsItems() {
     { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
     { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
-  ].filter((item) => !item.adminOnly || isAdmin)
+    { icon: Palette, label: 'Avatar Playground', href: '/settings/avatar-playground', adminOnly: true, ownerOnly: true },
+  ].filter((item) => !item.adminOnly || (isAdmin && (!item.ownerOnly || isOwner)))
 }
 
 function SettingsGroup({ collapsed }: { collapsed: boolean }) {
@@ -332,6 +335,7 @@ export function Sidebar() {
 
 function getMobileNavGroups(role?: string) {
   const isAdmin = role === 'owner' || role === 'admin'
+  const isOwner = role === 'owner'
   const settingsItems = [
     { icon: Building2, label: 'Organization', href: '/settings/organization' },
     { icon: User, label: 'Profile', href: '/settings/profile' },
@@ -339,6 +343,7 @@ function getMobileNavGroups(role?: string) {
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
       { icon: Database, label: 'Data', href: '/settings/data' },
+      ...(isOwner ? [{ icon: Palette, label: 'Avatar Playground', href: '/settings/avatar-playground' }] : []),
     ] : []),
     { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
   ]
