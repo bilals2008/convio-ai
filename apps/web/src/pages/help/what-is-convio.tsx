@@ -1,22 +1,18 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
+import { DocContent, DocPageHeader } from '@/components/docs'
 
 export default function WhatIsConvioPage() {
   return (
-    <div className="typeset typeset-help">
-      <nav className="flex items-center gap-1.5 text-[13px] text-muted-foreground mb-6">
-        <Link to="/help" className="hover:text-foreground transition-colors">Documentation</Link>
-        <span className="text-muted-foreground/40">/</span>
-        <span className="text-foreground font-medium">What is Convio?</span>
-      </nav>
-
-      <h1 className="font-heading text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4">
-        What is Convio?
-      </h1>
-
-      <p className="text-muted-foreground text-sm sm:text-base leading-relaxed mb-8 max-w-[600px]">
-        Convio is an AI-powered platform that lets you build, manage, and deploy intelligent agents and chatbots across multiple channels — all from a single dashboard.
-      </p>
+    <DocContent>
+      <DocPageHeader
+        breadcrumb={[
+          { label: 'Documentation', href: '/help' },
+          { label: 'What is Convio?' },
+        ]}
+        title="What is Convio?"
+        description="Convio is an AI-powered platform that lets you build, manage, and deploy intelligent agents and chatbots across multiple channels — all from a single dashboard."
+      />
 
       <h2 id="overview">Overview</h2>
       <p>
@@ -68,7 +64,7 @@ export default function WhatIsConvioPage() {
         Ready to get started? Head to the Quick Start guide or jump straight into creating your first agent.
       </p>
 
-      <div className="flex flex-col sm:flex-row gap-3 mt-6 not-typeset">
+      <div className="flex flex-col sm:flex-row gap-3 mt-6">
         <Link
           to="/help/creating-agent"
           className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
@@ -82,6 +78,6 @@ export default function WhatIsConvioPage() {
           Set up a knowledge base <ArrowRight className="size-4" />
         </Link>
       </div>
-    </div>
+    </DocContent>
   )
 }

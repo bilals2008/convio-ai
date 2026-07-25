@@ -1,7 +1,9 @@
+import { DocContent } from '@/components/docs'
+
 export default function HelpLazyPage() {
   return (
-    <div className="typeset typeset-help">
+    <DocContent>
       {/* Article content goes here */}
-    </div>
+    </DocContent>
   )
 }
