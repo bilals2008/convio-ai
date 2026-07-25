@@ -530,7 +530,9 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
                         </div>
                         <Select value={selectedGuildId} onValueChange={setSelectedGuildId}>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder={guildsLoading ? 'Loading servers...' : 'Select a server'} />
+                            <SelectValue placeholder={guildsLoading ? 'Loading servers...' : 'Select a server'}>
+                              {guilds.find((g) => g.id === selectedGuildId)?.name}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {guildsLoading ? (

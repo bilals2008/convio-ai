@@ -42,6 +42,7 @@ model Organization {
   moderationConfig ModerationConfig?
   ssoConfigs       SsoConfig?
   billingCustomer  BillingCustomer?
+  broadcasts       Broadcast[]
 
 
   @@index([slug])
@@ -99,6 +100,7 @@ model Agent {
   conversations   Conversation[]
   deployments     Deployment[]
   widgets         Widget[]
+  broadcasts      Broadcast[]
 
   @@index([organizationId])
   @@index([knowledgeBaseId])
@@ -159,6 +161,7 @@ model Conversation {
   userId       String?
   channel      String    @default("web")
   status       String    @default("active")
+  optInStatus  String    @default("opted_in")
   createdAt    DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
   agentId      String
@@ -173,7 +176,7 @@ model Conversation {
   @@index([agentId, status, updatedAt(sort: Desc)])
   @@index([userId])
   @@index([status])
-  @@unique([agentId, channel, contactPhone, status])
+  @@index([agentId, channel, contactPhone])
 }
 
 model Message {
@@ -451,4 +454,31 @@ model LoginActivity {
   @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
   @@map("login_activity")
+}
+
+model Broadcast {
+  id            String     @id @default(uuid())
+  organizationId String
+  agentId       String
+  name          String
+  templateName  String
+  templateLanguage String @default("en_US")
+  templateParams Json     @default("[]")
+  contactFilter Json?
+  scheduleCron  String?
+  scheduleAt    DateTime?
+  status        String     @default("draft")
+  executedAt    DateTime?  @db.Timestamptz(6)
+  totalContacts Int        @default(0)
+  sentCount     Int        @default(0)
+  failCount     Int        @default(0)
+  createdAt     DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime   @updatedAt @db.Timestamptz(6)
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  agent         Agent        @relation(fields: [agentId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([status, scheduleCron])
+  @@index([status, scheduleAt])
+  @@map("broadcasts")
 }
