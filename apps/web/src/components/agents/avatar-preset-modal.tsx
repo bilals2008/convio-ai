@@ -12,6 +12,7 @@ const categoryMeta: Record<string, { label: string }> = {
   support: { label: 'Support' },
   business: { label: 'Business' },
   education: { label: 'Education' },
+  productivity: { label: 'Productivity' },
   developer: { label: 'Developer' },
   researcher: { label: 'Researcher' },
   custom: { label: 'Custom' },

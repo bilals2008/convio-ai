@@ -118,5 +118,95 @@
     "name": "Female Support Specialist",
     "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785008236325-19.png",
     "category": "custom"
+  },
+  {
+    "id": 21,
+    "name": "Customer Service Rep",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009564767-00.png",
+    "category": "support"
+  },
+  {
+    "id": 22,
+    "name": "Help Desk Agent",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009567075-01.png",
+    "category": "support"
+  },
+  {
+    "id": 23,
+    "name": "Tech Support Specialist",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009568305-02.png",
+    "category": "support"
+  },
+  {
+    "id": 24,
+    "name": "Live Chat Agent",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009568865-03.png",
+    "category": "support"
+  },
+  {
+    "id": 25,
+    "name": "Sales Manager",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009569408-04.png",
+    "category": "business"
+  },
+  {
+    "id": 26,
+    "name": "Marketing Director",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009569913-05.png",
+    "category": "business"
+  },
+  {
+    "id": 27,
+    "name": "Business Analyst",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009570485-06.png",
+    "category": "business"
+  },
+  {
+    "id": 28,
+    "name": "Math Teacher",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009571038-07.png",
+    "category": "education"
+  },
+  {
+    "id": 29,
+    "name": "Science Tutor",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009571574-08.png",
+    "category": "education"
+  },
+  {
+    "id": 30,
+    "name": "Language Instructor",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009572164-09.png",
+    "category": "education"
+  },
+  {
+    "id": 31,
+    "name": "Career Coach",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009572682-10.png",
+    "category": "education"
+  },
+  {
+    "id": 32,
+    "name": "Project Manager",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009573231-11.png",
+    "category": "productivity"
+  },
+  {
+    "id": 33,
+    "name": "Executive Assistant",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009573792-12.png",
+    "category": "productivity"
+  },
+  {
+    "id": 34,
+    "name": "Meeting Scheduler",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009574354-13.png",
+    "category": "productivity"
+  },
+  {
+    "id": 35,
+    "name": "Workflow Automator",
+    "url": "https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/avatars/presets/1785009574947-14.png",
+    "category": "productivity"
   }
 ]
