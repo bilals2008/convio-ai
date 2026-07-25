@@ -39,14 +39,7 @@ function extractOrgId(data: Record<string, unknown>) {
   return { orgId: organizationId as string, data: rest }
 }
 
-export const analytics = {
-  overview: (orgId: string, params?: { from?: string; to?: string }) =>
-    api.get(`/organizations/${orgId}/analytics`, { params }),
-  agent: (agentId: string, params?: { from?: string; to?: string }) =>
-    api.get(`/agents/${agentId}/analytics`, { params }),
-  topAgents: (orgId: string, params?: { from?: string; to?: string }) =>
-    api.get(`/organizations/${orgId}/analytics/top-agents`, { params }),
-}
+export { analyticsApi as analytics } from './api/analytics'
 
 export const agents = {
   list: (orgId: string) => api.get(`/organizations/${orgId}/agents`),
