@@ -4,13 +4,20 @@ import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
 import crypto from 'node:crypto'
-import { processIncomingMessage as processKapsoIncomingMessage } from '../../services/whatsapp.js'
+import {
+  processIncomingMessage as processKapsoIncomingMessage,
+  handleMessageStatus,
+  createBroadcast,
+  executeBroadcast,
+  processScheduledBroadcasts,
+} from '../../services/whatsapp.js'
 import { processTelegramUpdate, type TelegramUpdate } from '../../services/telegram.js'
 import {
   processDiscordInteraction,
   verifyDiscordSignature,
   registerDiscordCommands,
   setBotNickname,
+  sendFollowupMessage,
   type DiscordInteraction,
 } from '../../services/discord.js'
 import { processSlackEvent } from '../../services/slack.js'
@@ -788,42 +795,81 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       return reply.code(200).send('OK')
     }
 
+    const phoneNumberId = config.phoneNumberId as string
     const event = request.headers['x-webhook-event'] as string
+
+    // Handle message status callbacks
+    if (event === 'whatsapp.message.status' || body?.statuses) {
+      const statuses = body?.statuses || (body?.entry?.[0]?.changes?.[0]?.value?.statuses)
+      if (statuses && Array.isArray(statuses)) {
+        for (const s of statuses) {
+          void handleMessageStatus(s).catch((err) =>
+            request.log.error({ err, statusId: s.id }, 'Failed to handle message status')
+          )
+        }
+      }
+      return reply.code(200).send('OK')
+    }
+
     if (event !== 'whatsapp.message.received') {
       return reply.code(200).send('OK')
     }
 
-    const message = body?.message
-    if (!message || !message.text?.body) {
-      return reply.code(200).send('OK')
-    }
+    // Handle Meta Cloud API format (entry[].changes[].value.messages[])
+    const metaMessages = body?.entry?.[0]?.changes?.[0]?.value?.messages
+    const messages = metaMessages || (body?.message ? [body.message] : [])
 
-    const from = message.from || body.conversation?.phone_number || ''
-    const text = message.text.body
-    const contactName = message.kapso?.contact_name || body.conversation?.kapso?.contact_name || undefined
-    const messageId = (message.id as string | undefined) || undefined
+    for (const message of messages) {
+      if (!message) continue
+      const from = message.from || body.conversation?.phone_number || ''
+      if (!from) continue
 
-    if (!from || !text) {
-      return reply.code(200).send('OK')
-    }
+      const messageId = message.id
+      const contactName = message.kapso?.contact_name || body.conversation?.kapso?.contact_name || undefined
 
-    request.log.info({ from, deploymentId: id, messageId }, 'Kapso webhook: received incoming message')
+      // Extract text body (or empty for interactive messages)
+      let text = message.text?.body || ''
 
-    // Ack Kapso immediately. Generating the agent reply can take longer than
-    // Kapso's delivery timeout (~5s); if we wait for it, Kapso marks the
-    // delivery failed and retries up to 3 times, producing duplicate replies.
-    // Process the message after responding instead.
-    void processKapsoIncomingMessage(id, from, text, contactName, messageId)
-      .then((result) => {
+      // Handle interactive replies (buttons / lists)
+      const interactive = message.interactive
+      if (!text && interactive) {
+        text = ''
+      }
+
+      // Handle group context
+      let groupMetadata: { groupId: string; groupSubject?: string; author: string; authorName?: string } | undefined
+      if (message.context?.group_id || body.conversation?.type === 'group') {
+        groupMetadata = {
+          groupId: message.context?.group_id || body.conversation?.phone_number || '',
+          groupSubject: message.context?.group_subject || undefined,
+          author: from,
+          authorName: contactName,
+        }
+      }
+
+      // Skip messages with only text or interactive — no media handling here
+      // ponytail: media messages (image/video/audio/document) not yet handled, add when needed
+      const mediaTypes = ['image', 'video', 'audio', 'document', 'sticker']
+      if (!text && !interactive && !mediaTypes.includes(message.type)) continue
+
+      request.log.info({ from, deploymentId: id, messageId, type: message.type }, 'Kapso webhook: received incoming message')
+
+      void processKapsoIncomingMessage(id, {
+        from,
+        body: text,
+        messageId,
+        contactName,
+        phoneNumberId,
+        interactive,
+        groupMetadata,
+      }).then((result) => {
         if (result.error) {
           request.log.error({ error: result.error, from, deploymentId: id }, 'Kapso webhook: processing failed')
-        } else {
-          request.log.info({ from, deploymentId: id }, 'Kapso webhook: processing succeeded')
         }
-      })
-      .catch((err) => {
+      }).catch((err) => {
         request.log.error({ err, from, deploymentId: id }, 'Kapso webhook: processing threw')
       })
+    }
 
     return reply.code(200).send('OK')
   })
@@ -854,6 +900,23 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const result = await processTelegramUpdate(id, botToken, update)
     if (result.error) {
       request.log.error({ error: result.error, deploymentId: id }, 'Telegram webhook: processing failed')
+    }
+
+    return reply.code(200).send('OK')
+  })
+
+  // POST /api/deployments/:id/whatsapp-status — WhatsApp message status callbacks
+  fastify.post('/deployments/:id/whatsapp-status', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const body = request.body as any
+
+    const statuses = body?.entry?.[0]?.changes?.[0]?.value?.statuses || body?.statuses
+    if (statuses && Array.isArray(statuses)) {
+      for (const s of statuses) {
+        void handleMessageStatus(s).catch((err) =>
+          request.log.error({ err, statusId: s.id }, 'Status callback handler failed')
+        )
+      }
     }
 
     return reply.code(200).send('OK')
@@ -992,25 +1055,34 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       return reply.code(200).send({ type: 1 })
     }
 
-    // Look up deployment by guild_id
-    const guildId = interaction.guild_id
-    if (!guildId) {
-      return reply.code(400).send({ error: 'Missing guild_id' })
-    }
-
-    const deployment = await prisma.deployment.findFirst({
-      where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
-      select: { id: true },
-    })
-
-    if (!deployment) {
-      request.log.warn({ guildId }, 'No Discord deployment found for guild')
-      return reply.code(200).send({ type: 4, data: { content: 'This bot is not configured for this server.', flags: 64 } })
-    }
-
-    const response = await processDiscordInteraction(deployment.id, interaction)
-    return reply.code(200).send(response)
+    // ACK immediately (deferred) to avoid Discord's 3-second timeout.
+    // DB lookups and processing happen in background.
+    void processInteractionAsync(interaction)
+    return reply.code(200).send({ type: 5 })
   })
+
+  async function processInteractionAsync(interaction: DiscordInteraction) {
+    try {
+      const guildId = interaction.guild_id
+      if (!guildId) return
+
+      const deployment = await prisma.deployment.findFirst({
+        where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
+        include: { agent: true },
+      })
+
+      if (!deployment) return
+
+      // processDiscordInteraction returns the interaction response to send back,
+      // but since we already ACKed with type 5, we send follow-ups via webhook
+      const response = await processDiscordInteraction(deployment.id, interaction)
+      if (response.type === 4 && response.data) {
+        await sendFollowupMessage(interaction.application_id, interaction.token!, response.data).catch(() => {})
+      }
+    } catch (err) {
+      console.error('[Discord] Background processing failed:', err)
+    }
+  }
 
   // POST /api/deployments/:id/discord-webhook — Receive Discord interactions
   fastify.post('/deployments/:id/discord-webhook', async (request, reply) => {
@@ -1078,6 +1150,41 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     }
 
     return reply.code(200).send('OK')
+  })
+
+  // Broadcast management endpoints
+  // POST /api/broadcasts — Create a new broadcast
+  fastify.post('/broadcasts', {
+    preHandler: [fastify.authenticate],
+  }, async (request) => {
+    const body = request.body as {
+      organizationId: string
+      agentId: string
+      name: string
+      templateName: string
+      templateLanguage?: string
+      templateParams?: Record<string, string>[]
+      contactFilter?: Record<string, unknown>
+      scheduleCron?: string
+      scheduleAt?: string
+    }
+    const result = await createBroadcast(body)
+    return { data: result }
+  })
+
+  // POST /api/broadcasts/:id/execute — Execute a broadcast immediately
+  fastify.post('/broadcasts/:id/execute', {
+    preHandler: [fastify.authenticate],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const result = await executeBroadcast(id)
+    return { data: result }
+  })
+
+  // POST /api/broadcasts/process — Process all scheduled broadcasts (called by cron)
+  fastify.post('/broadcasts/process', async () => {
+    await processScheduledBroadcasts()
+    return { data: { processed: true } }
   })
 }
 

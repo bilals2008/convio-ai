@@ -2,10 +2,11 @@ import WebSocket from 'ws'
 import { prisma } from '@convio/database'
 import { chatWithAgent } from '../modules/ai/routes.js'
 import { formatResponse } from './formatters/index.js'
+import { handleMessageUpdate, handleMessageReaction, handleGuildCreate } from './discord/gateway.js'
+import { sendChannelMessage, createThread, BOT_COLOR } from './discord/client.js'
 
 const DISCORD_API = 'https://discord.com/api/v10'
 const GATEWAY_URL = 'wss://gateway.discord.gg/?v=10&encoding=json'
-const BOT_COLOR = 0x22c55e
 
 const MAX_RECONNECT_ATTEMPTS = 5
 const RECONNECT_BASE_DELAY = 5000
@@ -22,59 +23,19 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 const processedMessageIds = new Set<string>()
 const MAX_CACHED_IDS = 500
 
-async function sendEmbedMessage(channelId: string, text: string, botToken: string): Promise<string | null> {
-  const url = `${DISCORD_API}/channels/${channelId}/messages`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bot ${botToken}`,
-    },
-    body: JSON.stringify({
-      embeds: [{
-        description: text,
-        color: BOT_COLOR,
-        footer: { text: 'Convio AI' },
-      }],
-    }),
-  })
-  if (!res.ok) {
-    console.error('[Discord Gateway] Failed to send message:', await res.text().catch(() => 'unknown'))
-    return null
-  }
-  const data = await res.json() as { id: string }
-  return data.id
-}
-
-async function createThread(
-  botToken: string,
-  channelId: string,
-  messageId: string,
-  name: string,
-): Promise<string | null> {
-  try {
-    const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}/threads`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bot ${botToken}`,
-      },
-      body: JSON.stringify({ name, auto_archive_duration: 60, type: 12 }),
-    })
-    if (!res.ok) return null
-    const thread = await res.json() as { id: string }
-    return thread.id
-  } catch {
-    return null
-  }
-}
-
 async function handleMessageCreate(data: any, botToken: string) {
   if (!data.id || data.author?.bot || data.author?.id === botUserId) return
 
+  // In-memory dedup (same process)
   if (processedMessageIds.has(data.id)) return
   if (processedMessageIds.size >= MAX_CACHED_IDS) processedMessageIds.clear()
   processedMessageIds.add(data.id)
+
+  // DB-level dedup (across instances — Railway + local)
+  const existing = await prisma.message.findFirst({
+    where: { metadata: { path: ['providerMessageId'], equals: data.id } },
+  })
+  if (existing) return
 
   const isDM = data.guild_id === undefined
 
@@ -142,7 +103,7 @@ async function handleMessageCreate(data: any, botToken: string) {
   }
 
   await prisma.message.create({
-    data: { conversationId: conversation.id, role: 'user', content: text, metadata: { userId: contactId } },
+    data: { conversationId: conversation.id, role: 'user', content: text, metadata: { userId: contactId, providerMessageId: data.id } },
   })
 
   const history = await prisma.message.findMany({
@@ -159,20 +120,29 @@ async function handleMessageCreate(data: any, botToken: string) {
 
     const replyText = formatResponse('discord', reply || 'Sorry, I could not generate a response. Please try again.')
 
-    await prisma.message.create({
+    const assistantMsg = await prisma.message.create({
       data: { conversationId: conversation.id, role: 'assistant', content: reply },
     })
 
-    const messageId = await sendEmbedMessage(
-      data.channel_id,
-      isDM ? replyText : `<@${contactId}> ${replyText}`,
-      botToken,
+    const sentMsg = await sendChannelMessage(
+      botToken, data.channel_id,
+      {
+        embeds: [{ description: isDM ? replyText : `<@${contactId}> ${replyText}`, color: BOT_COLOR, footer: { text: 'Convio AI' } }],
+      },
     )
 
+    // Store discord message id for edit support
+    if (sentMsg?.id) {
+      await prisma.message.update({
+        where: { id: assistantMsg.id },
+        data: { metadata: { discordMessageId: sentMsg.id } as any },
+      })
+    }
+
     const convMeta = (conversation.metadata || {}) as Record<string, unknown>
-    if (!isDM && messageId && !convMeta.threadId) {
+    if (!isDM && sentMsg?.id && !convMeta.threadId) {
       const threadName = `Chat with ${deployment.agent?.name || 'ai'}`
-      const threadId = await createThread(botToken, data.channel_id, messageId, threadName)
+      const threadId = await createThread(botToken, data.channel_id, sentMsg.id, threadName)
       if (threadId) {
         await prisma.conversation.update({
           where: { id: conversation.id },
@@ -183,66 +153,17 @@ async function handleMessageCreate(data: any, botToken: string) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Discord Gateway] AI reply error:', message)
-    await sendEmbedMessage(
-      data.channel_id,
-      isDM
-        ? 'Sorry, an error occurred while generating a response. Please try again.'
-        : `<@${contactId}> Sorry, an error occurred while generating a response. Please try again.`,
-      botToken,
-    )
-  }
-}
-
-async function sendWelcomeMessage(guild: any, botToken: string) {
-  try {
-    const guildId = guild.id
-    if (!guildId) return
-
-    const deployment = await prisma.deployment.findFirst({
-      where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
-      include: { agent: true },
-    })
-    if (!deployment) return
-
-    const conversations = await prisma.conversation.count({
-      where: { agentId: deployment.agentId, channel: 'discord', metadata: { path: ['guildId'], equals: guildId } },
-    })
-    if (conversations > 0) return
-
-    const channels = guild.channels as any[] | undefined
-    if (!channels || !Array.isArray(channels)) return
-
-    const textChannel = channels.find(
-      (c: any) => c.type === 0 && c.permissions && (BigInt(c.permissions) & BigInt(2048)) === BigInt(2048)
-    )
-    if (!textChannel) return
-
-    const url = `${DISCORD_API}/channels/${textChannel.id}/messages`
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bot ${botToken}`,
-      },
-      body: JSON.stringify({
+    await sendChannelMessage(
+      botToken, data.channel_id,
+      {
         embeds: [{
-          title: '👋 Hi, I\'m your Convio AI assistant!',
-          description: 'I\'m here to help. Here\'s how to use me:\n\n' +
-            '• **@mention me** — Send a message and I\'ll reply\n' +
-            '• **`/chat`** — Start a conversation with a message\n' +
-            '• **`/reset`** — Clear your chat history and start fresh\n' +
-            '• **`/session`** — View your chat details (messages, duration)\n\n' +
-            'Every conversation is private and scoped to you. Try saying hi!',
+          description: isDM
+            ? 'Sorry, an error occurred. Please try again.'
+            : `<@${contactId}> Sorry, an error occurred. Please try again.`,
           color: BOT_COLOR,
-          footer: { text: 'Convio AI' },
         }],
-      }),
-    })
-    if (!res.ok) {
-      console.error('[Discord Gateway] Failed to send welcome message:', await res.text().catch(() => 'unknown'))
-    }
-  } catch (err) {
-    console.error('[Discord Gateway] Welcome message error:', err)
+      },
+    )
   }
 }
 
@@ -274,11 +195,12 @@ function startGateway(botToken: string) {
           const GUILD_MESSAGES = 1 << 9
           const DIRECT_MESSAGES = 1 << 12
           const MESSAGE_CONTENT = 1 << 15
+          const GUILD_MESSAGE_REACTIONS = 1 << 10
           gateway?.send(JSON.stringify({
             op: 2,
             d: {
               token: `Bot ${botToken}`,
-              intents: GUILD_MESSAGES | DIRECT_MESSAGES | MESSAGE_CONTENT,
+              intents: GUILD_MESSAGES | DIRECT_MESSAGES | MESSAGE_CONTENT | GUILD_MESSAGE_REACTIONS,
               properties: { os: 'linux', browser: 'convio', device: 'convio' },
             },
           }))
@@ -293,8 +215,14 @@ function startGateway(botToken: string) {
           if (t === 'MESSAGE_CREATE') {
             void handleMessageCreate(d, botToken)
           }
+          if (t === 'MESSAGE_UPDATE') {
+            void handleMessageUpdate(d, botToken)
+          }
+          if (t === 'MESSAGE_REACTION_ADD') {
+            void handleMessageReaction(d, botToken)
+          }
           if (t === 'GUILD_CREATE') {
-            void sendWelcomeMessage(d, botToken)
+            void handleGuildCreate(d, botToken)
           }
           break
         }
