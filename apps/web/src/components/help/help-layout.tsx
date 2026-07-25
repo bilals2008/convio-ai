@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { HelpTopbar } from './help-topbar'
 import { HelpSidebar } from './help-sidebar'
 import { HelpToc } from './help-toc'
+import { DocPromoCard } from '@/components/docs/doc-promo-card'
 
 export function HelpLayout() {
   const { pathname } = useLocation()
@@ -74,10 +75,13 @@ export function HelpLayout() {
           </div>
         </main>
 
-        {/* Right sidebar — TOC */}
+        {/* Right sidebar — TOC + Promo */}
         <aside className="hidden xl:flex flex-col w-[220px] shrink-0 border-l border-border h-[calc(100vh-56px)] sticky top-14">
-          <div className="px-4 pt-6 pb-4">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4">
             <HelpToc />
+          </div>
+          <div className="px-4 pb-4 shrink-0">
+            <DocPromoCard />
           </div>
         </aside>
       </div>
