@@ -125,11 +125,11 @@ export function HelpToc() {
             <a
               href={`#${heading.id}`}
               className={cn(
-                'block text-[12.5px] leading-snug py-1 border-l-2 transition-colors',
+                'block text-[12.5px] leading-snug py-1.5 px-2 -mx-2 rounded-md transition-colors',
                 heading.level === 3 && 'text-muted-foreground',
                 activeId === heading.id
-                  ? 'border-primary text-foreground font-medium'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {heading.text}
