@@ -17,7 +17,8 @@ const FEATURES = [
       'Version control for knowledge updates',
       'Multi-source retrieval with RAG',
     ],
-    placeholderLabel: 'knowledge-base',
+    bgImage: '/features/brand-bg.svg',
+    cubeImage: '/features/cube-brand.webp',
   },
   {
     icon: Bot,
@@ -30,7 +31,8 @@ const FEATURES = [
       'Custom fine-tuning on your data',
       'Automatic fallback and load balancing',
     ],
-    placeholderLabel: 'ai-models',
+    bgImage: '/features/sales-bg.svg',
+    cubeImage: '/features/cube-sales.webp',
   },
   {
     icon: Puzzle,
@@ -43,7 +45,8 @@ const FEATURES = [
       'Stripe, Salesforce, HubSpot connectors',
       'REST and GraphQL API support',
     ],
-    placeholderLabel: 'tools-integrations',
+    bgImage: '/features/support-bg.svg',
+    cubeImage: '/features/cube-support.webp',
   },
 ]
 
@@ -60,42 +63,6 @@ const fadeUp = {
     y: 0,
     transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: i * 0.08 },
   }),
-}
-
-function PlaceholderFrame({ label }: { label: string }) {
-  return (
-    <div className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-muted/40">
-      {/* Grid pattern */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 opacity-30"
-        style={{
-          backgroundImage:
-            'linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
-      />
-      {/* Fake UI blocks */}
-      <div className="relative z-10 flex flex-col items-center gap-3 px-6">
-        <div className="flex gap-2">
-          <div className="h-2.5 w-16 rounded bg-border" />
-          <div className="h-2.5 w-10 rounded bg-border/60" />
-        </div>
-        <div className="flex gap-2">
-          <div className="h-8 w-24 rounded-lg bg-border/50" />
-          <div className="h-8 w-16 rounded-lg bg-border/50" />
-        </div>
-        <div className="flex gap-1.5">
-          <div className="size-6 rounded bg-border/40" />
-          <div className="size-6 rounded bg-border/40" />
-          <div className="size-6 rounded bg-border/40" />
-        </div>
-      </div>
-      <span className="absolute bottom-2.5 right-3 text-[10px] font-medium text-muted-foreground/50">
-        {label}
-      </span>
-    </div>
-  )
 }
 
 export function EverythingSection() {
@@ -150,7 +117,18 @@ export function EverythingSection() {
                 />
 
                 <div className="relative flex flex-1 flex-col p-6">
-                  <PlaceholderFrame label={feature.placeholderLabel} />
+                  <div className="relative h-56 w-full overflow-hidden rounded-xl">
+                    <img
+                      src={feature.bgImage}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <img
+                      src={feature.cubeImage}
+                      alt=""
+                      className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 object-contain transition-transform duration-500 group-hover:-translate-y-1/2 group-hover:scale-110"
+                    />
+                  </div>
 
                   <div className="mt-5 flex items-center gap-3">
                     <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 transition-transform duration-300 group-hover:scale-110">
