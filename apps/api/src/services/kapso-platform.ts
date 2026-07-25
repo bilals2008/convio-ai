@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 
 const PLATFORM_API = 'https://api.kapso.ai/platform/v1'
 
-function getApiKey(overrideKey?: string): string {
+export function getApiKey(overrideKey?: string): string {
   if (overrideKey) return overrideKey
   const key = process.env.KAPSO_ORG_API_KEY
   if (!key) throw new Error('KAPSO_ORG_API_KEY not configured')
