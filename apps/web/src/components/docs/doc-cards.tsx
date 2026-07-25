@@ -3,7 +3,7 @@ import { ArrowRight, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DocFeatureCardProps {
-  icon: LucideIcon
+  icon: LucideIcon | React.ComponentType<{ className?: string }>
   iconBg: string
   iconColor: string
   title: string
@@ -41,7 +41,7 @@ export function DocFeatureCard({
 }
 
 interface DocNextStepCardProps {
-  icon: LucideIcon
+  icon: LucideIcon | React.ComponentType<{ className?: string }>
   iconBg: string
   iconColor: string
   title: string
