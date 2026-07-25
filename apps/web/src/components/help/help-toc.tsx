@@ -26,6 +26,7 @@ function useHeadings(): TocItem[] {
 
     const elements = main.querySelectorAll('h2, h3')
     const items: TocItem[] = []
+    const idCount = new Map<string, number>()
 
     elements.forEach((el) => {
       const text = el.textContent?.trim() ?? ''
@@ -33,6 +34,12 @@ function useHeadings(): TocItem[] {
 
       if (!el.id) {
         el.id = slugify(text)
+      }
+
+      const count = idCount.get(el.id) ?? 0
+      idCount.set(el.id, count + 1)
+      if (count > 0) {
+        el.id = `${el.id}-${count}`
       }
 
       items.push({
