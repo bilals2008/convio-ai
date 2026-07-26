@@ -288,7 +288,7 @@ export function KbSources({
       size: 96,
       cell: ({ row }) => {
         const doc = row.original
-        const isBusy = doc.status === 'processing' || doc.status === 'pending' || reprocessingId === doc.id
+        const isBusy = doc.status === 'processing' || reprocessingId === doc.id
         return (
           <div className="flex items-center gap-0.5">
             <button
@@ -468,7 +468,7 @@ export function KbSources({
       ) : view === 'grid' ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((doc) => {
-            const isBusy = doc.status === 'processing' || doc.status === 'pending' || reprocessingId === doc.id
+        const isBusy = doc.status === 'processing' || reprocessingId === doc.id
             return (
               <div
                 key={doc.id}

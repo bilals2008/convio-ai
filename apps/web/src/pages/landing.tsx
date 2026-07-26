@@ -1,9 +1,21 @@
+import { useQuery } from '@tanstack/react-query'
 import { Navbar, HeroSection, TrustedBySection, EverythingSection, Pricing, CTA, Footer } from '@/components/landing'
 import { ChatWidget } from '@/components/widget'
+import { publicApi } from '@/lib/api'
 
-const LANDING_AGENT_ID = import.meta.env.VITE_LANDING_WIDGET_AGENT_ID || ''
+const LANDING_WIDGET_KEY = import.meta.env.VITE_LANDING_WIDGET_KEY || ''
 
 export default function Landing() {
+  const { data: widgetConfig } = useQuery({
+    queryKey: ['landing-widget'],
+    queryFn: async () => (await publicApi.get(`/public/widgets/${LANDING_WIDGET_KEY}`)).data.data,
+    enabled: !!LANDING_WIDGET_KEY,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const agentId = widgetConfig?.agent?.id || ''
+  const config = widgetConfig?.config || {}
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -15,15 +27,18 @@ export default function Landing() {
         <CTA />
       </main>
       <Footer />
-      {LANDING_AGENT_ID && (
+      {agentId && (
         <ChatWidget
-          agentId={LANDING_AGENT_ID}
-          greeting="Hey! 👋 Welcome to Convio. Ask me anything — features, pricing, docs, whatever you need."
-          agentName="Convio Assistant"
+          agentId={agentId}
+          publicKey={LANDING_WIDGET_KEY}
+          position={config.position || 'bottom-right'}
+          greeting={config.greeting || 'Hey there! Welcome to Convio. Ask me anything!'}
+          agentName={config.agentName || 'Convio Assistant'}
+          quickReplies={config.quickReplies}
           theme={{
-            primaryColor: '#fb923c',
-            backgroundColor: '#1c1c1c',
-            textColor: '#f3f4f6',
+            primaryColor: config.primaryColor || '#fb923c',
+            backgroundColor: config.backgroundColor || '#1c1c1c',
+            textColor: config.textColor || '#f3f4f6',
           }}
         />
       )}

@@ -39,7 +39,7 @@ export function DocumentCard({
   onReprocess,
   reprocessing,
 }: DocumentCardProps) {
-  const isBusy = doc.status === 'processing' || doc.status === 'pending' || reprocessing
+  const isBusy = doc.status === 'processing' || reprocessing
   const isActive = isBusy
 
   return (
