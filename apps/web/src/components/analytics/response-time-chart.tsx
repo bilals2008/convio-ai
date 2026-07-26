@@ -46,7 +46,7 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
           </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
-            <AreaChart data={chartData} margin={{ top: 13, right: 10, bottom: 12, left: -10 }}>
+            <AreaChart data={chartData} margin={{ top: 13, right: 10, bottom: 20, left: 0 }}>
               <defs>
                 <linearGradient id="fillResponseTime" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--color-avgResponseTime)" stopOpacity={0.5} />
@@ -69,8 +69,9 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                width={40}
-                tickFormatter={(v: number) => `${v.toFixed(1)}s`}
+                width={50}
+                domain={[0, 'auto']}
+                tickFormatter={(v: number) => (v === 0 ? '0s' : `${v.toFixed(0)}s`)}
               />
               <ChartTooltip
                 cursor={false}
@@ -87,6 +88,7 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
               <Area
                 dataKey="avgResponseTime"
                 type="natural"
+                baseValue={0}
                 stroke="var(--color-avgResponseTime)"
                 strokeWidth={2}
                 fill="url(#fillResponseTime)"
