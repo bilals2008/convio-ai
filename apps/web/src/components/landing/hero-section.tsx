@@ -65,9 +65,9 @@ export function HeroSection() {
                 <ArrowRight className="size-4" />
               </Button>
             </Link>
-            <a href="#channels">
+            <a href="#everything">
               <Button size="lg" variant="outline" className="bg-card/60">
-                See channels
+                View demo
               </Button>
             </a>
           </div>
