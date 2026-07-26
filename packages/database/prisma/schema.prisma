@@ -193,6 +193,7 @@ model Message {
   responseTimeMs   Int?         @map("response_time_ms")
   inputTokens      Int?         @map("input_tokens")
   outputTokens     Int?         @map("output_tokens")
+  cost             Float?
   metadata         Json?
   createdAt        DateTime     @default(now()) @db.Timestamptz(6)
   conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

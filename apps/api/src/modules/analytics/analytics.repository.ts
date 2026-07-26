@@ -487,6 +487,47 @@ export async function getGroupedAnalytics(
   })
 }
 
+// ── Cost ──
+
+export async function getTotalCost(agentIds: string[], fromDate: Date, toDate: Date) {
+  const result = await prisma.$queryRaw<{ total: number | null }[]>`
+    SELECT SUM(m."cost") as total
+    FROM "Message" m
+    JOIN "Conversation" c ON c."id" = m."conversationId"
+    WHERE c."agentId" = ANY(${agentIds})
+      AND m."cost" IS NOT NULL
+      AND m."createdAt" >= ${fromDate}
+      AND m."createdAt" <= ${toDate}
+  `
+  return result[0]?.total ? Number(result[0].total) : 0
+}
+
+export async function getAgentTotalCost(agentId: string, fromDate: Date, toDate: Date) {
+  const result = await prisma.$queryRaw<{ total: number | null }[]>`
+    SELECT SUM(m."cost") as total
+    FROM "Message" m
+    JOIN "Conversation" c ON c."id" = m."conversationId"
+    WHERE c."agentId" = ${agentId}
+      AND m."cost" IS NOT NULL
+      AND m."createdAt" >= ${fromDate}
+      AND m."createdAt" <= ${toDate}
+  `
+  return result[0]?.total ? Number(result[0].total) : 0
+}
+
+export async function getTopAgentCosts(agentIds: string[], fromDate: Date, toDate: Date) {
+  return prisma.$queryRaw<{ agent_id: string; total: number }[]>`
+    SELECT c."agentId" as agent_id, SUM(m."cost") as total
+    FROM "Message" m
+    JOIN "Conversation" c ON c."id" = m."conversationId"
+    WHERE c."agentId" = ANY(${agentIds})
+      AND m."cost" IS NOT NULL
+      AND m."createdAt" >= ${fromDate}
+      AND m."createdAt" <= ${toDate}
+    GROUP BY c."agentId"
+  `
+}
+
 // ── Snapshot ──
 
 export async function findAnalyticsSnapshot(agentId: string, date: Date) {

@@ -13,6 +13,10 @@
     "./providers": {
       "import": "./src/providers/index.ts",
       "types": "./src/providers/index.ts"
+    },
+    "./pricing": {
+      "import": "./src/pricing.ts",
+      "types": "./src/pricing.ts"
     }
   },
   "scripts": {
@@ -25,6 +29,7 @@
     "@ai-sdk/openai": "^4.0.0",
     "@ai-sdk/openai-compatible": "^3.0.0",
     "@huggingface/transformers": "^3.8.1",
-    "ai": "^7.0.0"
+    "ai": "^7.0.0",
+    "llm-prices": "^1.0.1"
   }
 }

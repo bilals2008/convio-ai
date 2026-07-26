@@ -81,13 +81,14 @@ export async function getOrgAnalytics(
   const prevFromDate = new Date(fromDate.getTime() - rangeMs)
   const prevToDate = new Date(fromDate.getTime() - 1)
 
-  const [snapshots, prevSnapshots, responseTimeMs, prevResponseTimeMs, tokens, dailyRt] = await Promise.all([
+  const [snapshots, prevSnapshots, responseTimeMs, prevResponseTimeMs, tokens, dailyRt, totalCostVal] = await Promise.all([
     repo.getAnalyticsSnapshots(agentIds, fromDate, toDate),
     repo.getAnalyticsSnapshots(agentIds, prevFromDate, prevToDate),
     repo.getAvgResponseTime(agentIds, fromDate, toDate),
     repo.getAvgResponseTime(agentIds, prevFromDate, prevToDate),
     repo.getTokenTotals(agentIds, fromDate, toDate),
     repo.getDailyResponseTime(agentIds, fromDate, toDate),
+    repo.getTotalCost(agentIds, fromDate, toDate),
   ])
 
   const realAvgRT = roundSeconds(responseTimeMs)
@@ -249,7 +250,7 @@ export async function getOrgAnalytics(
     channelBreakdown,
     dailyBreakdown,
     resolutionRate,
-    totalCost: Math.round(totalCost * 100) / 100,
+    totalCost: Math.round(totalCostVal * 100) / 100,
     returningUsers,
     avgSatisfactionScore: null,
   }
@@ -302,11 +303,12 @@ export async function getAgentAnalytics(
     }
   }
 
-  const [records, prevRecords, tokens, dailyTokens] = await Promise.all([
+  const [records, prevRecords, tokens, dailyTokens, agentCost] = await Promise.all([
     repo.getAnalyticsSnapshots([agentId], fromDate, toDate),
     repo.getAnalyticsSnapshots([agentId], prevFromDate, prevToDate),
     repo.getAgentTokenTotals(agentId, fromDate, toDate),
     repo.getAgentDailyTokens(agentId, fromDate, toDate),
+    repo.getAgentTotalCost(agentId, fromDate, toDate),
   ])
 
   const dailyTokenMap = new Map(dailyTokens.map((r) => [r.date.toISOString().slice(0, 10), { input: Number(r.input || 0), output: Number(r.output || 0) }]))
@@ -393,7 +395,7 @@ export async function getAgentAnalytics(
   const channelBreakdown = await repo.getChannelBreakdown([agentId], fromDate, toDate)
   const returningUsers = await repo.getReturningUsers([agentId], fromDate, toDate)
 
-  const totalCost = Math.round(((tokens.input * 0.000003) + (tokens.output * 0.000015)) * 100) / 100
+  const totalCost = Math.round(agentCost * 100) / 100
 
   return {
     totalConversations: totals.totalConversations,
@@ -472,7 +474,7 @@ export async function getTopAgents(
     })
   }
 
-  const [convCounts, msgCounts, tokenCounts, rtCounts, srCounts, resolutionStats, ratings] = await Promise.all([
+  const [convCounts, msgCounts, tokenCounts, rtCounts, srCounts, resolutionStats, ratings, agentCosts] = await Promise.all([
     repo.getTopAgentConversationCounts(agentIds, fromDate, toDate),
     repo.getTopAgentMessageCounts(agentIds, fromDate, toDate),
     repo.getTopAgentTokens(agentIds, fromDate, toDate),
@@ -480,6 +482,7 @@ export async function getTopAgents(
     repo.getTopAgentSuccessRates(agentIds, fromDate, toDate),
     repo.getTopAgentResolutionStats(agentIds, fromDate, toDate),
     repo.getTopAgentRatings(agentIds, fromDate, toDate),
+    repo.getTopAgentCosts(agentIds, fromDate, toDate),
   ])
 
   const convMap = new Map(convCounts.map((c) => [c.agentId, c._count.id]))
@@ -488,6 +491,7 @@ export async function getTopAgents(
   const rtMap = new Map(rtCounts.map((r) => [r.agent_id, r.avg ? roundSeconds(r.avg) : 0]))
   const srMap = new Map(srCounts.map((r) => [r.agent_id, Number(r.with_replies)]))
   const ratingMap = new Map(ratings.map((r) => [r.agentId, r._avg.rating ? Math.round(r._avg.rating * 100) / 100 : null]))
+  const costMap = new Map(agentCosts.map((r) => [r.agent_id, r.total]))
 
   const resMap = new Map<string, { resolved: number; escalated: number }>()
   for (const r of resolutionStats) {
@@ -515,7 +519,7 @@ export async function getTopAgents(
       totalInputTokens: tokens.input,
       totalOutputTokens: tokens.output,
       resolutionRate: resolutionTotal > 0 ? Math.round((res.resolved / resolutionTotal) * 100) : 0,
-      totalCost: Math.round(((tokens.input * 0.000003) + (tokens.output * 0.000015)) * 100) / 100,
+      totalCost: costMap.get(agent.id) ?? Math.round(((tokens.input * 0.000003) + (tokens.output * 0.000015)) * 100) / 100,
     }
   })
 

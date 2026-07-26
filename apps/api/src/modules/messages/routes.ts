@@ -8,6 +8,7 @@ import { retrieveContext } from '../../services/processor.js'
 import { moderateForOrg, type ModerationFlag } from '../../services/moderation.js'
 import { checkMessageLimit } from '../../services/billing.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
+import { computeCost } from '@convio/ai/pricing'
 import { z } from 'zod'
 
 // User-facing message shown when a message is blocked by moderation.
@@ -391,6 +392,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           responseTimeMs,
           inputTokens: totalInputTokens || null,
           outputTokens: totalOutputTokens || null,
+          cost: computeCost(agent.model, totalInputTokens || 0, totalOutputTokens || 0),
         },
       })
 
@@ -603,6 +605,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           responseTimeMs,
           inputTokens: response.usage?.promptTokens ?? null,
           outputTokens: response.usage?.completionTokens ?? null,
+          cost: computeCost(agent.model, response.usage?.promptTokens ?? 0, response.usage?.completionTokens ?? 0),
         },
       })
 
@@ -827,6 +830,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           responseTimeMs,
           inputTokens: totalInputTokens || null,
           outputTokens: totalOutputTokens || null,
+          cost: computeCost(agent.model, totalInputTokens || 0, totalOutputTokens || 0),
         },
       })
     }
