@@ -18,12 +18,19 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  ChevronDown,
 } from 'lucide-react'
 import { FileIcon } from '@/components/shared/file-icon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Table,
   TableBody,
@@ -62,7 +69,8 @@ interface KbSourcesProps {
   setSelectionMode: (v: boolean) => void
   selected: Set<string>
   toggleSelect: (id: string) => void
-  onAddSource: () => void
+  onAddFile: () => void
+  onAddWebsite: () => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
   onReprocess: (id: string) => void
@@ -136,7 +144,8 @@ export function KbSources({
   setSelectionMode,
   selected,
   toggleSelect,
-  onAddSource,
+  onAddFile,
+  onAddWebsite,
   onPreview,
   onDelete,
   onReprocess,
@@ -325,7 +334,7 @@ export function KbSources({
 
   return (
     <div className="space-y-4">
-      <DropZone onFiles={onUploadFiles} uploading={uploading} onMoreSources={onAddSource} />
+      <DropZone onFiles={onUploadFiles} uploading={uploading} onMoreSources={onAddFile} />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[200px] flex-1">
@@ -338,10 +347,25 @@ export function KbSources({
           />
         </div>
 
-        <Button variant="outline" size="sm" className="gap-1.5 h-9" onClick={onAddSource}>
-          <UploadCloud className="size-3.5" />
-          Add Source
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5 h-9">
+              <UploadCloud className="size-3.5" />
+              Add Source
+              <ChevronDown className="size-3 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={onAddFile}>
+              <UploadCloud className="size-4" />
+              File Upload
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onAddWebsite}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4"><path d="M12 2a10 10 0 1 0 10 10h-10V2Z"/><path d="M12 2v10l8.66 5"/></svg>
+              Website
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="h-9 w-[150px]">
@@ -435,7 +459,7 @@ export function KbSources({
         )
       ) : filtered.length === 0 ? (
         documents.length === 0 ? (
-          <NoDocuments onAddSource={onAddSource} />
+          <NoDocuments onAddSource={onAddFile} />
         ) : (
           <div className="rounded-xl border border-dashed border-border/60 py-12 text-center">
             <p className="text-sm text-muted-foreground">No sources match your filters.</p>

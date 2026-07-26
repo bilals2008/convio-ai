@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
-import { SourcePickerModal } from '@/components/knowledge/source-picker-modal'
+
 import { DocumentTypeBadge } from '@/components/knowledge/document-type-badge'
 import { DocumentStatusBadge } from '@/components/knowledge/document-status-badge'
 import { KbHeader } from '@/components/knowledge/kb-header'
@@ -79,7 +79,6 @@ export default function KnowledgeDetailPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof KbFormValues, string>>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const [sourceModalOpen, setSourceModalOpen] = useState(false)
   const [selectionMode, setSelectionMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [reprocessingId, setReprocessingId] = useState<string | null>(null)
@@ -429,7 +428,7 @@ export default function KnowledgeDetailPage() {
         <KbNextStep
           kb={detail}
           hasTested={hasTested}
-          onAddSource={() => setSourceModalOpen(true)}
+          onAddSource={() => setTimeout(() => fileInputRef.current?.click(), 100)}
           onNavigate={setActiveTab}
         />
       )}
@@ -495,7 +494,8 @@ export default function KnowledgeDetailPage() {
                     return next
                   })
                 }
-                onAddSource={() => setSourceModalOpen(true)}
+                onAddFile={() => setTimeout(() => fileInputRef.current?.click(), 100)}
+                onAddWebsite={() => setUrlDialogOpen(true)}
                 onPreview={setViewDocId}
                 onDelete={handleDeleteDocument}
                 onReprocess={handleReprocess}
@@ -689,18 +689,6 @@ export default function KnowledgeDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <SourcePickerModal
-        open={sourceModalOpen}
-        onOpenChange={setSourceModalOpen}
-        onSelect={(sourceId) => {
-          setSourceModalOpen(false)
-          if (sourceId === 'file-upload') {
-            setTimeout(() => fileInputRef.current?.click(), 100)
-          } else if (sourceId === 'website') {
-            setUrlDialogOpen(true)
-          }
-        }}
-      />
     </PageContainer>
   )
 }
