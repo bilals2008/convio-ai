@@ -11,6 +11,8 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import Landing from '@/pages/landing'
 import PricingPage from '@/pages/pricing-page'
 import ContactPage from '@/pages/contact-page'
+import TermsPage from '@/pages/terms-page'
+import PrivacyPage from '@/pages/privacy-page'
 import LoginPage from '@/pages/auth/login-page'
 import SignupPage from '@/pages/auth/signup-page'
 import ForgotPasswordPage from '@/pages/auth/forgot-password-page'
@@ -280,6 +282,8 @@ export function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/login" element={<RedirectAuthenticated><LoginPage /></RedirectAuthenticated>} />
             <Route path="/signup" element={<RedirectAuthenticated><SignupPage /></RedirectAuthenticated>} />
             <Route path="/forgot-password" element={<RedirectAuthenticated><ForgotPasswordPage /></RedirectAuthenticated>} />
