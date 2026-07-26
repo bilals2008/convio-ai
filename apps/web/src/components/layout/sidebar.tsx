@@ -18,8 +18,7 @@ import {
   CreditCard,
   Database,
   Plug,
-  Lightbulb,
-  LifeBuoy,
+
   Palette,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -163,14 +162,6 @@ export function Sidebar() {
             <SidebarItem icon={MessageSquare} label="Conversations" href="/conversations" />
             <SidebarItem icon={MessageCircle} label="Widgets" href="/widgets" />
             <SidebarItem icon={Globe} label="Deployments" href="/settings/deployments" />
-          </SidebarGroup>
-
-          <SidebarGroup label="Development">
-            <SidebarItem icon={BookOpen} label="Technical Docs" href="/docs" />
-          </SidebarGroup>
-
-          <SidebarGroup label="Support">
-            <SidebarItem icon={LifeBuoy} label="Help Center" href="/help" />
           </SidebarGroup>
 
           <SettingsGroup collapsed={collapsed} />
@@ -369,18 +360,6 @@ function getMobileNavGroups(role?: string) {
         { icon: MessageSquare, label: 'Conversations', href: '/conversations' },
         { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
         { icon: Globe, label: 'Deployments', href: '/settings/deployments' },
-      ],
-    },
-    {
-      label: 'Development',
-      items: [
-        { icon: BookOpen, label: 'Technical Docs', href: '/docs' },
-      ],
-    },
-    {
-      label: 'Support',
-      items: [
-        { icon: LifeBuoy, label: 'Help Center', href: '/help' },
       ],
     },
     {
