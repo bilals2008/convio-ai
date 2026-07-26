@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Moon, Sun, ArrowRight, Search, ChevronDown, Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
+import { HelpCommandPalette } from './help-command-palette'
 
 interface NavItem {
   label: string
@@ -35,16 +35,25 @@ export function HelpTopbar({ onMenuToggle, menuOpen }: HelpTopbarProps) {
   const { theme, setTheme } = useTheme()
   const { pathname } = useLocation()
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+
+  function onPaletteOpenChange(open: boolean) {
+    setPaletteOpen(open)
+  }
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    function down(e: KeyboardEvent) {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
-        document.getElementById('help-search')?.focus()
+        setPaletteOpen((o) => !o)
+      }
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+        e.preventDefault()
+        setPaletteOpen(true)
       }
     }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
+    document.addEventListener('keydown', down)
+    return () => document.removeEventListener('keydown', down)
   }, [])
 
   return (
@@ -115,19 +124,19 @@ export function HelpTopbar({ onMenuToggle, menuOpen }: HelpTopbarProps) {
 
         {/* Search */}
         <div className="flex-1 max-w-md mx-auto hidden md:block">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60 group-focus-within:text-muted-foreground transition-colors" />
-            <input
-              id="help-search"
-              type="text"
-              placeholder="Search docs..."
-              className="w-full h-9 pl-9 pr-14 rounded-lg border border-border bg-muted/40 text-[13px] text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/40 focus:bg-muted/60 focus:ring-2 focus:ring-primary/10 transition-all"
-            />
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="relative flex items-center w-full h-9 pl-9 pr-14 rounded-lg border border-border bg-muted/40 text-[13px] text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/60 hover:border-border/80 transition-all text-left"
+          >
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/40" />
+            <span>Search docs...</span>
             <kbd className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none inline-flex h-5 items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground/60">
               <span className="text-[11px]">⌘</span>K
             </kbd>
-          </div>
+          </button>
         </div>
+
+        <HelpCommandPalette open={paletteOpen} onOpenChange={onPaletteOpenChange} />
 
         {/* Right side */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
