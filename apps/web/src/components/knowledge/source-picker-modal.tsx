@@ -1,11 +1,7 @@
 import { Upload, Type, HelpCircle } from 'lucide-react'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+
+const SVG = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
 
 export type SourceType = 'file-upload' | 'website' | 'custom-text' | 'faq'
 
@@ -13,16 +9,15 @@ interface SourceOption {
   id: SourceType
   label: string
   description: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string }> | null
+  logo: string | null
 }
 
 const sources: SourceOption[] = [
-  { id: 'file-upload', label: 'File Upload', description: 'PDF, DOCX, TXT files', icon: Upload },
-  { id: 'website', label: 'Website', description: 'Crawl web pages', icon: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-[18px]"><path d="M12 2a10 10 0 1 0 10 10h-10V2Z"/><path d="M12 2v10l8.66 5"/></svg>
-  ) },
-  { id: 'custom-text', label: 'Custom Text', description: 'Plain text content', icon: Type },
-  { id: 'faq', label: 'FAQ', description: 'Q&A pairs', icon: HelpCircle },
+  { id: 'file-upload', label: 'File Upload', description: 'PDF, DOCX, TXT files', icon: Upload, logo: null },
+  { id: 'website', label: 'Website', description: 'Crawl web pages', icon: null, logo: `${SVG}/google-chrome/default.svg` },
+  { id: 'custom-text', label: 'Custom Text', description: 'Plain text content', icon: Type, logo: null },
+  { id: 'faq', label: 'FAQ', description: 'Q&A pairs', icon: HelpCircle, logo: null },
 ]
 
 interface SourcePickerModalProps {
@@ -33,30 +28,35 @@ interface SourcePickerModalProps {
 
 export function SourcePickerModal({ open, onOpenChange, onSelect }: SourcePickerModalProps) {
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <span />
-      </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={4} className="w-56 p-1">
-        {sources.map((source) => {
-          const Icon = source.icon
-          return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xs">
+        <DialogHeader>
+          <DialogTitle>Add source</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-1">
+          {sources.map((source) => (
             <button
               key={source.id}
               onClick={() => { onSelect(source.id); onOpenChange(false) }}
-              className="flex w-full items-center gap-3 rounded-md p-2.5 text-left transition-colors hover:bg-muted/50 cursor-pointer"
+              className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-muted/50 cursor-pointer"
             >
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="size-[18px]" />
-              </div>
+              {source.logo ? (
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background border border-border/40">
+                  <img src={source.logo} alt={source.label} className="size-5" />
+                </div>
+              ) : source.icon ? (
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <source.icon className="size-[18px]" />
+                </div>
+              ) : null}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium leading-tight">{source.label}</p>
                 <p className="text-xs text-muted-foreground leading-tight">{source.description}</p>
               </div>
             </button>
-          )
-        })}
-      </PopoverContent>
-    </Popover>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
