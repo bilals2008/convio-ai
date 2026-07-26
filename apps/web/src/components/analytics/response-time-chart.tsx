@@ -46,11 +46,11 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
           </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
-            <AreaChart data={chartData} margin={{ top: 13, right: 10, bottom: 0, left: -10 }}>
+            <AreaChart data={chartData} margin={{ top: 13, right: 10, bottom: 12, left: -10 }}>
               <defs>
                 <linearGradient id="fillResponseTime" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-avgResponseTime)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="var(--color-avgResponseTime)" stopOpacity={0.05} />
+                  <stop offset="5%" stopColor="var(--color-avgResponseTime)" stopOpacity={0.5} />
+                  <stop offset="95%" stopColor="var(--color-avgResponseTime)" stopOpacity={0.08} />
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} />
