@@ -16,6 +16,16 @@ import {
   Rocket,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { defaultCapabilities } from '@/components/agents/agent-capabilities'
 import { builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
@@ -75,6 +85,7 @@ export default function AgentDetailPage() {
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
   const [linkedMcpServerIds, setLinkedMcpServerIds] = useState<string[]>([])
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const form = useForm({
     resolver: zodResolver(agentDetailSchema),
@@ -358,11 +369,7 @@ export default function AgentDetailPage() {
         onSave={handleSave}
         onCopyLink={() => navigator.clipboard.writeText(window.location.href)}
         shareUrl={shareUrl}
-        onDelete={() => {
-          if (confirm('Are you sure you want to delete this agent?')) {
-            deleteMutation.mutate()
-          }
-        }}
+        onDelete={() => setDeleteDialogOpen(true)}
         tabs={
           <TabsList variant="line" className="!h-11 flex-nowrap whitespace-nowrap md:!h-10 w-max">
             <TabsTrigger value="overview">
@@ -490,6 +497,25 @@ export default function AgentDetailPage() {
           />
         </TabsContent>
       </AgentDetailLayout>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Agent</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this agent? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => deleteMutation.mutate()}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Tabs>
   )
 }

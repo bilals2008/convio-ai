@@ -46,8 +46,8 @@ export const PLANS: Record<string, {
   },
   pro: {
     label: 'Pro',
-    features: ['5 agents', '25,000 messages/mo', 'Multi-channel', 'Advanced analytics'],
-    limits: { agents: 5, messagesPerMonth: 25000, knowledgeBases: 10, organizations: 3 },
+    features: ['10 agents', '25,000 messages/mo', 'Multi-channel', 'Advanced analytics'],
+    limits: { agents: 10, messagesPerMonth: 25000, knowledgeBases: 10, organizations: 3 },
     price: '$39/mo',
     priceMonthly: 39,
     get providerMonthlyProductId() { return process.env.CREEM_PRO_MONTHLY_PRODUCT_ID || '' },
