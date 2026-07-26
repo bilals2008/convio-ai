@@ -15,7 +15,7 @@ export function PromoBanner({ hidden }: { hidden?: boolean }) {
   }
 
   return (
-    <div className="relative bg-gradient-to-r from-emerald-600/20 via-primary/20 to-emerald-600/20 border-b border-primary/10">
+    <div className="relative bg-background border-b border-primary/10">
       <div className="mx-auto flex max-w-[1320px] items-center justify-center gap-2 px-5 py-2.5 text-xs md:text-sm">
         <span className="text-foreground">
           <span className="font-semibold text-emerald-500">Free Trial:</span>{' '}
