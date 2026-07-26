@@ -89,6 +89,8 @@ export default function KnowledgeDetailPage() {
   const [viewDocId, setViewDocId] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
+  const [urlDialogOpen, setUrlDialogOpen] = useState(false)
+  const [urlsInput, setUrlsInput] = useState('')
   const [hasTested, setHasTested] = useState(false)
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([])
   const [activeTab, setActiveTab] = useState(isCreate ? 'overview' : 'sources')
@@ -283,6 +285,22 @@ export default function KnowledgeDetailPage() {
       setReprocessingId(null)
     }
   }
+
+  const addUrlMutation = useMutation({
+    mutationFn: async (urls: { name: string; url: string }[]) => {
+      for (const item of urls) {
+        await knowledgeApi.uploadDocument(id!, { type: 'url', name: item.name, url: item.url })
+      }
+    },
+    onSuccess: (_data, urls) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
+      queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
+      toast.success(`${urls.length} web page${urls.length > 1 ? 's' : ''} added`)
+      setUrlDialogOpen(false)
+      setUrlsInput('')
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Failed to add web page'),
+  })
 
   const editMutation = useMutation({
     mutationFn: (data: { content: string }) => knowledgeApi.updateDocument(viewDocId!, data),
@@ -630,6 +648,47 @@ export default function KnowledgeDetailPage() {
           e.target.value = ''
         }}
       />
+      <Dialog open={urlDialogOpen} onOpenChange={setUrlDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add web pages</DialogTitle>
+            <DialogDescription>Paste one or more URLs (one per line) to add as sources.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">URLs</label>
+              <textarea
+                value={urlsInput}
+                onChange={(e) => setUrlsInput(e.target.value)}
+                placeholder="https://example.com/page1&#10;https://example.com/page2&#10;https://example.com/page3"
+                rows={5}
+                className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 resize-y font-mono"
+              />
+              {urlsInput.trim() && (
+                <p className="text-xs text-muted-foreground">
+                  {urlsInput.trim().split('\n').filter(Boolean).length} URL{urlsInput.trim().split('\n').filter(Boolean).length > 1 ? 's' : ''} detected
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setUrlDialogOpen(false); setUrlsInput('') }}>Cancel</Button>
+              <Button
+                size="sm"
+                disabled={!urlsInput.trim() || addUrlMutation.isPending}
+                onClick={() => {
+                  const urls = urlsInput.trim().split('\n').map(u => u.trim()).filter(Boolean)
+                  const items = urls.map(u => ({ name: u, url: u }))
+                  addUrlMutation.mutate(items)
+                }}
+              >
+                {addUrlMutation.isPending && <Loader2 className="size-3.5 animate-spin mr-1.5" />}
+                Add {urlsInput.trim().split('\n').filter(Boolean).length > 1 ? `(${urlsInput.trim().split('\n').filter(Boolean).length})` : ''} page{urlsInput.trim().split('\n').filter(Boolean).length > 1 ? 's' : ''}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <SourcePickerModal
         open={sourceModalOpen}
         onOpenChange={setSourceModalOpen}
@@ -637,6 +696,8 @@ export default function KnowledgeDetailPage() {
           setSourceModalOpen(false)
           if (sourceId === 'file-upload') {
             setTimeout(() => fileInputRef.current?.click(), 100)
+          } else if (sourceId === 'website') {
+            setUrlDialogOpen(true)
           }
         }}
       />

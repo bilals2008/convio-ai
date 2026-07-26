@@ -338,6 +338,11 @@ export function KbSources({
           />
         </div>
 
+        <Button variant="outline" size="sm" className="gap-1.5 h-9" onClick={onAddSource}>
+          <UploadCloud className="size-3.5" />
+          Add Source
+        </Button>
+
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="h-9 w-[150px]">
             <SelectValue />
