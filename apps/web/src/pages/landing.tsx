@@ -33,7 +33,8 @@ export default function Landing() {
           publicKey={LANDING_WIDGET_KEY}
           position={config.position || 'bottom-right'}
           greeting={config.greeting || 'Hey there! Welcome to Convio. Ask me anything!'}
-          agentName={config.agentName || 'Convio Assistant'}
+          agentName={config.agentName || widgetConfig?.agent?.name || 'Convio Assistant'}
+          agentAvatar={config.agentAvatar || widgetConfig?.agent?.avatar}
           quickReplies={config.quickReplies}
           theme={{
             primaryColor: config.primaryColor || '#fb923c',
