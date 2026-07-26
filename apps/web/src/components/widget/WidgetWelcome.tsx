@@ -8,8 +8,21 @@ const defaultQuickReplies = [
   'Get started',
 ]
 
+const ICON_MAP: Record<string, string> = {
+  zap: '⚡',
+  chat: '💬',
+  help: '❓',
+  sale: '💰',
+  doc: '📚',
+  order: '📦',
+  support: '🛟',
+  star: '⭐',
+  email: '✉️',
+  setting: '⚙️',
+}
+
 export function WidgetWelcome() {
-  const { agentName, agentAvatar, messages, onSendMessage, quickReplies } = useWidgetState()
+  const { agentName, agentAvatar, messages, onSendMessage, quickReplies, homeMenu } = useWidgetState()
 
   if (messages.length > 0) return null
 
@@ -53,18 +66,39 @@ export function WidgetWelcome() {
           Hi there! How can I help you today?
         </p>
 
-        <div className="flex flex-col gap-2 w-full">
-          {replies.slice(0, 4).map((reply) => (
-            <button
-              key={reply}
-              type="button"
-              onClick={() => onSendMessage(reply)}
-              className="w-full rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-muted))] px-4 py-2.5 text-[12px] font-medium text-[hsl(var(--widget-text))] hover:border-[hsl(var(--widget-primary)_/_0.4)] hover:bg-[hsl(var(--widget-primary)_/_0.05)] transition-all duration-150 text-left"
-            >
-              {reply}
-            </button>
-          ))}
-        </div>
+        {homeMenu.length > 0 ? (
+          <div className="flex flex-col gap-2 w-full">
+            {homeMenu.slice(0, 6).map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => onSendMessage(item.label)}
+                className="flex items-center gap-3 w-full rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-muted))] px-4 py-3 text-left hover:border-[hsl(var(--widget-primary)_/_0.4)] hover:bg-[hsl(var(--widget-primary)_/_0.05)] transition-all duration-150"
+              >
+                <span className="text-lg shrink-0">{ICON_MAP[item.icon] || '💬'}</span>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-[hsl(var(--widget-text))] leading-tight">{item.label}</p>
+                  {item.description && (
+                    <p className="text-[11px] text-[hsl(var(--widget-muted-foreground))] mt-0.5 leading-tight">{item.description}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 w-full">
+            {replies.slice(0, 4).map((reply) => (
+              <button
+                key={reply}
+                type="button"
+                onClick={() => onSendMessage(reply)}
+                className="w-full rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-muted))] px-4 py-2.5 text-[12px] font-medium text-[hsl(var(--widget-text))] hover:border-[hsl(var(--widget-primary)_/_0.4)] hover:bg-[hsl(var(--widget-primary)_/_0.05)] transition-all duration-150 text-left"
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

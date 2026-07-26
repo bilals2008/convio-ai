@@ -180,7 +180,13 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     const widget = await prisma.widget.findFirst({ where: { publicKey, ...(preview ? {} : { status: 'active' }) }, select: { id: true, agentId: true, allowedDomains: true } })
     if (!widget) throw new AppError(404, 'Widget not found')
     assertPublicAccess(request, widget.allowedDomains)
-    const conversation = await prisma.conversation.create({ data: { agentId: widget.agentId, userId: visitorId ?? null, channel: 'web' } })
+    const conversation = await prisma.conversation.create({
+      data: {
+        agentId: widget.agentId,
+        userId: visitorId ?? null,
+        channel: 'web',
+      },
+    })
     reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
     reply.code(201)
     return { data: conversation }

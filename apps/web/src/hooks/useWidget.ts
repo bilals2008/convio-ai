@@ -24,6 +24,7 @@ export interface WidgetConfig {
   agentName?: string
   agentAvatar?: string
   quickReplies?: string[]
+  homeMenu?: { icon: string; label: string; description: string }[]
 }
 
 const defaultTheme: WidgetTheme = {

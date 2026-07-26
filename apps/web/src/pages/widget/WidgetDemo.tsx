@@ -28,6 +28,7 @@ interface DemoConfig {
   greeting: string
   agentName: string
   quickReplies: string
+  homeMenu: { icon: string; label: string; description: string }[]
 }
 
 const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173'
@@ -184,6 +185,7 @@ export default function WidgetDemoPage() {
     greeting: "Hi there! I'm a Convio agent. How can I help you today?",
     agentName: 'Convio Demo',
     quickReplies: 'What can you help with?\nHow does pricing work?\nTell me about features\nGet started guide',
+    homeMenu: [],
   })
   const [copied, setCopied] = useState(false)
   const [embedTab, setEmbedTab] = useState<'script' | 'iframe'>('iframe')
@@ -213,6 +215,24 @@ export default function WidgetDemoPage() {
     setTimeout(() => setCopied(false), 2000)
   }, [currentEmbed])
 
+  const HOME_MENU_PRESETS = [
+    { icon: 'chat', label: 'Talk to Sales', description: 'Learn about pricing and plans' },
+    { icon: 'doc', label: 'Browse Docs', description: 'Read documentation and guides' },
+    { icon: 'order', label: 'Check Order', description: 'Track your order status' },
+    { icon: 'support', label: 'Get Help', description: 'Troubleshoot issues' },
+    { icon: 'star', label: 'Features', description: 'See what Convio can do' },
+    { icon: 'email', label: 'Contact Us', description: 'Send us a message' },
+  ]
+
+  const toggleHomeMenuItem = useCallback((preset: typeof HOME_MENU_PRESETS[number]) => {
+    setConfig((c) => {
+      const exists = c.homeMenu.find((m) => m.label === preset.label)
+      if (exists) return { ...c, homeMenu: c.homeMenu.filter((m) => m.label !== preset.label) }
+      if (c.homeMenu.length >= 6) return c
+      return { ...c, homeMenu: [...c.homeMenu, preset] }
+    })
+  }, [])
+
   const quickRepliesArray = config.quickReplies
     .split('\n')
     .map((s) => s.trim())
@@ -224,6 +244,7 @@ export default function WidgetDemoPage() {
     greeting: config.greeting,
     agentName: config.agentName,
     quickReplies: quickRepliesArray,
+    homeMenu: config.homeMenu.length > 0 ? config.homeMenu : undefined,
     theme: {
       primaryColor: config.primaryColor,
       backgroundColor: config.backgroundColor,
@@ -247,8 +268,44 @@ export default function WidgetDemoPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-semibold">Widget Builder</h1>
               <Badge variant="secondary" className="text-[10px]">Preview</Badge>
-            </div>
-          </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">
+                      Home Menu
+                      <span className="ml-1 font-normal text-muted-foreground">(click to toggle)</span>
+                    </Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {HOME_MENU_PRESETS.map((preset) => {
+                        const active = config.homeMenu.some((m) => m.label === preset.label)
+                        return (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => toggleHomeMenuItem(preset)}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-all',
+                              active
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/20'
+                            )}
+                          >
+                            {active ? '✓' : ''} {preset.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {config.homeMenu.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setConfig((c) => ({ ...c, homeMenu: [] }))}
+                        className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                      >
+                        Clear all ({config.homeMenu.length} selected)
+                      </button>
+                    )}
+                  </div>
+                </div>
           <Button
             size="default"
             variant={copied ? 'secondary' : 'outline'}

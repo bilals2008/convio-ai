@@ -18,6 +18,7 @@ export interface WidgetStateValue {
   quickReplies: string[]
   streamingContent: string
   position: 'bottom-right' | 'bottom-left'
+  homeMenu: { icon: string; label: string; description: string }[]
   onSendMessage: (content: string) => void
   onToggle: () => void
   onClose: () => void

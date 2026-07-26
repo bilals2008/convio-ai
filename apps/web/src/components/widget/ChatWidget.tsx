@@ -16,6 +16,7 @@ export interface ChatWidgetProps {
   agentName?: string
   agentAvatar?: string
   quickReplies?: string[]
+  homeMenu?: { icon: string; label: string; description: string }[]
 }
 
 const defaultTheme: WidgetTheme = {
@@ -49,9 +50,10 @@ export function ChatWidget({
   agentName = 'Convio Assistant',
   agentAvatar,
   quickReplies,
+  homeMenu,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies })
+  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu })
 
   const stateValue = {
     isOpen: widget.isOpen,
@@ -70,6 +72,7 @@ export function ChatWidget({
     quickReplies: quickReplies || [],
     streamingContent: widget.streamingContent,
     position,
+    homeMenu: homeMenu || [],
     onSendMessage: widget.sendMessage,
     onToggle: widget.toggleWidget,
     onClose: widget.closeWidget,

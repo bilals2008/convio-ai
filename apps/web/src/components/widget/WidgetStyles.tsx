@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { WidgetTheme } from '@/hooks/useWidget'
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
@@ -37,20 +38,24 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
   return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) }
 }
 
-export function getWidgetCSSVariables(theme: WidgetTheme): Record<string, string> {
+export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Record<string, string> {
   const primary = hexToHsl(theme.primaryColor)
   const bg = hexToHsl(theme.backgroundColor)
   const text = hexToHsl(theme.textColor)
 
+  // When isDark is true, ensure bg is dark and text is light regardless of what was configured
+  const bgL = isDark ? Math.min(bg.l, 18) : bg.l
+  const textL = isDark ? Math.max(text.l, 85) : text.l
+
   return {
     '--widget-primary': `${primary.h} ${primary.s}% ${primary.l}%`,
     '--widget-primary-foreground': '0 0% 100%',
-    '--widget-bg': `${bg.h} ${bg.s}% ${bg.l}%`,
-    '--widget-text': `${text.h} ${text.s}% ${text.l}%`,
-    '--widget-muted': `${bg.h} ${bg.s * 0.3}% ${bg.l > 50 ? 93 : 15}%`,
-    '--widget-muted-foreground': `${text.h} ${text.s * 0.3}% ${text.l > 50 ? 40 : 65}%`,
-    '--widget-border': `${primary.h} ${primary.s * 0.3}% ${bg.l > 50 ? 88 : 18}%`,
-  } as Record<string, string>
+    '--widget-bg': `${bg.h} ${Math.max(bg.s, 5)}% ${bgL}%`,
+    '--widget-text': `${text.h} ${Math.max(text.s, 5)}% ${textL}%`,
+    '--widget-muted': `${bg.h} 8% ${isDark ? 22 : 93}%`,
+    '--widget-muted-foreground': `${text.h} 8% ${isDark ? 55 : 40}%`,
+    '--widget-border': `${primary.h} ${Math.max(primary.s * 0.2, 3)}% ${isDark ? 25 : 88}%`,
+  }
 }
 
 interface WidgetStylesProps {
@@ -58,7 +63,19 @@ interface WidgetStylesProps {
 }
 
 export function WidgetStyles({ theme }: WidgetStylesProps) {
-  const vars = getWidgetCSSVariables(theme)
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  const vars = getWidgetCSSVariables(theme, isDark)
 
   return (
     <style
