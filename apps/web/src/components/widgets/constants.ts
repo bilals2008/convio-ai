@@ -7,6 +7,8 @@ export const primaryPresets = [
   { label: 'Violet', color: '#8b5cf6' },
   { label: 'Rose', color: '#f43f5e' },
   { label: 'Slate', color: '#475569' },
+  { label: 'Cyan', color: '#06b6d4' },
+  { label: 'Amber', color: '#f59e0b' },
 ] as const
 
 export const bgPresets = [
@@ -21,6 +23,7 @@ export const textPresets = [
   { label: 'White', color: '#ffffff' },
   { label: 'Dark', color: '#1f2937' },
   { label: 'Charcoal', color: '#111827' },
+  { label: 'Muted', color: '#9ca3af' },
 ] as const
 
 export const STATUS_BADGE: Record<

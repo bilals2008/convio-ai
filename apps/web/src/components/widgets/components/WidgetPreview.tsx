@@ -1,7 +1,8 @@
-import { ExternalLink, Eye } from 'lucide-react'
+import { ExternalLink, Eye, Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getContrastText, isLightColor } from '../helpers'
 import type { PromptItem } from '../types'
+import { useState } from 'react'
 
 interface WidgetPreviewProps {
   primaryColor: string
@@ -36,6 +37,8 @@ export function WidgetPreview({
     .join('')
     .toUpperCase()
 
+  const [previewMode, setPreviewMode] = useState<'light' | 'dark'>('dark')
+
   return (
     <aside className="lg:sticky lg:top-6" aria-label="Widget live preview">
       <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10 shadow-sm">
@@ -46,12 +49,31 @@ export function WidgetPreview({
             </div>
             <span className="text-sm font-semibold text-foreground">Live preview</span>
           </div>
-          <span className="font-mono text-[10px] text-muted-foreground/70">
-            preview
-          </span>
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-0.5">
+            <button
+              onClick={() => setPreviewMode('light')}
+              className={cn(
+                'flex size-6 items-center justify-center rounded text-[11px] transition-colors',
+                previewMode === 'light' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              )}
+              aria-label="Light mode preview"
+            >
+              <Sun className="size-3" />
+            </button>
+            <button
+              onClick={() => setPreviewMode('dark')}
+              className={cn(
+                'flex size-6 items-center justify-center rounded text-[11px] transition-colors',
+                previewMode === 'dark' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              )}
+              aria-label="Dark mode preview"
+            >
+              <Moon className="size-3" />
+            </button>
+          </div>
         </div>
 
-        <div className="bg-muted/20 p-4">
+        <div className={cn('p-4 transition-colors duration-200', previewMode === 'dark' ? 'bg-zinc-900' : 'bg-zinc-100')}>
           <div className="overflow-hidden rounded-lg ring-1 ring-foreground/10 shadow-sm">
             <div className="flex items-center gap-1.5 border-b border-border/60 bg-card/60 px-3 py-2">
               <span className="size-2 rounded-full bg-destructive/40" aria-hidden="true" />
