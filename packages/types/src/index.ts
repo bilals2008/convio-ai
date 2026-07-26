@@ -180,6 +180,8 @@ export interface BillingPlan {
   limits: { agents: number; messagesPerMonth: number; knowledgeBases: number; organizations: number }
   price: string
   priceMonthly: number
+  trialEndsAt?: string | null
+  isTrial?: boolean
 }
 
 export interface BillingUsage {

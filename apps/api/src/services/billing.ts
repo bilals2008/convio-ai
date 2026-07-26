@@ -5,12 +5,42 @@ import type { BillingPlan } from '@convio/types'
 export async function getOrgPlan(orgId: string): Promise<BillingPlan> {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
-    select: { plan: true, createdAt: true },
+    select: { plan: true },
   })
 
   if (!org) throw new Error('Organization not found')
 
-  const planKey = org.plan as string
+  let planKey = org.plan as string
+  let trialEndsAt: Date | null = null
+  let isTrial = false
+
+  if (planKey === 'pro') {
+    const trialSub = await prisma.subscription.findFirst({
+      where: {
+        customer: { organizationId: orgId },
+        status: 'on_trial',
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    if (trialSub) {
+      if (trialSub.trialEndsAt && new Date() > trialSub.trialEndsAt) {
+        planKey = 'free'
+        await prisma.organization.update({
+          where: { id: orgId },
+          data: { plan: 'free' },
+        })
+        await prisma.subscription.update({
+          where: { id: trialSub.id },
+          data: { status: 'expired' },
+        })
+      } else {
+        trialEndsAt = trialSub.trialEndsAt
+        isTrial = true
+      }
+    }
+  }
+
   const planDef = PLANS[planKey] || PLANS.free
 
   return {
@@ -20,6 +50,8 @@ export async function getOrgPlan(orgId: string): Promise<BillingPlan> {
     limits: planDef.limits,
     price: planDef.price,
     priceMonthly: planDef.priceMonthly,
+    trialEndsAt: trialEndsAt?.toISOString() ?? null,
+    isTrial,
   }
 }
 
