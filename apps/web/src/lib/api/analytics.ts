@@ -55,6 +55,13 @@ export interface AgentAnalyticsResponse {
   returningUsers: number
 }
 
+export interface TopDocumentEntry {
+  id: string
+  name: string
+  queries: number
+  successRate: number
+}
+
 export interface TopAgentEntry {
   agentId: string
   agentName: string
@@ -79,4 +86,7 @@ export const analyticsApi = {
 
   topAgents: (orgId: string, params?: { from?: string; to?: string; limit?: number }) =>
     api.get<{ data: TopAgentEntry[] }>(`/organizations/${orgId}/analytics/top-agents`, { params }),
+
+  topDocuments: (orgId: string, params?: { limit?: number }) =>
+    api.get<{ data: TopDocumentEntry[] }>(`/organizations/${orgId}/analytics/top-documents`, { params }),
 }

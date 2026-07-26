@@ -22,6 +22,10 @@ export const topAgentsQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(10),
 })
 
+export const topDocsQuerySchema = z.object({
+  limit: z.coerce.number().min(1).max(50).default(10),
+})
+
 export const snapshotBodySchema = z.object({
   date: dateSchema,
   totalConversations: z.number().int().min(0).default(0),

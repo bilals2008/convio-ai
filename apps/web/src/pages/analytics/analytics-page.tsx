@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MessagesSquare, Send, Timer, Cpu, CheckCircle, DollarSign, Users, TrendingUp } from 'lucide-react'
+import { DollarSign, CheckCircle, Cpu, Users } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { PageHeader } from '@/components/shared/page-header'
@@ -7,13 +7,12 @@ import { OverviewChart } from '@/components/dashboard/overview-chart'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
 import { ChannelPerformanceChart } from '@/components/analytics/channel-performance-chart'
-import { TokenUsageChart } from '@/components/analytics/token-usage-chart'
-import { DailyCostChart } from '@/components/analytics/daily-cost-chart'
+import { TokenCostTrend } from '@/components/analytics/token-cost-trend'
 import { AgentPerformanceTable } from '@/components/analytics/agent-performance-table'
+import { TopDocumentsTable } from '@/components/analytics/top-documents-table'
 import { EmptyState } from '@/components/shared/empty-state'
 import { useOrgAnalytics } from '@/hooks/use-analytics'
 import { useOrg } from '@/lib/org-context'
-import { formatResponseTime } from '@/lib/analytics'
 
 const dateRanges = [
   { label: '7 days', value: '7d' },
@@ -110,33 +109,33 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatsCard
-          icon={MessagesSquare}
-          label="Conversations"
-          value={overview.totalConversations.toLocaleString()}
+          icon={DollarSign}
+          label="Total Cost"
+          value={`$${overview.totalCost.toFixed(2)}`}
           description={`${overview.conversationsChange >= 0 ? '+' : ''}${overview.conversationsChange}% from prev`}
-          iconClassName="bg-blue-500/10 text-blue-500 dark:text-blue-400"
+          iconClassName="bg-violet-500/10 text-violet-500 dark:text-violet-400"
         />
         <StatsCard
-          icon={Send}
-          label="Messages"
-          value={overview.totalMessages.toLocaleString()}
-          description={`${Math.round(overview.totalMessages / Math.max(overview.totalConversations, 1))} per conversation`}
+          icon={CheckCircle}
+          label="Success Rate"
+          value={`${overview.successRate}%`}
+          description={`${overview.successRate >= 80 ? 'Excellent' : overview.successRate >= 60 ? 'Good' : 'Needs improvement'}`}
+          descriptionClassName={overview.successRate >= 80 ? 'text-emerald-500' : overview.successRate >= 60 ? 'text-amber-500' : 'text-red-500'}
           iconClassName="bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
         />
         <StatsCard
-          icon={Timer}
-          label="Avg Response"
-          value={formatResponseTime(overview.avgResponseTime)}
-          description={overview.avgResponseTime < 1 ? 'Excellent' : overview.avgResponseTime < 2 ? 'Good' : 'Needs improvement'}
-          descriptionClassName={overview.avgResponseTime < 1 ? 'text-emerald-500' : overview.avgResponseTime < 2 ? 'text-amber-500' : 'text-red-500'}
-          iconClassName="bg-amber-500/10 text-amber-500 dark:text-amber-400"
+          icon={Cpu}
+          label="Tokens Used"
+          value={(overview.totalInputTokens + overview.totalOutputTokens).toLocaleString()}
+          description={`${overview.totalInputTokens.toLocaleString()} in · ${overview.totalOutputTokens.toLocaleString()} out`}
+          iconClassName="bg-blue-500/10 text-blue-500 dark:text-blue-400"
         />
         <StatsCard
-          icon={Cpu}
-          label="Active Agents"
-          value="—"
-          description="Across all channels"
-          iconClassName="bg-violet-500/10 text-violet-500 dark:text-violet-400"
+          icon={Users}
+          label="Active Users"
+          value={overview.uniqueUsers.toLocaleString()}
+          description={`${overview.usersChange >= 0 ? '+' : ''}${overview.usersChange}% from prev`}
+          iconClassName="bg-amber-500/10 text-amber-500 dark:text-amber-400"
         />
       </div>
 
@@ -147,12 +146,10 @@ export default function AnalyticsPage() {
         <ChannelPerformanceChart data={overview.channelBreakdown} loading={isLoading} />
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <TokenUsageChart data={overview.dailyBreakdown} loading={isLoading} />
-        <DailyCostChart data={overview.dailyBreakdown} loading={isLoading} />
-      </div>
+      <TokenCostTrend data={overview.dailyBreakdown} totalCost={overview.totalCost} loading={isLoading} />
 
       <AgentPerformanceTable />
+      <TopDocumentsTable orgId={orgId} />
     </PageContainer>
   )
 }

@@ -25,6 +25,18 @@ export function useAgentAnalytics(agentId: string | undefined, from: string, to:
   })
 }
 
+export function useTopDocuments(orgId: string | undefined) {
+  return useQuery({
+    queryKey: ['top-documents', orgId],
+    queryFn: async () => {
+      const res = await analyticsApi.topDocuments(orgId!, { limit: 10 })
+      return res.data.data
+    },
+    enabled: !!orgId,
+    retry: false,
+  })
+}
+
 export function useTopAgents(orgId: string | undefined, from: string, to: string) {
   return useQuery({
     queryKey: ['top-agents', orgId, from, to],

@@ -7,6 +7,7 @@ import {
   agentParamsSchema,
   dateRangeQuerySchema,
   topAgentsQuerySchema,
+  topDocsQuerySchema,
   snapshotBodySchema,
 } from './analytics.schema.js'
 import * as service from './analytics.service.js'
@@ -74,6 +75,48 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, orgId)
     const data = await service.getTopAgents(orgId, from, to, limit)
     return { data }
+  })
+
+  // GET /api/organizations/:orgId/analytics/top-documents — Top documents by query count
+  fastify.get('/organizations/:orgId/analytics/top-documents', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: orgParamsSchema, query: topDocsQuerySchema }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+    const { limit } = request.query as { limit: number }
+    await fastify.getMembership(request.userId!, orgId)
+
+    const rows = await prisma.$queryRawUnsafe<
+      Array<{ id: string; name: string; queries: bigint; successCount: bigint }>
+    >(
+      `SELECT
+         d."id",
+         d."name",
+         COUNT(dq."id")::bigint AS "queries",
+         COALESCE(SUM(CASE WHEN dq."success" THEN 1 ELSE 0 END), 0)::bigint AS "successCount"
+       FROM "Document" d
+       JOIN "KnowledgeBase" kb ON kb."id" = d."knowledgeBaseId"
+       LEFT JOIN "DocumentQuery" dq ON dq."documentId" = d."id"
+       WHERE kb."organizationId" = $1
+       GROUP BY d."id", d."name"
+       ORDER BY "queries" DESC
+       LIMIT $2`,
+      orgId,
+      limit,
+    )
+
+    return {
+      data: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        queries: Number(r.queries),
+        successRate: Number(r.queries) > 0
+          ? Math.round((Number(r.successCount) / Number(r.queries)) * 100)
+          : 0,
+      })),
+    }
   })
 
   // POST /api/agents/:agentId/analytics/snapshot — Upsert daily analytics snapshot

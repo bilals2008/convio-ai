@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/chart'
 import { ChartTooltipContent } from '@/components/application/charts/charts-base'
-import { Line, LineChart, CartesianGrid, XAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MessageSquare } from 'lucide-react'
 
@@ -46,7 +46,13 @@ export function ActivityChart({ data, loading }: ActivityChartProps) {
           </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
-            <LineChart data={chartData}>
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="fillMessages" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-messages)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="var(--color-messages)" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="date"
@@ -70,14 +76,15 @@ export function ActivityChart({ data, loading }: ActivityChartProps) {
                   />
                 }
               />
-              <Line
+              <Area
                 dataKey="messages"
                 type="natural"
                 stroke="var(--color-messages)"
                 strokeWidth={2}
+                fill="url(#fillMessages)"
                 dot={false}
               />
-            </LineChart>
+            </AreaChart>
           </ChartContainer>
         )}
       </CardContent>

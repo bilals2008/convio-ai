@@ -196,7 +196,8 @@ model Message {
   cost             Float?
   metadata         Json?
   createdAt        DateTime     @default(now()) @db.Timestamptz(6)
-  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation     Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  queries          DocumentQuery[]
 
   @@index([conversationId, createdAt])
   @@index([createdAt])
@@ -227,8 +228,9 @@ model Document {
   status          String          @default("pending")
   createdAt       DateTime        @default(now()) @db.Timestamptz(6)
   fileKey         String?
-  knowledgeBase   KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id])
+  knowledgeBase   KnowledgeBase    @relation(fields: [knowledgeBaseId], references: [id])
   chunks          DocumentChunk[]
+  queries         DocumentQuery[]
 
   @@index([knowledgeBaseId])
   @@index([status])
@@ -244,6 +246,20 @@ model DocumentChunk {
   document   Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
+}
+
+model DocumentQuery {
+  id         String   @id @default(uuid())
+  documentId String
+  messageId  String
+  success    Boolean  @default(false)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+  @@index([documentId, success])
+  @@index([messageId])
 }
 
 model Tool {
