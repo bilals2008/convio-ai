@@ -26,6 +26,7 @@ const linkGroups = [
     links: [
       { label: 'Terms of Service', href: '/terms' },
       { label: 'Privacy Policy', href: '/privacy' },
+      { label: 'System Status', href: '/status' },
     ],
   },
 ]

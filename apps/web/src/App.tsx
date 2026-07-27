@@ -260,6 +260,7 @@ const CostOptimizationPage = lazy(() => import('@/pages/docs/cost-optimization')
 const AgentDesignPatternsPage = lazy(() => import('@/pages/docs/agent-design-patterns'))
 const ConversationDesignPage = lazy(() => import('@/pages/docs/conversation-design'))
 import InvitePage from '@/pages/invite-page'
+import StatusPage from '@/pages/status-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -288,6 +289,7 @@ export function App() {
             <Route path="/signup" element={<RedirectAuthenticated><SignupPage /></RedirectAuthenticated>} />
             <Route path="/forgot-password" element={<RedirectAuthenticated><ForgotPasswordPage /></RedirectAuthenticated>} />
             <Route path="/invite" element={<InvitePage />} />
+            <Route path="/status" element={<StatusPage />} />
             <Route path="/widget/demo" element={<WidgetDemoPage />} />
             <Route element={<HelpLayout />}>
               <Route path="/docs" element={<HelpIndexPage />} />

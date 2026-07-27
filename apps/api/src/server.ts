@@ -39,6 +39,7 @@ import mcpRoutes from './modules/mcp/routes.js'
 import contactRoutes from './modules/contact/routes.js'
 import huggingfaceRoutes from './modules/huggingface/routes.js'
 import avatarPresetsRoutes from './modules/avatar-presets/routes.js'
+import statusRoutes from './modules/status/routes.js'
 import emailPlugin from './services/email.jsx'
 import { initDiscordGateway, shutdownDiscordGateway } from './services/discord-gateway.js'
 
@@ -88,6 +89,7 @@ async function buildServer() {
   await app.register(contactRoutes, { prefix: '/api' })
   await app.register(huggingfaceRoutes, { prefix: '/api' })
   await app.register(avatarPresetsRoutes, { prefix: '/api' })
+  await app.register(statusRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {
