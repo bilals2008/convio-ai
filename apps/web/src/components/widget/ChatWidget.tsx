@@ -23,6 +23,13 @@ const defaultTheme: WidgetTheme = {
   primaryColor: '#fb923c',
   backgroundColor: '#1c1c1c',
   textColor: '#f3f4f6',
+  promptBgColor: '#2a2a2a',
+  headerGradientStart: '#fb923c',
+  headerGradientEnd: '#c2410c',
+  headerGradientDirection: '135deg',
+  borderColor: '',
+  inputBgColor: '',
+  sendBtnColor: '',
 }
 
 function WidgetBackdrop({ show, onClose }: { show: boolean; onClose: () => void }) {

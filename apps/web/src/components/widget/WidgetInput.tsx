@@ -38,9 +38,9 @@ export function WidgetInput() {
   const canSend = value.trim() && !isTyping
 
   return (
-    <div className="convio-input shrink-0 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] p-3">
+    <div className="convio-input shrink-0 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-input-bg))] p-3">
       <div className="flex items-end gap-2">
-        <div className="flex-1 rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] px-3.5 py-2 transition-all duration-200 focus-within:border-[hsl(var(--widget-primary)_/_0.5)] focus-within:ring-2 focus-within:ring-[hsl(var(--widget-primary)_/_0.1)]">
+        <div className="flex-1 rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-input-bg))] px-3.5 py-2 transition-all duration-200 focus-within:border-[hsl(var(--widget-primary)_/_0.5)] focus-within:ring-2 focus-within:ring-[hsl(var(--widget-primary)_/_0.1)]">
           <textarea
             ref={textareaRef}
             value={value}
@@ -68,7 +68,7 @@ export function WidgetInput() {
           style={
             canSend
               ? {
-                  background: `linear-gradient(135deg, hsl(var(--widget-primary)), color-mix(in srgb, hsl(var(--widget-primary)) 80%, black))`,
+                  background: `hsl(var(--widget-send-btn))`,
                 }
               : undefined
           }

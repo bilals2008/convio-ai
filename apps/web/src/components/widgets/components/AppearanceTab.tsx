@@ -1,10 +1,19 @@
-import { Palette } from 'lucide-react'
+import { Palette, PaintBucket } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
 import { SectionCard } from './SectionCard'
 import { ColorField } from './ColorField'
-import { primaryPresets, bgPresets, textPresets } from '../constants'
+import {
+  primaryPresets,
+  bgPresets,
+  textPresets,
+  promptBgPresets,
+  headerStartPresets,
+  headerEndPresets,
+  borderColorPresets,
+  inputBgPresets,
+  sendBtnPresets,
+} from '../constants'
 import { getContrastText } from '../helpers'
 
 interface AppearanceTabProps {
@@ -18,8 +27,20 @@ interface AppearanceTabProps {
   onBackgroundColorChange: (value: string) => void
   textColor: string
   onTextColorChange: (value: string) => void
-  position: 'bottom-right' | 'bottom-left'
-  onPositionChange: (value: 'bottom-right' | 'bottom-left') => void
+  promptBgColor: string
+  onPromptBgColorChange: (value: string) => void
+  headerGradientStart: string
+  onHeaderGradientStartChange: (value: string) => void
+  headerGradientEnd: string
+  onHeaderGradientEndChange: (value: string) => void
+  headerGradientDirection: number
+  onHeaderGradientDirectionChange: (value: number) => void
+  borderColor: string
+  onBorderColorChange: (value: string) => void
+  inputBgColor: string
+  onInputBgColorChange: (value: string) => void
+  sendBtnColor: string
+  onSendBtnColorChange: (value: string) => void
 }
 
 export function AppearanceTab({
@@ -33,8 +54,20 @@ export function AppearanceTab({
   onBackgroundColorChange,
   textColor,
   onTextColorChange,
-  position,
-  onPositionChange,
+  promptBgColor,
+  onPromptBgColorChange,
+  headerGradientStart,
+  onHeaderGradientStartChange,
+  headerGradientEnd,
+  onHeaderGradientEndChange,
+  headerGradientDirection,
+  onHeaderGradientDirectionChange,
+  borderColor,
+  onBorderColorChange,
+  inputBgColor,
+  onInputBgColorChange,
+  sendBtnColor,
+  onSendBtnColorChange,
 }: AppearanceTabProps) {
   const initials = (agentName || 'A')
     .split(' ')
@@ -44,16 +77,15 @@ export function AppearanceTab({
     .toUpperCase()
 
   return (
-    <>
+    <div className="space-y-5">
       <SectionCard
-        icon={<Palette className="size-3.5" aria-hidden="true" />}
+        icon={<Palette className="size-3.5" />}
         title="Appearance"
-        description="Customize how the widget looks on your site."
       >
-        <div className="space-y-7">
-          <div className="grid gap-5 sm:grid-cols-2">
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="agentName" className="text-sm font-medium text-foreground">
+              <Label htmlFor="agentName" className="text-sm font-medium">
                 Agent name
               </Label>
               <Input
@@ -66,7 +98,7 @@ export function AppearanceTab({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="agentAvatar" className="text-sm font-medium text-foreground">
+              <Label htmlFor="agentAvatar" className="text-sm font-medium">
                 Avatar URL
               </Label>
               <div className="flex items-center gap-2.5">
@@ -74,25 +106,23 @@ export function AppearanceTab({
                   id="agentAvatar"
                   value={agentAvatar}
                   onChange={(e) => onAgentAvatarChange(e.target.value)}
-                  placeholder="https://…"
+                  placeholder="https://..."
                   className="h-9 flex-1 text-sm"
                 />
                 <div
-                  className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-foreground/10 transition-all duration-200"
+                  className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-foreground/10"
                   style={
                     agentAvatar
                       ? undefined
                       : {
                           background: `linear-gradient(135deg, ${primaryColor}, color-mix(in srgb, ${primaryColor} 80%, black))`,
-                          boxShadow: `0 0 0 2px ${primaryColor}`,
                         }
                   }
-                  aria-label="Avatar preview"
                 >
                   {agentAvatar ? (
                     <img
                       src={agentAvatar}
-                      alt="Agent avatar preview"
+                      alt=""
                       className="size-full rounded-full object-cover"
                     />
                   ) : (
@@ -108,82 +138,132 @@ export function AppearanceTab({
             </div>
           </div>
 
-          <div className="space-y-5 border-t border-border/60 pt-6">
-            <ColorField
-              label="Primary color"
-              hint="Accent for the launcher button and user bubbles"
-              value={primaryColor}
-              onChange={onPrimaryColorChange}
-              presets={primaryPresets}
-            />
+          <div className="space-y-4 border-t border-border/60 pt-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ColorField
+                label="Primary color"
+                description="Accent for the launcher button and user bubbles"
+                value={primaryColor}
+                onChange={onPrimaryColorChange}
+                presets={primaryPresets}
+              />
 
-            <ColorField
-              label="Background color"
-              hint="Main background of the widget window"
-              value={backgroundColor}
-              onChange={onBackgroundColorChange}
-              presets={bgPresets}
-            />
+              <ColorField
+                label="Background color"
+                description="Main background of the widget window"
+                value={backgroundColor}
+                onChange={onBackgroundColorChange}
+                presets={bgPresets}
+              />
+            </div>
 
-            <ColorField
-              label="Text color"
-              hint="Color of message text and labels"
-              value={textColor}
-              onChange={onTextColorChange}
-              presets={textPresets}
-            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ColorField
+                label="Text color"
+                description="Color of message text and labels"
+                value={textColor}
+                onChange={onTextColorChange}
+                presets={textPresets}
+              />
+
+              <ColorField
+                label="Prompt background"
+                description="Background color for AI response bubbles"
+                value={promptBgColor}
+                onChange={onPromptBgColorChange}
+                presets={promptBgPresets}
+              />
+            </div>
           </div>
         </div>
       </SectionCard>
 
-      <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
-        <div className="flex items-start justify-between gap-4 border-b border-border/60 bg-card px-6 py-5">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Launcher position</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Where the floating launcher appears on the page.
-            </p>
+      <SectionCard
+        icon={<PaintBucket className="size-3.5" />}
+        title="Header"
+        description="Gradient background for the widget header"
+      >
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ColorField
+              label="Gradient start"
+              description="Starting color of the header gradient"
+              value={headerGradientStart}
+              onChange={onHeaderGradientStartChange}
+              presets={headerStartPresets}
+            />
+
+            <ColorField
+              label="Gradient end"
+              description="Ending color of the header gradient"
+              value={headerGradientEnd}
+              onChange={onHeaderGradientEndChange}
+              presets={headerEndPresets}
+            />
           </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Direction</Label>
+              <span className="text-xs text-muted-foreground tabular-nums">{headerGradientDirection}°</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={360}
+              value={headerGradientDirection}
+              onChange={(e) => onHeaderGradientDirectionChange(Number(e.target.value))}
+              className="w-full h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>0°</span>
+              <span>90°</span>
+              <span>180°</span>
+              <span>270°</span>
+              <span>360°</span>
+            </div>
+          </div>
+
           <div
-            className="flex shrink-0 items-center rounded-lg border border-border bg-muted/30 p-0.5"
-            role="radiogroup"
-            aria-label="Launcher position"
-          >
-            {(['bottom-right', 'bottom-left'] as const).map((pos) => (
-              <button
-                key={pos}
-                role="radio"
-                aria-checked={position === pos}
-                onClick={() => onPositionChange(pos)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                  position === pos
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <span
-                  className={cn(
-                    'relative size-3.5 rounded-sm border',
-                    position === pos ? 'border-primary-foreground/40' : 'border-current/40',
-                  )}
-                  aria-hidden="true"
-                >
-                  <span
-                    className={cn(
-                      'absolute size-1.5 rounded-full',
-                      pos === 'bottom-right' ? 'bottom-0 right-0' : 'bottom-0 left-0',
-                      position === pos ? 'bg-primary-foreground' : 'bg-current',
-                    )}
-                  />
-                </span>
-                {pos === 'bottom-right' ? 'Right' : 'Left'}
-              </button>
-            ))}
-          </div>
+            className="h-10 rounded-lg ring-1 ring-foreground/10"
+            style={{
+              background: `linear-gradient(${headerGradientDirection}deg, ${headerGradientStart}, ${headerGradientEnd})`,
+            }}
+          />
         </div>
-      </div>
-    </>
+      </SectionCard>
+
+      <SectionCard
+        icon={<PaintBucket className="size-3.5" />}
+        title="Widget elements"
+        description="Customize borders, input area, and send button"
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          <ColorField
+            label="Border color"
+            description="Color of widget borders and dividers"
+            value={borderColor}
+            onChange={onBorderColorChange}
+            presets={borderColorPresets}
+          />
+
+          <ColorField
+            label="Input background"
+            description="Background color of the message input area"
+            value={inputBgColor}
+            onChange={onInputBgColorChange}
+            presets={inputBgPresets}
+          />
+
+          <ColorField
+            label="Send button"
+            description="Color of the send message button"
+            value={sendBtnColor}
+            onChange={onSendBtnColorChange}
+            presets={sendBtnPresets}
+          />
+        </div>
+      </SectionCard>
+    </div>
   )
 }

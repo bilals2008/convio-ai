@@ -42,20 +42,41 @@ export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Reco
   const primary = hexToHsl(theme.primaryColor)
   const bg = hexToHsl(theme.backgroundColor)
   const text = hexToHsl(theme.textColor)
+  const promptBg = theme.promptBgColor ? hexToHsl(theme.promptBgColor) : null
+  const headerStart = theme.headerGradientStart ? hexToHsl(theme.headerGradientStart) : primary
+  const headerEnd = theme.headerGradientEnd ? hexToHsl(theme.headerGradientEnd) : primary
+  const border = theme.borderColor ? hexToHsl(theme.borderColor) : null
+  const inputBg = theme.inputBgColor ? hexToHsl(theme.inputBgColor) : null
+  const sendBtn = theme.sendBtnColor ? hexToHsl(theme.sendBtnColor) : null
 
-  // When isDark is true, ensure bg is dark and text is light regardless of what was configured
   const bgL = isDark ? Math.min(bg.l, 18) : bg.l
   const textL = isDark ? Math.max(text.l, 85) : text.l
 
-  return {
+  const vars: Record<string, string> = {
     '--widget-primary': `${primary.h} ${primary.s}% ${primary.l}%`,
     '--widget-primary-foreground': '0 0% 100%',
     '--widget-bg': `${bg.h} ${Math.max(bg.s, 5)}% ${bgL}%`,
     '--widget-text': `${text.h} ${Math.max(text.s, 5)}% ${textL}%`,
     '--widget-muted': `${bg.h} 8% ${isDark ? 22 : 93}%`,
     '--widget-muted-foreground': `${text.h} 8% ${isDark ? 55 : 40}%`,
-    '--widget-border': `${primary.h} ${Math.max(primary.s * 0.2, 3)}% ${isDark ? 25 : 88}%`,
+    '--widget-border': border
+      ? `${border.h} ${border.s}% ${border.l}%`
+      : `${primary.h} ${Math.max(primary.s * 0.2, 3)}% ${isDark ? 25 : 88}%`,
+    '--widget-header-start': `${headerStart.h} ${headerStart.s}% ${headerStart.l}%`,
+    '--widget-header-end': `${headerEnd.h} ${headerEnd.s}% ${headerEnd.l}%`,
+    '--widget-header-direction': `${theme.headerGradientDirection ?? 135}deg`,
+    '--widget-prompt-bg': promptBg
+      ? `${promptBg.h} ${promptBg.s}% ${promptBg.l}%`
+      : `${bg.h} ${Math.max(bg.s, 5)}% ${isDark ? 22 : 93}%`,
+    '--widget-input-bg': inputBg
+      ? `${inputBg.h} ${inputBg.s}% ${inputBg.l}%`
+      : `${bg.h} ${Math.max(bg.s, 5)}% ${bgL}%`,
+    '--widget-send-btn': sendBtn
+      ? `${sendBtn.h} ${sendBtn.s}% ${sendBtn.l}%`
+      : `${primary.h} ${primary.s}% ${primary.l}%`,
   }
+
+  return vars
 }
 
 interface WidgetStylesProps {

@@ -12,7 +12,7 @@ export function WidgetHeader() {
     <div
       className="convio-header relative shrink-0 flex items-center justify-between px-4 h-[60px]"
       style={{
-        background: `linear-gradient(135deg, hsl(var(--widget-primary)), color-mix(in srgb, hsl(var(--widget-primary)) 80%, black))`,
+        background: `linear-gradient(var(--widget-header-direction, 135deg), hsl(var(--widget-header-start)), hsl(var(--widget-header-end)))`,
       }}
     >
       <div className="absolute inset-0 bg-gradient-to-b from-white/8 to-transparent pointer-events-none" />

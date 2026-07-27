@@ -161,15 +161,7 @@ export function InstallTab({
               <ExternalLink className="size-3.5" aria-hidden="true" />
               Live preview
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.open('https://docs.convio.ai/embedding', '_blank')}
-              aria-label="Open embedding documentation"
-            >
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-              Docs
-            </Button>
+
           </div>
         </div>
       </div>

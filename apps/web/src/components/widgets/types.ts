@@ -13,15 +13,17 @@ export interface WidgetConfig {
   primaryColor?: string
   backgroundColor?: string
   textColor?: string
+  promptBgColor?: string
+  headerGradientStart?: string
+  headerGradientEnd?: string
+  headerGradientDirection?: number
+  borderColor?: string
+  inputBgColor?: string
+  sendBtnColor?: string
   position?: 'bottom-right' | 'bottom-left'
-  quickReplies?: string[]
+  widgetHeight?: number
   agentName?: string
   agentAvatar?: string
-}
-
-export interface PromptItem {
-  id: string
-  text: string
 }
 
 export interface ApiError {

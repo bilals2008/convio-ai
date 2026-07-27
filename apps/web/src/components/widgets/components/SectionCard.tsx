@@ -12,23 +12,20 @@ interface SectionCardProps {
 
 export function SectionCard({ icon, title, description, children, className }: SectionCardProps) {
   return (
-    <Card className="rounded-xl p-0">
+    <Card className="overflow-hidden">
       <CardContent className={cn('p-0', className)}>
-        <div className="flex items-start gap-3 border-b border-border/60 px-6 py-5">
+        <div className="flex items-start gap-3 border-b px-5 py-4">
           {icon && (
-            <div
-              className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/50 text-muted-foreground"
-              aria-hidden="true"
-            >
+            <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/50 text-muted-foreground">
               {icon}
             </div>
           )}
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <h3 className="text-sm font-semibold">{title}</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
           </div>
         </div>
-        <div className="px-6 py-6">{children}</div>
+        <div className="px-5 py-5">{children}</div>
       </CardContent>
     </Card>
   )

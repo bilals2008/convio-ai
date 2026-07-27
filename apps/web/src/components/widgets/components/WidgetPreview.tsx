@@ -1,35 +1,42 @@
-import { ExternalLink, Eye, Sun, Moon } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { getContrastText, isLightColor } from '../helpers'
-import type { PromptItem } from '../types'
-import { useState } from 'react'
+import { Minus, X, Send } from 'lucide-react'
+import { getWidgetCSSVariables } from '@/components/widget/WidgetStyles'
+import { isLightColor } from '../helpers'
 
 interface WidgetPreviewProps {
   primaryColor: string
   backgroundColor: string
   textColor: string
+  promptBgColor: string
+  headerGradientStart: string
+  headerGradientEnd: string
+  headerGradientDirection: number
+  borderColor: string
+  inputBgColor: string
+  sendBtnColor: string
   position: 'bottom-right' | 'bottom-left'
   greeting: string
-  prompts: PromptItem[]
   agentName: string
   agentAvatar: string
   publicKey: string
+  widgetHeight: number
 }
 
 export function WidgetPreview({
   primaryColor,
   backgroundColor,
   textColor,
-  position,
+  promptBgColor,
+  headerGradientStart,
+  headerGradientEnd,
+  headerGradientDirection,
+  borderColor,
+  inputBgColor,
+  sendBtnColor,
   greeting,
-  prompts,
   agentName,
   agentAvatar,
-  publicKey,
+  widgetHeight,
 }: WidgetPreviewProps) {
-  const isLightBg = isLightColor(backgroundColor)
-  const previewTextColor = isLightBg ? '#1f2937' : textColor
-  const headerTextOnPrimary = getContrastText(primaryColor)
   const initials = (agentName || 'A')
     .split(' ')
     .map((w) => w[0])
@@ -37,156 +44,151 @@ export function WidgetPreview({
     .join('')
     .toUpperCase()
 
-  const [previewMode, setPreviewMode] = useState<'light' | 'dark'>('dark')
+  const vars = getWidgetCSSVariables(
+    {
+      primaryColor,
+      backgroundColor,
+      textColor,
+      promptBgColor,
+      headerGradientStart,
+      headerGradientEnd,
+      headerGradientDirection,
+      borderColor,
+      inputBgColor,
+      sendBtnColor,
+    },
+    true
+  )
 
   return (
-    <aside className="lg:sticky lg:top-6" aria-label="Widget live preview">
+    <aside className="self-start lg:sticky lg:top-6" aria-label="Widget live preview">
       <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10 shadow-sm">
-        <div className="flex items-center justify-between border-b border-border/60 bg-card px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex size-6 items-center justify-center rounded-md bg-primary/10">
-              <Eye className="size-3.5 text-primary" aria-hidden="true" />
-            </div>
-            <span className="text-sm font-semibold text-foreground">Live preview</span>
-          </div>
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-0.5">
-            <button
-              onClick={() => setPreviewMode('light')}
-              className={cn(
-                'flex size-6 items-center justify-center rounded text-[11px] transition-colors',
-                previewMode === 'light' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
-              aria-label="Light mode preview"
-            >
-              <Sun className="size-3" />
-            </button>
-            <button
-              onClick={() => setPreviewMode('dark')}
-              className={cn(
-                'flex size-6 items-center justify-center rounded text-[11px] transition-colors',
-                previewMode === 'dark' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
-              aria-label="Dark mode preview"
-            >
-              <Moon className="size-3" />
-            </button>
-          </div>
-        </div>
-
-        <div className={cn('p-4 transition-colors duration-200', previewMode === 'dark' ? 'bg-zinc-900' : 'bg-zinc-100')}>
-          <div className="overflow-hidden rounded-lg ring-1 ring-foreground/10 shadow-sm">
-            <div className="flex items-center gap-1.5 border-b border-border/60 bg-card/60 px-3 py-2">
-              <span className="size-2 rounded-full bg-destructive/40" aria-hidden="true" />
-              <span className="size-2 rounded-full bg-warning/40" aria-hidden="true" />
-              <span className="size-2 rounded-full bg-success/40" aria-hidden="true" />
-              <div className="ml-2 flex min-w-0 flex-1 items-center gap-1.5 rounded-md bg-background/60 px-2 py-0.5">
-                <span className="size-2 shrink-0 rounded-full bg-success/70" aria-hidden="true" />
-                <span className="truncate font-mono text-[9px] text-muted-foreground">
-                  {publicKey.slice(0, 12)}…
-                </span>
-              </div>
-            </div>
-
-            <div
-              className="relative transition-colors duration-200"
-              style={{ backgroundColor, height: 280 }}
-              role="img"
-              aria-label="Widget appearance preview"
-            >
-              <div
-                className="flex h-11 items-center gap-2 px-3"
-                style={{
-                  background: `linear-gradient(135deg, ${primaryColor}, color-mix(in srgb, ${primaryColor} 80%, black))`,
-                }}
-              >
-                <div
-                  className="size-6 shrink-0 overflow-hidden rounded-full"
-                  style={{ boxShadow: `0 0 0 2px ${primaryColor}` }}
-                >
-                  {agentAvatar ? (
-                    <img src={agentAvatar} alt="" className="size-full object-cover" />
-                  ) : (
-                    <span
-                      className="flex size-full items-center justify-center text-[8px] font-bold"
-                      style={{ color: headerTextOnPrimary }}
-                    >
+        <div
+          className="convio-widget flex flex-col overflow-hidden rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] ring-1 ring-black/[0.06]"
+          style={{
+            height: widgetHeight,
+            ...vars,
+            backgroundColor: `hsl(var(--widget-bg))`,
+          }}
+        >
+          {/* Header */}
+          <div
+            className="relative shrink-0 flex items-center justify-between px-4 h-[60px]"
+                    style={{
+                      background: `linear-gradient(${headerGradientDirection}deg, ${headerGradientStart}, ${headerGradientEnd})`,
+                    }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-white/8 to-transparent pointer-events-none" />
+            <div className="relative z-10 flex items-center gap-3 min-w-0">
+              <div className="relative shrink-0">
+                {agentAvatar ? (
+                  <img
+                    src={agentAvatar}
+                    alt={agentName}
+                    className="size-10 rounded-full object-cover ring-2 ring-white/20"
+                  />
+                ) : (
+                  <div className="size-10 rounded-full bg-white/15 flex items-center justify-center ring-2 ring-white/20">
+                    <span className="text-sm font-bold text-white tracking-wide">
                       {initials}
                     </span>
-                  )}
-                </div>
-                <span
-                  className="truncate text-[10px] font-semibold"
-                  style={{ color: headerTextOnPrimary }}
-                >
-                  {agentName || 'Assistant'}
-                </span>
-              </div>
-
-              <div className="px-3 pt-3">
-                <div
-                  className="inline-block max-w-[85%] rounded-xl rounded-bl-md px-2.5 py-1.5 text-[10px] leading-snug"
-                  style={{
-                    color: previewTextColor,
-                    backgroundColor: `color-mix(in srgb, ${backgroundColor} 85%, ${isLightBg ? 'black' : 'white'})`,
-                  }}
-                >
-                  {greeting || 'Hi there! How can I help you today?'}
-                </div>
-              </div>
-
-              {prompts.length > 0 && (
-                <div className="flex flex-wrap gap-1 px-3 pt-2">
-                  {prompts.slice(0, 2).map((p) => (
-                    <span
-                      key={p.id}
-                       className="inline-block rounded border px-2 py-0.5 text-[9px]"
-                      style={{
-                        borderColor: `color-mix(in srgb, ${primaryColor} 40%, transparent)`,
-                        color: primaryColor,
-                      }}
-                    >
-                      {p.text.length > 18 ? `${p.text.slice(0, 18)}…` : p.text}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div
-                className={cn(
-                  'absolute bottom-3 transition-all duration-200',
-                  position === 'bottom-right' ? 'right-3' : 'left-3',
+                  </div>
                 )}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold text-white tracking-tight leading-tight">
+                  {agentName || 'Assistant'}
+                </p>
+                <p className="text-[11px] text-white/70 font-medium">
+                  Typically replies instantly
+                </p>
+              </div>
+            </div>
+            <div className="relative z-10 flex items-center gap-0.5">
+              <button
+                type="button"
+                className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                aria-label="Minimize"
               >
-                <div
-                  className="flex size-8 items-center justify-center rounded-full shadow-md transition-transform duration-200 hover:scale-105"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <svg
-                    className="size-4"
-                    style={{ color: headerTextOnPrimary }}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    aria-hidden="true"
+                <Minus className="size-4" />
+              </button>
+              <button
+                type="button"
+                className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Messages area */}
+          <div className="flex flex-1 flex-col overflow-y-auto p-3">
+            <div className="text-center mb-3">
+              <span className="text-[11px] font-medium text-[hsl(var(--widget-muted-foreground))]">
+                {new Date().toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </span>
+            </div>
+
+            <div className="flex gap-2 mb-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+              <div className="mt-1 shrink-0">
+                {agentAvatar ? (
+                  <img
+                    src={agentAvatar}
+                    alt={agentName}
+                    className="size-7 rounded-full object-cover ring-2 ring-[hsl(var(--widget-primary))]"
+                  />
+                ) : (
+                  <div
+                    className="size-7 rounded-full flex items-center justify-center"
+                    style={{
+              background: `linear-gradient(${headerGradientDirection}deg, ${headerGradientStart}, ${headerGradientEnd})`,
+                    }}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                </div>
+                    <span className="text-[9px] font-bold text-white">{initials}</span>
+                  </div>
+                )}
+              </div>
+              <div
+                className="relative max-w-[80%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-2xl rounded-bl-md shadow-sm"
+                style={{
+                  backgroundColor: `hsl(var(--widget-prompt-bg))`,
+                  color: isLightColor(promptBgColor) ? '#1f2937' : textColor,
+                }}
+              >
+                <p className="whitespace-pre-wrap break-words">
+                  {greeting || 'Hi there! How can I help you today?'}
+                </p>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 border-t border-border/60 bg-card px-4 py-2.5">
-          <ExternalLink className="size-3 text-muted-foreground" aria-hidden="true" />
-          <p className="text-[11px] text-muted-foreground">
-            Static preview — open the live preview to test the full chat.
-          </p>
+          {/* Input area */}
+          <div className="shrink-0 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-input-bg))] p-3">
+            <div className="flex items-end gap-2">
+              <div className="flex-1 rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-input-bg))] px-3.5 py-2">
+                <span className="text-[13px] leading-relaxed text-[hsl(var(--widget-muted-foreground))]/50">
+                  Type a message...
+                </span>
+              </div>
+              <button
+                type="button"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full transition-all duration-200 text-white"
+                style={{
+                  background: `hsl(var(--widget-send-btn))`,
+                }}
+              >
+                <Send className="size-4 -rotate-45" />
+              </button>
+            </div>
+            <p className="text-center text-[10px] text-[hsl(var(--widget-muted-foreground))]/40 mt-2 font-medium">
+              Powered by Convio
+            </p>
+          </div>
         </div>
       </div>
     </aside>
