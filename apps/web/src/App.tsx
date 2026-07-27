@@ -39,7 +39,6 @@ import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
 import DataManagementPage from '@/pages/settings/data-management-page'
 import McpServersPage from '@/pages/settings/mcp-servers-page'
-import AvatarPlaygroundPage from '@/pages/settings/avatar-playground-page'
 import { HelpLayout } from '@/components/help/help-layout'
 import HelpIndexPage from '@/pages/docs/help-index'
 import WhatIsConvioPage from '@/pages/docs/what-is-convio'
@@ -534,9 +533,8 @@ export function App() {
                 <Route path="provider-keys" element={<ProviderKeysPage />} />
                 <Route path="mcp-servers" element={<McpServersPage />} />
                 <Route path="billing" element={<BillingPage />} />
-                <Route path="data" element={<DataManagementPage />} />
-                <Route path="avatar-playground" element={<AvatarPlaygroundPage />} />
-              </Route>
+                 <Route path="data" element={<DataManagementPage />} />
+               </Route>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Routes>

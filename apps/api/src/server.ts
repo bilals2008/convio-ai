@@ -37,7 +37,6 @@ import providerKeysRoutes from './modules/provider-keys/routes.js'
 import dataManagementRoutes from './modules/data-management/routes.js'
 import mcpRoutes from './modules/mcp/routes.js'
 import contactRoutes from './modules/contact/routes.js'
-import huggingfaceRoutes from './modules/huggingface/routes.js'
 import avatarPresetsRoutes from './modules/avatar-presets/routes.js'
 import statusRoutes from './modules/status/routes.js'
 import emailPlugin from './services/email.jsx'
@@ -87,7 +86,6 @@ async function buildServer() {
   await app.register(dataManagementRoutes, { prefix: '/api' })
   await app.register(mcpRoutes, { prefix: '/api' })
   await app.register(contactRoutes, { prefix: '/api' })
-  await app.register(huggingfaceRoutes, { prefix: '/api' })
   await app.register(avatarPresetsRoutes, { prefix: '/api' })
   await app.register(statusRoutes, { prefix: '/api' })
 

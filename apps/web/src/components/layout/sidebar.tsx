@@ -18,8 +18,6 @@ import {
   CreditCard,
   Database,
   Plug,
-
-  Palette,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -49,8 +47,7 @@ function useSettingsItems() {
     { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
     { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
-    { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
-    { icon: Palette, label: 'Avatar Playground', href: '/settings/avatar-playground', adminOnly: true, ownerOnly: true },
+     { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
   ].filter((item) => !item.adminOnly || (isAdmin && (!item.ownerOnly || isOwner)))
 }
 
@@ -333,9 +330,8 @@ function getMobileNavGroups(role?: string) {
     ...(isAdmin ? [
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
-      { icon: Database, label: 'Data', href: '/settings/data' },
-      ...(isOwner ? [{ icon: Palette, label: 'Avatar Playground', href: '/settings/avatar-playground' }] : []),
-    ] : []),
+       { icon: Database, label: 'Data', href: '/settings/data' },
+     ] : []),
     { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
   ]
 

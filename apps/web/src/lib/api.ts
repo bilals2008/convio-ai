@@ -239,11 +239,6 @@ export const avatarPresets = {
   delete: (orgId: string, id: string) => api.delete(`/organizations/${orgId}/avatar-presets/${id}`),
 }
 
-export const huggingface = {
-  generate: (orgId: string, data: { prompt: string; model?: string; negativePrompt?: string; width?: number; height?: number }) =>
-    api.post(`/organizations/${orgId}/huggingface/generate`, data),
-}
-
 export const dataManagement = {
   summary: (orgId: string) => api.get(`/organizations/${orgId}/data-summary`),
   listCategory: (orgId: string, category: string, params?: { search?: string; status?: string; limit?: number; offset?: number }) =>
