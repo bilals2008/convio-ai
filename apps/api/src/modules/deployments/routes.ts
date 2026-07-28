@@ -11,7 +11,7 @@ import {
   executeBroadcast,
   processScheduledBroadcasts,
 } from '../../services/whatsapp.js'
-import { processTelegramUpdate, type TelegramUpdate } from '../../services/telegram.js'
+import { processTelegramUpdate, setTelegramWebhook, type TelegramUpdate } from '../../services/telegram.js'
 import {
   processDiscordInteraction,
   verifyDiscordSignature,
@@ -366,7 +366,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     }
 
     const deployment = await prisma.deployment.create({
-      data: { agentId, channel, config: finalConfig as any, status: 'pending' },
+      data: { agentId, channel, config: finalConfig as any, status: 'active' },
     })
 
     // Auto-register Discord slash commands
@@ -376,14 +376,23 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       const guildId = finalConfig.guildId as string | undefined
       if (botToken && applicationId) {
         const result = await registerDiscordCommands(botToken, applicationId, guildId || undefined)
-        if (result.success) {
-          await prisma.deployment.update({
-            where: { id: deployment.id },
-            data: { status: 'active' },
-          })
-          request.log.info({ deploymentId: deployment.id }, 'Discord slash commands registered')
-        } else {
+        if (!result.success) {
           request.log.warn({ deploymentId: deployment.id, error: result.error }, 'Failed to register Discord commands')
+        }
+      }
+    }
+
+    // Auto-register Telegram webhook
+    if (channel === 'telegram') {
+      const botToken = finalConfig.botToken as string | undefined
+      const webhookBaseUrl = (finalConfig.webhookUrl as string) || fastify.config.PUBLIC_URL
+      if (botToken && webhookBaseUrl) {
+        const webhookUrl = `${webhookBaseUrl}/api/deployments/${deployment.id}/telegram-webhook`
+        const result = await setTelegramWebhook(botToken, webhookUrl)
+        if (result.success) {
+          request.log.info({ deploymentId: deployment.id, webhookUrl }, 'Telegram webhook registered')
+        } else {
+          request.log.warn({ deploymentId: deployment.id, error: result.error }, 'Failed to register Telegram webhook')
         }
       }
     }
