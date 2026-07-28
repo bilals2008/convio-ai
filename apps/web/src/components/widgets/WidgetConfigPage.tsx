@@ -21,6 +21,7 @@ import { AppearanceTab } from './components/AppearanceTab'
 import { InstallTab } from './components/InstallTab'
 import { LayoutTab } from './components/LayoutTab'
 import { TemplateTab } from './components/TemplateTab'
+import { WidgetPreviewPanel } from './components/WidgetPreviewPanel'
 import { isLightColor } from './helpers'
 import { cn } from '@/lib/utils'
 
@@ -245,10 +246,6 @@ export default function WidgetConfigPage() {
                   onLauncherSizeChange={setLauncherSize}
                   borderRadius={borderRadius}
                   onBorderRadiusChange={setBorderRadius}
-                  launcherIcon={launcherIcon}
-                  onLauncherIconChange={setLauncherIcon}
-                  launcherLabel={launcherLabel}
-                  onLauncherLabelChange={setLauncherLabel}
                 />
               </TabsContent>
 
@@ -288,50 +285,39 @@ export default function WidgetConfigPage() {
                   type="button"
                   onClick={() => setPreviewThemeMode(previewThemeMode === 'dark' ? 'light' : 'dark')}
                   className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title={previewThemeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
-                  {previewThemeMode === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                  <Sun className="size-3.5" />
                 </button>
               </div>
               <div
                 data-widget-preview
                 className={cn(
                   'relative h-[600px]',
-                  previewThemeMode === 'dark' ? 'bg-muted' : 'bg-background'
+                  (previewThemeMode === 'auto' ? themeMode : previewThemeMode) === 'dark' ? 'bg-muted' : 'bg-background'
                 )}
               >
-                <ChatWidget
-                  key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${headerTitle}-${headerSubtitle}-${launcherIcon}-${launcherLabel}-${quickReplies.join(',')}-${previewThemeMode}`}
-                  agentId={widget.agent.id}
-                  position={position}
-                  greeting={widget.config.greeting || 'Hi'}
+                <WidgetPreviewPanel
+                  primaryColor={primaryColor}
+                  backgroundColor={backgroundColor}
+                  textColor={previewTextColor}
+                  promptBgColor={promptBgColor}
+                  headerGradientStart={headerGradientStart}
+                  headerGradientEnd={headerGradientEnd}
+                  headerGradientDirection={headerGradientDirection}
+                  borderColor={borderColor}
+                  inputBgColor={inputBgColor}
+                  sendBtnColor={sendBtnColor}
                   agentName={agentName || widget.agent.name}
                   agentAvatar={agentAvatar || undefined}
-                  themeMode={previewThemeMode === 'auto' ? themeMode : previewThemeMode}
-                  widgetWidth={widgetWidth}
-                  launcherSize={launcherSize}
-                  borderRadius={borderRadius}
-                  headerGradient={headerGradient}
                   headerTitle={headerTitle || undefined}
                   headerSubtitle={headerSubtitle || undefined}
                   showOnlineIndicator={showOnlineIndicator}
-                  launcherIcon={launcherIcon}
-                  launcherLabel={launcherLabel || undefined}
                   placeholderText={placeholderText || undefined}
                   showPoweredBy={showPoweredBy}
                   quickReplies={quickReplies.length > 0 ? quickReplies : undefined}
-                  preview
-                  theme={{
-                    primaryColor,
-                    backgroundColor,
-                    textColor: previewTextColor,
-                    promptBgColor,
-                    headerGradientStart,
-                    headerGradientEnd,
-                    headerGradientDirection,
-                    borderColor,
-                    inputBgColor,
-                    sendBtnColor,
-                  }}
+                  headerGradient={headerGradient}
+                  previewThemeMode={previewThemeMode === 'auto' ? themeMode : previewThemeMode}
                 />
               </div>
             </div>
@@ -360,6 +346,43 @@ export default function WidgetConfigPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {widget && (
+        <ChatWidget
+          key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${headerTitle}-${headerSubtitle}-${launcherIcon}-${launcherLabel}-${quickReplies.join(',')}`}
+          agentId={widget.agent.id}
+          position={position}
+          greeting={widget.config.greeting || 'Hi'}
+          agentName={agentName || widget.agent.name}
+          agentAvatar={agentAvatar || undefined}
+          themeMode={themeMode}
+          widgetWidth={widgetWidth}
+          launcherSize={launcherSize}
+          borderRadius={borderRadius}
+          headerGradient={headerGradient}
+          headerTitle={headerTitle || undefined}
+          headerSubtitle={headerSubtitle || undefined}
+          showOnlineIndicator={showOnlineIndicator}
+          launcherIcon={launcherIcon}
+          launcherLabel={launcherLabel || undefined}
+          placeholderText={placeholderText || undefined}
+          showPoweredBy={showPoweredBy}
+          quickReplies={quickReplies.length > 0 ? quickReplies : undefined}
+          preview
+          theme={{
+            primaryColor,
+            backgroundColor,
+            textColor: textColor || '#f3f4f6',
+            promptBgColor: promptBgColor || '#2a2a2a',
+            headerGradientStart: headerGradientStart || '#fb923c',
+            headerGradientEnd: headerGradientEnd || '#c2410c',
+            headerGradientDirection: `${headerGradientDirection || 135}deg`,
+            borderColor: borderColor || '',
+            inputBgColor: inputBgColor || '',
+            sendBtnColor: sendBtnColor || '',
+          }}
+        />
+      )}
     </PageContainer>
   )
 }

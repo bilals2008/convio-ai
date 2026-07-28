@@ -232,6 +232,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const configRef = useRef(agentConfig)
   const queryClient = useQueryClient()
   const { data: plan } = usePlan()
+  const autoCreated = useRef(false)
 
   const toolsAllowed = !!plan && plan.name !== 'free'
   const agentHasTools = !!(agentConfig.tools && agentConfig.tools.length > 0)
@@ -303,6 +304,21 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   })
 
   const serverConvs = useMemo(() => convsData.map(mapDbConv), [convsData])
+
+  // Auto-create conversation on first load
+  useEffect(() => {
+    if (!convsLoading && !autoCreated.current && !activeConvId && agentConfig.systemPrompt && agentConfig.model) {
+      autoCreated.current = true
+      createConv.mutate()
+    }
+  }, [convsLoading, activeConvId, agentConfig.systemPrompt, agentConfig.model, createConv])
+
+  // Focus input when a conversation becomes active
+  useEffect(() => {
+    if (activeConvId && !streaming) {
+      textareaRef.current?.focus()
+    }
+  }, [activeConvId, streaming])
 
   const allConvs = useMemo(() => {
     const server = [...serverConvs]

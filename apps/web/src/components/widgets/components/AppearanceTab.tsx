@@ -336,32 +336,29 @@ export function AppearanceTab({
         title="Header"
         description="Background for the widget header"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-sm font-medium">Gradient</Label>
-              <p className="text-[11px] text-muted-foreground">Use a gradient or solid color</p>
-            </div>
+            <Label className="text-sm font-medium">Gradient</Label>
             <button
               type="button"
               role="switch"
               aria-checked={headerGradient}
               onClick={() => onHeaderGradientChange(!headerGradient)}
               className={cn(
-                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
                 headerGradient ? 'bg-primary' : 'bg-muted'
               )}
             >
               <span
                 className={cn(
-                  'pointer-events-none inline-block size-5 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200',
-                  headerGradient ? 'translate-x-5' : 'translate-x-0'
+                  'pointer-events-none inline-block size-4 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200',
+                  headerGradient ? 'translate-x-4' : 'translate-x-0'
                 )}
               />
             </button>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <ColorField
               label={headerGradient ? 'Gradient start' : 'Color'}
               description={headerGradient ? 'Starting color of the header gradient' : 'Solid header background color'}
@@ -382,36 +379,33 @@ export function AppearanceTab({
           </div>
 
           {headerGradient && (
-            <>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Direction</Label>
-                  <span className="text-xs text-muted-foreground tabular-nums">{headerGradientDirection}°</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={360}
-                  value={headerGradientDirection}
-                  onChange={(e) => onHeaderGradientDirectionChange(Number(e.target.value))}
-                  className="w-full h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>0°</span>
-                  <span>90°</span>
-                  <span>180°</span>
-                  <span>270°</span>
-                  <span>360°</span>
-                </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Direction</Label>
+                <span className="text-xs text-muted-foreground tabular-nums">{headerGradientDirection}°</span>
               </div>
-
+              <input
+                type="range"
+                min={0}
+                max={360}
+                value={headerGradientDirection}
+                onChange={(e) => onHeaderGradientDirectionChange(Number(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+                />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>0°</span>
+                <span>90°</span>
+                <span>180°</span>
+                <span>270°</span>
+                <span>360°</span>
+              </div>
               <div
                 className="h-10 rounded-lg ring-1 ring-foreground/10"
                 style={{
                   background: `linear-gradient(${headerGradientDirection}deg, ${headerGradientStart}, ${headerGradientEnd})`,
                 }}
               />
-            </>
+            </div>
           )}
 
           {!headerGradient && (
