@@ -23,17 +23,16 @@ const PLAN_ICONS: Record<string, React.ReactNode> = {
 }
 
 const COMPARISON_FEATURES = [
-  { name: 'AI Agents', free: '1', pro: '5', business: 'Unlimited', enterprise: 'Unlimited' },
-  { name: 'Messages/mo', free: '500', pro: '25,000', business: '150,000', enterprise: 'Unlimited' },
-  { name: 'Knowledge Bases', free: '1', pro: '10', business: '50', enterprise: 'Unlimited' },
-  { name: 'Channels', free: 'Web', pro: 'All', business: 'All', enterprise: 'All' },
-  { name: 'RAG', free: true, pro: true, business: true, enterprise: true },
-  { name: 'API Access', free: false, pro: true, business: true, enterprise: true },
-  { name: 'Custom Branding', free: false, pro: false, business: true, enterprise: true },
-  { name: 'Priority Support', free: false, pro: false, business: true, enterprise: true },
-  { name: 'SSO / SAML', free: false, pro: false, business: false, enterprise: true },
-  { name: 'Dedicated Onboarding', free: false, pro: false, business: false, enterprise: true },
-  { name: 'SLA Guarantee', free: false, pro: false, business: false, enterprise: true },
+  { name: 'AI Agents', free: '1', starter: '3', pro: '10', enterprise: 'Unlimited' },
+  { name: 'Messages/mo', free: '500', starter: '5,000', pro: '25,000', enterprise: 'Unlimited' },
+  { name: 'Knowledge Bases', free: '1', starter: '3', pro: '10', enterprise: 'Unlimited' },
+  { name: 'Channels', free: 'Web', starter: 'Web + WhatsApp', pro: 'All', enterprise: 'All' },
+  { name: 'API Access', free: false, starter: true, pro: true, enterprise: true },
+  { name: 'Custom Branding', free: false, starter: false, pro: false, enterprise: true },
+  { name: 'Priority Support', free: false, starter: false, pro: true, enterprise: true },
+  { name: 'SSO / SAML', free: false, starter: false, pro: false, enterprise: true },
+  { name: 'Dedicated Onboarding', free: false, starter: false, pro: false, enterprise: true },
+  { name: 'SLA Guarantee', free: false, starter: false, pro: false, enterprise: true },
 ]
 
 const FAQS = [
@@ -262,7 +261,7 @@ export default function PricingPage() {
                       {COMPARISON_FEATURES.map((f, i) => (
                         <tr key={f.name} className={cn('border-b border-border/50 transition-colors hover:bg-muted/50', i % 2 === 0 && 'bg-muted/30')}>
                           <td className="py-3 pr-4 text-muted-foreground">{f.name}</td>
-                          {(['free', 'pro', 'business', 'enterprise'] as const).map((plan) => (
+                          {(['free', 'starter', 'pro', 'enterprise'] as const).map((plan) => (
                             <td key={plan} className="text-center py-3 px-3">
                               {typeof f[plan] === 'boolean' ? (
                                 f[plan] ? (

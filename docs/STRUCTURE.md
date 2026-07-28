@@ -11,7 +11,7 @@ Single React app (no separate landing/auth/dashboard apps).
 | Frontend | React + Vite + TypeScript + Tailwind |
 | UI | shadcn/ui |
 | Backend | Fastify (TypeScript) |
-| Auth | Better Auth (self-hosted, free) |
+| Auth |Supabase Auth |
 | Database | Supabase PostgreSQL |
 | Realtime | Supabase Realtime |
 | Vector/RAG | Supabase pgvector |

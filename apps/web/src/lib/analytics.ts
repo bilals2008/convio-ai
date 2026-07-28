@@ -17,3 +17,13 @@ export function getResponseTimeLabel(seconds: number): { label: string; classNam
   if (seconds < 2) return { label: 'Good', className: 'text-amber-500' }
   return { label: 'Needs improvement', className: 'text-red-500' }
 }
+
+export function formatCost(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`
+}
+
+export function calculateResolutionRate(resolved: number, escalated: number): number {
+  const total = resolved + escalated
+  if (total <= 0) return 0
+  return Math.round((resolved / total) * 100)
+}

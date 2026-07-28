@@ -228,6 +228,9 @@ importers:
       react:
         specifier: ^19.2.6
         version: 19.2.7
+      react-colorful:
+        specifier: ^5.8.0
+        version: 5.8.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-day-picker:
         specifier: ^10.0.1
         version: 10.0.1(@types/react@19.2.17)(react@19.2.7)
@@ -340,6 +343,9 @@ importers:
       ai:
         specifier: ^7.0.0
         version: 7.0.19(zod@4.4.3)
+      llm-prices:
+        specifier: ^1.0.1
+        version: 1.0.1
 
   packages/config: {}
 
@@ -3866,6 +3872,11 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
+  llm-prices@1.0.1:
+    resolution: {integrity: sha512-ablYejCicHQJldKFYXcpwa/x1RIgT4ix9ltxyr6ff+CtN5vUHwmEHLW2qTo+vOn6CGmOCw/iusOPt0yYhMx6GQ==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   load-tsconfig@0.2.5:
     resolution: {integrity: sha512-IXO6OCs9yg8tMKzfPZ1YmheJbZCiEsnBdcB03l0OcfK9prKnJb96siuHCr5Fl37/yo9DnKU+TLpxzTUspw9shg==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
@@ -4621,6 +4632,12 @@ packages:
 
   rc9@3.0.1:
     resolution: {integrity: sha512-gMDyleLWVE+i6Sgtc0QbbY6pEKqYs97NGi6isHQPqYlLemPoO8dxQ3uGi0f4NiP98c+jMW6cG1Kx9dDwfvqARQ==}
+
+  react-colorful@5.8.0:
+    resolution: {integrity: sha512-Wy9OzPfjSN9bF12OB8N7UQvlsZ0I+7wHxpN+bV5BjNQGxOj6IiwkRjevJK9yOBjJWGQvAaf1OXtn8rUeEatAng==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
 
   react-day-picker@10.0.1:
     resolution: {integrity: sha512-eNh6BlwcYInWaJtRv18mXQ06Ys/H6rdTZAnTaSdOYJuTpwP1JMCHNd1FDRadA+gbeinq+psdULN5Xnowy9mV8w==}
@@ -8681,6 +8698,8 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
+  llm-prices@1.0.1: {}
+
   load-tsconfig@0.2.5: {}
 
   locate-path@3.0.0:
@@ -9579,6 +9598,11 @@ snapshots:
     dependencies:
       defu: 6.1.7
       destr: 2.0.5
+
+  react-colorful@5.8.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+    dependencies:
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
 
   react-day-picker@10.0.1(@types/react@19.2.17)(react@19.2.7):
     dependencies:

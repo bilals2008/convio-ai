@@ -109,8 +109,8 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     return { data: invoices }
   })
 
-  // POST /api/organizations/:orgId/billing/claim-pro — Temporary: grant Pro plan for free
-  fastify.post('/organizations/:orgId/billing/claim-pro', {
+  // POST /api/organizations/:orgId/billing/start-trial — 14-day Pro trial
+  fastify.post('/organizations/:orgId/billing/start-trial', {
     preHandler: [
       fastify.authenticate,
       validate({ params: orgParamsSchema }),
@@ -121,20 +121,58 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     await fastify.ensureAdmin(request.userId!, orgId)
 
     const org = await prisma.organization.findUnique({ where: { id: orgId } })
-    if (!org) throw new AppError(404, 'Organization not found')
+    if (!org) throw new AppError(404, 'Organization not found', 'NOT_FOUND')
 
     if (org.plan === 'pro') {
-      return { data: { plan: 'pro', message: 'Pro plan already active' } }
+      throw new AppError(400, 'Pro plan is already active on this organization', 'ALREADY_ACTIVE')
     }
+
+    const existingTrial = await prisma.subscription.findFirst({
+      where: {
+        customer: { organizationId: orgId },
+        status: { in: ['on_trial', 'expired'] },
+        providerSubscriptionId: { startsWith: 'trial_' },
+      },
+    })
+    if (existingTrial) {
+      const msg = existingTrial.status === 'on_trial'
+        ? 'A free trial is already active for this organization'
+        : 'A free trial has already been used for this organization'
+      throw new AppError(400, msg, 'TRIAL_ALREADY_CLAIMED')
+    }
+
+    let customer = await prisma.billingCustomer.findUnique({ where: { organizationId: orgId } })
+    if (!customer) {
+      customer = await prisma.billingCustomer.create({
+        data: {
+          organizationId: orgId,
+          providerCustomerId: `trial_customer_${orgId}`,
+        },
+      })
+    }
+
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+
+    await prisma.subscription.create({
+      data: {
+        customerId: customer.id,
+        providerSubscriptionId: `trial_${orgId}`,
+        providerProductId: 'trial_pro',
+        providerPlanId: 'trial_pro_monthly',
+        plan: 'pro',
+        status: 'on_trial',
+        trialEndsAt,
+      },
+    })
 
     await prisma.organization.update({
       where: { id: orgId },
       data: { plan: 'pro' },
     })
 
-    fastify.log.info({ orgId }, 'Pro plan claimed for free (temporary promotion)')
+    fastify.log.info({ orgId, trialEndsAt }, 'Pro trial started')
 
-    return { data: { plan: 'pro', message: 'Pro plan activated!' } }
+    return { data: { plan: 'pro', trialEndsAt: trialEndsAt.toISOString(), message: '14-day Pro trial activated!' } }
   })
 
   // POST /api/organizations/:orgId/billing/checkout

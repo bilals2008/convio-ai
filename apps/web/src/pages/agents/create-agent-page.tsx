@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Loader2, Plus, Globe, Link, Code, Plug, User, BrainCircuit, BookOpen, Wrench, Zap, LayoutTemplate } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Globe, Link, Plug, User, BrainCircuit, BookOpen, Wrench, Zap, LayoutTemplate } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
@@ -43,7 +43,6 @@ type CreateAgentValues = z.infer<typeof createSchema>
 const DEFAULT_DEPLOYMENTS = [
   { id: 'web-chat-widget', label: 'Web chat widget', description: 'Embed on your website', icon: 'globe', enabled: true },
   { id: 'shareable-link', label: 'Shareable link', description: 'A public chat URL', icon: 'link', enabled: false },
-  { id: 'api-access', label: 'API access', description: 'Connect through the API', icon: 'code', enabled: false },
   { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp Business', icon: 'whatsapp', enabled: true },
 ]
 
@@ -377,34 +376,28 @@ export default function CreateAgentPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-0.5">
-                    {capabilities.map((capability) => {
-                      const available = capability.enabled || capability.id === 'answer-questions' || capability.id === 'knowledge-search'
-                      return (
-                        <div
-                          key={capability.id}
-                          className={cn(
-                            'flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors',
-                            available ? 'hover:bg-muted/40' : 'opacity-50'
-                          )}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                              {capability.icon}
-                            </div>
-                            <div className="min-w-0">
-                              <Label className="text-xs font-medium leading-tight">{capability.label}</Label>
-                              <p className="text-[11px] text-muted-foreground leading-tight">{capability.description}</p>
-                            </div>
+                    {capabilities.filter((c) => c.enabled || c.id === 'answer-questions' || c.id === 'knowledge-search').map((capability) => (
+                      <div
+                        key={capability.id}
+                        className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={cn('flex size-7 shrink-0 items-center justify-center rounded-md', capability.enabled ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground')}>
+                            {capability.icon}
                           </div>
-                          <Switch
-                            size="sm"
-                            checked={capability.enabled}
-                            onCheckedChange={(checked) => setCapabilities((c) => c.map((x) => x.id === capability.id ? { ...x, enabled: checked } : x))}
-                            disabled={saving || !available}
-                          />
+                          <div className="min-w-0">
+                            <Label className="text-xs font-medium leading-tight">{capability.label}</Label>
+                            <p className="text-[11px] text-muted-foreground leading-tight">{capability.description}</p>
+                          </div>
                         </div>
-                      )
-                    })}
+                        <Switch
+                          size="sm"
+                          checked={capability.enabled}
+                          onCheckedChange={(checked) => setCapabilities((c) => c.map((x) => x.id === capability.id ? { ...x, enabled: checked } : x))}
+                          disabled={saving}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
@@ -421,7 +414,7 @@ export default function CreateAgentPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-0.5">
+                  <div className="space-y-1">
                     {DEFAULT_DEPLOYMENTS.map((opt) => {
                       const enabled = deploymentOptions.find((o) => o.id === opt.id)?.enabled ?? opt.enabled
                       const available = enabled || opt.id === 'web-chat-widget' || opt.id === 'whatsapp'
@@ -435,15 +428,15 @@ export default function CreateAgentPage() {
                           )}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={cn('flex size-7 shrink-0 items-center justify-center rounded-md', enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>
+                            <div className="flex size-7 shrink-0 items-center justify-center rounded-md">
                               {isBrand ? (
-                                <img src={`${CDN}/whatsapp/default.svg`} alt="WhatsApp" className="size-4" />
-                              ) : opt.icon === 'globe' ? (
-                                <Globe className="size-4" />
-                              ) : opt.icon === 'link' ? (
-                                <Link className="size-4" />
+                                <span className={cn('flex items-center justify-center p-0.5 rounded', enabled ? 'bg-primary/10' : 'bg-muted')}>
+                                  <img src={`${CDN}/whatsapp/default.svg`} alt="WhatsApp" className="size-4" />
+                                </span>
                               ) : (
-                                <Code className="size-4" />
+                                <span className={cn('flex items-center justify-center p-0.5 rounded', enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>
+                                  {opt.icon === 'link' ? <Link className="size-4" /> : <Globe className="size-4" />}
+                                </span>
                               )}
                             </div>
                             <div className="min-w-0">

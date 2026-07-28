@@ -1,13 +1,21 @@
-import { Search, Bell, Moon, Sun, Menu } from 'lucide-react'
+import { Search, Bell, Moon, Sun, Menu, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useTheme } from 'next-themes'
 import { Separator } from '@/components/ui/separator'
 import { useSidebar } from '@/lib/sidebar-context'
+import { usePlan } from '@/lib/hooks/use-billing'
+import { Badge } from '@/components/ui/badge'
 
 export function Header() {
   const { theme, setTheme } = useTheme()
   const { toggleMobile } = useSidebar()
+  const { data: plan } = usePlan()
+
+  const isOnTrial = plan?.isTrial && plan?.trialEndsAt
+  const daysLeft = isOnTrial
+    ? Math.ceil((new Date(plan.trialEndsAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null
 
   return (
     <header className="flex h-14 items-center gap-3 border-b bg-card px-4">
@@ -29,6 +37,12 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
+        {isOnTrial && daysLeft !== null && (
+          <Badge variant={daysLeft <= 3 ? 'destructive' : 'active'}>
+            <Clock className="size-3" />
+            {daysLeft === 0 ? 'Trial ends today' : `${daysLeft}d left`}
+          </Badge>
+        )}
         <Button variant="ghost" size="icon" aria-label="Notifications">
           <Bell className="size-4" />
         </Button>

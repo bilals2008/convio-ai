@@ -13,7 +13,7 @@ const publicWidgetParamsSchema = z.object({ publicKey: z.string().min(1) })
 const publicWidgetQuerySchema = z.object({ preview: z.coerce.boolean().optional() })
 const widgetQuerySchema = z.object({ cursor: z.string().uuid().optional(), limit: z.coerce.number().min(1).max(100).default(20) })
 const domainSchema = z.string().trim().min(1).max(253).regex(/^(localhost(?::\d+)?|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,})$/i, 'Enter a domain without a protocol')
-const widgetConfigSchema = z.object({
+const widgetConfigFields = {
   position: z.enum(['bottom-right', 'bottom-left']).default('bottom-right'),
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#fb923c'),
   backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#111113'),
@@ -22,7 +22,28 @@ const widgetConfigSchema = z.object({
   quickReplies: z.array(z.string().trim().min(1).max(60)).max(4).default([]),
   agentName: z.string().trim().min(1).max(50).default('Assistant'),
   agentAvatar: z.string().url().optional(),
-})
+  headerTitle: z.string().trim().max(100).optional(),
+  headerSubtitle: z.string().trim().max(100).optional(),
+  showOnlineIndicator: z.boolean().optional(),
+  launcherIcon: z.enum(['chat', 'sparkle', 'message', 'headphones', 'bot', 'help']).optional(),
+  launcherLabel: z.string().trim().max(50).optional(),
+  placeholderText: z.string().trim().max(120).optional(),
+  showPoweredBy: z.boolean().optional(),
+  themeMode: z.enum(['auto', 'light', 'dark']).optional(),
+  headerGradient: z.boolean().optional(),
+  headerGradientStart: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  headerGradientEnd: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  headerGradientDirection: z.number().min(0).max(360).optional(),
+  borderColor: z.string().optional(),
+  inputBgColor: z.string().optional(),
+  sendBtnColor: z.string().optional(),
+  widgetHeight: z.number().min(300).max(900).optional(),
+  widgetWidth: z.enum(['narrow', 'default', 'wide']).optional(),
+  launcherSize: z.enum(['small', 'default', 'large']).optional(),
+  borderRadius: z.enum(['none', 'default', 'full']).optional(),
+} as const
+
+const widgetConfigSchema = z.object(widgetConfigFields)
 const createWidgetBodySchema = z.object({
   name: z.string().trim().min(1).max(100),
   agentId: z.string().uuid(),
@@ -180,7 +201,13 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     const widget = await prisma.widget.findFirst({ where: { publicKey, ...(preview ? {} : { status: 'active' }) }, select: { id: true, agentId: true, allowedDomains: true } })
     if (!widget) throw new AppError(404, 'Widget not found')
     assertPublicAccess(request, widget.allowedDomains)
-    const conversation = await prisma.conversation.create({ data: { agentId: widget.agentId, userId: visitorId ?? null, channel: 'web' } })
+    const conversation = await prisma.conversation.create({
+      data: {
+        agentId: widget.agentId,
+        userId: visitorId ?? null,
+        channel: 'web',
+      },
+    })
     reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
     reply.code(201)
     return { data: conversation }

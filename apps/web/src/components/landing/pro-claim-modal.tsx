@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, X, ArrowRight } from 'lucide-react'
+import { Check, X, ArrowRight, Loader2, AlertTriangle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSession } from '@/lib/hooks/useAuth'
-import { usePlan } from '@/lib/hooks/use-billing'
+import { usePlan, useStartTrial, useSubscription } from '@/lib/hooks/use-billing'
 
 function FreeBadge3D() {
   return (
@@ -29,19 +28,28 @@ function FreeBadge3D() {
 export function ProClaimModal() {
   const [open, setOpen] = useState(false)
   const { data: session } = useSession()
-  const { data: plan } = usePlan()
-  const navigate = useNavigate()
+  const { data: plan, refetch: refetchPlan, isLoading: planLoading } = usePlan()
+  const { data: subscription } = useSubscription()
+  const startTrial = useStartTrial()
+
+  const canShowTrial = useMemo(() => {
+    if (!session?.user || planLoading) return false
+    if (!plan) return false
+    if (plan.name !== 'free' && !plan.isTrial) return false
+    if (subscription?.status === 'on_trial') return false
+    return true
+  }, [session, plan, planLoading, subscription])
 
   useEffect(() => {
-    const shown = sessionStorage.getItem('pro-claim-modal-shown')
-    if (session?.user && plan?.name === 'free' && !shown) {
+    const shown = sessionStorage.getItem('pro-trial-modal-shown')
+    if (canShowTrial && !shown) {
       const timer = setTimeout(() => {
-        sessionStorage.setItem('pro-claim-modal-shown', 'true')
+        sessionStorage.setItem('pro-trial-modal-shown', 'true')
         setOpen(true)
       }, 1500)
       return () => clearTimeout(timer)
     }
-  }, [session, plan])
+  }, [canShowTrial])
 
   const dismiss = useCallback(() => setOpen(false), [])
 
@@ -54,12 +62,21 @@ export function ProClaimModal() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, dismiss])
 
+  const handleStartTrial = useCallback(() => {
+    startTrial.mutate(undefined, {
+      onSuccess: () => {
+        setOpen(false)
+        refetchPlan()
+      },
+    })
+  }, [startTrial, refetchPlan])
+
   const features = [
-    '5 AI agents (up from 1)',
+    '10 AI agents (up from 1)',
     '25,000 messages/mo (up from 500)',
     '10 knowledge bases',
-    'Multi-channel support',
-    'Advanced analytics',
+    'All channels (Web, WhatsApp, API)',
+    'Advanced analytics & priority support',
   ]
 
   return (
@@ -80,7 +97,6 @@ export function ProClaimModal() {
             transition={{ type: 'spring', duration: 0.55, bounce: 0.2 }}
             className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border/50 bg-card p-8 shadow-2xl"
           >
-            {/* Subtle radial glow behind badge area */}
             <div
               className="pointer-events-none absolute left-1/2 top-0 h-48 w-64 -translate-x-1/2 -translate-y-1/3 rounded-full opacity-30"
               style={{
@@ -100,11 +116,22 @@ export function ProClaimModal() {
               <FreeBadge3D />
 
               <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                You're on the <span className="text-primary">Free</span> plan
+                {plan?.isTrial ? 'Your trial is active' : 'Try Pro free for 14 days'}
               </h2>
               <p className="mt-2.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-                For a limited time, you can unlock <span className="font-medium text-foreground">Pro</span> features for free — no payment needed.
+                {plan?.isTrial
+                  ? `Your Pro trial is active. Enjoy all features until your trial ends.`
+                  : `Unlock all Pro features for 14 days — no credit card required. Cancel anytime.`}
               </p>
+
+              {plan?.isTrial && plan?.trialEndsAt && (
+                <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-500">
+                  <Clock className="size-4 shrink-0" />
+                  <span className="font-medium">
+                    {Math.ceil((new Date(plan.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days remaining
+                  </span>
+                </div>
+              )}
 
               <div className="mt-6 w-full space-y-3 text-left">
                 {features.map((f) => (
@@ -117,25 +144,45 @@ export function ProClaimModal() {
                 ))}
               </div>
 
+              {startTrial.isError && (
+                <div className="mt-4 flex w-full items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-500">
+                  <AlertTriangle className="size-4 shrink-0" />
+                  <span>{(startTrial.error as { message?: string })?.message ?? 'Failed to start trial'}</span>
+                </div>
+              )}
+
               <div className="mt-7 w-full flex flex-col gap-2.5">
-                <Button
-                  className="group w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => {
-                    setOpen(false)
-                    navigate('/settings/billing?claim=pro')
-                  }}
-                >
-                  Activate Pro Free
-                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                </Button>
+                {!plan?.isTrial && (
+                  <Button
+                    className="group w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={handleStartTrial}
+                    disabled={startTrial.isPending}
+                  >
+                    {startTrial.isPending ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Starting trial...
+                      </>
+                    ) : (
+                      <>
+                        Start 14-Day Free Trial
+                        <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                      </>
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   className="w-full text-muted-foreground hover:text-foreground"
                   onClick={dismiss}
                 >
-                  Maybe later
+                  {plan?.isTrial ? 'Got it' : 'Maybe later'}
                 </Button>
               </div>
+
+              <p className="mt-4 text-[11px] text-muted-foreground">
+                No credit card required. Cancel anytime.
+              </p>
             </div>
           </motion.div>
         </div>

@@ -32,7 +32,7 @@ import {
   useInvoices,
   useCheckout,
   usePortal,
-  useClaimPro,
+  useStartTrial,
 } from '@/lib/hooks/use-billing'
 
 interface PlanData {
@@ -144,14 +144,14 @@ export default function BillingPage() {
   const invoices = useInvoices()
   const checkout = useCheckout()
   const portal = usePortal()
-  const claimPro = useClaimPro()
+  const startTrial = useStartTrial()
 
   const pendingPlan = searchParams.get('plan')
   const pendingPeriod = searchParams.get('billing')
   const checkoutSuccess = searchParams.get('checkout') === 'success'
-  const claimProParam = searchParams.get('claim') === 'pro'
+  const trialParam = searchParams.get('trial') === 'pro'
   const checkoutTriggered = useRef(false)
-  const claimTriggered = useRef(false)
+  const trialTriggered = useRef(false)
 
   // Show success toast when returning from checkout
   useEffect(() => {
@@ -186,11 +186,11 @@ export default function BillingPage() {
     }
   }, [pendingPlan, pendingPeriod, orgId, checkout, setSearchParams])
 
-  // Auto-claim Pro when arriving with ?claim=pro
+  // Auto-start trial when arriving with ?trial=pro
   useEffect(() => {
-    if (claimProParam && orgId && !claimTriggered.current && !claimPro.isPending) {
-      claimTriggered.current = true
-      claimPro.mutate(undefined, {
+    if (trialParam && orgId && !trialTriggered.current && !startTrial.isPending) {
+      trialTriggered.current = true
+      startTrial.mutate(undefined, {
         onSuccess: () => {
           setSearchParams({}, { replace: true })
           plan.refetch()
@@ -200,7 +200,7 @@ export default function BillingPage() {
         },
       })
     }
-  }, [claimProParam, orgId, claimPro, setSearchParams, plan])
+  }, [trialParam, orgId, startTrial, setSearchParams, plan])
 
   const handlePortal = () => {
     toast.info('Subscription management coming soon.')
@@ -213,14 +213,14 @@ export default function BillingPage() {
       return
     }
     if (plan.data.name === 'free') {
-      claimPro.mutate()
+      startTrial.mutate()
       return
     }
     toast.info('Paid plans are coming soon! Stay tuned.')
   }
 
   const pageLoading = orgLoading
-  const isCheckoutRedirecting = checkout.isPending || claimPro.isPending
+  const isCheckoutRedirecting = checkout.isPending || startTrial.isPending
 
   return (
     <div className="space-y-6">
@@ -291,7 +291,7 @@ export default function BillingPage() {
           onRetry={() => plan.refetch()}
           onUpgrade={handleUpgrade}
           onPortal={handlePortal}
-          checkoutPending={checkout.isPending || claimPro.isPending}
+          checkoutPending={checkout.isPending || startTrial.isPending}
           portalPending={portal.isPending}
         />
         <BillingHistoryCard

@@ -343,13 +343,13 @@ export default function KnowledgeListPage() {
             <MoreVertical className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem onClick={() => navigate(`/knowledge/${row.original.id}`)}>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/knowledge/${row.original.id}`) }}>
               View Details
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
-              onClick={() => setDeleteId(row.original.id)}
+              onClick={(e) => { e.stopPropagation(); setDeleteId(row.original.id) }}
             >
               <Trash2 className="size-4" />
               Delete

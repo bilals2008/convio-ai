@@ -43,6 +43,7 @@ model Organization {
   ssoConfigs       SsoConfig?
   billingCustomer  BillingCustomer?
   broadcasts       Broadcast[]
+  avatarPresets    AvatarPreset[]
 
 
   @@index([slug])
@@ -157,19 +158,23 @@ model Widget {
 }
 
 model Conversation {
-  id           String    @id @default(uuid())
-  userId       String?
-  channel      String    @default("web")
-  status       String    @default("active")
-  optInStatus  String    @default("opted_in")
-  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
-  agentId      String
-  contactName  String?
-  contactPhone String?
-  metadata     Json?
-  agent        Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  messages     Message[]
+  id               String    @id @default(uuid())
+  userId           String?
+  channel          String    @default("web")
+  status           String    @default("active")
+  resolutionStatus String    @default("active")
+  rating           Int?
+  ratingComment    String?
+  resolvedAt       DateTime? @db.Timestamptz(6)
+  optInStatus      String    @default("opted_in")
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(6)
+  agentId          String
+  contactName      String?
+  contactPhone     String?
+  metadata         Json?
+  agent            Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  messages         Message[]
 
   @@index([agentId, createdAt])
   @@index([agentId, updatedAt(sort: Desc)])
@@ -188,9 +193,11 @@ model Message {
   responseTimeMs   Int?         @map("response_time_ms")
   inputTokens      Int?         @map("input_tokens")
   outputTokens     Int?         @map("output_tokens")
+  cost             Float?
   metadata         Json?
   createdAt        DateTime     @default(now()) @db.Timestamptz(6)
-  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation     Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  queries          DocumentQuery[]
 
   @@index([conversationId, createdAt])
   @@index([createdAt])
@@ -221,8 +228,9 @@ model Document {
   status          String          @default("pending")
   createdAt       DateTime        @default(now()) @db.Timestamptz(6)
   fileKey         String?
-  knowledgeBase   KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id])
+  knowledgeBase   KnowledgeBase    @relation(fields: [knowledgeBaseId], references: [id])
   chunks          DocumentChunk[]
+  queries         DocumentQuery[]
 
   @@index([knowledgeBaseId])
   @@index([status])
@@ -238,6 +246,20 @@ model DocumentChunk {
   document   Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
+}
+
+model DocumentQuery {
+  id         String   @id @default(uuid())
+  documentId String
+  messageId  String
+  success    Boolean  @default(false)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+  @@index([documentId, success])
+  @@index([messageId])
 }
 
 model Tool {
@@ -296,16 +318,22 @@ model AgentTool {
 }
 
 model Analytics {
-  id                 String   @id @default(uuid())
-  date               DateTime @db.Date
-  totalConversations Int      @default(0)
-  totalMessages      Int      @default(0)
-  uniqueUsers        Int      @default(0)
-  avgResponseTime    Float    @default(0)
-  satisfactionScore  Float?
-  createdAt          DateTime @default(now()) @db.Timestamptz(6)
-  agentId            String
-  agent              Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  id                    String   @id @default(uuid())
+  date                  DateTime @db.Date
+  totalConversations    Int      @default(0)
+  totalMessages         Int      @default(0)
+  uniqueUsers           Int      @default(0)
+  avgResponseTime       Float    @default(0)
+  satisfactionScore     Float?
+  resolvedConversations Int      @default(0)
+  escalatedConversations Int     @default(0)
+  totalCost             Float    @default(0)
+  totalInputTokens      Int      @default(0)
+  totalOutputTokens     Int      @default(0)
+  returningUsers        Int      @default(0)
+  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+  agentId               String
+  agent                 Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([agentId, date])
   @@index([agentId])
@@ -481,4 +509,17 @@ model Broadcast {
   @@index([status, scheduleCron])
   @@index([status, scheduleAt])
   @@map("broadcasts")
+}
+
+model AvatarPreset {
+  id             String       @id @default(uuid())
+  organizationId String
+  url            String
+  name           String
+  category       String       @default("custom")
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("avatar_presets")
 }

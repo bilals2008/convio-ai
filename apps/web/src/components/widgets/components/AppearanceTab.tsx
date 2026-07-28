@@ -1,11 +1,61 @@
-import { Palette } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+import { Palette, PaintBucket, Upload, X, Loader2, Image as ImageIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { SectionCard } from './SectionCard'
 import { ColorField } from './ColorField'
-import { primaryPresets, bgPresets, textPresets } from '../constants'
-import { getContrastText } from '../helpers'
+import { AvatarPresetModal } from '@/components/agents/avatar-preset-modal'
+import { useAgentAvatarUpload } from '@/lib/hooks/use-agent-avatar-upload'
+import { useOrg } from '@/lib/org-context'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import {
+  primaryPresets,
+  bgPresets,
+  textPresets,
+  promptBgPresets,
+  headerStartPresets,
+  headerEndPresets,
+  borderColorPresets,
+  inputBgPresets,
+  sendBtnPresets,
+  THEME_MODES,
+  type ThemeMode,
+} from '../constants'
+
+function QuickReplyInput({ onAdd }: { onAdd: (val: string) => void }) {
+  const [val, setVal] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleAdd = useCallback(() => {
+    const trimmed = val.trim()
+    if (!trimmed || trimmed.length > 60) return
+    onAdd(trimmed)
+    setVal('')
+    inputRef.current?.focus()
+  }, [val, onAdd])
+
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        ref={inputRef}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+        placeholder="Type a quick reply..."
+        className="h-8 text-xs flex-1 min-w-[140px]"
+        maxLength={60}
+      />
+      <Button type="button" size="sm" className="h-8 text-xs" onClick={handleAdd} disabled={!val.trim()}>
+        Add
+      </Button>
+    </div>
+  )
+}
+
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_SIZE_MB = 2
 
 interface AppearanceTabProps {
   agentName: string
@@ -18,8 +68,36 @@ interface AppearanceTabProps {
   onBackgroundColorChange: (value: string) => void
   textColor: string
   onTextColorChange: (value: string) => void
-  position: 'bottom-right' | 'bottom-left'
-  onPositionChange: (value: 'bottom-right' | 'bottom-left') => void
+  promptBgColor: string
+  onPromptBgColorChange: (value: string) => void
+  headerGradientStart: string
+  onHeaderGradientStartChange: (value: string) => void
+  headerGradientEnd: string
+  onHeaderGradientEndChange: (value: string) => void
+  headerGradientDirection: number
+  onHeaderGradientDirectionChange: (value: number) => void
+  headerGradient: boolean
+  onHeaderGradientChange: (value: boolean) => void
+  borderColor: string
+  onBorderColorChange: (value: string) => void
+  inputBgColor: string
+  onInputBgColorChange: (value: string) => void
+  sendBtnColor: string
+  onSendBtnColorChange: (value: string) => void
+  themeMode: ThemeMode
+  onThemeModeChange: (value: ThemeMode) => void
+  headerTitle: string
+  onHeaderTitleChange: (value: string) => void
+  headerSubtitle: string
+  onHeaderSubtitleChange: (value: string) => void
+  showOnlineIndicator: boolean
+  onShowOnlineIndicatorChange: (value: boolean) => void
+  placeholderText: string
+  onPlaceholderTextChange: (value: string) => void
+  showPoweredBy: boolean
+  onShowPoweredByChange: (value: boolean) => void
+  quickReplies: string[]
+  onQuickRepliesChange: (value: string[]) => void
 }
 
 export function AppearanceTab({
@@ -33,157 +111,390 @@ export function AppearanceTab({
   onBackgroundColorChange,
   textColor,
   onTextColorChange,
-  position,
-  onPositionChange,
+  promptBgColor,
+  onPromptBgColorChange,
+  headerGradientStart,
+  onHeaderGradientStartChange,
+  headerGradientEnd,
+  onHeaderGradientEndChange,
+  headerGradientDirection,
+  onHeaderGradientDirectionChange,
+  headerGradient,
+  onHeaderGradientChange,
+  borderColor,
+  onBorderColorChange,
+  inputBgColor,
+  onInputBgColorChange,
+  sendBtnColor,
+  onSendBtnColorChange,
+  themeMode,
+  onThemeModeChange,
+  headerTitle,
+  onHeaderTitleChange,
+  headerSubtitle,
+  onHeaderSubtitleChange,
+  showOnlineIndicator,
+  onShowOnlineIndicatorChange,
+  placeholderText,
+  onPlaceholderTextChange,
+  showPoweredBy,
+  onShowPoweredByChange,
+  quickReplies,
+  onQuickRepliesChange,
 }: AppearanceTabProps) {
-  const initials = (agentName || 'A')
-    .split(' ')
-    .map((w) => w[0])
-    .slice(0, 1)
-    .join('')
-    .toUpperCase()
+  const { orgId } = useOrg()
+  const { upload, isUploading, progress } = useAgentAvatarUpload()
+  const [presetModalOpen, setPresetModalOpen] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error('Only JPG, PNG, WebP, and GIF images are allowed.')
+      e.target.value = ''
+      return
+    }
+
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast.error(`Image must be smaller than ${MAX_SIZE_MB}MB.`)
+      e.target.value = ''
+      return
+    }
+
+    if (!orgId) {
+      toast.error('Organization not loaded. Please wait and try again.')
+      e.target.value = ''
+      return
+    }
+
+    try {
+      const url = await upload(orgId, file)
+      onAgentAvatarChange(url)
+      toast.success('Avatar uploaded')
+    } catch {
+      toast.error('Failed to upload avatar')
+    } finally {
+      e.target.value = ''
+    }
+  }
 
   return (
-    <>
+    <div className="space-y-5">
       <SectionCard
-        icon={<Palette className="size-3.5" aria-hidden="true" />}
+        icon={<Palette className="size-3.5" />}
         title="Appearance"
-        description="Customize how the widget looks on your site."
       >
-        <div className="space-y-7">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="agentName" className="text-sm font-medium text-foreground">
-                Agent name
-              </Label>
-              <Input
-                id="agentName"
-                value={agentName}
-                onChange={(e) => onAgentNameChange(e.target.value)}
-                placeholder="Assistant"
-                className="h-9 text-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="agentAvatar" className="text-sm font-medium text-foreground">
-                Avatar URL
-              </Label>
-              <div className="flex items-center gap-2.5">
-                <Input
-                  id="agentAvatar"
-                  value={agentAvatar}
-                  onChange={(e) => onAgentAvatarChange(e.target.value)}
-                  placeholder="https://…"
-                  className="h-9 flex-1 text-sm"
-                />
-                <div
-                  className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-foreground/10 transition-all duration-200"
-                  style={
-                    agentAvatar
-                      ? undefined
-                      : {
-                          background: `linear-gradient(135deg, ${primaryColor}, color-mix(in srgb, ${primaryColor} 80%, black))`,
-                          boxShadow: `0 0 0 2px ${primaryColor}`,
-                        }
-                  }
-                  aria-label="Avatar preview"
-                >
-                  {agentAvatar ? (
-                    <img
-                      src={agentAvatar}
-                      alt="Agent avatar preview"
-                      className="size-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <span
-                      className="text-xs font-bold"
-                      style={{ color: getContrastText(primaryColor) }}
-                    >
-                      {initials}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="agentName" className="text-sm font-medium">
+              Agent name
+            </Label>
+            <Input
+              id="agentName"
+              value={agentName}
+              onChange={(e) => onAgentNameChange(e.target.value)}
+              placeholder="Assistant"
+              className="h-9 text-sm"
+            />
           </div>
 
-          <div className="space-y-5 border-t border-border/60 pt-6">
-            <ColorField
-              label="Primary color"
-              hint="Accent for the launcher button and user bubbles"
-              value={primaryColor}
-              onChange={onPrimaryColorChange}
-              presets={primaryPresets}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Avatar</Label>
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ring-border/60">
+                {agentAvatar ? (
+                  <img src={agentAvatar} alt="" className="size-full object-cover" />
+                ) : (
+                  <ImageIcon className="size-4 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="h-8 text-xs"
+                >
+                  {isUploading ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Upload className="size-3" />
+                  )}
+                  {isUploading ? `${progress}%` : 'Upload'}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPresetModalOpen(true)}
+                  disabled={isUploading}
+                  className="h-8 text-xs"
+                >
+                  <Palette className="size-3" />
+                  Preset
+                </Button>
+                {agentAvatar && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onAgentAvatarChange('')}
+                    disabled={isUploading}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="size-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <AvatarPresetModal
+              open={presetModalOpen}
+              onOpenChange={setPresetModalOpen}
+              value={agentAvatar}
+              onSelect={onAgentAvatarChange}
             />
+          </div>
 
-            <ColorField
-              label="Background color"
-              hint="Main background of the widget window"
-              value={backgroundColor}
-              onChange={onBackgroundColorChange}
-              presets={bgPresets}
-            />
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Color scheme</Label>
+            <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5" role="radiogroup">
+              {THEME_MODES.map((mode) => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={themeMode === mode.value}
+                  onClick={() => onThemeModeChange(mode.value)}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                    themeMode === mode.value
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {themeMode === 'auto' ? 'Follows the visitor\'s system setting' : themeMode === 'light' ? 'Always uses light colors' : 'Always uses dark colors'}
+            </p>
+          </div>
 
-            <ColorField
-              label="Text color"
-              hint="Color of message text and labels"
-              value={textColor}
-              onChange={onTextColorChange}
-              presets={textPresets}
-            />
+          <div className="space-y-4 border-t border-border/60 pt-6">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <ColorField
+                label="Primary"
+                description="Accent for the launcher button and user bubbles"
+                value={primaryColor}
+                onChange={onPrimaryColorChange}
+                presets={primaryPresets}
+              />
+
+              <ColorField
+                label="Background"
+                description="Main background of the widget window"
+                value={backgroundColor}
+                onChange={onBackgroundColorChange}
+                presets={bgPresets}
+              />
+
+              <ColorField
+                label="Text"
+                description="Color of message text and labels"
+                value={textColor}
+                onChange={onTextColorChange}
+                presets={textPresets}
+              />
+
+              <ColorField
+                label="Prompt bg"
+                description="Background color for AI response bubbles"
+                value={promptBgColor}
+                onChange={onPromptBgColorChange}
+                presets={promptBgPresets}
+              />
+            </div>
           </div>
         </div>
       </SectionCard>
 
-      <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
-        <div className="flex items-start justify-between gap-4 border-b border-border/60 bg-card px-6 py-5">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Launcher position</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Where the floating launcher appears on the page.
-            </p>
-          </div>
-          <div
-            className="flex shrink-0 items-center rounded-lg border border-border bg-muted/30 p-0.5"
-            role="radiogroup"
-            aria-label="Launcher position"
-          >
-            {(['bottom-right', 'bottom-left'] as const).map((pos) => (
-              <button
-                key={pos}
-                role="radio"
-                aria-checked={position === pos}
-                onClick={() => onPositionChange(pos)}
+      <SectionCard
+        icon={<PaintBucket className="size-3.5" />}
+        title="Header"
+        description="Background for the widget header"
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Gradient</Label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={headerGradient}
+              onClick={() => onHeaderGradientChange(!headerGradient)}
+              className={cn(
+                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                headerGradient ? 'bg-primary' : 'bg-muted'
+              )}
+            >
+              <span
                 className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-200',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                  position === pos
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground',
+                  'pointer-events-none inline-block size-4 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200',
+                  headerGradient ? 'translate-x-4' : 'translate-x-0'
                 )}
-              >
-                <span
-                  className={cn(
-                    'relative size-3.5 rounded-sm border',
-                    position === pos ? 'border-primary-foreground/40' : 'border-current/40',
-                  )}
-                  aria-hidden="true"
-                >
-                  <span
-                    className={cn(
-                      'absolute size-1.5 rounded-full',
-                      pos === 'bottom-right' ? 'bottom-0 right-0' : 'bottom-0 left-0',
-                      position === pos ? 'bg-primary-foreground' : 'bg-current',
-                    )}
-                  />
-                </span>
-                {pos === 'bottom-right' ? 'Right' : 'Left'}
-              </button>
-            ))}
+              />
+            </button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ColorField
+              label={headerGradient ? 'Gradient start' : 'Color'}
+              description={headerGradient ? 'Starting color of the header gradient' : 'Solid header background color'}
+              value={headerGradientStart}
+              onChange={onHeaderGradientStartChange}
+              presets={headerStartPresets}
+            />
+
+            {headerGradient && (
+              <ColorField
+                label="Gradient end"
+                description="Ending color of the header gradient"
+                value={headerGradientEnd}
+                onChange={onHeaderGradientEndChange}
+                presets={headerEndPresets}
+              />
+            )}
+          </div>
+
+          {headerGradient && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Direction</Label>
+                <span className="text-xs text-muted-foreground tabular-nums">{headerGradientDirection}°</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={360}
+                value={headerGradientDirection}
+                onChange={(e) => onHeaderGradientDirectionChange(Number(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+                />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>0°</span>
+                <span>90°</span>
+                <span>180°</span>
+                <span>270°</span>
+                <span>360°</span>
+              </div>
+              <div
+                className="h-10 rounded-lg ring-1 ring-foreground/10"
+                style={{
+                  background: `linear-gradient(${headerGradientDirection}deg, ${headerGradientStart}, ${headerGradientEnd})`,
+                }}
+              />
+            </div>
+          )}
+
+          {!headerGradient && (
+            <div
+              className="h-10 rounded-lg ring-1 ring-foreground/10"
+              style={{ backgroundColor: headerGradientStart }}
+            />
+          )}
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        icon={<PaintBucket className="size-3.5" />}
+        title="Header content"
+        description="Title, subtitle, and indicators"
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="headerTitle" className="text-xs font-medium">Title</Label>
+            <Input id="headerTitle" value={headerTitle} onChange={(e) => onHeaderTitleChange(e.target.value)} placeholder="Chat with us" className="h-9 text-sm" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="headerSubtitle" className="text-xs font-medium">Subtitle</Label>
+            <Input id="headerSubtitle" value={headerSubtitle} onChange={(e) => onHeaderSubtitleChange(e.target.value)} placeholder="We're online" className="h-9 text-sm" />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium">Online indicator</Label>
+            <button type="button" role="switch" aria-checked={showOnlineIndicator} onClick={() => onShowOnlineIndicatorChange(!showOnlineIndicator)}
+              className={cn('relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors', showOnlineIndicator ? 'bg-primary' : 'bg-muted')}>
+              <span className={cn('pointer-events-none inline-block size-5 rounded-full bg-white shadow-lg ring-0 transition-transform', showOnlineIndicator ? 'translate-x-5' : 'translate-x-0')} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium">Powered by Convio</Label>
+            <button type="button" role="switch" aria-checked={showPoweredBy} onClick={() => onShowPoweredByChange(!showPoweredBy)}
+              className={cn('relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors', showPoweredBy ? 'bg-primary' : 'bg-muted')}>
+              <span className={cn('pointer-events-none inline-block size-5 rounded-full bg-white shadow-lg ring-0 transition-transform', showPoweredBy ? 'translate-x-5' : 'translate-x-0')} />
+            </button>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="placeholderText" className="text-xs font-medium">Placeholder</Label>
+            <Input id="placeholderText" value={placeholderText} onChange={(e) => onPlaceholderTextChange(e.target.value)} placeholder="Enter your message..." className="h-9 text-sm" />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label className="text-xs font-medium">Quick replies</Label>
+            <div className="flex flex-wrap gap-2">
+              {quickReplies.map((reply, i) => (
+                <div key={i} className="flex items-center gap-1 rounded-full border border-border bg-muted/30 px-3 py-1">
+                  <span className="text-xs">{reply}</span>
+                  <button type="button" onClick={() => onQuickRepliesChange(quickReplies.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors"><X className="size-3" /></button>
+                </div>
+              ))}
+              {quickReplies.length < 4 && <QuickReplyInput onAdd={(val) => onQuickRepliesChange([...quickReplies, val])} />}
+            </div>
           </div>
         </div>
-      </div>
-    </>
+      </SectionCard>
+
+      <SectionCard
+        icon={<PaintBucket className="size-3.5" />}
+        title="Widget elements"
+        description="Customize borders, input area, and send button"
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          <ColorField
+            label="Border color"
+            description="Color of widget borders and dividers"
+            value={borderColor}
+            onChange={onBorderColorChange}
+            presets={borderColorPresets}
+          />
+
+          <ColorField
+            label="Input background"
+            description="Background color of the message input area"
+            value={inputBgColor}
+            onChange={onInputBgColorChange}
+            presets={inputBgPresets}
+          />
+
+          <ColorField
+            label="Send button"
+            description="Color of the send message button"
+            value={sendBtnColor}
+            onChange={onSendBtnColorChange}
+            presets={sendBtnPresets}
+          />
+        </div>
+      </SectionCard>
+    </div>
   )
 }

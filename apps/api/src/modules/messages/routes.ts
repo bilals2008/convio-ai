@@ -4,10 +4,11 @@ import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
-import { retrieveContext } from '../../services/processor.js'
+import { retrieveContext, markDocumentQueriesSuccess } from '../../services/processor.js'
 import { moderateForOrg, type ModerationFlag } from '../../services/moderation.js'
 import { checkMessageLimit } from '../../services/billing.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
+import { computeCost } from '@convio/ai/pricing'
 import { z } from 'zod'
 
 // User-facing message shown when a message is blocked by moderation.
@@ -222,8 +223,15 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       select: { role: true, content: true },
     })
 
+    const lastUserMsgForQuery = await prisma.message.findFirst({
+      where: { conversationId: id, role: 'user' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    })
+    const messageId = lastUserMsgForQuery?.id
+
     const contextPromise = agent.knowledgeBaseId
-      ? retrieveContext(content, agent.knowledgeBaseId).catch((err: unknown) => {
+      ? retrieveContext(content, agent.knowledgeBaseId, 5, true, messageId).catch((err: unknown) => {
           request.log.warn({ err }, 'RAG retrieval failed, falling back to base prompt')
           return null
         })
@@ -391,8 +399,13 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           responseTimeMs,
           inputTokens: totalInputTokens || null,
           outputTokens: totalOutputTokens || null,
+          cost: computeCost(agent.model, totalInputTokens || 0, totalOutputTokens || 0),
         },
       })
+
+      if (messageId) {
+        markDocumentQueriesSuccess(messageId).catch(() => {})
+      }
 
       try {
         fastify.supabase.channel(`conversation:${id}`).send({
@@ -603,6 +616,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           responseTimeMs,
           inputTokens: response.usage?.promptTokens ?? null,
           outputTokens: response.usage?.completionTokens ?? null,
+          cost: computeCost(agent.model, response.usage?.promptTokens ?? 0, response.usage?.completionTokens ?? 0),
         },
       })
 
@@ -827,6 +841,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           responseTimeMs,
           inputTokens: totalInputTokens || null,
           outputTokens: totalOutputTokens || null,
+          cost: computeCost(agent.model, totalInputTokens || 0, totalOutputTokens || 0),
         },
       })
     }

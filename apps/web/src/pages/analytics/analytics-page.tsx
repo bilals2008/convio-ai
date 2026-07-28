@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { MessagesSquare, Send, Timer, Cpu, Building2 } from 'lucide-react'
+import { DollarSign, CheckCircle, Cpu, Users } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { PageHeader } from '@/components/shared/page-header'
@@ -8,11 +7,12 @@ import { OverviewChart } from '@/components/dashboard/overview-chart'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
 import { ChannelPerformanceChart } from '@/components/analytics/channel-performance-chart'
+import { TokenCostTrend } from '@/components/analytics/token-cost-trend'
 import { AgentPerformanceTable } from '@/components/analytics/agent-performance-table'
+import { TopDocumentsTable } from '@/components/analytics/top-documents-table'
 import { EmptyState } from '@/components/shared/empty-state'
-import { analytics as analyticsApi } from '@/lib/api'
+import { useOrgAnalytics } from '@/hooks/use-analytics'
 import { useOrg } from '@/lib/org-context'
-import { formatResponseTime } from '@/lib/analytics'
 
 const dateRanges = [
   { label: '7 days', value: '7d' },
@@ -23,22 +23,16 @@ const dateRanges = [
 function getDateRange(range: string) {
   const now = new Date()
   const to = now.toISOString().slice(0, 10)
-  let from: string
 
   switch (range) {
     case '7d':
-      from = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10)
-      break
+      return { from: new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10), to }
     case '90d':
-      from = new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10)
-      break
+      return { from: new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10), to }
     case '30d':
     default:
-      from = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10)
-      break
+      return { from: new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10), to }
   }
-
-  return { from, to }
 }
 
 export default function AnalyticsPage() {
@@ -46,24 +40,15 @@ export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<string>('30d')
   const { from, to } = getDateRange(dateRange)
 
-  const { data: overview, isLoading, isError, error } = useQuery({
-    queryKey: ['analytics', orgId, dateRange],
-    queryFn: async () => {
-      const res = await analyticsApi.overview(orgId!, { from, to })
-      return res.data.data
-    },
-    enabled: !!orgId,
-    retry: false,
-  })
+  const { data: overview, isLoading, isError, error } = useOrgAnalytics(orgId, from, to)
 
   if (orgLoading) return <OverviewSkeleton />
-
   if (!orgId) {
     return (
       <PageContainer>
         <PageHeader title="Analytics" description="Track performance across your agents and channels" />
         <EmptyState
-          icon={Building2}
+          icon={Users}
           title="No organization found"
           description="Create an organization to get started with Convio."
           action={{ label: 'Create Organization', onClick: () => window.location.href = '/settings/organization' }}
@@ -73,13 +58,12 @@ export default function AnalyticsPage() {
   }
 
   if (isLoading) return <OverviewSkeleton />
-
   if (isError) {
     return (
       <PageContainer>
         <PageHeader title="Analytics" description="Track performance across your agents and channels" />
         <EmptyState
-          icon={Building2}
+          icon={Users}
           title="Failed to load analytics"
           description={(error as Error)?.message || 'Something went wrong. Please try again.'}
         />
@@ -87,24 +71,16 @@ export default function AnalyticsPage() {
     )
   }
 
-  const chartData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; totalConversations: number; totalMessages: number; avgResponseTime: number }) => ({
-      date: d.date,
-      conversations: d.totalConversations,
-      messages: d.totalMessages,
-    }),
-  )
+  const chartData = (overview?.dailyBreakdown || []).map((d) => ({
+    date: d.date,
+    conversations: d.totalConversations,
+    messages: d.totalMessages,
+  }))
 
-  const responseTimeData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; avgResponseTime: number }) => ({
-      date: d.date,
-      avgResponseTime: d.avgResponseTime ?? 0,
-    }),
-  )
-
-  const totalConversations = overview?.totalConversations || 0
-  const totalMessages = overview?.totalMessages || 0
-  const avgResponseTime = overview?.avgResponseTime || 0
+  const responseTimeData = (overview?.dailyBreakdown || []).map((d) => ({
+    date: d.date,
+    avgResponseTime: d.avgResponseTime ?? 0,
+  }))
 
   return (
     <PageContainer className="space-y-4">
@@ -133,46 +109,47 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatsCard
-          icon={MessagesSquare}
-          label="Conversations"
-          value={totalConversations.toLocaleString()}
-          description={`${overview?.conversationsChange >= 0 ? '+' : ''}${overview?.conversationsChange ?? 0}% from prev`}
-          iconClassName="bg-blue-500/10 text-blue-500 dark:text-blue-400"
+          icon={DollarSign}
+          label="Total Cost"
+          value={`$${overview.totalCost.toFixed(2)}`}
+          description={`${overview.conversationsChange >= 0 ? '+' : ''}${overview.conversationsChange}% from prev`}
+          iconClassName="bg-violet-500/10 text-violet-500 dark:text-violet-400"
         />
         <StatsCard
-          icon={Send}
-          label="Messages"
-          value={totalMessages.toLocaleString()}
-          description={`${Math.round(totalMessages / Math.max(totalConversations, 1))} per conversation`}
+          icon={CheckCircle}
+          label="Success Rate"
+          value={`${overview.successRate}%`}
+          description={`${overview.successRate >= 80 ? 'Excellent' : overview.successRate >= 60 ? 'Good' : 'Needs improvement'}`}
+          descriptionClassName={overview.successRate >= 80 ? 'text-emerald-500' : overview.successRate >= 60 ? 'text-amber-500' : 'text-red-500'}
           iconClassName="bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
         />
         <StatsCard
-          icon={Timer}
-          label="Avg Response"
-          value={formatResponseTime(avgResponseTime)}
-          description={avgResponseTime < 1 ? 'Excellent' : avgResponseTime < 2 ? 'Good' : 'Needs improvement'}
-          descriptionClassName={avgResponseTime < 1 ? 'text-emerald-500' : avgResponseTime < 2 ? 'text-amber-500' : 'text-red-500'}
-          iconClassName="bg-amber-500/10 text-amber-500 dark:text-amber-400"
+          icon={Cpu}
+          label="Tokens Used"
+          value={(overview.totalInputTokens + overview.totalOutputTokens).toLocaleString()}
+          description={`${overview.totalInputTokens.toLocaleString()} in · ${overview.totalOutputTokens.toLocaleString()} out`}
+          iconClassName="bg-blue-500/10 text-blue-500 dark:text-blue-400"
         />
         <StatsCard
-          icon={Cpu}
-          label="Active Agents"
-          value={overview ? String((overview as Record<string, unknown>).activeAgents ?? '—') : '—'}
-          description="Across all channels"
-          iconClassName="bg-violet-500/10 text-violet-500 dark:text-violet-400"
+          icon={Users}
+          label="Active Users"
+          value={overview.uniqueUsers.toLocaleString()}
+          description={`${overview.usersChange >= 0 ? '+' : ''}${overview.usersChange}% from prev`}
+          iconClassName="bg-amber-500/10 text-amber-500 dark:text-amber-400"
         />
       </div>
 
       <OverviewChart data={chartData} loading={isLoading} />
 
-      {/* ── Response Time & Channel Performance ──────────────────────── */}
       <div className="grid gap-3 lg:grid-cols-2">
         <ResponseTimeChart data={responseTimeData} loading={isLoading} />
-        <ChannelPerformanceChart data={overview?.channelBreakdown} loading={isLoading} />
+        <ChannelPerformanceChart data={overview.channelBreakdown} loading={isLoading} />
       </div>
 
-      {/* ── Agent Performance Table ──────────────────────────────────── */}
+      <TokenCostTrend data={overview.dailyBreakdown} totalCost={overview.totalCost} loading={isLoading} />
+
       <AgentPerformanceTable />
+      <TopDocumentsTable orgId={orgId} />
     </PageContainer>
   )
 }

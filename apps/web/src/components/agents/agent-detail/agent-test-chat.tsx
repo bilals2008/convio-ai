@@ -232,6 +232,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const configRef = useRef(agentConfig)
   const queryClient = useQueryClient()
   const { data: plan } = usePlan()
+  const autoCreated = useRef(false)
 
   const toolsAllowed = !!plan && plan.name !== 'free'
   const agentHasTools = !!(agentConfig.tools && agentConfig.tools.length > 0)
@@ -303,6 +304,21 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   })
 
   const serverConvs = useMemo(() => convsData.map(mapDbConv), [convsData])
+
+  // Auto-create conversation on first load
+  useEffect(() => {
+    if (!convsLoading && !autoCreated.current && !activeConvId && agentConfig.systemPrompt && agentConfig.model) {
+      autoCreated.current = true
+      createConv.mutate()
+    }
+  }, [convsLoading, activeConvId, agentConfig.systemPrompt, agentConfig.model, createConv])
+
+  // Focus input when a conversation becomes active
+  useEffect(() => {
+    if (activeConvId && !streaming) {
+      textareaRef.current?.focus()
+    }
+  }, [activeConvId, streaming])
 
   const allConvs = useMemo(() => {
     const server = [...serverConvs]
@@ -989,55 +1005,73 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                           <MessageFooter className="gap-2">
                             <span>{formatTime(msg.createdAt)}</span>
                             {!isUser && msg.usage && (
-                              <span className="text-muted-foreground/60 text-[11px]" title={`Prompt: ${msg.usage.promptTokens}, Completion: ${msg.usage.completionTokens}`}>
-                                {formatTokenCount(msg.usage.totalTokens)} tokens
+                              <span className="text-muted-foreground/60 text-[11px]" title={`Total: ${msg.usage.totalTokens} tokens (Prompt: ${msg.usage.promptTokens} + Completion: ${msg.usage.completionTokens})`}>
+                                {formatTokenCount(msg.usage.completionTokens)} tokens
                               </span>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(msg.id, msg.content)}
-                              className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                              aria-label={isCopied ? 'Copied' : isUser ? 'Copy message' : 'Copy response'}
-                            >
-                              <span className="relative flex size-3.5 items-center justify-center">
-                                <Copy
-                                  className={cn(
-                                    'absolute size-3.5 transition-all duration-200 ease-out',
-                                    isCopied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
-                                  )}
-                                />
-                                <Check
-                                  className={cn(
-                                    'absolute size-3.5 text-success transition-all duration-200 ease-out',
-                                    isCopied ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
-                                  )}
-                                />
-                              </span>
-                            </button>
-                            {isUser && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditValue(msg.content)
-                                  setEditingId(msg.id)
-                                }}
-                                disabled={streaming}
-                                className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-                                aria-label="Edit message"
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(msg.id, msg.content)}
+                                    className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                  />
+                                }
                               >
-                                <Pencil className="size-3.5" />
-                              </button>
+                                <span className="relative flex size-3.5 items-center justify-center">
+                                  <Copy
+                                    className={cn(
+                                      'absolute size-3.5 transition-all duration-200 ease-out',
+                                      isCopied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
+                                    )}
+                                  />
+                                  <Check
+                                    className={cn(
+                                      'absolute size-3.5 text-success transition-all duration-200 ease-out',
+                                      isCopied ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+                                    )}
+                                  />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{isCopied ? 'Copied' : isUser ? 'Copy message' : 'Copy response'}</TooltipContent>
+                            </Tooltip>
+                            {isUser && (
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditValue(msg.content)
+                                        setEditingId(msg.id)
+                                      }}
+                                      disabled={streaming}
+                                      className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                                    />
+                                  }
+                                >
+                                  <Pencil className="size-3.5" />
+                                </TooltipTrigger>
+                                <TooltipContent>Edit message</TooltipContent>
+                              </Tooltip>
                             )}
                             {!isUser && isLast && (
-                              <button
-                                type="button"
-                                onClick={handleRegenerate}
-                                disabled={streaming}
-                                className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-                                aria-label="Regenerate response"
-                              >
-                                <RefreshCw className="size-3.5" />
-                              </button>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <button
+                                      type="button"
+                                      onClick={handleRegenerate}
+                                      disabled={streaming}
+                                      className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                                    />
+                                  }
+                                >
+                                  <RefreshCw className="size-3.5" />
+                                </TooltipTrigger>
+                                <TooltipContent>Regenerate response</TooltipContent>
+                              </Tooltip>
                             )}
                           </MessageFooter>
                         )}

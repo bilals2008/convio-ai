@@ -3,6 +3,7 @@ import { prisma } from '@convio/database'
 import { z } from 'zod'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
+import { exportOrgData } from './export.js'
 
 const orgParamsSchema = z.object({
   orgId: z.string().uuid(),
@@ -491,5 +492,20 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
     })
 
     return { data: counts }
+  })
+
+  // GET /api/organizations/:orgId/export — Export data as CSV/JSON
+  fastify.get('/organizations/:orgId/export', {
+    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema, query: z.object({ format: z.enum(['csv', 'json']).default('csv'), scope: z.enum(['agents', 'conversations', 'analytics', 'knowledge-bases', 'deployments', 'all']).default('all') }) })],
+  }, async (request, reply) => {
+    const { orgId } = request.params as { orgId: string }
+    const { format, scope } = request.query as { format: 'csv' | 'json'; scope: 'agents' | 'conversations' | 'analytics' | 'knowledge-bases' | 'deployments' | 'all' }
+    await fastify.getMembership(request.userId!, orgId)
+
+    const { content, filename } = await exportOrgData(orgId, format, scope)
+    const contentType = format === 'csv' ? 'text/csv' : 'application/json'
+    reply.header('Content-Type', `${contentType}; charset=utf-8`)
+    reply.header('Content-Disposition', `attachment; filename="${filename}"`)
+    return reply.send(content)
   })
 }

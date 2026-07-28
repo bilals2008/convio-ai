@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
+import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell } from 'recharts'
 import { Globe } from 'lucide-react'
 
 const channelLabels: Record<string, string> = {
@@ -11,6 +11,8 @@ const channelLabels: Record<string, string> = {
   telegram: 'Telegram',
   api: 'API',
 }
+
+const COLORS = ['hsl(142, 71%, 45%)', 'hsl(217, 91%, 60%)', 'hsl(271, 81%, 56%)', 'hsl(25, 95%, 53%)', 'hsl(340, 82%, 52%)', 'hsl(200, 98%, 39%)']
 
 interface ChannelBreakdown {
   channel: string
@@ -30,6 +32,8 @@ export function ChannelPerformanceChart({ data, loading }: ChannelPerformanceCha
         conversations: d.count,
       }))
     : []
+
+  const total = chartData.reduce((s, d) => s + d.conversations, 0)
 
   return (
     <Card>
@@ -51,30 +55,37 @@ export function ChannelPerformanceChart({ data, loading }: ChannelPerformanceCha
             <p className="text-xs text-muted-foreground mt-1">Channel performance will appear once conversations come in.</p>
           </div>
         ) : (
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid horizontal={false} />
-                <XAxis type="number" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis
-                  dataKey="channel"
-                  type="category"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  width={80}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="conversations" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} barSize={20} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex items-center gap-4">
+            <div className="h-[200px] w-[200px] shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartData} dataKey="conversations" nameKey="channel" cx="50%" cy="50%" outerRadius={80} innerRadius={50}>
+                    {chartData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value: number, name: string) => [`${value} (${(value / total * 100).toFixed(1)}%)`, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-col gap-2 text-sm">
+              {chartData.map((d, i) => (
+                <div key={d.channel} className="flex items-center gap-2">
+                  <span className="size-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                  <span className="w-20 text-muted-foreground">{d.channel}</span>
+                  <span className="w-12 text-right font-medium tabular-nums">{d.conversations}</span>
+                  <span className="w-10 text-right text-xs text-muted-foreground">{(d.conversations / total * 100).toFixed(1)}%</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </CardContent>

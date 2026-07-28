@@ -4,6 +4,8 @@ import { useWidgetState } from './WidgetState'
 import { WidgetMessage } from './WidgetMessage'
 import { WidgetTyping } from './WidgetTyping'
 import type { WidgetMessage as WidgetMessageType } from '@/hooks/useWidget'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 function groupMessagesByDate(messages: WidgetMessageType[]) {
   const groups: { date: string; messages: WidgetMessageType[] }[] = []
@@ -63,16 +65,16 @@ export function WidgetMessages() {
   return (
     <div
       ref={scrollRef}
-      className="convio-messages flex-1 overflow-y-auto px-4 py-3"
+      className="convio-messages flex-1 overflow-y-auto px-3 py-2"
       style={{
         scrollbarWidth: 'thin',
-        scrollbarColor: 'transparent transparent',
+        scrollbarColor: 'hsl(var(--widget-muted)) transparent',
       }}
     >
       {groups.map((group) => (
         <div key={group.date}>
           <div className="flex items-center justify-center my-4">
-            <span className="text-[10px] font-medium text-[hsl(var(--widget-muted-foreground))]/60 tracking-wide">
+            <span className="text-[10px] font-medium text-[hsl(var(--widget-muted-foreground))]/60 tracking-wide bg-[hsl(var(--widget-muted))] px-3 py-1 rounded-full">
               {group.date}
             </span>
           </div>
@@ -89,12 +91,12 @@ export function WidgetMessages() {
         <div className="convio-msg flex gap-2 mb-3 animate-in fade-in duration-300 justify-start">
           <div className="mt-1 shrink-0">
             {agentAvatar ? (
-              <img src={agentAvatar} alt={agentName} className="size-7 rounded-full object-cover ring-2 ring-[hsl(var(--widget-primary))]" />
+              <img src={agentAvatar} alt={agentName} className="size-7 rounded-full object-cover" />
             ) : (
               <div
                 className="size-7 rounded-full flex items-center justify-center"
                 style={{
-                  background: `linear-gradient(135deg, hsl(var(--widget-primary)), color-mix(in srgb, hsl(var(--widget-primary)) 80%, black))`,
+                  background: `linear-gradient(135deg, hsl(var(--widget-header-start)), hsl(var(--widget-header-end)))`,
                 }}
               >
                 <span className="text-[9px] font-bold text-white">{initials}</span>
@@ -102,12 +104,12 @@ export function WidgetMessages() {
             )}
           </div>
           <div
-            className="group relative max-w-[80%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-muted))] shadow-sm"
+            className="group relative max-w-[88%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-muted))]"
           >
-            <p className="whitespace-pre-wrap break-words">
-              {streamingContent}
-              <span className="inline-block w-1.5 h-4 ml-0.5 bg-[hsl(var(--widget-primary))] animate-pulse align-text-bottom" />
-            </p>
+            <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-code:bg-[hsl(var(--widget-primary)_/_0.15)] prose-code:px-1 prose-code:rounded prose-code:text-[12px] prose-pre:bg-[hsl(var(--widget-bg))] prose-pre:border prose-pre:border-[hsl(var(--widget-border))] prose-a:text-[hsl(var(--widget-primary))]">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
+            </div>
+            <span className="inline-block w-1.5 h-4 ml-0.5 bg-[hsl(var(--widget-primary))] animate-pulse align-text-bottom" />
           </div>
         </div>
       ) : isTyping && <WidgetTyping />}

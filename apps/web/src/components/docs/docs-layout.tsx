@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { useTheme } from 'next-themes'
 import { DocsSidebar } from './docs-sidebar'
 import { DocsToc } from './docs-toc'
+import { DocPromoCard } from './doc-promo-card'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
@@ -130,16 +131,17 @@ export function DocsLayout() {
           </div>
         </main>
 
-        {/* Right sidebar - TOC */}
+        {/* Right sidebar - TOC + Promo */}
         <aside className="hidden xl:flex flex-col w-[220px] shrink-0 border-l bg-card h-[calc(100vh-56px)] sticky top-14">
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="px-4 pt-6 pb-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60 mb-3">
-                On This Page
-              </p>
-              <DocsToc />
-            </div>
-          </ScrollArea>
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60 mb-3">
+              On This Page
+            </p>
+            <DocsToc />
+          </div>
+          <div className="px-4 pb-4 shrink-0 space-y-3">
+            <DocPromoCard />
+          </div>
         </aside>
       </div>
     </div>

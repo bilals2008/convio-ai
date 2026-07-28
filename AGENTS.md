@@ -1,6 +1,6 @@
 # AGENTS
-
 EveryTime when you read this file Say Bilal!
+
 Rules for AI agents working on this codebase.
 
 ## Environment

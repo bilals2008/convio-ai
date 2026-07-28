@@ -12,16 +12,36 @@ export interface ChatWidgetProps {
   preview?: boolean
   position?: 'bottom-right' | 'bottom-left'
   theme?: Partial<WidgetTheme>
+  themeMode?: 'auto' | 'light' | 'dark'
   greeting?: string
   agentName?: string
   agentAvatar?: string
   quickReplies?: string[]
+  homeMenu?: { icon: string; label: string; description: string }[]
+  widgetWidth?: 'narrow' | 'default' | 'wide'
+  launcherSize?: 'small' | 'default' | 'large'
+  borderRadius?: 'none' | 'default' | 'full'
+  headerGradient?: boolean
+  headerTitle?: string
+  headerSubtitle?: string
+  showOnlineIndicator?: boolean
+  launcherIcon?: 'chat' | 'sparkle' | 'message' | 'headphones' | 'bot' | 'help'
+  launcherLabel?: string
+  placeholderText?: string
+  showPoweredBy?: boolean
 }
 
 const defaultTheme: WidgetTheme = {
   primaryColor: '#fb923c',
   backgroundColor: '#1c1c1c',
   textColor: '#f3f4f6',
+  promptBgColor: '#2a2a2a',
+  headerGradientStart: '#fb923c',
+  headerGradientEnd: '#c2410c',
+  headerGradientDirection: '135deg',
+  borderColor: '',
+  inputBgColor: '',
+  sendBtnColor: '',
 }
 
 function WidgetBackdrop({ show, onClose }: { show: boolean; onClose: () => void }) {
@@ -45,13 +65,26 @@ export function ChatWidget({
   preview,
   position = 'bottom-right',
   theme: themeOverride,
+  themeMode = 'auto',
   greeting = "Hi there! 👋 I'm here to help. What can I do for you today?",
   agentName = 'Convio Assistant',
   agentAvatar,
   quickReplies,
+  homeMenu,
+  widgetWidth = 'default',
+  launcherSize = 'default',
+  borderRadius = 'default',
+  headerGradient = true,
+  headerTitle,
+  headerSubtitle,
+  showOnlineIndicator,
+  launcherIcon,
+  launcherLabel,
+  placeholderText,
+  showPoweredBy,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies })
+  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient })
 
   const stateValue = {
     isOpen: widget.isOpen,
@@ -70,6 +103,18 @@ export function ChatWidget({
     quickReplies: quickReplies || [],
     streamingContent: widget.streamingContent,
     position,
+    homeMenu: homeMenu || [],
+    widgetWidth,
+    launcherSize,
+    borderRadius,
+    headerGradient,
+    headerTitle,
+    headerSubtitle,
+    showOnlineIndicator,
+    launcherIcon,
+    launcherLabel,
+    placeholderText,
+    showPoweredBy,
     onSendMessage: widget.sendMessage,
     onToggle: widget.toggleWidget,
     onClose: widget.closeWidget,
@@ -79,7 +124,7 @@ export function ChatWidget({
 
   return createPortal(
     <WidgetStateProvider value={stateValue}>
-      <WidgetStyles theme={theme} />
+      <WidgetStyles theme={theme} themeMode={themeMode} />
       <WidgetBackdrop show={widget.isOpen && !widget.isEmbed} onClose={widget.closeWidget} />
       <div className="convio-widget font-sans antialiased">
         <WidgetButton />

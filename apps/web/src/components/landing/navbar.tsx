@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, X, LogOut, LayoutDashboard, User, Sun, Moon } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, User, Sun, Moon, BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 const navLinks = [
-  { label: 'Channels', href: '#channels' },
+  { label: 'Docs', href: '/docs' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Contact', href: '/contact' },
 ]
@@ -41,9 +41,9 @@ export function Navbar() {
     <header className="fixed top-0 inset-x-0 z-[200]">
       <PromoBanner hidden={scrolled} />
       <div
-        className={`transition-[background-color,border-color,backdrop-filter] duration-300 ${
+        className={`transition-all duration-300 ${
           scrolled
-            ? 'bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60 border-b border-border'
+            ? 'mx-3 mt-2.5 rounded-2xl border border-border bg-background/80 shadow-lg backdrop-blur-lg supports-[backdrop-filter]:bg-background/60 lg:mx-auto lg:max-w-[1160px]'
             : 'bg-background/40 backdrop-blur-sm'
         }`}
       >

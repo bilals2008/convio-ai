@@ -17,6 +17,16 @@ const linkGroups = [
     title: 'Resources',
     links: [
       { label: 'Log In', href: '/login' },
+      { label: 'Sign Up', href: '/signup' },
+      { label: 'Contact', href: '/contact' },
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { label: 'Terms of Service', href: '/terms' },
+      { label: 'Privacy Policy', href: '/privacy' },
+      { label: 'System Status', href: '/status' },
     ],
   },
 ]
@@ -68,7 +78,7 @@ export function Footer() {
         />
 
         <div className="mx-auto max-w-[1160px] px-5 md:px-10 py-8 md:py-10">
-          <div className="grid gap-6 md:grid-cols-[1.4fr_repeat(2,minmax(0,1fr))]">
+          <div className="grid gap-6 md:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
             <div>
               <Link to="/" className="flex items-center gap-2">
                 <img src="/logo.png" alt="Convio" className="h-7 w-auto" />

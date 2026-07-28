@@ -18,12 +18,19 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  ChevronDown,
 } from 'lucide-react'
 import { FileIcon } from '@/components/shared/file-icon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Table,
   TableBody,
@@ -62,7 +69,8 @@ interface KbSourcesProps {
   setSelectionMode: (v: boolean) => void
   selected: Set<string>
   toggleSelect: (id: string) => void
-  onAddSource: () => void
+  onAddFile: () => void
+  onAddWebsite: () => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
   onReprocess: (id: string) => void
@@ -136,7 +144,8 @@ export function KbSources({
   setSelectionMode,
   selected,
   toggleSelect,
-  onAddSource,
+  onAddFile,
+  onAddWebsite,
   onPreview,
   onDelete,
   onReprocess,
@@ -279,7 +288,7 @@ export function KbSources({
       size: 96,
       cell: ({ row }) => {
         const doc = row.original
-        const isBusy = doc.status === 'processing' || doc.status === 'pending' || reprocessingId === doc.id
+        const isBusy = doc.status === 'processing' || reprocessingId === doc.id
         return (
           <div className="flex items-center gap-0.5">
             <button
@@ -325,7 +334,7 @@ export function KbSources({
 
   return (
     <div className="space-y-4">
-      <DropZone onFiles={onUploadFiles} uploading={uploading} onMoreSources={onAddSource} />
+      <DropZone onFiles={onUploadFiles} uploading={uploading} onMoreSources={onAddFile} />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[200px] flex-1">
@@ -337,6 +346,26 @@ export function KbSources({
             className="h-9 pl-8"
           />
         </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5 h-9">
+              <UploadCloud className="size-3.5" />
+              Add Source
+              <ChevronDown className="size-3 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={onAddFile}>
+              <UploadCloud className="size-4" />
+              File Upload
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onAddWebsite}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4"><path d="M12 2a10 10 0 1 0 10 10h-10V2Z"/><path d="M12 2v10l8.66 5"/></svg>
+              Website
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="h-9 w-[150px]">
@@ -430,7 +459,7 @@ export function KbSources({
         )
       ) : filtered.length === 0 ? (
         documents.length === 0 ? (
-          <NoDocuments onAddSource={onAddSource} />
+          <NoDocuments onAddSource={onAddFile} />
         ) : (
           <div className="rounded-xl border border-dashed border-border/60 py-12 text-center">
             <p className="text-sm text-muted-foreground">No sources match your filters.</p>
@@ -439,7 +468,7 @@ export function KbSources({
       ) : view === 'grid' ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((doc) => {
-            const isBusy = doc.status === 'processing' || doc.status === 'pending' || reprocessingId === doc.id
+        const isBusy = doc.status === 'processing' || reprocessingId === doc.id
             return (
               <div
                 key={doc.id}

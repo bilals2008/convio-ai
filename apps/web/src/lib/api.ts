@@ -39,14 +39,7 @@ function extractOrgId(data: Record<string, unknown>) {
   return { orgId: organizationId as string, data: rest }
 }
 
-export const analytics = {
-  overview: (orgId: string, params?: { from?: string; to?: string }) =>
-    api.get(`/organizations/${orgId}/analytics`, { params }),
-  agent: (agentId: string, params?: { from?: string; to?: string }) =>
-    api.get(`/agents/${agentId}/analytics`, { params }),
-  topAgents: (orgId: string, params?: { from?: string; to?: string }) =>
-    api.get(`/organizations/${orgId}/analytics/top-agents`, { params }),
-}
+export { analyticsApi as analytics } from './api/analytics'
 
 export const agents = {
   list: (orgId: string) => api.get(`/organizations/${orgId}/agents`),
@@ -220,7 +213,7 @@ export const billing = {
     api.post(`/organizations/${orgId}/billing/checkout`, { plan, billingPeriod: billingPeriod || 'monthly' }),
   portal: (orgId: string) => api.post(`/organizations/${orgId}/billing/portal`),
   invoices: (orgId: string) => api.get(`/organizations/${orgId}/billing/invoices`),
-  claimPro: (orgId: string) => api.post(`/organizations/${orgId}/billing/claim-pro`),
+  startTrial: (orgId: string) => api.post(`/organizations/${orgId}/billing/start-trial`),
 }
 
 export const mcpServers = {
@@ -239,6 +232,13 @@ export const mcpServers = {
     api.delete(`/agents/${agentId}/mcp-servers/${serverId}`),
 }
 
+export const avatarPresets = {
+  list: (orgId: string) => api.get(`/organizations/${orgId}/avatar-presets`),
+  create: (orgId: string, data: { url: string; name: string; category?: string }) =>
+    api.post(`/organizations/${orgId}/avatar-presets`, data),
+  delete: (orgId: string, id: string) => api.delete(`/organizations/${orgId}/avatar-presets/${id}`),
+}
+
 export const dataManagement = {
   summary: (orgId: string) => api.get(`/organizations/${orgId}/data-summary`),
   listCategory: (orgId: string, category: string, params?: { search?: string; status?: string; limit?: number; offset?: number }) =>
@@ -248,6 +248,10 @@ export const dataManagement = {
   deleteCategory: (orgId: string, category: string) =>
     api.delete(`/organizations/${orgId}/data/${category}`),
   wipeAll: (orgId: string) => api.delete(`/organizations/${orgId}/data/wipe`),
+  export: (orgId: string, params: { format: 'csv' | 'json'; scope: string }) =>
+    api.get(`/organizations/${orgId}/export`, { params, responseType: 'blob' }),
+  exportUrl: (orgId: string, format: string, scope: string) =>
+    `${api.defaults.baseURL}/organizations/${orgId}/export?format=${format}&scope=${scope}`,
 }
 
 export const publicApi = axios.create({

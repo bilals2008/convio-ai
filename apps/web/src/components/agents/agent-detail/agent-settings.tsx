@@ -1,9 +1,7 @@
-import { Bot, Database, KeyRound, CalendarDays, Palette, MessageSquareText, Radio, Loader2 } from 'lucide-react'
+import { Bot, Database, KeyRound, CalendarDays, Radio, Loader2 } from 'lucide-react'
 import { ProviderLogo } from '@/components/agents/provider-logos'
-import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { useState, useEffect } from 'react'
 
 function formatModelName(model: string): string {
   const part = model.includes('/') ? model.split('/').slice(1).join('/') : model
@@ -15,10 +13,8 @@ interface AgentSettingsProps {
   hasKnowledgeBase: boolean
   hasProviderKey: boolean
   createdAt: string
-  welcomeMessage?: string
-  widgetColor: string
   status: string
-  onSave: (data: { welcomeMessage?: string; widgetColor?: string; status?: string }) => void
+  onSave: (data: { status?: string }) => void
   isSaving?: boolean
   disabled?: boolean
 }
@@ -28,8 +24,6 @@ const STATUS_COLORS: Record<string, string> = {
   inactive: 'text-muted-foreground bg-muted border-border/60',
   draft: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
 }
-
-const COLOR_PRESETS = ['#fb923c', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#22c55e', '#14b8a6', '#f59e0b']
 
 function AgentInfoCard({ agentModel, hasKnowledgeBase, hasProviderKey, createdAt }: { agentModel: string; hasKnowledgeBase: boolean; hasProviderKey: boolean; createdAt: string }) {
   const provider = agentModel.split('/')[0] || 'other'
@@ -70,71 +64,6 @@ function AgentInfoCard({ agentModel, hasKnowledgeBase, hasProviderKey, createdAt
             <span className={cn('text-xs font-medium', row.color)}>{row.value}</span>
           </div>
         ))}
-      </div>
-    </div>
-  )
-}
-
-function WelcomeMessageSection({ value, onChange, isSaving }: { value: string; onChange: (v: string) => void; isSaving?: boolean }) {
-  return (
-    <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <MessageSquareText className="size-4" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold">Welcome Message</h3>
-          <p className="text-xs text-muted-foreground">First message users see when starting a chat</p>
-        </div>
-      </div>
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Hi! How can I help you today?"
-        className="min-h-[80px] resize-none text-sm"
-        disabled={isSaving}
-      />
-    </div>
-  )
-}
-
-function WidgetColorSection({ value, onChange, isSaving }: { value: string; onChange: (v: string) => void; isSaving?: boolean }) {
-  return (
-    <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Palette className="size-4" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold">Widget Color</h3>
-          <p className="text-xs text-muted-foreground">Accent color for the chat widget</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          {COLOR_PRESETS.map((color) => (
-            <button
-              key={color}
-              type="button"
-              onClick={() => onChange(color)}
-              className={cn(
-                'size-7 rounded-full border-2 transition-all',
-                value === color ? 'border-foreground scale-110' : 'border-transparent hover:scale-105'
-              )}
-              style={{ backgroundColor: color }}
-              disabled={isSaving}
-            />
-          ))}
-        </div>
-        <div className="relative">
-          <input
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="size-9 cursor-pointer rounded-lg border border-border/60 bg-transparent p-0.5"
-            disabled={isSaving}
-          />
-        </div>
       </div>
     </div>
   )
@@ -186,23 +115,10 @@ export function AgentSettings({
   hasKnowledgeBase,
   hasProviderKey,
   createdAt,
-  welcomeMessage = '',
-  widgetColor = '#fb923c',
   status = 'draft',
   onSave,
   isSaving,
-  disabled,
 }: AgentSettingsProps) {
-  const [draftWelcomeMessage, setDraftWelcomeMessage] = useState(welcomeMessage)
-  const [draftWidgetColor, setDraftWidgetColor] = useState(widgetColor)
-
-  useEffect(() => {
-    setDraftWelcomeMessage(welcomeMessage)
-    setDraftWidgetColor(widgetColor)
-  }, [welcomeMessage, widgetColor])
-
-  const hasChanges = draftWelcomeMessage !== welcomeMessage || draftWidgetColor !== widgetColor
-
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <AgentInfoCard
@@ -212,41 +128,7 @@ export function AgentSettings({
         createdAt={createdAt}
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <WelcomeMessageSection value={draftWelcomeMessage} onChange={setDraftWelcomeMessage} isSaving={isSaving} />
-        <WidgetColorSection value={draftWidgetColor} onChange={setDraftWidgetColor} isSaving={isSaving} />
-      </div>
-
       <StatusSection value={status} onSave={(s) => onSave({ status: s })} isSaving={isSaving} />
-
-      {hasChanges && (
-        <div className="sticky bottom-4 flex items-center justify-between rounded-xl border border-border/60 bg-card p-4 shadow-lg">
-          <p className="text-xs text-muted-foreground">You have unsaved changes</p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setDraftWelcomeMessage(welcomeMessage)
-                setDraftWidgetColor(widgetColor)
-              }}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => onSave({ welcomeMessage: draftWelcomeMessage, widgetColor: draftWidgetColor })}
-              disabled={isSaving}
-            >
-              {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-              Save changes
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

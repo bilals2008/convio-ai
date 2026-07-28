@@ -18,6 +18,18 @@ export interface WidgetStateValue {
   quickReplies: string[]
   streamingContent: string
   position: 'bottom-right' | 'bottom-left'
+  homeMenu: { icon: string; label: string; description: string }[]
+  widgetWidth: 'narrow' | 'default' | 'wide'
+  launcherSize: 'small' | 'default' | 'large'
+  borderRadius: 'none' | 'default' | 'full'
+  headerGradient: boolean
+  headerTitle?: string
+  headerSubtitle?: string
+  showOnlineIndicator?: boolean
+  launcherIcon?: 'chat' | 'sparkle' | 'message' | 'headphones' | 'bot' | 'help'
+  launcherLabel?: string
+  placeholderText?: string
+  showPoweredBy?: boolean
   onSendMessage: (content: string) => void
   onToggle: () => void
   onClose: () => void

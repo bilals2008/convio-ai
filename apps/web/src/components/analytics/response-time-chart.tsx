@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/chart'
 import { ChartTooltipContent } from '@/components/application/charts/charts-base'
-import { Line, LineChart, CartesianGrid, XAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Timer } from 'lucide-react'
 
@@ -46,7 +46,13 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
           </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
-            <LineChart data={chartData} margin={{ top: 13, right: 10, bottom: 0, left: -10 }}>
+            <AreaChart data={chartData} margin={{ top: 13, right: 10, bottom: 20, left: 0 }}>
+              <defs>
+                <linearGradient id="fillResponseTime" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-avgResponseTime)" stopOpacity={0.5} />
+                  <stop offset="95%" stopColor="var(--color-avgResponseTime)" stopOpacity={0.08} />
+                </linearGradient>
+              </defs>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="date"
@@ -58,6 +64,14 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
                   const date = new Date(value)
                   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                 }}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                width={50}
+                domain={[0, 'auto']}
+                tickFormatter={(v: number) => (v === 0 ? '0s' : `${v.toFixed(0)}s`)}
               />
               <ChartTooltip
                 cursor={false}
@@ -71,14 +85,16 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
                   />
                 }
               />
-              <Line
+              <Area
                 dataKey="avgResponseTime"
                 type="natural"
+                baseValue={0}
                 stroke="var(--color-avgResponseTime)"
                 strokeWidth={2}
+                fill="url(#fillResponseTime)"
                 dot={false}
               />
-            </LineChart>
+            </AreaChart>
           </ChartContainer>
         )}
       </CardContent>

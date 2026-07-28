@@ -1,10 +1,11 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Code2, MessageSquare, Palette } from 'lucide-react'
+import { Code2, Eye, Sun, Moon, Layout, Palette, Star } from 'lucide-react'
 import { ChatWidget } from '@/components/widget'
 import { PageContainer } from '@/components/shared/page-container'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
+import { WidgetHeader } from '@/components/widgets/components/WidgetHeader'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,24 +17,24 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useWidgetForm } from './hooks/useWidgetForm'
-import { ContentTab } from './components/ContentTab'
 import { AppearanceTab } from './components/AppearanceTab'
 import { InstallTab } from './components/InstallTab'
-import { WidgetPreview } from './components/WidgetPreview'
-import { WidgetHeader } from './components/WidgetHeader'
+import { LayoutTab } from './components/LayoutTab'
+import { TemplateTab } from './components/TemplateTab'
+import { WidgetPreviewPanel } from './components/WidgetPreviewPanel'
 import { isLightColor } from './helpers'
+import { cn } from '@/lib/utils'
 
 export default function WidgetConfigPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [showPreview, setShowPreview] = useState(true)
+  const [previewThemeMode, setPreviewThemeMode] = useState<'auto' | 'light' | 'dark'>('auto')
 
   const {
     widget,
     isLoading,
     name,
-    greeting,
-    setGreeting,
-    prompts,
     domainInput,
     setDomainInput,
     position,
@@ -44,13 +45,58 @@ export default function WidgetConfigPage() {
     setBackgroundColor,
     textColor,
     setTextColor,
+    promptBgColor,
+    setPromptBgColor,
+    headerGradientStart,
+    setHeaderGradientStart,
+    headerGradientEnd,
+    setHeaderGradientEnd,
+    headerGradientDirection,
+    setHeaderGradientDirection,
+    headerGradient,
+    setHeaderGradient,
+    borderColor,
+    setBorderColor,
+    inputBgColor,
+    setInputBgColor,
+    sendBtnColor,
+    setSendBtnColor,
+    widgetHeight,
+    setWidgetHeight,
+    widgetWidth,
+    setWidgetWidth,
+    launcherSize,
+    setLauncherSize,
+    borderRadius,
+    setBorderRadius,
     agentName,
     setAgentName,
     agentAvatar,
     setAgentAvatar,
+    themeMode,
+    setThemeMode,
+    headerTitle,
+    setHeaderTitle,
+    headerSubtitle,
+    setHeaderSubtitle,
+    showOnlineIndicator,
+    setShowOnlineIndicator,
+    launcherIcon,
+    setLauncherIcon,
+    launcherLabel,
+    setLauncherLabel,
+    placeholderText,
+    setPlaceholderText,
+    showPoweredBy,
+    setShowPoweredBy,
+    quickReplies,
+    setQuickReplies,
     copied,
     activeTab,
     setActiveTab,
+    activeTemplate,
+    setActiveTemplate,
+    applyTemplate,
     deleteOpen,
     setDeleteOpen,
     isDirty,
@@ -60,9 +106,6 @@ export default function WidgetConfigPage() {
     copyEmbed,
     addDomain,
     removeDomain,
-    addPrompt,
-    updatePrompt,
-    removePrompt,
   } = useWidgetForm(id!)
 
   const handleBack = useCallback(() => navigate('/widgets'), [navigate])
@@ -86,36 +129,28 @@ export default function WidgetConfigPage() {
 
   if (isLoading || !widget) {
     return (
-      <PageContainer className="space-y-8">
-        <div className="space-y-6 border-b border-border/60 pb-6">
-          <Skeleton className="h-4 w-20" />
-          <div className="flex items-center justify-between">
-            <div className="space-y-3">
-              <Skeleton className="h-8 w-64" />
-              <Skeleton className="h-4 w-48" />
-            </div>
-            <div className="flex gap-2">
-              <Skeleton className="h-8 w-20 rounded-md" />
-              <Skeleton className="h-8 w-24 rounded-md" />
-              <Skeleton className="h-8 w-8 rounded-md" />
-            </div>
-          </div>
+      <PageContainer>
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
         </div>
-        <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full rounded-md" />
-            <Skeleton className="h-[420px] rounded-xl" />
-          </div>
-          <Skeleton className="h-[460px] rounded-xl" />
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-[400px] rounded-xl" />
         </div>
       </PageContainer>
     )
   }
 
+  const resetPreview = () => {
+    setPreviewThemeMode('auto')
+  }
+
   const previewTextColor = isLightColor(backgroundColor) ? '#1f2937' : textColor
 
   return (
-    <PageContainer className="space-y-8">
+    <PageContainer>
       <WidgetHeader
         widget={widget}
         name={name}
@@ -123,83 +158,171 @@ export default function WidgetConfigPage() {
         copied={copied}
         position={position}
         savePending={save.isPending}
+        showPreview={showPreview}
+        onTogglePreview={() => setShowPreview((v) => !v)}
         onSave={handleSave}
         onCopyEmbed={copyEmbed}
         onDeleteOpen={handleDeleteOpen}
         onBack={handleBack}
       />
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_400px] lg:items-start">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
-          <TabsList variant="line" className="mb-6">
-            <TabsTrigger value="content">
-              <MessageSquare className="size-4" aria-hidden="true" />
-              Content
-            </TabsTrigger>
-            <TabsTrigger value="appearance">
-              <Palette className="size-4" aria-hidden="true" />
-              Appearance
-            </TabsTrigger>
-            <TabsTrigger value="install">
-              <Code2 className="size-4" aria-hidden="true" />
-              Install
-            </TabsTrigger>
-          </TabsList>
+      <div className="flex gap-6">
+        <div className="flex-1 min-w-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-5">
+              <TabsTrigger value="appearance">
+                <Palette className="size-4" />
+                Appearance
+              </TabsTrigger>
+              <TabsTrigger value="layout">
+                <Layout className="size-4" />
+                Layout
+              </TabsTrigger>
+               <TabsTrigger value="templates">
+                 <Star className="size-4" />
+                 Templates
+               </TabsTrigger>
+               <TabsTrigger value="install">
+                 <Code2 className="size-4" />
+                 Install
+               </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="content" className="space-y-6">
-            <ContentTab
-              greeting={greeting}
-              onGreetingChange={setGreeting}
-              prompts={prompts}
-              onAddPrompt={addPrompt}
-              onUpdatePrompt={updatePrompt}
-              onRemovePrompt={removePrompt}
-            />
-          </TabsContent>
+            <div className="space-y-5">
+              <TabsContent value="appearance">
+                <AppearanceTab
+                  agentName={agentName}
+                  onAgentNameChange={setAgentName}
+                  agentAvatar={agentAvatar}
+                  onAgentAvatarChange={setAgentAvatar}
+                  primaryColor={primaryColor}
+                  onPrimaryColorChange={setPrimaryColor}
+                  backgroundColor={backgroundColor}
+                  onBackgroundColorChange={setBackgroundColor}
+                  textColor={textColor}
+                  onTextColorChange={setTextColor}
+                  promptBgColor={promptBgColor}
+                  onPromptBgColorChange={setPromptBgColor}
+                  headerGradientStart={headerGradientStart}
+                  onHeaderGradientStartChange={setHeaderGradientStart}
+                  headerGradientEnd={headerGradientEnd}
+                  onHeaderGradientEndChange={setHeaderGradientEnd}
+                  headerGradientDirection={headerGradientDirection}
+                  onHeaderGradientDirectionChange={setHeaderGradientDirection}
+                  headerGradient={headerGradient}
+                  onHeaderGradientChange={setHeaderGradient}
+                  borderColor={borderColor}
+                  onBorderColorChange={setBorderColor}
+                  inputBgColor={inputBgColor}
+                  onInputBgColorChange={setInputBgColor}
+                  sendBtnColor={sendBtnColor}
+                  onSendBtnColorChange={setSendBtnColor}
+                  themeMode={themeMode}
+                  onThemeModeChange={setThemeMode}
+                  headerTitle={headerTitle}
+                  onHeaderTitleChange={setHeaderTitle}
+                  headerSubtitle={headerSubtitle}
+                  onHeaderSubtitleChange={setHeaderSubtitle}
+                  showOnlineIndicator={showOnlineIndicator}
+                  onShowOnlineIndicatorChange={setShowOnlineIndicator}
+                  placeholderText={placeholderText}
+                  onPlaceholderTextChange={setPlaceholderText}
+                  showPoweredBy={showPoweredBy}
+                  onShowPoweredByChange={setShowPoweredBy}
+                  quickReplies={quickReplies}
+                  onQuickRepliesChange={setQuickReplies}
+                />
+              </TabsContent>
 
-          <TabsContent value="appearance" className="space-y-6">
-            <AppearanceTab
-              agentName={agentName}
-              onAgentNameChange={setAgentName}
-              agentAvatar={agentAvatar}
-              onAgentAvatarChange={setAgentAvatar}
-              primaryColor={primaryColor}
-              onPrimaryColorChange={setPrimaryColor}
-              backgroundColor={backgroundColor}
-              onBackgroundColorChange={setBackgroundColor}
-              textColor={textColor}
-              onTextColorChange={setTextColor}
-              position={position}
-              onPositionChange={setPosition}
-            />
-          </TabsContent>
+              <TabsContent value="layout">
+                <LayoutTab
+                  position={position}
+                  onPositionChange={setPosition}
+                  widgetHeight={widgetHeight}
+                  onWidgetHeightChange={setWidgetHeight}
+                  widgetWidth={widgetWidth}
+                  onWidgetWidthChange={setWidgetWidth}
+                  launcherSize={launcherSize}
+                  onLauncherSizeChange={setLauncherSize}
+                  borderRadius={borderRadius}
+                  onBorderRadiusChange={setBorderRadius}
+                />
+              </TabsContent>
 
-          <TabsContent value="install" className="space-y-6">
-            <InstallTab
-              domains={domains}
-              domainInput={domainInput}
-              onDomainInputChange={setDomainInput}
-              onAddDomain={addDomain}
-              onRemoveDomain={removeDomain}
-              publicKey={widget.publicKey}
-              onCopyEmbed={copyEmbed}
-              copied={copied}
-              position={position}
-            />
-          </TabsContent>
-        </Tabs>
+               <TabsContent value="templates">
+                 <TemplateTab
+                   activeTemplate={activeTemplate}
+                   onSelectTemplate={applyTemplate}
+                 />
+               </TabsContent>
 
-        <WidgetPreview
-          primaryColor={primaryColor}
-          backgroundColor={backgroundColor}
-          textColor={textColor}
-          position={position}
-          greeting={greeting}
-          prompts={prompts}
-          agentName={agentName}
-          agentAvatar={agentAvatar}
-          publicKey={widget.publicKey}
-        />
+               <TabsContent value="install">
+                <InstallTab
+                  domains={domains}
+                  domainInput={domainInput}
+                  onDomainInputChange={setDomainInput}
+                  onAddDomain={addDomain}
+                  onRemoveDomain={removeDomain}
+                  publicKey={widget.publicKey}
+                  onCopyEmbed={copyEmbed}
+                  copied={copied}
+                  position={position}
+                />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+
+        {showPreview && (
+          <div className="hidden xl:block w-[380px] shrink-0">
+            <div className="sticky top-6 rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <Eye className="size-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Live Preview</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewThemeMode(previewThemeMode === 'dark' ? 'light' : 'dark')}
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title={previewThemeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  <Sun className="size-3.5" />
+                </button>
+              </div>
+              <div
+                data-widget-preview
+                className={cn(
+                  'relative h-[600px]',
+                  (previewThemeMode === 'auto' ? themeMode : previewThemeMode) === 'dark' ? 'bg-muted' : 'bg-background'
+                )}
+              >
+                <WidgetPreviewPanel
+                  primaryColor={primaryColor}
+                  backgroundColor={backgroundColor}
+                  textColor={previewTextColor}
+                  promptBgColor={promptBgColor}
+                  headerGradientStart={headerGradientStart}
+                  headerGradientEnd={headerGradientEnd}
+                  headerGradientDirection={headerGradientDirection}
+                  borderColor={borderColor}
+                  inputBgColor={inputBgColor}
+                  sendBtnColor={sendBtnColor}
+                  agentName={agentName || widget.agent.name}
+                  agentAvatar={agentAvatar || undefined}
+                  headerTitle={headerTitle || undefined}
+                  headerSubtitle={headerSubtitle || undefined}
+                  showOnlineIndicator={showOnlineIndicator}
+                  placeholderText={placeholderText || undefined}
+                  showPoweredBy={showPoweredBy}
+                  quickReplies={quickReplies.length > 0 ? quickReplies : undefined}
+                  headerGradient={headerGradient}
+                  previewThemeMode={previewThemeMode === 'auto' ? themeMode : previewThemeMode}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
@@ -218,25 +341,45 @@ export default function WidgetConfigPage() {
               disabled={deleteWidget.isPending}
               onClick={handleDelete}
             >
-              {deleteWidget.isPending ? 'Deleting' : 'Delete widget'}
+              {deleteWidget.isPending ? 'Deleting...' : 'Delete widget'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {widget.agent.id && (
+      {widget && (
         <ChatWidget
-          key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${greeting}-${agentAvatar}-${prompts.map((p) => p.text).join(',')}`}
+          key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${headerTitle}-${headerSubtitle}-${launcherIcon}-${launcherLabel}-${quickReplies.join(',')}`}
           agentId={widget.agent.id}
           position={position}
-          greeting={greeting || 'Hi there! How can I help you today?'}
+          greeting={widget.config.greeting || 'Hi'}
           agentName={agentName || widget.agent.name}
           agentAvatar={agentAvatar || undefined}
-          quickReplies={prompts.map((p) => p.text).filter(Boolean)}
+          themeMode={themeMode}
+          widgetWidth={widgetWidth}
+          launcherSize={launcherSize}
+          borderRadius={borderRadius}
+          headerGradient={headerGradient}
+          headerTitle={headerTitle || undefined}
+          headerSubtitle={headerSubtitle || undefined}
+          showOnlineIndicator={showOnlineIndicator}
+          launcherIcon={launcherIcon}
+          launcherLabel={launcherLabel || undefined}
+          placeholderText={placeholderText || undefined}
+          showPoweredBy={showPoweredBy}
+          quickReplies={quickReplies.length > 0 ? quickReplies : undefined}
+          preview
           theme={{
             primaryColor,
             backgroundColor,
-            textColor: previewTextColor,
+            textColor: textColor || '#f3f4f6',
+            promptBgColor: promptBgColor || '#2a2a2a',
+            headerGradientStart: headerGradientStart || '#fb923c',
+            headerGradientEnd: headerGradientEnd || '#c2410c',
+            headerGradientDirection: `${headerGradientDirection || 135}deg`,
+            borderColor: borderColor || '',
+            inputBgColor: inputBgColor || '',
+            sendBtnColor: sendBtnColor || '',
           }}
         />
       )}

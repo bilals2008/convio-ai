@@ -1,8 +1,7 @@
-import { Code2, Copy, Check, ExternalLink, Globe2, Plus, Terminal } from 'lucide-react'
+import { Copy, Check, ExternalLink, Plus, Globe2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { SectionCard } from './SectionCard'
-import { DomainTag } from './DomainTag'
 
 interface InstallTabProps {
   domains: string[]
@@ -27,33 +26,92 @@ export function InstallTab({
   copied,
   position,
 }: InstallTabProps) {
-  const snippet = `<script src="${window.location.origin}/widget.js" data-widget-key="${publicKey}"></script>`
-
   return (
-    <>
+    <div className="space-y-5">
+      {/* Step 1 — Install */}
       <SectionCard
-        icon={<Globe2 className="size-3.5" aria-hidden="true" />}
-        title="Allowed domains"
+        icon={
+          <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            1
+          </span>
+        }
+        title="Install Widget"
+        description="Paste this before the closing &lt;/body&gt; tag."
+      >
+        <div className="space-y-3">
+          <div className="relative rounded-xl bg-muted/70 ring-1 ring-border/60 overflow-hidden">
+            <button
+              type="button"
+              onClick={onCopyEmbed}
+              className="absolute top-2.5 right-2.5 z-10 flex size-7 items-center justify-center rounded-md bg-muted/80 text-muted-foreground backdrop-blur-sm hover:bg-muted hover:text-foreground transition-colors"
+              aria-label="Copy code"
+            >
+              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            </button>
+            <pre className="overflow-x-auto px-4 py-4">
+              <code className="block font-mono text-[13px] leading-relaxed">
+                <span className="hljs-comment">{'<!-- Convio widget -->'}</span>{'\n'}
+                <span className="hljs-tag">{'<script'}</span>{' '}
+                <span className="hljs-attr">src</span>
+                <span className="hljs-string">={`"${window.location.origin}/widget.js"`}</span>{'\n'}
+                {'  '}
+                <span className="hljs-attr">data-widget-key</span>
+                <span className="hljs-string">={`"${publicKey}"`}</span>
+                <span className="hljs-tag">{'></script>'}</span>
+              </code>
+            </pre>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() =>
+              window.open(
+                `/widget/demo?embed=true&widgetKey=${publicKey}&position=${position}&preview=true`,
+                '_blank',
+              )
+            }
+          >
+            <ExternalLink className="size-3.5" />
+            Preview Widget
+          </Button>
+        </div>
+      </SectionCard>
+
+      {/* Step 2 — Domains */}
+      <SectionCard
+        icon={
+          <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            2
+          </span>
+        }
+        title="Domain Security"
         description="Only these origins may load your widget."
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           {domains.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5" role="list" aria-label="Allowed domains">
+            <div className="rounded-lg border border-border/60 divide-y divide-border/60">
               {domains.map((d) => (
-                <DomainTag key={d} domain={d} onRemove={() => onRemoveDomain(d)} />
+                <div key={d} className="flex items-center justify-between px-3 py-2.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Globe2 className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate font-mono text-xs">{d}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveDomain(d)}
+                    className="ml-2 shrink-0 text-muted-foreground/60 hover:text-destructive transition-colors"
+                    aria-label={`Remove ${d}`}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-center">
-              <Globe2
-                className="mx-auto mb-2 size-5 text-muted-foreground/50"
-                aria-hidden="true"
-              />
-              <p className="text-xs text-muted-foreground">No domains configured yet.</p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/70">
-                Add at least one domain before publishing.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              No domains configured. Add at least one before publishing.
+            </p>
           )}
 
           <div className="flex gap-2">
@@ -61,7 +119,7 @@ export function InstallTab({
               value={domainInput}
               onChange={(e) => onDomainInputChange(e.target.value)}
               placeholder="example.com"
-              className="h-9 font-mono text-sm"
+              className="h-8 flex-1 font-mono text-xs"
               aria-label="Domain to add"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -70,14 +128,8 @@ export function InstallTab({
                 }
               }}
             />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onAddDomain}
-              aria-label="Add domain"
-              className="h-9"
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
+            <Button size="sm" variant="outline" onClick={onAddDomain} className="h-8 px-3 gap-1.5">
+              <Plus className="size-3" />
               Add
             </Button>
           </div>
@@ -89,90 +141,6 @@ export function InstallTab({
           )}
         </div>
       </SectionCard>
-
-      <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
-        <div className="flex items-start justify-between gap-3 border-b border-border/60 bg-card px-6 py-5">
-          <div className="flex items-start gap-3">
-            <div
-              className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/50 text-muted-foreground"
-              aria-hidden="true"
-            >
-              <Code2 className="size-3.5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">Embed snippet</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Paste this before the closing <code className="font-mono">&lt;/body&gt;</code> tag.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4 p-6">
-          <div className="overflow-hidden rounded-lg ring-1 ring-foreground/10">
-            <div className="flex items-center justify-between border-b border-border/60 bg-muted/40 px-3 py-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Terminal className="size-3.5" aria-hidden="true" />
-                <span className="font-mono text-[11px]">index.html</span>
-              </div>
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                onClick={onCopyEmbed}
-                aria-label="Copy embed code to clipboard"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                {copied ? (
-                  <Check className="size-3.5 text-success" aria-hidden="true" />
-                ) : (
-                  <Copy className="size-3.5" aria-hidden="true" />
-                )}
-              </Button>
-            </div>
-            <pre className="overflow-x-auto bg-card p-3">
-              <code className="block break-all font-mono text-xs leading-relaxed text-muted-foreground">
-                <span className="text-foreground/60">{'<!-- Convio widget -->'}</span>
-                {'\n'}
-                {snippet}
-              </code>
-            </pre>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={onCopyEmbed} aria-label="Copy embed code to clipboard">
-              {copied ? (
-                <Check className="size-3.5" aria-hidden="true" />
-              ) : (
-                <Copy className="size-3.5" aria-hidden="true" />
-              )}
-              {copied ? 'Copied' : 'Copy embed code'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                window.open(
-                  `/widget/demo?embed=true&widgetKey=${publicKey}&position=${position}&preview=true`,
-                  '_blank',
-                )
-              }
-              aria-label="Open live preview in new tab"
-            >
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-              Live preview
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.open('https://docs.convio.ai/embedding', '_blank')}
-              aria-label="Open embedding documentation"
-            >
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-              Docs
-            </Button>
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   )
 }

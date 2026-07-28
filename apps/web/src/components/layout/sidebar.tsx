@@ -18,7 +18,6 @@ import {
   CreditCard,
   Database,
   Plug,
-  Lightbulb,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -40,15 +39,16 @@ function useSettingsItems() {
   const { org } = useOrg()
   const role = org?.role
   const isAdmin = role === 'owner' || role === 'admin'
+  const isOwner = role === 'owner'
 
   return [
     { icon: Building2, label: 'Organization', href: '/settings/organization', adminOnly: false },
     { icon: User, label: 'Profile', href: '/settings/profile', adminOnly: false },
     { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
-    { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true },
+    { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true, badge: 'Beta' },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
-    { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
-  ].filter((item) => !item.adminOnly || isAdmin)
+     { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
+  ].filter((item) => !item.adminOnly || (isAdmin && (!item.ownerOnly || isOwner)))
 }
 
 function SettingsGroup({ collapsed }: { collapsed: boolean }) {
@@ -58,7 +58,7 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
     return (
       <div className="space-y-0.5 mt-4">
         {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} />
         ))}
       </div>
     )
@@ -71,7 +71,7 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
       </div>
       <div className="flex flex-col gap-0.5">
         {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} />
         ))}
       </div>
     </div>
@@ -159,10 +159,6 @@ export function Sidebar() {
             <SidebarItem icon={MessageSquare} label="Conversations" href="/conversations" />
             <SidebarItem icon={MessageCircle} label="Widgets" href="/widgets" />
             <SidebarItem icon={Globe} label="Deployments" href="/settings/deployments" />
-          </SidebarGroup>
-
-          <SidebarGroup label="Development">
-            <SidebarItem icon={BookOpen} label="Docs" href="/docs" />
           </SidebarGroup>
 
           <SettingsGroup collapsed={collapsed} />
@@ -327,14 +323,15 @@ export function Sidebar() {
 
 function getMobileNavGroups(role?: string) {
   const isAdmin = role === 'owner' || role === 'admin'
+  const isOwner = role === 'owner'
   const settingsItems = [
     { icon: Building2, label: 'Organization', href: '/settings/organization' },
     { icon: User, label: 'Profile', href: '/settings/profile' },
     ...(isAdmin ? [
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
-      { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
-      { icon: Database, label: 'Data', href: '/settings/data' },
-    ] : []),
+      { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', badge: 'Beta' },
+       { icon: Database, label: 'Data', href: '/settings/data' },
+     ] : []),
     { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
   ]
 
@@ -359,12 +356,6 @@ function getMobileNavGroups(role?: string) {
         { icon: MessageSquare, label: 'Conversations', href: '/conversations' },
         { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
         { icon: Globe, label: 'Deployments', href: '/settings/deployments' },
-      ],
-    },
-    {
-      label: 'Development',
-      items: [
-        { icon: BookOpen, label: 'Docs', href: '/docs' },
       ],
     },
     {

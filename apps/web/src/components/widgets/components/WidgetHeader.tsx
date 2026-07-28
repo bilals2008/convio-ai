@@ -1,15 +1,6 @@
 import { useCallback, useState } from 'react'
-import {
-  ArrowLeft,
-  Check,
-  Code2,
-  Copy,
-  ExternalLink,
-  MoreVertical,
-  Trash2,
-} from 'lucide-react'
+import { ArrowLeft, Check, Code2, Copy, ExternalLink, Eye, EyeOff, MoreVertical, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +19,8 @@ interface WidgetHeaderProps {
   copied: boolean
   position: string
   savePending: boolean
+  showPreview?: boolean
+  onTogglePreview?: () => void
   onSave: (status?: string) => void
   onCopyEmbed: () => void
   onDeleteOpen: () => void
@@ -41,6 +34,8 @@ export function WidgetHeader({
   copied,
   position,
   savePending,
+  showPreview = true,
+  onTogglePreview,
   onSave,
   onCopyEmbed,
   onDeleteOpen,
@@ -49,11 +44,6 @@ export function WidgetHeader({
   const isLive = widget.status === 'active'
   const status = STATUS_INDICATOR[widget.status] ?? STATUS_INDICATOR.draft
   const [keyCopied, setKeyCopied] = useState(false)
-
-  const handlePublishToggle = useCallback(
-    (checked: boolean) => onSave(checked ? 'active' : 'paused'),
-    [onSave],
-  )
 
   const copyKey = useCallback(async () => {
     try {
@@ -66,23 +56,17 @@ export function WidgetHeader({
   }, [widget.publicKey])
 
   return (
-    <header className="space-y-4">
-      <div className="flex items-start gap-4">
-        <button
-          onClick={onBack}
-          aria-label="Go back to widgets list"
-          className="group mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:rounded-md"
-        >
-          <ArrowLeft
-            className="size-3.5 transition-transform duration-200 group-hover:-translate-x-0.5"
-            aria-hidden="true"
-          />
-          Widgets
-        </button>
-      </div>
+    <div className="space-y-4">
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="size-3.5" />
+        Widgets
+      </button>
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3.5 min-w-0">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3 min-w-0">
           {widget.agent.avatar ? (
             <img
               src={widget.agent.avatar}
@@ -94,16 +78,22 @@ export function WidgetHeader({
               {widget.agent.name.charAt(0).toUpperCase()}
             </div>
           )}
-
-          <div className="min-w-0 space-y-1.5">
-            <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-              {name}
-            </h1>
-
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="truncate text-xl font-semibold tracking-tight">
+                {name}
+              </h1>
+              {isDirty && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-warning/20 bg-warning/5 px-2 py-0.5 text-[11px] font-medium text-warning whitespace-nowrap">
+                  <span className="size-1.5 rounded-full bg-warning" />
+                  Unsaved
+                </span>
+              )}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
               <span
                 className={cn(
-                   'inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium',
+                  'inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium',
                   isLive
                     ? 'bg-success/10 text-success'
                     : widget.status === 'paused'
@@ -111,41 +101,21 @@ export function WidgetHeader({
                       : 'bg-muted text-muted-foreground',
                 )}
               >
+                <span className={cn('size-1.5 rounded-full', isLive && 'bg-success animate-pulse')} />
                 {status.label}
               </span>
-
-              <span className="h-3 w-px bg-border" aria-hidden="true" />
-
-              <span className="inline-flex items-center gap-1">
-                <span className="font-medium text-foreground">{widget.agent.name}</span>
-              </span>
-
-              <span className="h-3 w-px bg-border" aria-hidden="true" />
-
+              <span>{widget.agent.name}</span>
               <button
                 onClick={copyKey}
-                aria-label="Copy widget public key"
-                className="group/key inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors duration-200 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="group inline-flex items-center gap-1 font-mono text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
               >
-                <span className="font-mono text-[11px] tabular-nums text-muted-foreground/80">
-                  {widget.publicKey.slice(0, 8)}
-                </span>
+                {widget.publicKey.slice(0, 8)}
                 {keyCopied ? (
-                  <Check className="size-3 text-success" aria-hidden="true" />
+                  <Check className="size-3 text-success" />
                 ) : (
-                  <Copy className="size-3 text-muted-foreground/0 transition-colors group-hover/key:text-muted-foreground" aria-hidden="true" />
+                  <Copy className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                 )}
               </button>
-
-              {isDirty && (
-                <>
-                  <span className="h-3 w-px bg-border" aria-hidden="true" />
-                   <span className="inline-flex items-center gap-1 rounded border border-warning/20 bg-warning/5 px-2 py-0.5 text-[11px] font-medium text-warning" role="status">
-                    <span className="size-1.5 rounded-full bg-warning" aria-hidden="true" />
-                    Unsaved
-                  </span>
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -154,41 +124,28 @@ export function WidgetHeader({
           <Button
             variant="outline"
             size="sm"
-            onClick={onCopyEmbed}
-            aria-label="Get embed code"
+            onClick={onTogglePreview}
+            className={cn(!showPreview && 'text-muted-foreground/50')}
+            aria-label={showPreview ? 'Hide preview' : 'Show preview'}
           >
-            <Code2 className="size-3.5" aria-hidden="true" />
+            {showPreview ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+          </Button>
+          <Button variant="outline" size="sm" onClick={onCopyEmbed}>
+            <Code2 className="size-3.5" />
             Get Code
           </Button>
-
-          <span className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5">
-            <Switch
-              size="sm"
-              checked={isLive}
-              onCheckedChange={handlePublishToggle}
-              disabled={savePending}
-              aria-label={isLive ? 'Pause widget' : 'Resume widget'}
-            />
-            <span className="text-xs font-medium text-muted-foreground select-none">
-              {isLive ? 'Live' : 'Paused'}
-            </span>
-          </span>
-
+          <Button size="sm" onClick={() => onSave()} disabled={!isDirty || savePending}>
+            <Save className="size-3.5" />
+            {savePending ? 'Saving...' : 'Save'}
+          </Button>
           <DropdownMenu>
-            <DropdownMenuTrigger
-              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              aria-label="More actions"
-            >
-              <MoreVertical className="size-4" aria-hidden="true" />
+            <DropdownMenuTrigger className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <MoreVertical className="size-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem onClick={onCopyEmbed}>
-                {copied ? (
-                  <Check className="size-4 text-success" aria-hidden="true" />
-                ) : (
-                  <Copy className="size-4" aria-hidden="true" />
-                )}
-                {copied ? 'Copied embed code' : 'Copy embed code'}
+                {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+                {copied ? 'Copied' : 'Copy embed code'}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
@@ -198,18 +155,18 @@ export function WidgetHeader({
                   )
                 }
               >
-                <ExternalLink className="size-4" aria-hidden="true" />
-                Open live preview
+                <ExternalLink className="size-4" />
+                Live preview
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={onDeleteOpen}>
-                <Trash2 className="size-4" aria-hidden="true" />
-                Delete widget
+                <Trash2 className="size-4" />
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
-    </header>
+    </div>
   )
 }

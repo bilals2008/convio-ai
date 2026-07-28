@@ -19,6 +19,8 @@ interface PlanData {
   limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
   price: string
   priceMonthly: number
+  trialEndsAt?: string | null
+  isTrial?: boolean
 }
 
 interface SubscriptionData {
@@ -86,16 +88,18 @@ export function useCheckout() {
   })
 }
 
-export function useClaimPro() {
+export function useStartTrial() {
   const { orgId } = useOrg()
 
   return useMutation({
-    mutationFn: () => billing.claimPro(orgId!),
-    onSuccess: () => {
-      toast.success('Pro plan activated! Welcome to Pro.')
+    mutationFn: () => billing.startTrial(orgId!),
+    onSuccess: (res) => {
+      const data = res?.data?.data as { message?: string } | undefined
+      toast.success(data?.message ?? '14-day Pro trial activated!')
     },
-    onError: () => {
-      toast.error('Failed to claim Pro plan. Please try again.')
+    onError: (err) => {
+      const msg = (err as { message?: string })?.message ?? 'Failed to start trial. Please try again.'
+      toast.error(msg)
     },
   })
 }

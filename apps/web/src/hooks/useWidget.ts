@@ -12,6 +12,13 @@ export interface WidgetTheme {
   primaryColor: string
   backgroundColor: string
   textColor: string
+  promptBgColor: string
+  headerGradientStart: string
+  headerGradientEnd: string
+  headerGradientDirection: string
+  borderColor: string
+  inputBgColor: string
+  sendBtnColor: string
 }
 
 export interface WidgetConfig {
@@ -24,12 +31,24 @@ export interface WidgetConfig {
   agentName?: string
   agentAvatar?: string
   quickReplies?: string[]
+  homeMenu?: { icon: string; label: string; description: string }[]
+  widgetWidth?: 'narrow' | 'default' | 'wide'
+  launcherSize?: 'small' | 'default' | 'large'
+  borderRadius?: 'none' | 'default' | 'full'
+  headerGradient?: boolean
 }
 
 const defaultTheme: WidgetTheme = {
   primaryColor: '#fb923c',
   backgroundColor: '#1c1c1c',
   textColor: '#f3f4f6',
+  promptBgColor: '#2a2a2a',
+  headerGradientStart: '#fb923c',
+  headerGradientEnd: '#c2410c',
+  headerGradientDirection: '135deg',
+  borderColor: '',
+  inputBgColor: '',
+  sendBtnColor: '',
 }
 
 function generateId(): string {

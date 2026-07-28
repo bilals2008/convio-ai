@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { MessageSquare, Users, Timer, BarChart3, Coins, Radio } from 'lucide-react'
+import { MessageSquare, Users, Timer, BarChart3, Coins, Radio, DollarSign, Layers } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartLegend, type ChartConfig } from '@/components/ui/chart'
@@ -83,6 +83,14 @@ const CHANNEL_COLORS_FALLBACK = [
 
 const responseTimeConfig = {
   avgResponseTime: { label: 'Avg Response (s)', color: 'hsl(263, 70%, 58%)' },
+} satisfies ChartConfig
+
+const costConfig = {
+  cost: { label: 'Cost', color: 'hsl(0, 73%, 56%)' },
+} satisfies ChartConfig
+
+const msgPerConvConfig = {
+  ratio: { label: 'Msg / Conv', color: 'hsl(199, 89%, 48%)' },
 } satisfies ChartConfig
 
 function trendOf(val: number): { trend: 'up' | 'down' | 'flat'; change: string } {
@@ -240,6 +248,16 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
     outputTokens: d.outputTokens || 0,
     totalMessages: d.totalMessages,
     avgResponseTime: d.avgResponseTime,
+  }))
+
+  const costTrendData = daily.map((d) => ({
+    date: d.date,
+    cost: Math.round(((d.inputTokens * 0.000003) + (d.outputTokens * 0.000015)) * 1000) / 1000,
+  }))
+
+  const msgPerConvData = daily.map((d) => ({
+    date: d.date,
+    ratio: d.totalConversations > 0 ? Math.round((d.totalMessages / d.totalConversations) * 10) / 10 : 0,
   }))
 
   return (
@@ -402,7 +420,17 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null
                         const item = payload[0]
-                        return (
+  const costTrendData = daily.map((d) => ({
+    date: d.date,
+    cost: Math.round(((d.inputTokens * 0.000003) + (d.outputTokens * 0.000015)) * 1000) / 1000,
+  }))
+
+  const msgPerConvData = daily.map((d) => ({
+    date: d.date,
+    ratio: d.totalConversations > 0 ? Math.round((d.totalMessages / d.totalConversations) * 10) / 10 : 0,
+  }))
+
+  return (
                           <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-md">
                             <div className="flex items-center gap-2">
                               <div className="size-2 rounded-full shrink-0" style={{ backgroundColor: item.payload.fill }} />
@@ -487,6 +515,73 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
           </ChartContainer>
         </CardContent>
       </Card>
+
+      {/* Daily Cost + Messages per Conversation */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="border-b py-4">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <DollarSign className="size-4 text-muted-foreground" />
+              Daily Cost
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+            <ChartContainer config={costConfig} className="h-[200px] w-full">
+              <AreaChart data={costTrendData} margin={{ top: 6, bottom: 4, left: 0, right: 0 }}>
+                <defs>
+                  <linearGradient id="cost-grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-cost)" stopOpacity={0.7} />
+                    <stop offset="95%" stopColor="var(--color-cost)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => formatDay(v)}
+                  tickMargin={8}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent labelFormatter={(v) => formatDay(v)} formatter={(value) => [`$${Number(value).toFixed(3)}`, 'Cost']} />}
+                />
+                <Area dataKey="cost" type="monotone" stroke="var(--color-cost)" strokeWidth={2} fill="url(#cost-grad)" />
+              </AreaChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="border-b py-4">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Layers className="size-4 text-muted-foreground" />
+              Messages per Conversation
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+            <ChartContainer config={msgPerConvConfig} className="h-[200px] w-full">
+              <BarChart data={msgPerConvData} margin={{ top: 8, bottom: 4, left: 0, right: 0 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => formatDay(v)}
+                  tickMargin={8}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent labelFormatter={(v) => formatDay(v)} formatter={(value) => [Number(value).toFixed(1), 'Msg / Conv']} />}
+                />
+                <Bar dataKey="ratio" fill="var(--color-ratio)" radius={[4, 4, 0, 0]} maxBarSize={28} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

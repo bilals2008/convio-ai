@@ -295,6 +295,33 @@ export type RetrievedChunk = {
 }
 
 /**
+ * Track which documents were retrieved for a query.
+ */
+export async function trackDocumentQueries(
+  chunks: RetrievedChunk[],
+  messageId: string,
+): Promise<void> {
+  const seen = new Set<string>()
+  for (const c of chunks) {
+    if (seen.has(c.documentId)) continue
+    seen.add(c.documentId)
+    await prisma.documentQuery.create({
+      data: { documentId: c.documentId, messageId },
+    })
+  }
+}
+
+/**
+ * Mark all DocumentQuery records for a message as successful.
+ */
+export async function markDocumentQueriesSuccess(messageId: string): Promise<void> {
+  await prisma.documentQuery.updateMany({
+    where: { messageId, success: false },
+    data: { success: true },
+  })
+}
+
+/**
  * Semantic search over a knowledge base. Returns grounded context string for the system prompt.
  */
 export async function retrieveContext(
@@ -302,6 +329,7 @@ export async function retrieveContext(
   knowledgeBaseId: string,
   limit = DEFAULT_TOP_K,
   useReranker = true,
+  messageId?: string,
 ): Promise<string> {
   const embedding = await embedText(query)
   if (!embedding) return ''
@@ -343,6 +371,10 @@ export async function retrieveContext(
 
   if (useReranker && rows.length > limit) {
     final = await rerank(query, rows, limit)
+  }
+
+  if (messageId) {
+    trackDocumentQueries(final, messageId).catch(() => {})
   }
 
   return final

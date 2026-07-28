@@ -22,6 +22,7 @@ import {
   Building2,
   LifeBuoy,
 } from 'lucide-react'
+import { publicApi } from '@/lib/api'
 import { toast } from 'sonner'
 
 const CHANNELS = [
@@ -85,12 +86,7 @@ export default function ContactPage() {
     }
 
     try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) throw new Error('Failed to send')
+      await publicApi.post('/contact', payload)
       setSubmitted(true)
       form.reset()
     } catch {
@@ -291,7 +287,7 @@ export default function ContactPage() {
                               rows={6}
                               placeholder="Tell us a bit about what you're building or the problem you're solving..."
                               required
-                              className="resize-none"
+                              className="resize-none field-sizing-fixed"
                             />
                           </div>
 

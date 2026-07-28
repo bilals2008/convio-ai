@@ -13,15 +13,30 @@ export interface WidgetConfig {
   primaryColor?: string
   backgroundColor?: string
   textColor?: string
+  promptBgColor?: string
+  headerGradientStart?: string
+  headerGradientEnd?: string
+  headerGradientDirection?: number
+  headerGradient?: boolean
+  borderColor?: string
+  inputBgColor?: string
+  sendBtnColor?: string
   position?: 'bottom-right' | 'bottom-left'
-  quickReplies?: string[]
+  widgetHeight?: number
+  widgetWidth?: 'narrow' | 'default' | 'wide'
+  launcherSize?: 'small' | 'default' | 'large'
+  borderRadius?: 'none' | 'default' | 'full'
   agentName?: string
   agentAvatar?: string
-}
-
-export interface PromptItem {
-  id: string
-  text: string
+  themeMode?: 'auto' | 'light' | 'dark'
+  headerTitle?: string
+  headerSubtitle?: string
+  showOnlineIndicator?: boolean
+  launcherIcon?: 'chat' | 'sparkle' | 'message' | 'headphones' | 'bot' | 'help'
+  launcherLabel?: string
+  placeholderText?: string
+  showPoweredBy?: boolean
+  quickReplies?: string[]
 }
 
 export interface ApiError {
