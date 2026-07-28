@@ -57,7 +57,7 @@ export default function CustomModerationPage() {
               <td className="py-2">Whole words "secret" or "confidential"</td>
             </tr>
             <tr className="border-b border-border/50">
-              <td className="py-2 pr-4"><code className="text-xs">\$\d{1,3}(,\d{3})*</code></td>
+              <td className="py-2 pr-4"><code className="text-xs">{'\\$\d{1,3}(,\\d{3})*'}</code></td>
               <td className="py-2">Dollar amounts ($100, $1,000,000)</td>
             </tr>
             <tr>

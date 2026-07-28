@@ -38,7 +38,7 @@ export default function WhatsAppIssuesPage() {
       <ul>
         <li><strong>Missing opt-out language:</strong> Templates must include a way for users to opt out (e.g., "Reply STOP to unsubscribe")</li>
         <li><strong>Violating content policies:</strong> Promotional, misleading, or restricted content is rejected</li>
-        <li><strong>Incorrect variable syntax:</strong> Template variables must use <code>{{1}}</code> format with proper placeholders</li>
+        <li><strong>Incorrect variable syntax:</strong> Template variables must use <code>{'{{1}}'}</code> format with proper placeholders</li>
         <li><strong>Category mismatch:</strong> Using a MARKETING template for UTILITY messages or vice versa</li>
       </ul>
 

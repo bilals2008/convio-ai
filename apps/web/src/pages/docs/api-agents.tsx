@@ -111,7 +111,7 @@ DELETE /v1/agents/:id/tools/:tool_id  # Remove a tool`}</code></pre>
           title="Messages API"
           href="/docs/api-messages"
         />
-      </DocNextStepCard>
+      </DocCardGrid>
     </DocContent>
   )
 }

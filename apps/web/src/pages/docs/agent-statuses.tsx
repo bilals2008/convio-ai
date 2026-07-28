@@ -146,7 +146,7 @@ export default function AgentStatusesPage() {
           title="Creating an Agent"
           href="/docs/creating-agent"
         />
-      </DocNextStepCard>
+      </DocCardGrid>
     </DocContent>
   )
 }
