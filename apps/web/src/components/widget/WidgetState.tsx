@@ -23,6 +23,13 @@ export interface WidgetStateValue {
   launcherSize: 'small' | 'default' | 'large'
   borderRadius: 'none' | 'default' | 'full'
   headerGradient: boolean
+  headerTitle?: string
+  headerSubtitle?: string
+  showOnlineIndicator?: boolean
+  launcherIcon?: 'chat' | 'sparkle' | 'message' | 'headphones' | 'bot' | 'help'
+  launcherLabel?: string
+  placeholderText?: string
+  showPoweredBy?: boolean
   onSendMessage: (content: string) => void
   onToggle: () => void
   onClose: () => void

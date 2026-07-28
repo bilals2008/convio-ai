@@ -1,15 +1,23 @@
 import { cn } from '@/lib/utils'
 import { useWidgetState } from './WidgetState'
-import { MessageCircle, X } from 'lucide-react'
+import { MessageCircle, Sparkles, MessageSquareText, Headphones, Bot, HelpCircle, X } from 'lucide-react'
 
 const SIZE_MAP = { small: 'size-12', default: 'size-14', large: 'size-16' }
 
-export function WidgetButton() {
-  const { isOpen, isEmbed, unreadCount, agentAvatar, agentName, position, launcherSize, onToggle } = useWidgetState()
+const ICON_MAP = {
+  chat: MessageCircle,
+  sparkle: Sparkles,
+  message: MessageSquareText,
+  headphones: Headphones,
+  bot: Bot,
+  help: HelpCircle,
+}
 
-  // In embed mode the open window fills the whole iframe, so the floating
-  // toggle would overlap the input row. Hide it while open.
-  // On mobile, hide when open since the widget fills the screen.
+export function WidgetButton() {
+  const { isOpen, isEmbed, unreadCount, agentAvatar, agentName, position, launcherSize, launcherIcon, launcherLabel, onToggle } = useWidgetState()
+
+  const IconComponent = launcherIcon ? ICON_MAP[launcherIcon] : MessageCircle
+
   if (isEmbed && isOpen) return null
   if (isOpen) return null
 
@@ -20,7 +28,7 @@ export function WidgetButton() {
       className={cn(
         'convio-trigger group fixed bottom-5 z-[9999] flex shrink-0 items-center justify-center rounded-full transition-all duration-300 ease-out hover:scale-105 active:scale-95 overflow-hidden',
         SIZE_MAP[launcherSize],
-        position === 'bottom-left' ? 'left-5' : 'right-5'
+        position === 'bottom-left' ? (launcherLabel ? 'left-5' : 'left-5') : (launcherLabel ? 'right-5' : 'right-5')
       )}
       style={{
         background: agentAvatar
@@ -30,7 +38,7 @@ export function WidgetButton() {
           ? `0 0 0 3px hsl(var(--widget-primary)), 0 4px 20px rgba(0,0,0,0.2)`
           : `0 4px 20px rgba(0,0,0,0.2)`,
       }}
-      aria-label={isOpen ? 'Close chat' : 'Open chat'}
+      aria-label={launcherLabel || (isOpen ? 'Close chat' : 'Open chat')}
     >
       <span
         className={cn(
@@ -41,7 +49,12 @@ export function WidgetButton() {
         {agentAvatar ? (
           <img src={agentAvatar} alt={agentName} className="size-full rounded-full object-cover" />
         ) : (
-          <MessageCircle className="size-5 text-white" />
+          <IconComponent className="size-5 text-white" />
+        )}
+        {launcherLabel && (
+          <span className="absolute -top-8 text-nowrap text-[10px] font-medium text-muted-foreground bg-background px-2 py-0.5 rounded-full shadow-sm border border-border">
+            {launcherLabel}
+          </span>
         )}
       </span>
       <span

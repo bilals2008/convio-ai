@@ -17,7 +17,6 @@ interface AgentOverviewProps {
   knowledgeBaseCount?: number
   toolsEnabledCount?: number
   mcpServersCount?: number
-  deploymentsCount?: number
   onNavigateToTab: (tab: string) => void
 }
 
@@ -43,7 +42,6 @@ export function AgentOverview({
   knowledgeBaseCount = 0,
   toolsEnabledCount = 0,
   mcpServersCount = 0,
-  deploymentsCount = 0,
   onNavigateToTab,
 }: AgentOverviewProps) {
   const promptPreview = systemPrompt?.trim() || 'No instructions have been added yet.'
@@ -64,7 +62,6 @@ export function AgentOverview({
     { label: 'Knowledge Bases', value: knowledgeBaseCount, tab: 'knowledge', color: 'text-emerald-500' as const },
     { label: 'Tools Enabled', value: toolsEnabledCount, tab: 'builder', color: 'text-primary' as const },
     { label: 'MCP Servers', value: mcpServersCount, tab: 'builder', color: 'text-info' as const },
-    { label: 'Deployments', value: deploymentsCount, tab: 'deployments', color: 'text-warning' as const },
   ]
 
   return (

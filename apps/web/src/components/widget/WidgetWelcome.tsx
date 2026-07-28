@@ -22,7 +22,7 @@ const ICON_MAP: Record<string, string> = {
 }
 
 export function WidgetWelcome() {
-  const { agentName, agentAvatar, messages, onSendMessage, quickReplies, homeMenu } = useWidgetState()
+  const { agentName, agentAvatar, messages, onSendMessage, quickReplies, homeMenu, headerSubtitle } = useWidgetState()
 
   if (messages.length > 0) return null
 
@@ -63,7 +63,7 @@ export function WidgetWelcome() {
           {agentName || 'Assistant'}
         </h3>
         <p className="text-[12px] text-[hsl(var(--widget-muted-foreground))] mb-5 leading-relaxed px-2">
-          Hi there! How can I help you today?
+          {headerSubtitle || "Hi there! How can I help you today?"}
         </p>
 
         {homeMenu.length > 0 ? (

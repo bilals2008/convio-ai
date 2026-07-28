@@ -22,6 +22,13 @@ export interface ChatWidgetProps {
   launcherSize?: 'small' | 'default' | 'large'
   borderRadius?: 'none' | 'default' | 'full'
   headerGradient?: boolean
+  headerTitle?: string
+  headerSubtitle?: string
+  showOnlineIndicator?: boolean
+  launcherIcon?: 'chat' | 'sparkle' | 'message' | 'headphones' | 'bot' | 'help'
+  launcherLabel?: string
+  placeholderText?: string
+  showPoweredBy?: boolean
 }
 
 const defaultTheme: WidgetTheme = {
@@ -68,6 +75,13 @@ export function ChatWidget({
   launcherSize = 'default',
   borderRadius = 'default',
   headerGradient = true,
+  headerTitle,
+  headerSubtitle,
+  showOnlineIndicator,
+  launcherIcon,
+  launcherLabel,
+  placeholderText,
+  showPoweredBy,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
   const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient })
@@ -94,6 +108,13 @@ export function ChatWidget({
     launcherSize,
     borderRadius,
     headerGradient,
+    headerTitle,
+    headerSubtitle,
+    showOnlineIndicator,
+    launcherIcon,
+    launcherLabel,
+    placeholderText,
+    showPoweredBy,
     onSendMessage: widget.sendMessage,
     onToggle: widget.toggleWidget,
     onClose: widget.closeWidget,

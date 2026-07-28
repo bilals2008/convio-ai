@@ -2,11 +2,15 @@ import { useWidgetState } from './WidgetState'
 import { ChevronDown, X } from 'lucide-react'
 
 export function WidgetHeader() {
-  const { agentName, agentAvatar, isEmbed, headerGradient, onMinimize, onClose } = useWidgetState()
+  const { agentName, agentAvatar, isEmbed, headerGradient, headerTitle, headerSubtitle, showOnlineIndicator, onMinimize, onClose } = useWidgetState()
 
   const initials = agentName
     ? agentName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
     : 'AI'
+
+  const displayTitle = headerTitle || agentName || 'Assistant'
+  const displaySubtitle = headerSubtitle || 'We\'re online'
+  const showOnline = showOnlineIndicator !== false
 
   return (
     <div
@@ -37,19 +41,25 @@ export function WidgetHeader() {
                 </span>
               </div>
             )}
-            <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-400 border-2 border-[hsl(var(--widget-header-start))]" />
+            {showOnline && (
+              <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-400 border-2 border-[hsl(var(--widget-header-start))]" />
+            )}
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] text-white/60 font-medium leading-tight">
-              Chat with
-            </p>
+            {headerTitle && (
+              <p className="text-[11px] text-white/60 font-medium leading-tight">
+                {headerTitle}
+              </p>
+            )}
             <p className="truncate text-[14px] font-semibold text-white tracking-tight leading-tight">
-              {agentName || 'Assistant'}
+              {displayTitle}
             </p>
-            <p className="text-[10px] text-emerald-300/80 font-medium flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-emerald-400 inline-block" />
-              We&apos;re online
-            </p>
+            {showOnline && (
+              <p className="text-[10px] text-emerald-300/80 font-medium flex items-center gap-1">
+                <span className="size-1.5 rounded-full bg-emerald-400 inline-block" />
+                {displaySubtitle}
+              </p>
+            )}
           </div>
         </div>
         <div className="relative z-10 flex items-center gap-0.5">

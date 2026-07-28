@@ -29,6 +29,14 @@ export interface WidgetConfig {
   agentName?: string
   agentAvatar?: string
   themeMode?: 'auto' | 'light' | 'dark'
+  headerTitle?: string
+  headerSubtitle?: string
+  showOnlineIndicator?: boolean
+  launcherIcon?: 'chat' | 'sparkle' | 'message' | 'headphones' | 'bot' | 'help'
+  launcherLabel?: string
+  placeholderText?: string
+  showPoweredBy?: boolean
+  quickReplies?: string[]
 }
 
 export interface ApiError {

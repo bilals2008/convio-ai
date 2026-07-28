@@ -51,7 +51,7 @@ export function TemplateTab({ activeTemplate, onSelectTemplate }: TemplateTabPro
       title="Launcher Templates"
       description="Pick a preset design to apply instantly"
     >
-      <div className="grid gap-2 sm:grid-cols-4">
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
         {LAUNCHER_TEMPLATES.map((template) => {
           const isActive = activeTemplate === template.id
           return (

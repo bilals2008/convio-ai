@@ -13,7 +13,6 @@ import {
   Wrench,
   MessageSquare,
   BarChart3,
-  Rocket,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,9 +36,8 @@ import {
   AgentTestChat,
   AgentAnalytics,
   AgentSettings,
-  AgentDeployments,
 } from '@/components/agents/agent-detail'
-import { agents as agentsApi, deployments as deploymentsApi, widgets, mcpServers as mcpApi } from '@/lib/api'
+import { agents as agentsApi, widgets, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
 
@@ -122,15 +120,6 @@ export default function AgentDetailPage() {
     enabled: !!id,
   })
 
-  const { data: agentDeployments = [] } = useQuery({
-    queryKey: ['agent-deployments', id],
-    queryFn: async () => {
-      const res = await deploymentsApi.list(id!)
-      return (res.data.data ?? []) as Array<{ id: string; channel: string; status: string }>
-    },
-    enabled: !!id,
-  })
-
   const { data: agentWidgets = [] } = useQuery({
     queryKey: ['agent-widgets', agent?.organizationId],
     queryFn: async () => {
@@ -186,45 +175,6 @@ export default function AgentDetailPage() {
     mutationFn: () => widgets.update(shareWidget!.id, { status: 'archived' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agent-widgets', agent?.organizationId] })
-    },
-  })
-
-  const channelBase = {
-    'web-chat-widget': agentDeployments.some((d) => d.channel === 'web'),
-    'api-access': agentDeployments.some((d) => d.channel === 'api'),
-    'whatsapp': agentDeployments.some((d) => d.channel === 'whatsapp'),
-  }
-  const [channelOptimistic, setChannelOptimistic] = useState<Record<string, boolean | null>>({})
-
-  const effectiveChannelEnabled = (id: string): boolean => {
-    const opt = channelOptimistic[id]
-    return opt !== null && opt !== undefined ? opt : (channelBase as Record<string, boolean>)[id] ?? false
-  }
-
-  const deploymentOptions = [
-    { id: 'web-chat-widget', enabled: effectiveChannelEnabled('web-chat-widget'), deploymentId: agentDeployments.find((d) => d.channel === 'web')?.id },
-    { id: 'shareable-link', enabled: shareLinkEnabled },
-    { id: 'api-access', enabled: effectiveChannelEnabled('api-access'), deploymentId: agentDeployments.find((d) => d.channel === 'api')?.id },
-    { id: 'whatsapp', enabled: effectiveChannelEnabled('whatsapp'), deploymentId: agentDeployments.find((d) => d.channel === 'whatsapp')?.id },
-  ]
-
-  const toggleDeployment = useMutation({
-    mutationFn: ({ deploymentId, channel, enabled }: { deploymentId?: string; channel: string; enabled: boolean }) => {
-      if (enabled && deploymentId) {
-        return deploymentsApi.update(deploymentId, { status: 'active' })
-      }
-      if (enabled) {
-        const config = channel === 'web' ? { type: 'widget' } : {}
-        return deploymentsApi.create(id!, { channel, config })
-      }
-      return deploymentsApi.update(deploymentId!, { status: 'inactive' })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agent-deployments', id] })
-      setChannelOptimistic({})
-    },
-    onError: () => {
-      setChannelOptimistic({})
     },
   })
 
@@ -308,29 +258,6 @@ export default function AgentDetailPage() {
     )
   }
 
-  const handleDeploymentToggle = (optionId: string, enabled: boolean) => {
-    const option = deploymentOptions.find((o) => o.id === optionId)
-    if (!option) return
-    if (optionId === 'shareable-link') {
-      setShareLinkOptimistic(enabled)
-      if (enabled && !shareWidget) {
-        createShareLink.mutate(undefined, {
-          onError: () => setShareLinkOptimistic(null),
-        })
-      } else if (!enabled && shareWidget) {
-        removeShareLink.mutate(undefined, {
-          onError: () => setShareLinkOptimistic(null),
-        })
-      }
-      return
-    }
-    const channelMap: Record<string, string> = { 'web-chat-widget': 'web', 'api-access': 'api', 'whatsapp': 'whatsapp' }
-    const channel = channelMap[optionId]
-    if (!channel) return
-    setChannelOptimistic((prev) => ({ ...prev, [optionId]: enabled }))
-    toggleDeployment.mutate({ deploymentId: option.deploymentId, channel, enabled })
-  }
-
   const handleToolToggle = (toolId: string, enabled: boolean) => {
     setTools((prev) =>
       prev.map((t) => (t.id === toolId ? { ...t, enabled } : t))
@@ -392,10 +319,6 @@ export default function AgentDetailPage() {
               <BarChart3 className="size-4" />
               Analytics
             </TabsTrigger>
-            <TabsTrigger value="deployments">
-              <Rocket className="size-4" />
-              Deployments
-            </TabsTrigger>
             <TabsTrigger value="settings">
               <Settings className="size-4" />
               Settings
@@ -417,7 +340,6 @@ export default function AgentDetailPage() {
             knowledgeBaseCount={agent.knowledgeBaseId ? 1 : 0}
             toolsEnabledCount={tools.filter((t) => t.enabled).length}
             mcpServersCount={linkedMcpServerIds.length}
-            deploymentsCount={deploymentOptions.filter((o) => o.enabled).length}
             onNavigateToTab={setActiveTab}
           />
         </TabsContent>
@@ -471,25 +393,12 @@ export default function AgentDetailPage() {
           <AgentAnalytics agentId={id!} />
         </TabsContent>
 
-        <TabsContent value="deployments">
-          <AgentDeployments
-            agentId={id!}
-            agentName={agent.name}
-            deploymentOptions={deploymentOptions}
-            onDeploymentToggle={handleDeploymentToggle}
-            shareUrl={shareUrl}
-            disabled={updateMutation.isPending || toggleDeployment.isPending || createShareLink.isPending || removeShareLink.isPending}
-          />
-        </TabsContent>
-
         <TabsContent value="settings">
           <AgentSettings
             agentModel={agent.model}
             hasKnowledgeBase={!!agent.knowledgeBaseId}
             hasProviderKey={!!agent.providerKeyId}
             createdAt={agent.createdAt}
-            welcomeMessage={agent.welcomeMessage || ''}
-            widgetColor={agent.widgetColor}
             status={agent.status}
             onSave={(data) => updateMutation.mutate(data)}
             isSaving={updateMutation.isPending}

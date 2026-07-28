@@ -91,10 +91,22 @@ export const BORDER_RADIUS_OPTIONS = [
   { value: 'full', label: 'Full', radius: 24 },
 ] as const
 
+export const LAUNCHER_ICON_OPTIONS = [
+  { value: 'chat', label: 'Chat' },
+  { value: 'sparkle', label: 'Sparkle' },
+  { value: 'message', label: 'Message' },
+  { value: 'headphones', label: 'Headphones' },
+  { value: 'bot', label: 'Bot' },
+  { value: 'help', label: 'Help' },
+] as const
+
+export type LauncherIcon = (typeof LAUNCHER_ICON_OPTIONS)[number]['value']
+
 export interface LauncherTemplate {
   id: string
   name: string
   description: string
+  dark?: boolean
   config: {
     primaryColor?: string
     backgroundColor?: string
@@ -186,5 +198,113 @@ export const LAUNCHER_TEMPLATES: LauncherTemplate[] = [
       widgetHeight: 540,
     },
   },
-
+  {
+    id: 'midnight-cyber',
+    name: 'Midnight Cyber',
+    description: 'Glassmorphic cyan & indigo',
+    config: {
+      primaryColor: '#06b6d4',
+      backgroundColor: '#0f172a',
+      textColor: '#cffafe',
+      promptBgColor: '#1e293b',
+      headerGradientStart: '#0f172a',
+      headerGradientEnd: '#312e81',
+      borderColor: '#06b6d4',
+      inputBgColor: '#1e293b',
+      sendBtnColor: '#22d3ee',
+      position: 'bottom-right',
+      widgetHeight: 540,
+      borderRadius: 'full',
+    },
+  },
+  {
+    id: 'emerald-luxury',
+    name: 'Emerald Luxury',
+    description: 'Deep emerald & gold',
+    config: {
+      primaryColor: '#fbbf24',
+      backgroundColor: '#022c22',
+      textColor: '#ecfdf5',
+      promptBgColor: '#064e3b',
+      headerGradientStart: '#022c22',
+      headerGradientEnd: '#047857',
+      borderColor: '#fbbf24',
+      inputBgColor: '#064e3b',
+      sendBtnColor: '#fbbf24',
+      position: 'bottom-right',
+      widgetHeight: 540,
+    },
+  },
+  {
+    id: 'royal-velvet',
+    name: 'Royal Velvet',
+    description: 'Deep purple & lavender',
+    config: {
+      primaryColor: '#c084fc',
+      backgroundColor: '#1e1b4b',
+      textColor: '#f5f3ff',
+      promptBgColor: '#2e1065',
+      headerGradientStart: '#1e1b4b',
+      headerGradientEnd: '#6b21a8',
+      borderColor: '',
+      inputBgColor: '',
+      sendBtnColor: '#a855f7',
+      position: 'bottom-right',
+      widgetHeight: 540,
+    },
+  },
+  {
+    id: 'warm-amber',
+    name: 'Warm Amber',
+    description: 'Honey gold & charcoal',
+    config: {
+      primaryColor: '#f59e0b',
+      backgroundColor: '#1c1917',
+      textColor: '#fef3c7',
+      promptBgColor: '#292524',
+      headerGradientStart: '#1c1917',
+      headerGradientEnd: '#92400e',
+      borderColor: '',
+      inputBgColor: '',
+      sendBtnColor: '#f59e0b',
+      position: 'bottom-right',
+      widgetHeight: 540,
+    },
+  },
+  {
+    id: 'mocha-espresso',
+    name: 'Mocha Espresso',
+    description: 'Coffee bronze & warm sand',
+    config: {
+      primaryColor: '#d97706',
+      backgroundColor: '#1c1917',
+      textColor: '#fefce8',
+      promptBgColor: '#292524',
+      headerGradientStart: '#1c1917',
+      headerGradientEnd: '#78350f',
+      borderColor: '',
+      inputBgColor: '',
+      sendBtnColor: '#d97706',
+      position: 'bottom-right',
+      widgetHeight: 540,
+    },
+  },
+  {
+    id: 'dark-onyx',
+    name: 'Dark Onyx',
+    description: 'High-contrast dark mode',
+    config: {
+      primaryColor: '#a78bfa',
+      backgroundColor: '#09090b',
+      textColor: '#fafafa',
+      promptBgColor: '#18181b',
+      headerGradientStart: '#09090b',
+      headerGradientEnd: '#27272a',
+      borderColor: '#27272a',
+      inputBgColor: '#18181b',
+      sendBtnColor: '#a78bfa',
+      position: 'bottom-right',
+      widgetHeight: 540,
+    },
+  },
 ]

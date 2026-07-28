@@ -82,6 +82,11 @@ export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Reco
 function matchDark(): boolean {
   if (typeof window === 'undefined') return false
 
+  const widget = document.querySelector('.convio-widget')
+  if (widget && (widget.closest('[data-widget-preview]') || widget.closest('.convio-widget-preview'))) {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+
   if (document.documentElement.classList.contains('dark')) return true
   if (document.documentElement.classList.contains('light')) return false
 
@@ -105,15 +110,22 @@ function useEffectiveDark(themeMode: 'auto' | 'light' | 'dark'): boolean {
 
     setIsDark(matchDark())
 
-    const observer = new MutationObserver(() => setIsDark(matchDark()))
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'data-theme'],
-    })
+    const isPreview = !!document.querySelector('.convio-widget')?.closest('[data-widget-preview]')
+
+    if (!isPreview) {
+      const observer = new MutationObserver(() => setIsDark(matchDark()))
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'data-theme'],
+      })
+      var cleanupObserver = () => observer.disconnect()
+    }
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const onMqChange = () => {
-      if (!document.documentElement.classList.contains('dark') &&
+      if (isPreview) {
+        setIsDark(mq.matches)
+      } else if (!document.documentElement.classList.contains('dark') &&
           !document.documentElement.classList.contains('light') &&
           !document.documentElement.getAttribute('data-theme')) {
         setIsDark(mq.matches)
@@ -122,7 +134,7 @@ function useEffectiveDark(themeMode: 'auto' | 'light' | 'dark'): boolean {
     mq.addEventListener('change', onMqChange)
 
     return () => {
-      observer.disconnect()
+      if (cleanupObserver) cleanupObserver()
       mq.removeEventListener('change', onMqChange)
     }
   }, [themeMode])

@@ -18,7 +18,7 @@ const EMOJIS = [
 ]
 
 export function WidgetInput() {
-  const { onSendMessage, isTyping } = useWidgetState()
+  const { onSendMessage, isTyping, placeholderText, showPoweredBy } = useWidgetState()
   const [value, setValue] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -107,7 +107,7 @@ export function WidgetInput() {
               adjustHeight()
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Enter your message..."
+            placeholder={placeholderText || "Enter your message..."}
             disabled={isTyping}
             rows={1}
             className="w-full resize-none bg-transparent py-0 text-[13px] leading-relaxed text-[hsl(var(--widget-text))] placeholder:text-[hsl(var(--widget-muted-foreground))]/50 outline-none disabled:opacity-40"
@@ -134,9 +134,11 @@ export function WidgetInput() {
           <Send className={cn('size-4 transition-transform', canSend && '-rotate-45')} />
         </button>
       </div>
-      <p className="text-center text-[10px] text-[hsl(var(--widget-muted-foreground))]/40 pb-2.5 font-medium">
-        Powered by Convio
-      </p>
+      {showPoweredBy !== false && (
+        <p className="text-center text-[10px] text-[hsl(var(--widget-muted-foreground))]/40 pb-2.5 font-medium">
+          Powered by Convio
+        </p>
+      )}
     </div>
   )
 }

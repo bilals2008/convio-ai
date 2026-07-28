@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { widgets as widgetsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import type { WidgetDetail, ApiError } from '../types'
-import { type LauncherTemplate, type ThemeMode } from '../constants'
+import { type LauncherTemplate, type ThemeMode, type LauncherIcon } from '../constants'
 import { sanitizeDomain } from '../helpers'
 
 export function useWidgetForm(widgetId: string) {
@@ -41,6 +41,14 @@ export function useWidgetForm(widgetId: string) {
   const [agentName, setAgentName] = useState('')
   const [agentAvatar, setAgentAvatar] = useState('')
   const [themeMode, setThemeMode] = useState<ThemeMode>('auto')
+  const [headerTitle, setHeaderTitle] = useState('')
+  const [headerSubtitle, setHeaderSubtitle] = useState('')
+  const [showOnlineIndicator, setShowOnlineIndicator] = useState(true)
+  const [launcherIcon, setLauncherIcon] = useState<LauncherIcon>('chat')
+  const [launcherLabel, setLauncherLabel] = useState('')
+  const [placeholderText, setPlaceholderText] = useState('')
+  const [showPoweredBy, setShowPoweredBy] = useState(true)
+  const [quickReplies, setQuickReplies] = useState<string[]>([])
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('appearance')
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
@@ -69,6 +77,14 @@ export function useWidgetForm(widgetId: string) {
     setAgentName(widget.config.agentName ?? widget.agent.name ?? '')
     setAgentAvatar(widget.config.agentAvatar ?? '')
     setThemeMode(widget.config.themeMode ?? 'auto')
+    setHeaderTitle(widget.config.headerTitle ?? '')
+    setHeaderSubtitle(widget.config.headerSubtitle ?? '')
+    setShowOnlineIndicator(widget.config.showOnlineIndicator ?? true)
+    setLauncherIcon(widget.config.launcherIcon ?? 'chat')
+    setLauncherLabel(widget.config.launcherLabel ?? '')
+    setPlaceholderText(widget.config.placeholderText ?? '')
+    setShowPoweredBy(widget.config.showPoweredBy ?? true)
+    setQuickReplies(widget.config.quickReplies ?? [])
   }, [widget])
 
    const isDirty = useMemo(() => {
@@ -95,6 +111,14 @@ export function useWidgetForm(widgetId: string) {
         agentName: widget.config.agentName ?? widget.agent.name ?? '',
         agentAvatar: widget.config.agentAvatar ?? '',
         themeMode: widget.config.themeMode ?? 'auto',
+        headerTitle: widget.config.headerTitle ?? '',
+        headerSubtitle: widget.config.headerSubtitle ?? '',
+        showOnlineIndicator: widget.config.showOnlineIndicator ?? true,
+        launcherIcon: widget.config.launcherIcon ?? 'chat',
+        launcherLabel: widget.config.launcherLabel ?? '',
+        placeholderText: widget.config.placeholderText ?? '',
+        showPoweredBy: widget.config.showPoweredBy ?? true,
+        quickReplies: (widget.config.quickReplies ?? []).join(','),
       }
       const current = {
         name,
@@ -118,9 +142,17 @@ export function useWidgetForm(widgetId: string) {
         agentName,
         agentAvatar,
         themeMode,
+        headerTitle,
+        headerSubtitle,
+        showOnlineIndicator,
+        launcherIcon,
+        launcherLabel,
+        placeholderText,
+        showPoweredBy,
+        quickReplies: quickReplies.join(','),
       }
       return JSON.stringify(current) !== JSON.stringify(saved)
-    }, [widget, name, domains, position, primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, headerGradient, borderColor, inputBgColor, sendBtnColor, widgetHeight, widgetWidth, launcherSize, borderRadius, agentName, agentAvatar, themeMode])
+    }, [widget, name, domains, position, primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, headerGradient, borderColor, inputBgColor, sendBtnColor, widgetHeight, widgetWidth, launcherSize, borderRadius, agentName, agentAvatar, themeMode, headerTitle, headerSubtitle, showOnlineIndicator, launcherIcon, launcherLabel, placeholderText, showPoweredBy, quickReplies])
 
   useEffect(() => {
     if (!isDirty) return
@@ -157,6 +189,15 @@ export function useWidgetForm(widgetId: string) {
           borderRadius,
           agentName,
           themeMode,
+          headerTitle,
+          headerSubtitle,
+          showOnlineIndicator,
+          launcherIcon,
+          launcherLabel,
+          placeholderText,
+          showPoweredBy,
+          quickReplies,
+          greeting: widget?.config?.greeting || 'Hi there!',
           ...(agentAvatar ? { agentAvatar } : {}),
         },
       }),
@@ -281,6 +322,22 @@ export function useWidgetForm(widgetId: string) {
     setAgentAvatar,
     themeMode,
     setThemeMode,
+    headerTitle,
+    setHeaderTitle,
+    headerSubtitle,
+    setHeaderSubtitle,
+    showOnlineIndicator,
+    setShowOnlineIndicator,
+    launcherIcon,
+    setLauncherIcon,
+    launcherLabel,
+    setLauncherLabel,
+    placeholderText,
+    setPlaceholderText,
+    showPoweredBy,
+    setShowPoweredBy,
+    quickReplies,
+    setQuickReplies,
     copied,
     activeTab,
     setActiveTab,

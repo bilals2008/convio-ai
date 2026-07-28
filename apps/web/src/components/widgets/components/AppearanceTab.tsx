@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Palette, PaintBucket, Upload, X, Loader2, Image as ImageIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,6 +23,36 @@ import {
   THEME_MODES,
   type ThemeMode,
 } from '../constants'
+
+function QuickReplyInput({ onAdd }: { onAdd: (val: string) => void }) {
+  const [val, setVal] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleAdd = useCallback(() => {
+    const trimmed = val.trim()
+    if (!trimmed || trimmed.length > 60) return
+    onAdd(trimmed)
+    setVal('')
+    inputRef.current?.focus()
+  }, [val, onAdd])
+
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        ref={inputRef}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+        placeholder="Type a quick reply..."
+        className="h-8 text-xs flex-1 min-w-[140px]"
+        maxLength={60}
+      />
+      <Button type="button" size="sm" className="h-8 text-xs" onClick={handleAdd} disabled={!val.trim()}>
+        Add
+      </Button>
+    </div>
+  )
+}
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const MAX_SIZE_MB = 2
@@ -56,6 +86,18 @@ interface AppearanceTabProps {
   onSendBtnColorChange: (value: string) => void
   themeMode: ThemeMode
   onThemeModeChange: (value: ThemeMode) => void
+  headerTitle: string
+  onHeaderTitleChange: (value: string) => void
+  headerSubtitle: string
+  onHeaderSubtitleChange: (value: string) => void
+  showOnlineIndicator: boolean
+  onShowOnlineIndicatorChange: (value: boolean) => void
+  placeholderText: string
+  onPlaceholderTextChange: (value: string) => void
+  showPoweredBy: boolean
+  onShowPoweredByChange: (value: boolean) => void
+  quickReplies: string[]
+  onQuickRepliesChange: (value: string[]) => void
 }
 
 export function AppearanceTab({
@@ -87,6 +129,18 @@ export function AppearanceTab({
   onSendBtnColorChange,
   themeMode,
   onThemeModeChange,
+  headerTitle,
+  onHeaderTitleChange,
+  headerSubtitle,
+  onHeaderSubtitleChange,
+  showOnlineIndicator,
+  onShowOnlineIndicatorChange,
+  placeholderText,
+  onPlaceholderTextChange,
+  showPoweredBy,
+  onShowPoweredByChange,
+  quickReplies,
+  onQuickRepliesChange,
 }: AppearanceTabProps) {
   const { orgId } = useOrg()
   const { upload, isUploading, progress } = useAgentAvatarUpload()
@@ -366,6 +420,53 @@ export function AppearanceTab({
               style={{ backgroundColor: headerGradientStart }}
             />
           )}
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        icon={<PaintBucket className="size-3.5" />}
+        title="Header content"
+        description="Title, subtitle, and indicators"
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="headerTitle" className="text-xs font-medium">Title</Label>
+            <Input id="headerTitle" value={headerTitle} onChange={(e) => onHeaderTitleChange(e.target.value)} placeholder="Chat with us" className="h-9 text-sm" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="headerSubtitle" className="text-xs font-medium">Subtitle</Label>
+            <Input id="headerSubtitle" value={headerSubtitle} onChange={(e) => onHeaderSubtitleChange(e.target.value)} placeholder="We're online" className="h-9 text-sm" />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium">Online indicator</Label>
+            <button type="button" role="switch" aria-checked={showOnlineIndicator} onClick={() => onShowOnlineIndicatorChange(!showOnlineIndicator)}
+              className={cn('relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors', showOnlineIndicator ? 'bg-primary' : 'bg-muted')}>
+              <span className={cn('pointer-events-none inline-block size-5 rounded-full bg-white shadow-lg ring-0 transition-transform', showOnlineIndicator ? 'translate-x-5' : 'translate-x-0')} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium">Powered by Convio</Label>
+            <button type="button" role="switch" aria-checked={showPoweredBy} onClick={() => onShowPoweredByChange(!showPoweredBy)}
+              className={cn('relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors', showPoweredBy ? 'bg-primary' : 'bg-muted')}>
+              <span className={cn('pointer-events-none inline-block size-5 rounded-full bg-white shadow-lg ring-0 transition-transform', showPoweredBy ? 'translate-x-5' : 'translate-x-0')} />
+            </button>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="placeholderText" className="text-xs font-medium">Placeholder</Label>
+            <Input id="placeholderText" value={placeholderText} onChange={(e) => onPlaceholderTextChange(e.target.value)} placeholder="Enter your message..." className="h-9 text-sm" />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label className="text-xs font-medium">Quick replies</Label>
+            <div className="flex flex-wrap gap-2">
+              {quickReplies.map((reply, i) => (
+                <div key={i} className="flex items-center gap-1 rounded-full border border-border bg-muted/30 px-3 py-1">
+                  <span className="text-xs">{reply}</span>
+                  <button type="button" onClick={() => onQuickRepliesChange(quickReplies.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors"><X className="size-3" /></button>
+                </div>
+              ))}
+              {quickReplies.length < 4 && <QuickReplyInput onAdd={(val) => onQuickRepliesChange([...quickReplies, val])} />}
+            </div>
+          </div>
         </div>
       </SectionCard>
 
