@@ -1,10 +1,11 @@
 import { useCallback, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Code2, Layout, Palette } from 'lucide-react'
+import { Code2, Layout, Palette, Star } from 'lucide-react'
 import { ChatWidget } from '@/components/widget'
 import { PageContainer } from '@/components/shared/page-container'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
+import { WidgetHeader } from '@/components/widgets/components/WidgetHeader'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +21,7 @@ import { AppearanceTab } from './components/AppearanceTab'
 import { InstallTab } from './components/InstallTab'
 import { LayoutTab } from './components/LayoutTab'
 import { WidgetPreview } from './components/WidgetPreview'
-import { WidgetHeader } from './components/WidgetHeader'
+import { TemplateTab } from './components/TemplateTab'
 import { isLightColor } from './helpers'
 
 export default function WidgetConfigPage() {
@@ -64,6 +65,9 @@ export default function WidgetConfigPage() {
     copied,
     activeTab,
     setActiveTab,
+    activeTemplate,
+    setActiveTemplate,
+    applyTemplate,
     deleteOpen,
     setDeleteOpen,
     isDirty,
@@ -140,10 +144,14 @@ export default function WidgetConfigPage() {
             <Layout className="size-4" />
             Layout
           </TabsTrigger>
-          <TabsTrigger value="install">
-            <Code2 className="size-4" />
-            Install
-          </TabsTrigger>
+           <TabsTrigger value="templates">
+             <Star className="size-4" />
+             Templates
+           </TabsTrigger>
+           <TabsTrigger value="install">
+             <Code2 className="size-4" />
+             Install
+           </TabsTrigger>
         </TabsList>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
@@ -186,7 +194,14 @@ export default function WidgetConfigPage() {
               />
             </TabsContent>
 
-            <TabsContent value="install">
+             <TabsContent value="templates">
+               <TemplateTab
+                 activeTemplate={activeTemplate}
+                 onSelectTemplate={applyTemplate}
+               />
+             </TabsContent>
+
+             <TabsContent value="install">
               <InstallTab
                 domains={domains}
                 domainInput={domainInput}

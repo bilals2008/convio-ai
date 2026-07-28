@@ -1,15 +1,6 @@
 import { useCallback, useState } from 'react'
-import {
-  ArrowLeft,
-  Check,
-  Code2,
-  Copy,
-  ExternalLink,
-  MoreVertical,
-  Trash2,
-} from 'lucide-react'
+import { ArrowLeft, Check, Code2, Copy, ExternalLink, MoreVertical, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,11 +40,6 @@ export function WidgetHeader({
   const isLive = widget.status === 'active'
   const status = STATUS_INDICATOR[widget.status] ?? STATUS_INDICATOR.draft
   const [keyCopied, setKeyCopied] = useState(false)
-
-  const handlePublishToggle = useCallback(
-    (checked: boolean) => onSave(checked ? 'active' : 'paused'),
-    [onSave],
-  )
 
   const copyKey = useCallback(async () => {
     try {
@@ -135,17 +121,10 @@ export function WidgetHeader({
             <Code2 className="size-3.5" />
             Get Code
           </Button>
-          <div className="flex items-center gap-2 rounded-lg border px-3 py-1.5">
-            <Switch
-              size="sm"
-              checked={isLive}
-              onCheckedChange={handlePublishToggle}
-              disabled={savePending}
-            />
-            <span className="text-xs font-medium text-muted-foreground select-none">
-              {isLive ? 'Live' : 'Paused'}
-            </span>
-          </div>
+          <Button size="sm" onClick={() => onSave()} disabled={!isDirty || savePending}>
+            <Save className="size-3.5" />
+            {savePending ? 'Saving...' : 'Save'}
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
               <MoreVertical className="size-4" />

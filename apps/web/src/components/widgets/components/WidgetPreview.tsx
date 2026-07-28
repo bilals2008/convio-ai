@@ -78,7 +78,6 @@ export function WidgetPreview({
                       background: `linear-gradient(${headerGradientDirection}deg, ${headerGradientStart}, ${headerGradientEnd})`,
                     }}
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-white/8 to-transparent pointer-events-none" />
             <div className="relative z-10 flex items-center gap-3 min-w-0">
               <div className="relative shrink-0">
                 {agentAvatar ? (
@@ -104,20 +103,20 @@ export function WidgetPreview({
                 </p>
               </div>
             </div>
-            <div className="relative z-10 flex items-center gap-0.5">
+            <div className="relative z-10 flex items-center gap-1">
               <button
                 type="button"
-                className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                className="flex size-7 items-center justify-center rounded-md text-white/50 hover:bg-white/10 hover:text-white transition-colors"
                 aria-label="Minimize"
               >
-                <Minus className="size-4" />
+                <Minus className="size-3.5" />
               </button>
               <button
                 type="button"
-                className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                className="flex size-7 items-center justify-center rounded-md text-white/50 hover:bg-white/10 hover:text-white transition-colors"
                 aria-label="Close"
               >
-                <X className="size-4" />
+                <X className="size-3.5" />
               </button>
             </div>
           </div>

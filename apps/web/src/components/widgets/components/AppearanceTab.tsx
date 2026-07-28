@@ -1,8 +1,14 @@
-import { Palette, PaintBucket } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Palette, PaintBucket, Upload, X, Loader2, Image as ImageIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { SectionCard } from './SectionCard'
 import { ColorField } from './ColorField'
+import { AvatarPresetModal } from '@/components/agents/avatar-preset-modal'
+import { useAgentAvatarUpload } from '@/lib/hooks/use-agent-avatar-upload'
+import { useOrg } from '@/lib/org-context'
+import { toast } from 'sonner'
 import {
   primaryPresets,
   bgPresets,
@@ -14,7 +20,9 @@ import {
   inputBgPresets,
   sendBtnPresets,
 } from '../constants'
-import { getContrastText } from '../helpers'
+
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_SIZE_MB = 2
 
 interface AppearanceTabProps {
   agentName: string
@@ -69,12 +77,43 @@ export function AppearanceTab({
   sendBtnColor,
   onSendBtnColorChange,
 }: AppearanceTabProps) {
-  const initials = (agentName || 'A')
-    .split(' ')
-    .map((w) => w[0])
-    .slice(0, 1)
-    .join('')
-    .toUpperCase()
+  const { orgId } = useOrg()
+  const { upload, isUploading, progress } = useAgentAvatarUpload()
+  const [presetModalOpen, setPresetModalOpen] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error('Only JPG, PNG, WebP, and GIF images are allowed.')
+      e.target.value = ''
+      return
+    }
+
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast.error(`Image must be smaller than ${MAX_SIZE_MB}MB.`)
+      e.target.value = ''
+      return
+    }
+
+    if (!orgId) {
+      toast.error('Organization not loaded. Please wait and try again.')
+      e.target.value = ''
+      return
+    }
+
+    try {
+      const url = await upload(orgId, file)
+      onAgentAvatarChange(url)
+      toast.success('Avatar uploaded')
+    } catch {
+      toast.error('Failed to upload avatar')
+    } finally {
+      e.target.value = ''
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -83,59 +122,83 @@ export function AppearanceTab({
         title="Appearance"
       >
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="agentName" className="text-sm font-medium">
-                Agent name
-              </Label>
-              <Input
-                id="agentName"
-                value={agentName}
-                onChange={(e) => onAgentNameChange(e.target.value)}
-                placeholder="Assistant"
-                className="h-9 text-sm"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="agentName" className="text-sm font-medium">
+              Agent name
+            </Label>
+            <Input
+              id="agentName"
+              value={agentName}
+              onChange={(e) => onAgentNameChange(e.target.value)}
+              placeholder="Assistant"
+              className="h-9 text-sm"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="agentAvatar" className="text-sm font-medium">
-                Avatar URL
-              </Label>
-              <div className="flex items-center gap-2.5">
-                <Input
-                  id="agentAvatar"
-                  value={agentAvatar}
-                  onChange={(e) => onAgentAvatarChange(e.target.value)}
-                  placeholder="https://..."
-                  className="h-9 flex-1 text-sm"
-                />
-                <div
-                  className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-foreground/10"
-                  style={
-                    agentAvatar
-                      ? undefined
-                      : {
-                          background: `linear-gradient(135deg, ${primaryColor}, color-mix(in srgb, ${primaryColor} 80%, black))`,
-                        }
-                  }
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Avatar</Label>
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ring-border/60">
+                {agentAvatar ? (
+                  <img src={agentAvatar} alt="" className="size-full object-cover" />
+                ) : (
+                  <ImageIcon className="size-4 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="h-8 text-xs"
                 >
-                  {agentAvatar ? (
-                    <img
-                      src={agentAvatar}
-                      alt=""
-                      className="size-full rounded-full object-cover"
-                    />
+                  {isUploading ? (
+                    <Loader2 className="size-3 animate-spin" />
                   ) : (
-                    <span
-                      className="text-xs font-bold"
-                      style={{ color: getContrastText(primaryColor) }}
-                    >
-                      {initials}
-                    </span>
+                    <Upload className="size-3" />
                   )}
-                </div>
+                  {isUploading ? `${progress}%` : 'Upload'}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPresetModalOpen(true)}
+                  disabled={isUploading}
+                  className="h-8 text-xs"
+                >
+                  <Palette className="size-3" />
+                  Preset
+                </Button>
+                {agentAvatar && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onAgentAvatarChange('')}
+                    disabled={isUploading}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="size-3" />
+                  </Button>
+                )}
               </div>
             </div>
+            <AvatarPresetModal
+              open={presetModalOpen}
+              onOpenChange={setPresetModalOpen}
+              value={agentAvatar}
+              onSelect={onAgentAvatarChange}
+            />
           </div>
 
           <div className="space-y-4 border-t border-border/60 pt-6">

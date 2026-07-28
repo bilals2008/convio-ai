@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { widgets as widgetsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import type { WidgetDetail, ApiError } from '../types'
+import { type LauncherTemplate } from '../constants'
 import { sanitizeDomain } from '../helpers'
 
 export function useWidgetForm(widgetId: string) {
@@ -37,6 +38,7 @@ export function useWidgetForm(widgetId: string) {
   const [agentAvatar, setAgentAvatar] = useState('')
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('appearance')
+  const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   useEffect(() => {
@@ -187,6 +189,25 @@ export function useWidgetForm(widgetId: string) {
     setDomains((prev) => prev.filter((x) => x !== d))
   }, [])
 
+  const applyTemplate = useCallback(
+    (template: LauncherTemplate) => {
+      const cfg = template.config
+      if (cfg.primaryColor !== undefined) setPrimaryColor(cfg.primaryColor)
+      if (cfg.backgroundColor !== undefined) setBackgroundColor(cfg.backgroundColor)
+      if (cfg.textColor !== undefined) setTextColor(cfg.textColor)
+      if (cfg.promptBgColor !== undefined) setPromptBgColor(cfg.promptBgColor)
+      if (cfg.headerGradientStart !== undefined) setHeaderGradientStart(cfg.headerGradientStart)
+      if (cfg.headerGradientEnd !== undefined) setHeaderGradientEnd(cfg.headerGradientEnd)
+      if (cfg.borderColor !== undefined) setBorderColor(cfg.borderColor)
+      if (cfg.inputBgColor !== undefined) setInputBgColor(cfg.inputBgColor)
+      if (cfg.sendBtnColor !== undefined) setSendBtnColor(cfg.sendBtnColor)
+      if (cfg.position !== undefined) setPosition(cfg.position)
+      if (cfg.widgetHeight !== undefined) setWidgetHeight(cfg.widgetHeight)
+      setActiveTemplate(template.id)
+    },
+    [],
+  )
+
   return {
     widget,
     isLoading,
@@ -225,6 +246,9 @@ export function useWidgetForm(widgetId: string) {
     copied,
     activeTab,
     setActiveTab,
+    activeTemplate,
+    setActiveTemplate,
+    applyTemplate,
     deleteOpen,
     setDeleteOpen,
     isDirty,
