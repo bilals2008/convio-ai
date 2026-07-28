@@ -4,6 +4,8 @@ import { useWidgetState } from './WidgetState'
 import { WidgetMessage } from './WidgetMessage'
 import { WidgetTyping } from './WidgetTyping'
 import type { WidgetMessage as WidgetMessageType } from '@/hooks/useWidget'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 function groupMessagesByDate(messages: WidgetMessageType[]) {
   const groups: { date: string; messages: WidgetMessageType[] }[] = []
@@ -104,10 +106,10 @@ export function WidgetMessages() {
           <div
             className="group relative max-w-[88%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-muted))]"
           >
-            <p className="whitespace-pre-wrap break-words">
-              {streamingContent}
-              <span className="inline-block w-1.5 h-4 ml-0.5 bg-[hsl(var(--widget-primary))] animate-pulse align-text-bottom" />
-            </p>
+            <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-code:bg-[hsl(var(--widget-primary)_/_0.15)] prose-code:px-1 prose-code:rounded prose-code:text-[12px] prose-pre:bg-[hsl(var(--widget-bg))] prose-pre:border prose-pre:border-[hsl(var(--widget-border))] prose-a:text-[hsl(var(--widget-primary))]">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
+            </div>
+            <span className="inline-block w-1.5 h-4 ml-0.5 bg-[hsl(var(--widget-primary))] animate-pulse align-text-bottom" />
           </div>
         </div>
       ) : isTyping && <WidgetTyping />}
