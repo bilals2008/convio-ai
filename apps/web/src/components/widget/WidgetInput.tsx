@@ -1,12 +1,38 @@
-import { useState, useRef, useCallback, type KeyboardEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 'react'
 import { Send, Smile } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWidgetState } from './WidgetState'
 
+const EMOJIS = [
+  '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊',
+  '😋', '😎', '😍', '🥰', '😘', '😗', '😙', '😚', '🙂', '🤗',
+  '🤩', '🤔', '🤨', '😐', '😑', '😶', '🙄', '😏', '😣', '😥',
+  '😮', '🤐', '😯', '😪', '😫', '😴', '😌', '😛', '😜', '😝',
+  '🤤', '😒', '😓', '😔', '😕', '🙃', '🤑', '😲', '☹️', '🙁',
+  '😖', '😞', '😟', '😤', '😢', '😭', '😦', '😧', '😨', '😩',
+  '🤯', '😬', '😰', '😱', '🥵', '🥶', '😳', '🤪', '😵', '😡',
+  '😠', '🤬', '👍', '👎', '👊', '✊', '🤛', '🤜', '👏', '🙌',
+  '👐', '🤲', '🤝', '🙏', '✌️', '🤞', '🫶', '❤️', '💔', '💕',
+  '🔥', '⭐', '✨', '💯', '🎉', '🎊', '🥳', '🎈', '💪', '🤷',
+  '💀', '👀', '🗣️', '💬', '💭', '😶‍🌫️', '🫡', '🫠', '🫢', '🫣',
+]
+
 export function WidgetInput() {
   const { onSendMessage, isTyping } = useWidgetState()
   const [value, setValue] = useState('')
+  const [showEmoji, setShowEmoji] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const emojiRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
+        setShowEmoji(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current
@@ -35,18 +61,43 @@ export function WidgetInput() {
     [handleSend]
   )
 
+  const insertEmoji = useCallback((emoji: string) => {
+    setValue((prev) => prev + emoji)
+    setShowEmoji(false)
+    textareaRef.current?.focus()
+  }, [])
+
   const canSend = value.trim() && !isTyping
 
   return (
     <div className="convio-input shrink-0 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] sm:rounded-b-2xl">
       <div className="flex items-end gap-2 p-3">
-        <button
-          type="button"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full text-[hsl(var(--widget-muted-foreground))] hover:text-[hsl(var(--widget-primary))] hover:bg-[hsl(var(--widget-primary)_/_0.08)] transition-colors"
-          aria-label="Emoji"
-        >
-          <Smile className="size-5" />
-        </button>
+        <div className="relative" ref={emojiRef}>
+          <button
+            type="button"
+            onClick={() => setShowEmoji((v) => !v)}
+            className="flex size-8 shrink-0 items-center justify-center rounded-full text-[hsl(var(--widget-muted-foreground))] hover:text-[hsl(var(--widget-primary))] hover:bg-[hsl(var(--widget-primary)_/_0.08)] transition-colors"
+            aria-label="Emoji"
+          >
+            <Smile className="size-5" />
+          </button>
+          {showEmoji && (
+            <div className="absolute bottom-full left-0 mb-2 z-50 w-[280px] max-h-[200px] overflow-y-auto rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] p-2 shadow-xl">
+              <div className="grid grid-cols-8 gap-0.5">
+                {EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => insertEmoji(emoji)}
+                    className="flex size-8 items-center justify-center rounded-md text-lg hover:bg-[hsl(var(--widget-muted))] transition-colors"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         <div className="flex-1 rounded-xl bg-[hsl(var(--widget-muted))] px-3.5 py-2 transition-all duration-200">
           <textarea
             ref={textareaRef}

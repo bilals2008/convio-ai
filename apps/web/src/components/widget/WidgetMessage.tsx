@@ -19,7 +19,7 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
   return (
     <div
       className={cn(
-        'convio-msg flex gap-2 mb-3 animate-in fade-in slide-in-from-bottom-1 duration-300',
+        'convio-msg flex gap-2 mb-1.5 animate-in fade-in slide-in-from-bottom-1 duration-300',
         isUser ? 'justify-end' : 'justify-start'
       )}
     >
@@ -45,7 +45,7 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
       )}
       <div
         className={cn(
-          'group relative max-w-[78%] px-3.5 py-2.5 text-[13px] leading-relaxed',
+          'group relative max-w-[88%] px-3.5 py-2.5 text-[13px] leading-relaxed',
           isUser
             ? 'rounded-2xl rounded-br-md text-white'
             : 'rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-muted))]',

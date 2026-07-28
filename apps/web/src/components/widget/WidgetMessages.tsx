@@ -63,7 +63,7 @@ export function WidgetMessages() {
   return (
     <div
       ref={scrollRef}
-      className="convio-messages flex-1 overflow-y-auto px-4 py-3"
+      className="convio-messages flex-1 overflow-y-auto px-3 py-2"
       style={{
         scrollbarWidth: 'thin',
         scrollbarColor: 'hsl(var(--widget-muted)) transparent',
@@ -102,7 +102,7 @@ export function WidgetMessages() {
             )}
           </div>
           <div
-            className="group relative max-w-[78%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-muted))]"
+            className="group relative max-w-[88%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-muted))]"
           >
             <p className="whitespace-pre-wrap break-words">
               {streamingContent}

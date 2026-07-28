@@ -21,8 +21,7 @@ export function WidgetHeader() {
             }
       }
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
-      <div className="relative z-10 flex items-center justify-between px-4 py-3">
+      <div className="relative z-10 flex items-center justify-between px-4 py-3 border-b-2 border-white/10">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative shrink-0">
             {agentAvatar ? (
