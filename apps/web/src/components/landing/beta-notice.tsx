@@ -21,7 +21,7 @@ export function BetaNotice() {
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="mx-4 w-full max-w-sm rounded-2xl border border-border/50 bg-card p-6 shadow-2xl">
-        <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10">
           <Shield className="size-6 text-primary" />
         </div>
         <h3 className="mb-2 text-lg font-semibold text-foreground">We're Building in Public</h3>
@@ -30,7 +30,7 @@ export function BetaNotice() {
         </p>
         <p className="mb-6 text-sm text-muted-foreground">
           Something broken or missing?{' '}
-          <a href="mailto:team@convio.dev" className="text-primary underline underline-offset-2 hover:text-primary/80">
+          <a href="mailto:teambillaldev@gmail.com" className="text-primary underline underline-offset-2 hover:text-primary/80">
             Tell us
           </a>
         </p>
