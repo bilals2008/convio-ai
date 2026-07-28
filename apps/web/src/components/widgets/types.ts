@@ -17,11 +17,15 @@ export interface WidgetConfig {
   headerGradientStart?: string
   headerGradientEnd?: string
   headerGradientDirection?: number
+  headerGradient?: boolean
   borderColor?: string
   inputBgColor?: string
   sendBtnColor?: string
   position?: 'bottom-right' | 'bottom-left'
   widgetHeight?: number
+  widgetWidth?: 'narrow' | 'default' | 'wide'
+  launcherSize?: 'small' | 'default' | 'large'
+  borderRadius?: 'none' | 'default' | 'full'
   agentName?: string
   agentAvatar?: string
   themeMode?: 'auto' | 'light' | 'dark'

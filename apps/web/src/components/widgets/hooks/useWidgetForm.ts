@@ -30,10 +30,14 @@ export function useWidgetForm(widgetId: string) {
   const [headerGradientStart, setHeaderGradientStart] = useState('#fb923c')
   const [headerGradientEnd, setHeaderGradientEnd] = useState('#c2410c')
   const [headerGradientDirection, setHeaderGradientDirection] = useState(135)
+  const [headerGradient, setHeaderGradient] = useState(true)
   const [borderColor, setBorderColor] = useState('')
   const [inputBgColor, setInputBgColor] = useState('')
   const [sendBtnColor, setSendBtnColor] = useState('')
   const [widgetHeight, setWidgetHeight] = useState(540)
+  const [widgetWidth, setWidgetWidth] = useState<'narrow' | 'default' | 'wide'>('default')
+  const [launcherSize, setLauncherSize] = useState<'small' | 'default' | 'large'>('default')
+  const [borderRadius, setBorderRadius] = useState<'none' | 'default' | 'full'>('default')
   const [agentName, setAgentName] = useState('')
   const [agentAvatar, setAgentAvatar] = useState('')
   const [themeMode, setThemeMode] = useState<ThemeMode>('auto')
@@ -54,10 +58,14 @@ export function useWidgetForm(widgetId: string) {
     setHeaderGradientStart(widget.config.headerGradientStart ?? '#fb923c')
     setHeaderGradientEnd(widget.config.headerGradientEnd ?? '#c2410c')
     setHeaderGradientDirection(widget.config.headerGradientDirection ?? 135)
+    setHeaderGradient(widget.config.headerGradient ?? true)
     setBorderColor(widget.config.borderColor ?? '')
     setInputBgColor(widget.config.inputBgColor ?? '')
     setSendBtnColor(widget.config.sendBtnColor ?? '')
     setWidgetHeight(widget.config.widgetHeight ?? 540)
+    setWidgetWidth(widget.config.widgetWidth ?? 'default')
+    setLauncherSize(widget.config.launcherSize ?? 'default')
+    setBorderRadius(widget.config.borderRadius ?? 'default')
     setAgentName(widget.config.agentName ?? widget.agent.name ?? '')
     setAgentAvatar(widget.config.agentAvatar ?? '')
     setThemeMode(widget.config.themeMode ?? 'auto')
@@ -76,10 +84,14 @@ export function useWidgetForm(widgetId: string) {
         headerGradientStart: widget.config.headerGradientStart ?? '#fb923c',
         headerGradientEnd: widget.config.headerGradientEnd ?? '#c2410c',
         headerGradientDirection: widget.config.headerGradientDirection ?? 135,
+        headerGradient: widget.config.headerGradient ?? true,
         borderColor: widget.config.borderColor ?? '',
         inputBgColor: widget.config.inputBgColor ?? '',
         sendBtnColor: widget.config.sendBtnColor ?? '',
         widgetHeight: widget.config.widgetHeight ?? 540,
+        widgetWidth: widget.config.widgetWidth ?? 'default',
+        launcherSize: widget.config.launcherSize ?? 'default',
+        borderRadius: widget.config.borderRadius ?? 'default',
         agentName: widget.config.agentName ?? widget.agent.name ?? '',
         agentAvatar: widget.config.agentAvatar ?? '',
         themeMode: widget.config.themeMode ?? 'auto',
@@ -95,16 +107,20 @@ export function useWidgetForm(widgetId: string) {
         headerGradientStart,
         headerGradientEnd,
         headerGradientDirection,
+        headerGradient,
         borderColor,
         inputBgColor,
         sendBtnColor,
         widgetHeight,
+        widgetWidth,
+        launcherSize,
+        borderRadius,
         agentName,
         agentAvatar,
         themeMode,
       }
       return JSON.stringify(current) !== JSON.stringify(saved)
-    }, [widget, name, domains, position, primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, borderColor, inputBgColor, sendBtnColor, widgetHeight, agentName, agentAvatar, themeMode])
+    }, [widget, name, domains, position, primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, headerGradient, borderColor, inputBgColor, sendBtnColor, widgetHeight, widgetWidth, launcherSize, borderRadius, agentName, agentAvatar, themeMode])
 
   useEffect(() => {
     if (!isDirty) return
@@ -131,10 +147,14 @@ export function useWidgetForm(widgetId: string) {
           headerGradientStart,
           headerGradientEnd,
           headerGradientDirection,
+          headerGradient,
           borderColor,
           inputBgColor,
           sendBtnColor,
           widgetHeight,
+          widgetWidth,
+          launcherSize,
+          borderRadius,
           agentName,
           themeMode,
           ...(agentAvatar ? { agentAvatar } : {}),
@@ -208,6 +228,9 @@ export function useWidgetForm(widgetId: string) {
       if (cfg.sendBtnColor !== undefined) setSendBtnColor(cfg.sendBtnColor)
       if (cfg.position !== undefined) setPosition(cfg.position)
       if (cfg.widgetHeight !== undefined) setWidgetHeight(cfg.widgetHeight)
+      if (cfg.widgetWidth !== undefined) setWidgetWidth(cfg.widgetWidth)
+      if (cfg.launcherSize !== undefined) setLauncherSize(cfg.launcherSize)
+      if (cfg.borderRadius !== undefined) setBorderRadius(cfg.borderRadius)
       setActiveTemplate(template.id)
     },
     [],
@@ -236,6 +259,8 @@ export function useWidgetForm(widgetId: string) {
     setHeaderGradientEnd,
     headerGradientDirection,
     setHeaderGradientDirection,
+    headerGradient,
+    setHeaderGradient,
     borderColor,
     setBorderColor,
     inputBgColor,
@@ -244,6 +269,12 @@ export function useWidgetForm(widgetId: string) {
     setSendBtnColor,
     widgetHeight,
     setWidgetHeight,
+    widgetWidth,
+    setWidgetWidth,
+    launcherSize,
+    setLauncherSize,
+    borderRadius,
+    setBorderRadius,
     agentName,
     setAgentName,
     agentAvatar,

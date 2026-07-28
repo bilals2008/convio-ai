@@ -32,6 +32,10 @@ export interface WidgetConfig {
   agentAvatar?: string
   quickReplies?: string[]
   homeMenu?: { icon: string; label: string; description: string }[]
+  widgetWidth?: 'narrow' | 'default' | 'wide'
+  launcherSize?: 'small' | 'default' | 'large'
+  borderRadius?: 'none' | 'default' | 'full'
+  headerGradient?: boolean
 }
 
 const defaultTheme: WidgetTheme = {

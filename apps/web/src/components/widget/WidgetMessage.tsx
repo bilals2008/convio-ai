@@ -29,13 +29,13 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
             <img
               src={agentAvatar}
               alt={agentName}
-              className="size-7 rounded-full object-cover ring-2 ring-[hsl(var(--widget-primary))]"
+              className="size-7 rounded-full object-cover"
             />
           ) : (
             <div
               className="size-7 rounded-full flex items-center justify-center"
               style={{
-                background: `linear-gradient(135deg, hsl(var(--widget-primary)), color-mix(in srgb, hsl(var(--widget-primary)) 80%, black))`,
+                background: `linear-gradient(135deg, hsl(var(--widget-header-start)), hsl(var(--widget-header-end)))`,
               }}
             >
               <span className="text-[9px] font-bold text-white">{initials}</span>
@@ -45,10 +45,10 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
       )}
       <div
         className={cn(
-          'group relative max-w-[80%] px-3.5 py-2.5 text-[13px] leading-relaxed',
+          'group relative max-w-[78%] px-3.5 py-2.5 text-[13px] leading-relaxed',
           isUser
-            ? 'rounded-2xl rounded-br-md text-white shadow-sm'
-            : 'rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-muted))] shadow-sm',
+            ? 'rounded-2xl rounded-br-md text-white'
+            : 'rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-muted))]',
           !isUser && !showAvatar && 'ml-9'
         )}
         style={

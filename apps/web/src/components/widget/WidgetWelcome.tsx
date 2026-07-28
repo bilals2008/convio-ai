@@ -33,7 +33,7 @@ export function WidgetWelcome() {
     : 'AI'
 
   return (
-    <div className="convio-welcome flex flex-1 flex-col items-center justify-center px-5 py-6">
+    <div className="convio-welcome flex flex-1 flex-col items-center justify-center px-5 py-6 bg-[hsl(var(--widget-bg))]">
       <div className="flex flex-col items-center text-center w-full max-w-[280px]">
         <div className="relative mb-4">
           {agentAvatar ? (
@@ -46,7 +46,7 @@ export function WidgetWelcome() {
             <div
               className="size-16 rounded-full flex items-center justify-center shadow-lg"
               style={{
-                background: `linear-gradient(135deg, hsl(var(--widget-primary)), color-mix(in srgb, hsl(var(--widget-primary)) 80%, black))`,
+                background: `linear-gradient(135deg, hsl(var(--widget-header-start)), hsl(var(--widget-header-end)))`,
               }}
             >
               <span className="text-xl font-bold text-white">
@@ -86,13 +86,13 @@ export function WidgetWelcome() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col gap-2 w-full">
+          <div className="flex flex-wrap gap-2 justify-center w-full">
             {replies.slice(0, 4).map((reply) => (
               <button
                 key={reply}
                 type="button"
                 onClick={() => onSendMessage(reply)}
-                className="w-full rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-muted))] px-4 py-2.5 text-[12px] font-medium text-[hsl(var(--widget-text))] hover:border-[hsl(var(--widget-primary)_/_0.4)] hover:bg-[hsl(var(--widget-primary)_/_0.05)] transition-all duration-150 text-left"
+                className="rounded-full border border-[hsl(var(--widget-primary)_/_0.3)] bg-[hsl(var(--widget-primary)_/_0.06)] px-4 py-2 text-[12px] font-medium text-[hsl(var(--widget-primary))] hover:bg-[hsl(var(--widget-primary)_/_0.12)] hover:border-[hsl(var(--widget-primary)_/_0.5)] transition-all duration-150"
               >
                 {reply}
               </button>

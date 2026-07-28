@@ -18,6 +18,10 @@ export interface ChatWidgetProps {
   agentAvatar?: string
   quickReplies?: string[]
   homeMenu?: { icon: string; label: string; description: string }[]
+  widgetWidth?: 'narrow' | 'default' | 'wide'
+  launcherSize?: 'small' | 'default' | 'large'
+  borderRadius?: 'none' | 'default' | 'full'
+  headerGradient?: boolean
 }
 
 const defaultTheme: WidgetTheme = {
@@ -60,9 +64,13 @@ export function ChatWidget({
   agentAvatar,
   quickReplies,
   homeMenu,
+  widgetWidth = 'default',
+  launcherSize = 'default',
+  borderRadius = 'default',
+  headerGradient = true,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu })
+  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient })
 
   const stateValue = {
     isOpen: widget.isOpen,
@@ -82,6 +90,10 @@ export function ChatWidget({
     streamingContent: widget.streamingContent,
     position,
     homeMenu: homeMenu || [],
+    widgetWidth,
+    launcherSize,
+    borderRadius,
+    headerGradient,
     onSendMessage: widget.sendMessage,
     onToggle: widget.toggleWidget,
     onClose: widget.closeWidget,

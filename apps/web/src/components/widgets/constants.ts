@@ -73,6 +73,24 @@ export const THEME_MODES = [
 
 export type ThemeMode = 'auto' | 'light' | 'dark'
 
+export const WIDTH_OPTIONS = [
+  { value: 'narrow', label: 'Narrow', width: 320 },
+  { value: 'default', label: 'Default', width: 380 },
+  { value: 'wide', label: 'Wide', width: 440 },
+] as const
+
+export const LAUNCHER_SIZE_OPTIONS = [
+  { value: 'small', label: 'Small', size: 48 },
+  { value: 'default', label: 'Default', size: 56 },
+  { value: 'large', label: 'Large', size: 64 },
+] as const
+
+export const BORDER_RADIUS_OPTIONS = [
+  { value: 'none', label: 'Sharp', radius: 0 },
+  { value: 'default', label: 'Rounded', radius: 16 },
+  { value: 'full', label: 'Full', radius: 24 },
+] as const
+
 export interface LauncherTemplate {
   id: string
   name: string
@@ -89,6 +107,9 @@ export interface LauncherTemplate {
     sendBtnColor?: string
     position?: 'bottom-right' | 'bottom-left'
     widgetHeight?: number
+    widgetWidth?: 'narrow' | 'default' | 'wide'
+    launcherSize?: 'small' | 'default' | 'large'
+    borderRadius?: 'none' | 'default' | 'full'
   }
 }
 

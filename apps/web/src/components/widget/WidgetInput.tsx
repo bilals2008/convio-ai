@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, type KeyboardEvent } from 'react'
-import { Send } from 'lucide-react'
+import { Send, Smile } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWidgetState } from './WidgetState'
 
@@ -38,9 +38,16 @@ export function WidgetInput() {
   const canSend = value.trim() && !isTyping
 
   return (
-    <div className="convio-input shrink-0 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-input-bg))] p-3">
-      <div className="flex items-end gap-2">
-        <div className="flex-1 rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-input-bg))] px-3.5 py-2 transition-all duration-200 focus-within:border-[hsl(var(--widget-primary)_/_0.5)] focus-within:ring-2 focus-within:ring-[hsl(var(--widget-primary)_/_0.1)]">
+    <div className="convio-input shrink-0 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] sm:rounded-b-2xl">
+      <div className="flex items-end gap-2 p-3">
+        <button
+          type="button"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-[hsl(var(--widget-muted-foreground))] hover:text-[hsl(var(--widget-primary))] hover:bg-[hsl(var(--widget-primary)_/_0.08)] transition-colors"
+          aria-label="Emoji"
+        >
+          <Smile className="size-5" />
+        </button>
+        <div className="flex-1 rounded-xl bg-[hsl(var(--widget-muted))] px-3.5 py-2 transition-all duration-200">
           <textarea
             ref={textareaRef}
             value={value}
@@ -49,7 +56,7 @@ export function WidgetInput() {
               adjustHeight()
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder="Enter your message..."
             disabled={isTyping}
             rows={1}
             className="w-full resize-none bg-transparent py-0 text-[13px] leading-relaxed text-[hsl(var(--widget-text))] placeholder:text-[hsl(var(--widget-muted-foreground))]/50 outline-none disabled:opacity-40"
@@ -76,7 +83,7 @@ export function WidgetInput() {
           <Send className={cn('size-4 transition-transform', canSend && '-rotate-45')} />
         </button>
       </div>
-      <p className="text-center text-[10px] text-[hsl(var(--widget-muted-foreground))]/40 mt-2 font-medium">
+      <p className="text-center text-[10px] text-[hsl(var(--widget-muted-foreground))]/40 pb-2.5 font-medium">
         Powered by Convio
       </p>
     </div>

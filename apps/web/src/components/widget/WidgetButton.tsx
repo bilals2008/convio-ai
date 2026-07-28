@@ -2,28 +2,33 @@ import { cn } from '@/lib/utils'
 import { useWidgetState } from './WidgetState'
 import { MessageCircle, X } from 'lucide-react'
 
-export function WidgetButton() {
-  const { isOpen, isEmbed, unreadCount, agentAvatar, agentName, position, onToggle } = useWidgetState()
+const SIZE_MAP = { small: 'size-12', default: 'size-14', large: 'size-16' }
 
-  const initials = agentName
-    ? agentName.split(' ').map((w) => w[0]).slice(0, 1).join('').toUpperCase()
-    : 'A'
+export function WidgetButton() {
+  const { isOpen, isEmbed, unreadCount, agentAvatar, agentName, position, launcherSize, onToggle } = useWidgetState()
 
   // In embed mode the open window fills the whole iframe, so the floating
   // toggle would overlap the input row. Hide it while open.
+  // On mobile, hide when open since the widget fills the screen.
   if (isEmbed && isOpen) return null
+  if (isOpen) return null
 
   return (
     <button
       type="button"
       onClick={onToggle}
       className={cn(
-        'convio-trigger group fixed bottom-5 z-[9999] flex size-14 shrink-0 items-center justify-center rounded-full shadow-lg shadow-black/20 transition-all duration-300 ease-out hover:scale-105 active:scale-95 hover:shadow-xl hover:shadow-black/25 overflow-hidden',
+        'convio-trigger group fixed bottom-5 z-[9999] flex shrink-0 items-center justify-center rounded-full transition-all duration-300 ease-out hover:scale-105 active:scale-95 overflow-hidden',
+        SIZE_MAP[launcherSize],
         position === 'bottom-left' ? 'left-5' : 'right-5'
       )}
       style={{
-        backgroundColor: agentAvatar ? 'transparent' : `hsl(var(--widget-primary))`,
-        boxShadow: agentAvatar ? `0 0 0 3px hsl(var(--widget-primary))` : undefined,
+        background: agentAvatar
+          ? 'transparent'
+          : `linear-gradient(135deg, hsl(var(--widget-primary)), color-mix(in srgb, hsl(var(--widget-primary)) 85%, black))`,
+        boxShadow: agentAvatar
+          ? `0 0 0 3px hsl(var(--widget-primary)), 0 4px 20px rgba(0,0,0,0.2)`
+          : `0 4px 20px rgba(0,0,0,0.2)`,
       }}
       aria-label={isOpen ? 'Close chat' : 'Open chat'}
     >
@@ -36,7 +41,7 @@ export function WidgetButton() {
         {agentAvatar ? (
           <img src={agentAvatar} alt={agentName} className="size-full rounded-full object-cover" />
         ) : (
-          <MessageCircle className="size-5 text-[hsl(var(--widget-primary-foreground))]" />
+          <MessageCircle className="size-5 text-white" />
         )}
       </span>
       <span
@@ -45,7 +50,7 @@ export function WidgetButton() {
           isOpen ? 'scale-100 rotate-0 opacity-100' : 'scale-0 -rotate-90 opacity-0'
         )}
       >
-        <X className="size-5 text-[hsl(var(--widget-primary-foreground))]" />
+        <X className="size-5 text-white" />
       </span>
       {unreadCount > 0 && !isOpen && (
         <span className="absolute -top-1 -right-1 flex min-w-[20px] h-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground shadow-sm animate-in zoom-in duration-200">

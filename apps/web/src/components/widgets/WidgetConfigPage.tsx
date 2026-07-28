@@ -50,6 +50,8 @@ export default function WidgetConfigPage() {
     setHeaderGradientEnd,
     headerGradientDirection,
     setHeaderGradientDirection,
+    headerGradient,
+    setHeaderGradient,
     borderColor,
     setBorderColor,
     inputBgColor,
@@ -58,6 +60,12 @@ export default function WidgetConfigPage() {
     setSendBtnColor,
     widgetHeight,
     setWidgetHeight,
+    widgetWidth,
+    setWidgetWidth,
+    launcherSize,
+    setLauncherSize,
+    borderRadius,
+    setBorderRadius,
     agentName,
     setAgentName,
     agentAvatar,
@@ -176,6 +184,8 @@ export default function WidgetConfigPage() {
               onHeaderGradientEndChange={setHeaderGradientEnd}
               headerGradientDirection={headerGradientDirection}
               onHeaderGradientDirectionChange={setHeaderGradientDirection}
+              headerGradient={headerGradient}
+              onHeaderGradientChange={setHeaderGradient}
               borderColor={borderColor}
               onBorderColorChange={setBorderColor}
               inputBgColor={inputBgColor}
@@ -193,6 +203,12 @@ export default function WidgetConfigPage() {
               onPositionChange={setPosition}
               widgetHeight={widgetHeight}
               onWidgetHeightChange={setWidgetHeight}
+              widgetWidth={widgetWidth}
+              onWidgetWidthChange={setWidgetWidth}
+              launcherSize={launcherSize}
+              onLauncherSizeChange={setLauncherSize}
+              borderRadius={borderRadius}
+              onBorderRadiusChange={setBorderRadius}
             />
           </TabsContent>
 
@@ -250,6 +266,10 @@ export default function WidgetConfigPage() {
           agentName={agentName || widget.agent.name}
           agentAvatar={agentAvatar || undefined}
           themeMode={themeMode}
+          widgetWidth={widgetWidth}
+          launcherSize={launcherSize}
+          borderRadius={borderRadius}
+          headerGradient={headerGradient}
           preview
           theme={{
             primaryColor,

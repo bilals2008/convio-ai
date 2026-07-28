@@ -46,6 +46,8 @@ interface AppearanceTabProps {
   onHeaderGradientEndChange: (value: string) => void
   headerGradientDirection: number
   onHeaderGradientDirectionChange: (value: number) => void
+  headerGradient: boolean
+  onHeaderGradientChange: (value: boolean) => void
   borderColor: string
   onBorderColorChange: (value: string) => void
   inputBgColor: string
@@ -75,6 +77,8 @@ export function AppearanceTab({
   onHeaderGradientEndChange,
   headerGradientDirection,
   onHeaderGradientDirectionChange,
+  headerGradient,
+  onHeaderGradientChange,
   borderColor,
   onBorderColorChange,
   inputBgColor,
@@ -276,55 +280,92 @@ export function AppearanceTab({
       <SectionCard
         icon={<PaintBucket className="size-3.5" />}
         title="Header"
-        description="Gradient background for the widget header"
+        description="Background for the widget header"
       >
         <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Gradient</Label>
+              <p className="text-[11px] text-muted-foreground">Use a gradient or solid color</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={headerGradient}
+              onClick={() => onHeaderGradientChange(!headerGradient)}
+              className={cn(
+                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                headerGradient ? 'bg-primary' : 'bg-muted'
+              )}
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block size-5 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200',
+                  headerGradient ? 'translate-x-5' : 'translate-x-0'
+                )}
+              />
+            </button>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <ColorField
-              label="Gradient start"
-              description="Starting color of the header gradient"
+              label={headerGradient ? 'Gradient start' : 'Color'}
+              description={headerGradient ? 'Starting color of the header gradient' : 'Solid header background color'}
               value={headerGradientStart}
               onChange={onHeaderGradientStartChange}
               presets={headerStartPresets}
             />
 
-            <ColorField
-              label="Gradient end"
-              description="Ending color of the header gradient"
-              value={headerGradientEnd}
-              onChange={onHeaderGradientEndChange}
-              presets={headerEndPresets}
-            />
+            {headerGradient && (
+              <ColorField
+                label="Gradient end"
+                description="Ending color of the header gradient"
+                value={headerGradientEnd}
+                onChange={onHeaderGradientEndChange}
+                presets={headerEndPresets}
+              />
+            )}
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Direction</Label>
-              <span className="text-xs text-muted-foreground tabular-nums">{headerGradientDirection}°</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={360}
-              value={headerGradientDirection}
-              onChange={(e) => onHeaderGradientDirectionChange(Number(e.target.value))}
-              className="w-full h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>0°</span>
-              <span>90°</span>
-              <span>180°</span>
-              <span>270°</span>
-              <span>360°</span>
-            </div>
-          </div>
+          {headerGradient && (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Direction</Label>
+                  <span className="text-xs text-muted-foreground tabular-nums">{headerGradientDirection}°</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={360}
+                  value={headerGradientDirection}
+                  onChange={(e) => onHeaderGradientDirectionChange(Number(e.target.value))}
+                  className="w-full h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>0°</span>
+                  <span>90°</span>
+                  <span>180°</span>
+                  <span>270°</span>
+                  <span>360°</span>
+                </div>
+              </div>
 
-          <div
-            className="h-10 rounded-lg ring-1 ring-foreground/10"
-            style={{
-              background: `linear-gradient(${headerGradientDirection}deg, ${headerGradientStart}, ${headerGradientEnd})`,
-            }}
-          />
+              <div
+                className="h-10 rounded-lg ring-1 ring-foreground/10"
+                style={{
+                  background: `linear-gradient(${headerGradientDirection}deg, ${headerGradientStart}, ${headerGradientEnd})`,
+                }}
+              />
+            </>
+          )}
+
+          {!headerGradient && (
+            <div
+              className="h-10 rounded-lg ring-1 ring-foreground/10"
+              style={{ backgroundColor: headerGradientStart }}
+            />
+          )}
         </div>
       </SectionCard>
 

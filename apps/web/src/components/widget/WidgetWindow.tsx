@@ -5,8 +5,11 @@ import { WidgetWelcome } from './WidgetWelcome'
 import { WidgetMessages } from './WidgetMessages'
 import { WidgetInput } from './WidgetInput'
 
+const WIDTH_MAP = { narrow: 'sm:w-[320px]', default: 'sm:w-[380px]', wide: 'sm:w-[440px]' }
+const RADIUS_MAP = { none: 'rounded-none', default: 'rounded-2xl', full: 'rounded-3xl' }
+
 export function WidgetWindow() {
-  const { isOpen, isMinimized, isEmbed, entering, exiting, position, error, dismissError } = useWidgetState()
+  const { isOpen, isMinimized, isEmbed, entering, exiting, position, error, dismissError, widgetWidth, borderRadius } = useWidgetState()
 
   if (!isOpen && !exiting) return null
 
@@ -18,13 +21,14 @@ export function WidgetWindow() {
           ? 'inset-0 w-full h-full rounded-none animate-widget-enter'
           : cn(
               'max-sm:inset-0 max-sm:w-screen max-sm:h-screen max-sm:rounded-none max-sm:animate-widget-enter',
-              'sm:bottom-20 sm:w-[380px] sm:max-h-[540px] sm:h-[540px]',
+              'sm:bottom-20 sm:max-h-[540px] sm:h-[540px]',
+              WIDTH_MAP[widgetWidth],
               position === 'bottom-left' ? 'sm:left-5' : 'sm:right-5'
             ),
         isMinimized && !isEmbed && 'sm:!h-auto',
         entering && 'animate-widget-enter',
         exiting && 'animate-widget-exit',
-        !exiting && !isEmbed && 'rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] ring-1 ring-black/[0.06]'
+        !exiting && !isEmbed && cn('shadow-[0_8px_40px_rgba(0,0,0,0.18)] ring-1 ring-black/[0.04]', RADIUS_MAP[borderRadius])
       )}
       style={{ backgroundColor: `hsl(var(--widget-bg))` }}
     >
