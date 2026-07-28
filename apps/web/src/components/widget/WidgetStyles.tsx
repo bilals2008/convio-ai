@@ -79,26 +79,64 @@ export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Reco
   return vars
 }
 
+function matchDark(): boolean {
+  if (typeof window === 'undefined') return false
+
+  if (document.documentElement.classList.contains('dark')) return true
+  if (document.documentElement.classList.contains('light')) return false
+
+  const dataTheme = document.documentElement.getAttribute('data-theme')
+  if (dataTheme === 'dark') return true
+  if (dataTheme === 'light') return false
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+function useEffectiveDark(themeMode: 'auto' | 'light' | 'dark'): boolean {
+  const [isDark, setIsDark] = useState(() =>
+    themeMode === 'auto' ? matchDark() : themeMode === 'dark'
+  )
+
+  useEffect(() => {
+    if (themeMode !== 'auto') {
+      setIsDark(themeMode === 'dark')
+      return
+    }
+
+    setIsDark(matchDark())
+
+    const observer = new MutationObserver(() => setIsDark(matchDark()))
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
+    })
+
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const onMqChange = () => {
+      if (!document.documentElement.classList.contains('dark') &&
+          !document.documentElement.classList.contains('light') &&
+          !document.documentElement.getAttribute('data-theme')) {
+        setIsDark(mq.matches)
+      }
+    }
+    mq.addEventListener('change', onMqChange)
+
+    return () => {
+      observer.disconnect()
+      mq.removeEventListener('change', onMqChange)
+    }
+  }, [themeMode])
+
+  return isDark
+}
+
 interface WidgetStylesProps {
   theme: WidgetTheme
   themeMode?: 'auto' | 'light' | 'dark'
 }
 
 export function WidgetStyles({ theme, themeMode = 'auto' }: WidgetStylesProps) {
-  const [systemDark, setSystemDark] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  })
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  const isDark = themeMode === 'auto' ? systemDark : themeMode === 'dark'
-
+  const isDark = useEffectiveDark(themeMode)
   const vars = getWidgetCSSVariables(theme, isDark)
 
   return (

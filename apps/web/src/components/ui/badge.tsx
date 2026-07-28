@@ -60,7 +60,7 @@ const badgeVariants = cva(
         enterprise:
           "bg-info/10 text-info border-info/20",
         beta:
-          "bg-info/8 text-info/80 border-info/15 h-4 px-1.5 py-0",
+          "bg-warning/15 text-warning border-0 h-4 px-1.5 py-0",
       },
     },
     defaultVariants: {

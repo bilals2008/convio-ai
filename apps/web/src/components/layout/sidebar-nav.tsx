@@ -43,7 +43,7 @@ export function SidebarItem({ icon: Icon, label, href, badge, exact }: SidebarIt
             <>
               <span className="flex-1 truncate">{label}</span>
               {badge != null && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 leading-none">
+                <Badge variant="beta" className="text-[10px] px-1.5 py-0 h-4 leading-none">
                   {badge}
                 </Badge>
               )}

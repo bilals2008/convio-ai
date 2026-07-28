@@ -45,7 +45,7 @@ function useSettingsItems() {
     { icon: Building2, label: 'Organization', href: '/settings/organization', adminOnly: false },
     { icon: User, label: 'Profile', href: '/settings/profile', adminOnly: false },
     { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
-    { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true },
+    { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true, badge: 'Beta' },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
      { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
   ].filter((item) => !item.adminOnly || (isAdmin && (!item.ownerOnly || isOwner)))
@@ -58,7 +58,7 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
     return (
       <div className="space-y-0.5 mt-4">
         {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} />
         ))}
       </div>
     )
@@ -71,7 +71,7 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
       </div>
       <div className="flex flex-col gap-0.5">
         {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} />
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} />
         ))}
       </div>
     </div>
@@ -329,7 +329,7 @@ function getMobileNavGroups(role?: string) {
     { icon: User, label: 'Profile', href: '/settings/profile' },
     ...(isAdmin ? [
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
-      { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers' },
+      { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', badge: 'Beta' },
        { icon: Database, label: 'Data', href: '/settings/data' },
      ] : []),
     { icon: CreditCard, label: 'Billing', href: '/settings/billing' },

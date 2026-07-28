@@ -25,6 +25,7 @@ import {
   XCircle,
   Search,
   X,
+  AlertTriangle,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -522,6 +523,11 @@ export default function McpServersPage() {
           </div>
         }
       />
+
+      <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
+        <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+        <p>MCP Servers is currently in <strong>Beta</strong>. Features may change or break without notice. Use in production at your own risk.</p>
+      </div>
 
       <div className="space-y-3">
         {!servers || servers.length === 0 ? (
