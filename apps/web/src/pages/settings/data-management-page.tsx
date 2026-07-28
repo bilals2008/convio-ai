@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/shared/loading'
-import { Search, X, ChevronRight, Clock, HardDrive } from 'lucide-react'
+import { Search, X, ChevronRight, Clock, HardDrive, Download } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -69,6 +69,17 @@ function formatRelativeTime(dateStr: string | null): string {
   if (hrs < 24) return `${hrs}h ago`
   const days = Math.floor(hrs / 24)
   return `${days}d ago`
+}
+
+async function downloadExport(orgId: string, format: 'csv' | 'json', scope: string) {
+  const res = await dataManagementApi.export(orgId, { format, scope })
+  const disposition = res.headers['content-disposition']
+  const name = disposition?.match(/filename="?(.+?)"?\s*(?:;|$)/)?.[1] ?? `convio-export-${scope}.${format}`
+  const blob = res.data instanceof Blob ? res.data : new Blob([JSON.stringify(res.data)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = name; a.click()
+  URL.revokeObjectURL(url)
 }
 
 interface SummaryItem {
@@ -263,6 +274,7 @@ export default function DataManagementPage() {
   const [wipeDialogOpen, setWipeDialogOpen] = useState(false)
   const [wipeConfirmText, setWipeConfirmText] = useState('')
   const [wipeError, setWipeError] = useState('')
+  const [exportingScope, setExportingScope] = useState<string | null>(null)
 
   const viewingCat = categories.find((c) => c.key === viewingCategory)
   const categoryRef = useRef(viewingCategory)
@@ -435,6 +447,106 @@ export default function DataManagementPage() {
               <span className="font-semibold text-foreground">{formatRelativeTime(summary.lastUpdated)}</span>
               <span className="text-muted-foreground">Last Updated</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Export card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <div className="flex size-7 items-center justify-center rounded-md bg-primary/10">
+              <Download className="size-3.5 text-primary" />
+            </div>
+            Export Data
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+              disabled={exportingScope === 'agents'}
+              onClick={async () => {
+                setExportingScope('agents')
+                try { await downloadExport(orgId!, 'csv', 'agents') } catch { toast.error('Export failed') }
+                finally { setExportingScope(null) }
+              }}
+            >
+              {exportingScope === 'agents' ? <Loader2 className="size-3 animate-spin" /> : <Download className="size-3" />}
+              Export Agents
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+              disabled={exportingScope === 'conversations'}
+              onClick={async () => {
+                setExportingScope('conversations')
+                try { await downloadExport(orgId!, 'csv', 'conversations') } catch { toast.error('Export failed') }
+                finally { setExportingScope(null) }
+              }}
+            >
+              {exportingScope === 'conversations' ? <Loader2 className="size-3 animate-spin" /> : <Download className="size-3" />}
+              Export Conversations
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+              disabled={exportingScope === 'analytics'}
+              onClick={async () => {
+                setExportingScope('analytics')
+                try { await downloadExport(orgId!, 'csv', 'analytics') } catch { toast.error('Export failed') }
+                finally { setExportingScope(null) }
+              }}
+            >
+              {exportingScope === 'analytics' ? <Loader2 className="size-3 animate-spin" /> : <Download className="size-3" />}
+              Export Analytics
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+              disabled={exportingScope === 'knowledge-bases'}
+              onClick={async () => {
+                setExportingScope('knowledge-bases')
+                try { await downloadExport(orgId!, 'csv', 'knowledge-bases') } catch { toast.error('Export failed') }
+                finally { setExportingScope(null) }
+              }}
+            >
+              {exportingScope === 'knowledge-bases' ? <Loader2 className="size-3 animate-spin" /> : <Download className="size-3" />}
+              Export Knowledge Bases
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+              disabled={exportingScope === 'deployments'}
+              onClick={async () => {
+                setExportingScope('deployments')
+                try { await downloadExport(orgId!, 'csv', 'deployments') } catch { toast.error('Export failed') }
+                finally { setExportingScope(null) }
+              }}
+            >
+              {exportingScope === 'deployments' ? <Loader2 className="size-3 animate-spin" /> : <Download className="size-3" />}
+              Export Deployments
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-8 gap-1.5 text-xs"
+              disabled={exportingScope === 'all'}
+              onClick={async () => {
+                setExportingScope('all')
+                try { await downloadExport(orgId!, 'csv', 'all') } catch { toast.error('Export all failed') }
+                finally { setExportingScope(null) }
+              }}
+            >
+              {exportingScope === 'all' ? <Loader2 className="size-3 animate-spin" /> : <Download className="size-3" />}
+              Export All
+            </Button>
           </div>
         </CardContent>
       </Card>

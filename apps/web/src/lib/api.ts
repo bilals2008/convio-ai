@@ -248,6 +248,10 @@ export const dataManagement = {
   deleteCategory: (orgId: string, category: string) =>
     api.delete(`/organizations/${orgId}/data/${category}`),
   wipeAll: (orgId: string) => api.delete(`/organizations/${orgId}/data/wipe`),
+  export: (orgId: string, params: { format: 'csv' | 'json'; scope: string }) =>
+    api.get(`/organizations/${orgId}/export`, { params, responseType: 'blob' }),
+  exportUrl: (orgId: string, format: string, scope: string) =>
+    `${api.defaults.baseURL}/organizations/${orgId}/export?format=${format}&scope=${scope}`,
 }
 
 export const publicApi = axios.create({
