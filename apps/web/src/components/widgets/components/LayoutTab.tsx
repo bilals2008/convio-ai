@@ -27,7 +27,7 @@ export function LayoutTab({
       title="Layout"
       description="Position and size of the launcher widget."
     >
-      <div className="space-y-5">
+      <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Position</p>
           <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5" role="radiogroup">

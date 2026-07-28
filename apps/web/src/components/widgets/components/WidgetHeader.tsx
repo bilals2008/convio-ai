@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { ArrowLeft, Check, Code2, Copy, ExternalLink, MoreVertical, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, Code2, Copy, ExternalLink, Eye, EyeOff, MoreVertical, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -19,6 +19,8 @@ interface WidgetHeaderProps {
   copied: boolean
   position: string
   savePending: boolean
+  showPreview?: boolean
+  onTogglePreview?: () => void
   onSave: (status?: string) => void
   onCopyEmbed: () => void
   onDeleteOpen: () => void
@@ -32,6 +34,8 @@ export function WidgetHeader({
   copied,
   position,
   savePending,
+  showPreview = true,
+  onTogglePreview,
   onSave,
   onCopyEmbed,
   onDeleteOpen,
@@ -117,6 +121,15 @@ export function WidgetHeader({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onTogglePreview}
+            className={cn(!showPreview && 'text-muted-foreground/50')}
+            aria-label={showPreview ? 'Hide preview' : 'Show preview'}
+          >
+            {showPreview ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+          </Button>
           <Button variant="outline" size="sm" onClick={onCopyEmbed}>
             <Code2 className="size-3.5" />
             Get Code

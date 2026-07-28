@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Code2, Layout, Palette, Star } from 'lucide-react'
 import { ChatWidget } from '@/components/widget'
@@ -20,13 +20,13 @@ import { useWidgetForm } from './hooks/useWidgetForm'
 import { AppearanceTab } from './components/AppearanceTab'
 import { InstallTab } from './components/InstallTab'
 import { LayoutTab } from './components/LayoutTab'
-import { WidgetPreview } from './components/WidgetPreview'
 import { TemplateTab } from './components/TemplateTab'
 import { isLightColor } from './helpers'
 
 export default function WidgetConfigPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [showPreview, setShowPreview] = useState(true)
 
   const {
     widget,
@@ -108,12 +108,9 @@ export default function WidgetConfigPage() {
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-4 w-48" />
         </div>
-        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
-          <div className="space-y-3">
-            <Skeleton className="h-10 w-full rounded-lg" />
-            <Skeleton className="h-[400px] rounded-xl" />
-          </div>
-          <Skeleton className="h-[460px] rounded-xl" />
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-[400px] rounded-xl" />
         </div>
       </PageContainer>
     )
@@ -130,6 +127,8 @@ export default function WidgetConfigPage() {
         copied={copied}
         position={position}
         savePending={save.isPending}
+        showPreview={showPreview}
+        onTogglePreview={() => setShowPreview((v) => !v)}
         onSave={handleSave}
         onCopyEmbed={copyEmbed}
         onDeleteOpen={handleDeleteOpen}
@@ -156,88 +155,67 @@ export default function WidgetConfigPage() {
            </TabsTrigger>
         </TabsList>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
-          <div className="min-w-0 space-y-5">
-            <TabsContent value="appearance">
-              <AppearanceTab
-                agentName={agentName}
-                onAgentNameChange={setAgentName}
-                agentAvatar={agentAvatar}
-                onAgentAvatarChange={setAgentAvatar}
-                primaryColor={primaryColor}
-                onPrimaryColorChange={setPrimaryColor}
-                backgroundColor={backgroundColor}
-                onBackgroundColorChange={setBackgroundColor}
-                textColor={textColor}
-                onTextColorChange={setTextColor}
-                promptBgColor={promptBgColor}
-                onPromptBgColorChange={setPromptBgColor}
-                headerGradientStart={headerGradientStart}
-                onHeaderGradientStartChange={setHeaderGradientStart}
-                headerGradientEnd={headerGradientEnd}
-                onHeaderGradientEndChange={setHeaderGradientEnd}
-                headerGradientDirection={headerGradientDirection}
-                onHeaderGradientDirectionChange={setHeaderGradientDirection}
-                borderColor={borderColor}
-                onBorderColorChange={setBorderColor}
-                inputBgColor={inputBgColor}
-                onInputBgColorChange={setInputBgColor}
-                sendBtnColor={sendBtnColor}
-                onSendBtnColorChange={setSendBtnColor}
-                themeMode={themeMode}
-                onThemeModeChange={setThemeMode}
-              />
-            </TabsContent>
+        <div className="space-y-5">
+          <TabsContent value="appearance">
+            <AppearanceTab
+              agentName={agentName}
+              onAgentNameChange={setAgentName}
+              agentAvatar={agentAvatar}
+              onAgentAvatarChange={setAgentAvatar}
+              primaryColor={primaryColor}
+              onPrimaryColorChange={setPrimaryColor}
+              backgroundColor={backgroundColor}
+              onBackgroundColorChange={setBackgroundColor}
+              textColor={textColor}
+              onTextColorChange={setTextColor}
+              promptBgColor={promptBgColor}
+              onPromptBgColorChange={setPromptBgColor}
+              headerGradientStart={headerGradientStart}
+              onHeaderGradientStartChange={setHeaderGradientStart}
+              headerGradientEnd={headerGradientEnd}
+              onHeaderGradientEndChange={setHeaderGradientEnd}
+              headerGradientDirection={headerGradientDirection}
+              onHeaderGradientDirectionChange={setHeaderGradientDirection}
+              borderColor={borderColor}
+              onBorderColorChange={setBorderColor}
+              inputBgColor={inputBgColor}
+              onInputBgColorChange={setInputBgColor}
+              sendBtnColor={sendBtnColor}
+              onSendBtnColorChange={setSendBtnColor}
+              themeMode={themeMode}
+              onThemeModeChange={setThemeMode}
+            />
+          </TabsContent>
 
-            <TabsContent value="layout">
-              <LayoutTab
-                position={position}
-                onPositionChange={setPosition}
-                widgetHeight={widgetHeight}
-                onWidgetHeightChange={setWidgetHeight}
-              />
-            </TabsContent>
+          <TabsContent value="layout">
+            <LayoutTab
+              position={position}
+              onPositionChange={setPosition}
+              widgetHeight={widgetHeight}
+              onWidgetHeightChange={setWidgetHeight}
+            />
+          </TabsContent>
 
-             <TabsContent value="templates">
-               <TemplateTab
-                 activeTemplate={activeTemplate}
-                 onSelectTemplate={applyTemplate}
-               />
-             </TabsContent>
+           <TabsContent value="templates">
+             <TemplateTab
+               activeTemplate={activeTemplate}
+               onSelectTemplate={applyTemplate}
+             />
+           </TabsContent>
 
-             <TabsContent value="install">
-              <InstallTab
-                domains={domains}
-                domainInput={domainInput}
-                onDomainInputChange={setDomainInput}
-                onAddDomain={addDomain}
-                onRemoveDomain={removeDomain}
-                publicKey={widget.publicKey}
-                onCopyEmbed={copyEmbed}
-                copied={copied}
-                position={position}
-              />
-            </TabsContent>
-          </div>
-
-          <WidgetPreview
-            primaryColor={primaryColor}
-            backgroundColor={backgroundColor}
-            textColor={textColor}
-            promptBgColor={promptBgColor}
-            headerGradientStart={headerGradientStart}
-            headerGradientEnd={headerGradientEnd}
-            headerGradientDirection={headerGradientDirection}
-            borderColor={borderColor}
-            inputBgColor={inputBgColor}
-            sendBtnColor={sendBtnColor}
-            position={position}
-            greeting={widget.config.greeting || 'Hi'}
-            agentName={agentName}
-            agentAvatar={agentAvatar}
-            publicKey={widget.publicKey}
-            widgetHeight={widgetHeight}
-          />
+           <TabsContent value="install">
+            <InstallTab
+              domains={domains}
+              domainInput={domainInput}
+              onDomainInputChange={setDomainInput}
+              onAddDomain={addDomain}
+              onRemoveDomain={removeDomain}
+              publicKey={widget.publicKey}
+              onCopyEmbed={copyEmbed}
+              copied={copied}
+              position={position}
+            />
+          </TabsContent>
         </div>
       </Tabs>
 
@@ -263,7 +241,7 @@ export default function WidgetConfigPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {widget.agent.id && (
+      {widget.agent.id && showPreview && (
         <ChatWidget
           key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${widget.config.greeting}-${agentAvatar}-${themeMode}`}
           agentId={widget.agent.id}
@@ -272,6 +250,7 @@ export default function WidgetConfigPage() {
           agentName={agentName || widget.agent.name}
           agentAvatar={agentAvatar || undefined}
           themeMode={themeMode}
+          preview
           theme={{
             primaryColor,
             backgroundColor,
