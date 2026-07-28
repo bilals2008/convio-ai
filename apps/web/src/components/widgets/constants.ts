@@ -1,8 +1,8 @@
 import type { WidgetDetail } from './types'
 
 export const primaryPresets = [
-  { label: 'Orange', color: '#fb923c' },
   { label: 'Blue', color: '#3b82f6' },
+  { label: 'Orange', color: '#fb923c' },
 ] as const
 
 export const bgPresets = [
@@ -21,13 +21,13 @@ export const promptBgPresets = [
 ] as const
 
 export const headerStartPresets = [
-  { label: 'Orange', color: '#fb923c' },
   { label: 'Blue', color: '#3b82f6' },
+  { label: 'Orange', color: '#fb923c' },
 ] as const
 
 export const headerEndPresets = [
-  { label: 'Deep Orange', color: '#c2410c' },
   { label: 'Indigo', color: '#4338ca' },
+  { label: 'Deep Orange', color: '#c2410c' },
 ] as const
 
 export const borderColorPresets = [
@@ -65,6 +65,14 @@ export const STATUS_INDICATOR: Record<
 
 export const MAX_GREETING_LENGTH = 30
 
+export const THEME_MODES = [
+  { value: 'auto', label: 'Auto', description: 'Follow system setting' },
+  { value: 'light', label: 'Light', description: 'Always light' },
+  { value: 'dark', label: 'Dark', description: 'Always dark' },
+] as const
+
+export type ThemeMode = 'auto' | 'light' | 'dark'
+
 export interface LauncherTemplate {
   id: string
   name: string
@@ -86,16 +94,16 @@ export interface LauncherTemplate {
 
 export const LAUNCHER_TEMPLATES: LauncherTemplate[] = [
   {
-    id: 'classic',
-    name: 'Classic',
-    description: 'Rounded button with warm orange accent',
+    id: 'default',
+    name: 'Default',
+    description: 'Clean dark with blue accent',
     config: {
-      primaryColor: '#fb923c',
-      backgroundColor: '#1c1c1c',
-      textColor: '#f3f4f6',
-      promptBgColor: '#2a2a2a',
-      headerGradientStart: '#fb923c',
-      headerGradientEnd: '#c2410c',
+      primaryColor: '#3b82f6',
+      backgroundColor: '#111827',
+      textColor: '#f9fafb',
+      promptBgColor: '#1f2937',
+      headerGradientStart: '#111827',
+      headerGradientEnd: '#1e3a5f',
       borderColor: '',
       inputBgColor: '',
       sendBtnColor: '',
@@ -104,17 +112,35 @@ export const LAUNCHER_TEMPLATES: LauncherTemplate[] = [
     },
   },
   {
-    id: 'sunset',
-    name: 'Sunset',
-    description: 'Warm amber to rose gradient',
+    id: 'light',
+    name: 'Light',
+    description: 'Clean white with soft borders',
     config: {
-      primaryColor: '#f59e0b',
-      backgroundColor: '#1c1917',
-      textColor: '#f5f5f4',
-      promptBgColor: '#292524',
-      headerGradientStart: '#f59e0b',
-      headerGradientEnd: '#e11d48',
-      borderColor: '',
+      primaryColor: '#2563eb',
+      backgroundColor: '#ffffff',
+      textColor: '#111827',
+      promptBgColor: '#f3f4f6',
+      headerGradientStart: '#2563eb',
+      headerGradientEnd: '#1d4ed8',
+      borderColor: '#e5e7eb',
+      inputBgColor: '#f9fafb',
+      sendBtnColor: '',
+      position: 'bottom-right',
+      widgetHeight: 540,
+    },
+  },
+  {
+    id: 'minimal',
+    name: 'Minimal',
+    description: 'Subtle, no gradients, flat colors',
+    config: {
+      primaryColor: '#6b7280',
+      backgroundColor: '#18181b',
+      textColor: '#fafafa',
+      promptBgColor: '#27272a',
+      headerGradientStart: '#18181b',
+      headerGradientEnd: '#18181b',
+      borderColor: '#27272a',
       inputBgColor: '',
       sendBtnColor: '',
       position: 'bottom-right',
@@ -122,52 +148,16 @@ export const LAUNCHER_TEMPLATES: LauncherTemplate[] = [
     },
   },
   {
-    id: 'pill',
-    name: 'Pill',
-    description: 'Fully rounded pill-shaped launcher',
+    id: 'ocean',
+    name: 'Ocean',
+    description: 'Professional teal, calm and focused',
     config: {
-      primaryColor: '#8b5cf6',
-      backgroundColor: '#1e1b2e',
-      textColor: '#e0e7ff',
-      promptBgColor: '#2e2a42',
-      headerGradientStart: '#8b5cf6',
-      headerGradientEnd: '#6d28d9',
-      borderColor: '',
-      inputBgColor: '',
-      sendBtnColor: '',
-      position: 'bottom-right',
-      widgetHeight: 540,
-    },
-  },
-  {
-    id: 'dark',
-    name: 'Midnight',
-    description: 'Deep dark theme with cool blue accents',
-    config: {
-      primaryColor: '#60a5fa',
+      primaryColor: '#0d9488',
       backgroundColor: '#0f172a',
-      textColor: '#e2e8f0',
+      textColor: '#f1f5f9',
       promptBgColor: '#1e293b',
       headerGradientStart: '#0f172a',
-      headerGradientEnd: '#1e3a5f',
-      borderColor: '#1e3a5f',
-      inputBgColor: '#1e293b',
-      sendBtnColor: '#60a5fa',
-      position: 'bottom-right',
-      widgetHeight: 540,
-    },
-  },
-  {
-    id: 'gradient',
-    name: 'Gradient',
-    description: 'Vibrant multi-color gradient background',
-    config: {
-      primaryColor: '#f43f5e',
-      backgroundColor: '#1a1a2e',
-      textColor: '#f3f4f6',
-      promptBgColor: '#16213e',
-      headerGradientStart: '#f43f5e',
-      headerGradientEnd: '#8b5cf6',
+      headerGradientEnd: '#134e4a',
       borderColor: '',
       inputBgColor: '',
       sendBtnColor: '',
@@ -176,109 +166,19 @@ export const LAUNCHER_TEMPLATES: LauncherTemplate[] = [
     },
   },
   {
-    id: 'glow',
-    name: 'Glow',
-    description: 'Neon green accent with subtle glow',
+    id: 'warm',
+    name: 'Warm',
+    description: 'Warm neutral tones, approachable',
     config: {
-      primaryColor: '#22c55e',
-      backgroundColor: '#0a0f0a',
-      textColor: '#e5e7eb',
-      promptBgColor: '#141f14',
-      headerGradientStart: '#22c55e',
-      headerGradientEnd: '#15803d',
-      borderColor: '#22c55e',
-      inputBgColor: '#141f14',
-      sendBtnColor: '#22c55e',
-      position: 'bottom-right',
-      widgetHeight: 540,
-    },
-  },
-  {
-    id: 'compact',
-    name: 'Compact',
-    description: 'Smaller widget, fits tight layouts',
-    config: {
-      primaryColor: '#fb923c',
-      backgroundColor: '#1c1c1c',
-      textColor: '#f3f4f6',
-      promptBgColor: '#2a2a2a',
-      headerGradientStart: '#fb923c',
-      headerGradientEnd: '#c2410c',
+      primaryColor: '#d97706',
+      backgroundColor: '#1c1917',
+      textColor: '#fafaf9',
+      promptBgColor: '#292524',
+      headerGradientStart: '#1c1917',
+      headerGradientEnd: '#44403c',
       borderColor: '',
       inputBgColor: '',
       sendBtnColor: '',
-      position: 'bottom-right',
-      widgetHeight: 380,
-    },
-  },
-  {
-    id: 'rose',
-    name: 'Rose',
-    description: 'Soft pink tones, elegant and warm',
-    config: {
-      primaryColor: '#f43f5e',
-      backgroundColor: '#1c1118',
-      textColor: '#fff1f2',
-      promptBgColor: '#2a1c24',
-      headerGradientStart: '#f43f5e',
-      headerGradientEnd: '#be123c',
-      borderColor: '',
-      inputBgColor: '',
-      sendBtnColor: '',
-      position: 'bottom-right',
-      widgetHeight: 540,
-    },
-  },
-  {
-    id: 'ember',
-    name: 'Ember',
-    description: 'Deep crimson, bold and intense',
-    config: {
-      primaryColor: '#dc2626',
-      backgroundColor: '#1a0a0a',
-      textColor: '#fef2f2',
-      promptBgColor: '#2d1111',
-      headerGradientStart: '#dc2626',
-      headerGradientEnd: '#991b1b',
-      borderColor: '#7f1d1d',
-      inputBgColor: '#2d1111',
-      sendBtnColor: '#dc2626',
-      position: 'bottom-right',
-      widgetHeight: 540,
-    },
-  },
-  {
-    id: 'lavender',
-    name: 'Lavender',
-    description: 'Soft lilac, gentle and calming',
-    config: {
-      primaryColor: '#a78bfa',
-      backgroundColor: '#1e1630',
-      textColor: '#ede9fe',
-      promptBgColor: '#2a2040',
-      headerGradientStart: '#a78bfa',
-      headerGradientEnd: '#7c3aed',
-      borderColor: '',
-      inputBgColor: '',
-      sendBtnColor: '',
-      position: 'bottom-right',
-      widgetHeight: 540,
-    },
-  },
-  {
-    id: 'matrix',
-    name: 'Matrix',
-    description: 'Green on black, cyberpunk terminal',
-    config: {
-      primaryColor: '#4ade80',
-      backgroundColor: '#000000',
-      textColor: '#dcfce7',
-      promptBgColor: '#0a1a0a',
-      headerGradientStart: '#166534',
-      headerGradientEnd: '#052e16',
-      borderColor: '#166534',
-      inputBgColor: '#0a1a0a',
-      sendBtnColor: '#4ade80',
       position: 'bottom-right',
       widgetHeight: 540,
     },

@@ -81,20 +81,23 @@ export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Reco
 
 interface WidgetStylesProps {
   theme: WidgetTheme
+  themeMode?: 'auto' | 'light' | 'dark'
 }
 
-export function WidgetStyles({ theme }: WidgetStylesProps) {
-  const [isDark, setIsDark] = useState(() => {
+export function WidgetStyles({ theme, themeMode = 'auto' }: WidgetStylesProps) {
+  const [systemDark, setSystemDark] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(prefers-color-scheme: dark)').matches
   })
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches)
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [])
+
+  const isDark = themeMode === 'auto' ? systemDark : themeMode === 'dark'
 
   const vars = getWidgetCSSVariables(theme, isDark)
 

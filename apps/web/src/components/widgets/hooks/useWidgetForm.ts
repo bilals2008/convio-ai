@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { widgets as widgetsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import type { WidgetDetail, ApiError } from '../types'
-import { type LauncherTemplate } from '../constants'
+import { type LauncherTemplate, type ThemeMode } from '../constants'
 import { sanitizeDomain } from '../helpers'
 
 export function useWidgetForm(widgetId: string) {
@@ -36,6 +36,7 @@ export function useWidgetForm(widgetId: string) {
   const [widgetHeight, setWidgetHeight] = useState(540)
   const [agentName, setAgentName] = useState('')
   const [agentAvatar, setAgentAvatar] = useState('')
+  const [themeMode, setThemeMode] = useState<ThemeMode>('auto')
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('appearance')
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
@@ -59,6 +60,7 @@ export function useWidgetForm(widgetId: string) {
     setWidgetHeight(widget.config.widgetHeight ?? 540)
     setAgentName(widget.config.agentName ?? widget.agent.name ?? '')
     setAgentAvatar(widget.config.agentAvatar ?? '')
+    setThemeMode(widget.config.themeMode ?? 'auto')
   }, [widget])
 
    const isDirty = useMemo(() => {
@@ -80,6 +82,7 @@ export function useWidgetForm(widgetId: string) {
         widgetHeight: widget.config.widgetHeight ?? 540,
         agentName: widget.config.agentName ?? widget.agent.name ?? '',
         agentAvatar: widget.config.agentAvatar ?? '',
+        themeMode: widget.config.themeMode ?? 'auto',
       }
       const current = {
         name,
@@ -98,9 +101,10 @@ export function useWidgetForm(widgetId: string) {
         widgetHeight,
         agentName,
         agentAvatar,
+        themeMode,
       }
-     return JSON.stringify(current) !== JSON.stringify(saved)
-    }, [widget, name, domains, position, primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, borderColor, inputBgColor, sendBtnColor, widgetHeight, agentName, agentAvatar])
+      return JSON.stringify(current) !== JSON.stringify(saved)
+    }, [widget, name, domains, position, primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, borderColor, inputBgColor, sendBtnColor, widgetHeight, agentName, agentAvatar, themeMode])
 
   useEffect(() => {
     if (!isDirty) return
@@ -132,6 +136,7 @@ export function useWidgetForm(widgetId: string) {
           sendBtnColor,
           widgetHeight,
           agentName,
+          themeMode,
           ...(agentAvatar ? { agentAvatar } : {}),
         },
       }),
@@ -243,6 +248,8 @@ export function useWidgetForm(widgetId: string) {
     setAgentName,
     agentAvatar,
     setAgentAvatar,
+    themeMode,
+    setThemeMode,
     copied,
     activeTab,
     setActiveTab,

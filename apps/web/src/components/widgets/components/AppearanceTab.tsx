@@ -8,6 +8,7 @@ import { ColorField } from './ColorField'
 import { AvatarPresetModal } from '@/components/agents/avatar-preset-modal'
 import { useAgentAvatarUpload } from '@/lib/hooks/use-agent-avatar-upload'
 import { useOrg } from '@/lib/org-context'
+import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   primaryPresets,
@@ -19,6 +20,8 @@ import {
   borderColorPresets,
   inputBgPresets,
   sendBtnPresets,
+  THEME_MODES,
+  type ThemeMode,
 } from '../constants'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -49,6 +52,8 @@ interface AppearanceTabProps {
   onInputBgColorChange: (value: string) => void
   sendBtnColor: string
   onSendBtnColorChange: (value: string) => void
+  themeMode: ThemeMode
+  onThemeModeChange: (value: ThemeMode) => void
 }
 
 export function AppearanceTab({
@@ -76,6 +81,8 @@ export function AppearanceTab({
   onInputBgColorChange,
   sendBtnColor,
   onSendBtnColorChange,
+  themeMode,
+  onThemeModeChange,
 }: AppearanceTabProps) {
   const { orgId } = useOrg()
   const { upload, isUploading, progress } = useAgentAvatarUpload()
@@ -199,6 +206,33 @@ export function AppearanceTab({
               value={agentAvatar}
               onSelect={onAgentAvatarChange}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Color scheme</Label>
+            <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5" role="radiogroup">
+              {THEME_MODES.map((mode) => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={themeMode === mode.value}
+                  onClick={() => onThemeModeChange(mode.value)}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                    themeMode === mode.value
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {themeMode === 'auto' ? 'Follows the visitor\'s system setting' : themeMode === 'light' ? 'Always uses light colors' : 'Always uses dark colors'}
+            </p>
           </div>
 
           <div className="space-y-4 border-t border-border/60 pt-6">

@@ -62,6 +62,8 @@ export default function WidgetConfigPage() {
     setAgentName,
     agentAvatar,
     setAgentAvatar,
+    themeMode,
+    setThemeMode,
     copied,
     activeTab,
     setActiveTab,
@@ -182,6 +184,8 @@ export default function WidgetConfigPage() {
                 onInputBgColorChange={setInputBgColor}
                 sendBtnColor={sendBtnColor}
                 onSendBtnColorChange={setSendBtnColor}
+                themeMode={themeMode}
+                onThemeModeChange={setThemeMode}
               />
             </TabsContent>
 
@@ -261,12 +265,13 @@ export default function WidgetConfigPage() {
 
       {widget.agent.id && (
         <ChatWidget
-          key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${widget.config.greeting}-${agentAvatar}`}
+          key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${widget.config.greeting}-${agentAvatar}-${themeMode}`}
           agentId={widget.agent.id}
           position={position}
           greeting={widget.config.greeting || 'Hi'}
           agentName={agentName || widget.agent.name}
           agentAvatar={agentAvatar || undefined}
+          themeMode={themeMode}
           theme={{
             primaryColor,
             backgroundColor,

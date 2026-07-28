@@ -12,6 +12,7 @@ export interface ChatWidgetProps {
   preview?: boolean
   position?: 'bottom-right' | 'bottom-left'
   theme?: Partial<WidgetTheme>
+  themeMode?: 'auto' | 'light' | 'dark'
   greeting?: string
   agentName?: string
   agentAvatar?: string
@@ -53,6 +54,7 @@ export function ChatWidget({
   preview,
   position = 'bottom-right',
   theme: themeOverride,
+  themeMode = 'auto',
   greeting = "Hi there! 👋 I'm here to help. What can I do for you today?",
   agentName = 'Convio Assistant',
   agentAvatar,
@@ -89,7 +91,7 @@ export function ChatWidget({
 
   return createPortal(
     <WidgetStateProvider value={stateValue}>
-      <WidgetStyles theme={theme} />
+      <WidgetStyles theme={theme} themeMode={themeMode} />
       <WidgetBackdrop show={widget.isOpen && !widget.isEmbed} onClose={widget.closeWidget} />
       <div className="convio-widget font-sans antialiased">
         <WidgetButton />

@@ -24,6 +24,7 @@ export interface WidgetConfig {
   widgetHeight?: number
   agentName?: string
   agentAvatar?: string
+  themeMode?: 'auto' | 'light' | 'dark'
 }
 
 export interface ApiError {
