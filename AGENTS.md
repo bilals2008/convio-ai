@@ -68,12 +68,13 @@ Rules for AI agents working on this codebase.
 
 ## UI Components (shadcn/ui v4)
 
-- shadcn/ui v4 uses **Base UI React** — `asChild` is NOT supported on triggers
-- Use `className` directly on trigger elements instead of `<Button asChild>`
-- Base UI Select requires `<SelectGroup>` wrapping `<SelectLabel>` and `<SelectSeparator>`
-- ALWAYS check the official shadcn docs (https://ui.shadcn.com/docs/components/) before choosing which component to use — don't guess the API
-- Use Date Picker pattern (Popover + Calendar) instead of raw `<input type="date">`
-- Use Combobox with `multiple` + chips for multi-select instead of basic Select
+- See `docs/SHADCN-PATTERNS.md` for complete shadcn/ui v4 patterns, component APIs, and code examples
+- Key rules:
+  - shadcn/ui v4 uses **Base UI React** — `asChild` is NOT supported on triggers, use `render` or `className` instead
+  - ALWAYS check official docs (https://ui.shadcn.com/docs/components/) before using a component
+  - Use Date Picker pattern (Popover + Calendar), not raw `<input type="date">`
+  - Use Combobox with `multiple` + chips for multi-select, not basic Select
+  - Use TanStack Table for data tables, not manual `<table>` elements
 
 ## Icons
 
