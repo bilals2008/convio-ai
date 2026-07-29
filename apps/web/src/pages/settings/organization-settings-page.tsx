@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/dialog'
 import { useOrg } from '@/lib/org-context'
 import { organizations as orgsApi } from '@/lib/api'
-import { OrgDangerZone } from '@/components/settings/org-danger-zone'
 import { OrgPlanUpgrade } from '@/components/shared/org-plan-upgrade'
 import { usePlan } from '@/lib/hooks/use-billing'
 import { MemberTable } from '@/components/settings/member-table'
@@ -130,15 +129,6 @@ export default function OrganizationSettingsPage() {
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: () => orgsApi.delete(orgId!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      toast.success('Organization deleted')
-      window.location.href = '/'
-    },
-  })
-
   const roleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: MemberRole }) =>
       orgsApi.updateMemberRole(orgId!, userId, role),
@@ -199,10 +189,6 @@ export default function OrganizationSettingsPage() {
     createMutation.mutate({ name: createName, slug: createSlug })
   }
 
-  const handleDelete = () => {
-    deleteMutation.mutate()
-  }
-
   const { data: planData } = usePlan()
   const planName = planData?.name || org?.plan || 'free'
   const planLimits: Record<string, number> = { free: 1, pro: 3, business: 5, enterprise: Infinity }
@@ -256,8 +242,6 @@ export default function OrganizationSettingsPage() {
           removeMutation={removeMutation}
           inviteMutation={inviteMutation}
         />
-
-        <OrgDangerZone orgName={org.name} onDelete={handleDelete} loading={deleteMutation.isPending} />
 
         {/* ── Create Dialog ───────────────────────────────────── */}
         <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateName(''); setCreateSlug(''); setCreateErrors({}); setCreateShowUpgrade(false) } }}>

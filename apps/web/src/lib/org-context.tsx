@@ -10,6 +10,7 @@ interface OrgContextValue {
   isLoading: boolean
   isCreating: boolean
   createError: Error | null
+  queryError: Error | null
   retryCreate: () => void
   setOrgId: (id: string) => void
 }
@@ -25,7 +26,7 @@ function generateSlug(name: string): string {
 
 export function OrgProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, user } = useAuth()
-  const { data: orgs, isLoading, refetch: refetchOrgs } = useOrganizations({ enabled: isAuthenticated })
+  const { data: orgs, isLoading, isError, error, refetch: refetchOrgs } = useOrganizations({ enabled: isAuthenticated })
   const [orgId, setOrgId] = useState<string | null>(() => {
     return localStorage.getItem('currentOrgId')
   })
@@ -39,7 +40,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       setIsCreating(true)
       setCreateError(null)
       const name = user?.name ? `${user.name.split(' ')[0]}'s Workspace` : 'My Workspace'
-      const slug = generateSlug(name)
+      const slug = generateSlug(name) + '-' + Math.random().toString(36).substring(2, 6)
       api.post('/organizations', { name, slug })
         .then(() => refetchOrgs())
         .catch((err) => {
@@ -85,6 +86,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         isLoading,
         isCreating,
         createError,
+        queryError: isError ? (error as Error) ?? new Error('Failed to load organizations') : null,
         retryCreate,
         setOrgId: handleSetOrgId,
       }}

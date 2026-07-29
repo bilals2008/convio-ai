@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import api from '@/lib/api'
+import api, { apiRaw } from '@/lib/api'
 import { toast } from '@/lib/toast'
 
 export interface User {
@@ -27,13 +27,13 @@ export function useSession() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return null
 
-      return {
-        user: {
-          id: session.user.id,
-          name: session.user.user_metadata?.name ?? null,
-          email: session.user.email ?? '',
-          avatar: session.user.user_metadata?.avatar ?? null,
-        },
+      try {
+        const res = await apiRaw.get('/auth/me')
+        return { user: res.data.user }
+      } catch {
+        await supabase.auth.signOut()
+        toast.error('No account found. Please create a new account.')
+        return null
       }
     },
     staleTime: 5 * 60 * 1000,

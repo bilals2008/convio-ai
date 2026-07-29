@@ -4,6 +4,7 @@ import { validate } from '../../plugins/validate.js'
 import { updateUserSchema } from '@convio/validation'
 import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
+import { createClient } from '@supabase/supabase-js'
 
 const paginationQuerySchema = z.object({
   orgId: z.string().uuid(),
@@ -40,42 +41,51 @@ export default async function usersRoutes(fastify: FastifyInstance) {
     return { data: user }
   })
 
-  // DELETE /api/users/me — Delete current user account + cleanup
+  // DELETE /api/users/me — Delete everything: Supabase auth + profile + owned orgs
   fastify.delete('/users/me', {
     preHandler: [fastify.authenticate],
   }, async (request, reply) => {
     const userId = request.userId!
+
+    // Try to delete Supabase Auth user — if this fails, fall back to anonymizing the profile
+    let authDeleted = false
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (serviceRoleKey) {
+      const supabaseAdmin = createClient(
+        process.env.SUPABASE_URL!,
+        serviceRoleKey,
+        { auth: { persistSession: false } }
+      )
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+      if (error) {
+        request.log.warn({ err: error }, 'Failed to delete Supabase auth user — will anonymize profile instead')
+      } else {
+        authDeleted = true
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       const memberships = await tx.membership.findMany({ where: { userId } })
 
       for (const membership of memberships) {
         const orgId = membership.organizationId
-        const otherMembers = await tx.membership.count({
-          where: { organizationId: orgId, userId: { not: userId } },
-        })
 
-        if (otherMembers === 0) {
-          // Last member — delete entire org
-          const orgAgentIds = (await tx.agent.findMany({
-            where: { organizationId: orgId },
-            select: { id: true },
+        if (membership.role === 'owner') {
+          const agentIds = (await tx.agent.findMany({
+            where: { organizationId: orgId }, select: { id: true },
           })).map(a => a.id)
-
-          if (orgAgentIds.length > 0) {
-            await tx.widget.deleteMany({ where: { agentId: { in: orgAgentIds } } })
-            await tx.agent.deleteMany({ where: { id: { in: orgAgentIds } } })
+          if (agentIds.length > 0) {
+            await tx.widget.deleteMany({ where: { agentId: { in: agentIds } } })
+            await tx.broadcast.deleteMany({ where: { agentId: { in: agentIds } } })
+            await tx.agent.deleteMany({ where: { id: { in: agentIds } } })
           }
 
           const kbIds = (await tx.knowledgeBase.findMany({
-            where: { organizationId: orgId },
-            select: { id: true },
+            where: { organizationId: orgId }, select: { id: true },
           })).map(k => k.id)
-
           for (const kbId of kbIds) {
             const docIds = (await tx.document.findMany({
-              where: { knowledgeBaseId: kbId },
-              select: { id: true },
+              where: { knowledgeBaseId: kbId }, select: { id: true },
             })).map(d => d.id)
             for (const docId of docIds) {
               await tx.documentChunk.deleteMany({ where: { documentId: docId } })
@@ -92,8 +102,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
           await tx.ssoConfig.deleteMany({ where: { organizationId: orgId } })
 
           const bcIds = (await tx.billingCustomer.findMany({
-            where: { organizationId: orgId },
-            select: { id: true },
+            where: { organizationId: orgId }, select: { id: true },
           })).map(b => b.id)
           if (bcIds.length > 0) {
             await tx.invoice.deleteMany({ where: { customerId: { in: bcIds } } })
@@ -101,34 +110,29 @@ export default async function usersRoutes(fastify: FastifyInstance) {
           }
           await tx.billingCustomer.deleteMany({ where: { organizationId: orgId } })
           await tx.moderationConfig.deleteMany({ where: { organizationId: orgId } })
+          await tx.avatarPreset.deleteMany({ where: { organizationId: orgId } })
           await tx.membership.deleteMany({ where: { organizationId: orgId } })
           await tx.organization.delete({ where: { id: orgId } })
         } else {
-          // Keep org alive — delete user's agents and remove membership
           const ownAgentIds = (await tx.agent.findMany({
             where: { createdById: userId, organizationId: orgId },
             select: { id: true },
           })).map(a => a.id)
-
           if (ownAgentIds.length > 0) {
             await tx.widget.deleteMany({ where: { agentId: { in: ownAgentIds } } })
             await tx.agent.deleteMany({ where: { id: { in: ownAgentIds } } })
           }
+          await tx.membership.delete({ where: { userId_organizationId: { userId, organizationId: orgId } } })
 
-          if (membership.role === 'owner') {
-            const otherOwners = await tx.membership.count({
-              where: { organizationId: orgId, userId: { not: userId }, role: 'owner' },
-            })
-            if (otherOwners === 0) {
+          const remaining = await tx.membership.count({ where: { organizationId: orgId } })
+          if (remaining > 0) {
+            const owners = await tx.membership.findMany({ where: { organizationId: orgId, role: 'owner' } })
+            if (owners.length === 0) {
               const next = await tx.membership.findFirst({
-                where: { organizationId: orgId, userId: { not: userId } },
-                orderBy: { createdAt: 'asc' },
+                where: { organizationId: orgId }, orderBy: { createdAt: 'asc' },
               })
               if (next) {
-                await tx.membership.update({
-                  where: { id: next.id },
-                  data: { role: 'owner' },
-                })
+                await tx.membership.update({ where: { id: next.id }, data: { role: 'owner' } })
               }
             }
           }
@@ -136,26 +140,25 @@ export default async function usersRoutes(fastify: FastifyInstance) {
       }
 
       await tx.membership.deleteMany({ where: { userId } })
+      await tx.loginActivity.deleteMany({ where: { userId } })
       await tx.auditLog.updateMany({
-        where: { actorId: userId },
-        data: { actorId: null },
+        where: { actorId: userId }, data: { actorId: null },
       })
       await tx.invitation.updateMany({
-        where: { invitedById: userId },
-        data: { invitedById: null },
+        where: { invitedById: userId }, data: { invitedById: null },
       })
       await tx.agent.updateMany({
-        where: { createdById: userId },
-        data: { createdById: null },
+        where: { createdById: userId }, data: { createdById: null },
       })
-      await tx.profile.update({
-        where: { id: userId },
-        data: {
-          name: null,
-          avatar: null,
-          email: `deleted-${userId.slice(0, 8)}@convio.local`,
-        },
-      })
+
+      if (authDeleted) {
+        await tx.profile.delete({ where: { id: userId } })
+      } else {
+        await tx.profile.update({
+          where: { id: userId },
+          data: { name: null, avatar: null, email: `deleted-${userId.slice(0, 8)}@convio.local` },
+        })
+      }
     }, { timeout: 30000 })
 
     reply.code(204).send()

@@ -77,11 +77,16 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations', {
     preHandler: [fastify.authenticate],
   }, async (request) => {
-    const memberships = await prisma.membership.findMany({
-      where: { userId: request.userId },
-      include: { organization: true },
-      orderBy: { createdAt: 'desc' },
-    })
+    let memberships
+    try {
+      memberships = await prisma.membership.findMany({
+        where: { userId: request.userId },
+        include: { organization: true },
+        orderBy: { createdAt: 'desc' },
+      })
+    } catch {
+      return { data: [] }
+    }
 
     const orgs = memberships.map((m) => ({
       ...m.organization,
@@ -148,17 +153,67 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     await fastify.ensureOwner(request.userId!, id)
 
     const orgToDelete = await prisma.organization.findUnique({ where: { id } })
+    if (!orgToDelete) throw new AppError(404, 'Organization not found')
 
-    await prisma.organization.delete({ where: { id } })
+    await prisma.$transaction(async (tx) => {
+      await tx.auditLog.create({
+        data: {
+          organizationId: id,
+          actorId: request.userId,
+          action: 'organization.deleted',
+          entityType: 'organization',
+          entityId: id,
+          metadata: { name: orgToDelete.name, slug: orgToDelete.slug } as any,
+        },
+      })
 
-    await fastify.auditLog({
-      organizationId: id,
-      actorId: request.userId,
-      action: 'organization.deleted',
-      entityType: 'organization',
-      entityId: id,
-      metadata: { name: orgToDelete?.name, slug: orgToDelete?.slug },
-    })
+      // cleanup agents and their dependencies
+      const agentIds = (await tx.agent.findMany({
+        where: { organizationId: id }, select: { id: true },
+      })).map(a => a.id)
+      if (agentIds.length > 0) {
+        await tx.widget.deleteMany({ where: { agentId: { in: agentIds } } })
+        await tx.broadcast.deleteMany({ where: { agentId: { in: agentIds } } })
+        await tx.agent.deleteMany({ where: { id: { in: agentIds } } })
+      }
+
+      // cleanup knowledge bases with documents
+      const kbIds = (await tx.knowledgeBase.findMany({
+        where: { organizationId: id }, select: { id: true },
+      })).map(k => k.id)
+      for (const kbId of kbIds) {
+        const docIds = (await tx.document.findMany({
+          where: { knowledgeBaseId: kbId }, select: { id: true },
+        })).map(d => d.id)
+        for (const docId of docIds) {
+          await tx.documentChunk.deleteMany({ where: { documentId: docId } })
+        }
+        await tx.document.deleteMany({ where: { knowledgeBaseId: kbId } })
+      }
+      await tx.knowledgeBase.deleteMany({ where: { organizationId: id } })
+
+      await tx.providerKey.deleteMany({ where: { organizationId: id } })
+      await tx.tool.deleteMany({ where: { organizationId: id } })
+      await tx.mcpServer.deleteMany({ where: { organizationId: id } })
+      await tx.invitation.deleteMany({ where: { organizationId: id } })
+      await tx.auditLog.deleteMany({ where: { organizationId: id } })
+      await tx.ssoConfig.deleteMany({ where: { organizationId: id } })
+
+      // cleanup billing chain
+      const bcIds = (await tx.billingCustomer.findMany({
+        where: { organizationId: id }, select: { id: true },
+      })).map(b => b.id)
+      if (bcIds.length > 0) {
+        await tx.invoice.deleteMany({ where: { customerId: { in: bcIds } } })
+        await tx.subscription.deleteMany({ where: { customerId: { in: bcIds } } })
+      }
+      await tx.billingCustomer.deleteMany({ where: { organizationId: id } })
+
+      await tx.moderationConfig.deleteMany({ where: { organizationId: id } })
+      await tx.avatarPreset.deleteMany({ where: { organizationId: id } })
+      await tx.membership.deleteMany({ where: { organizationId: id } })
+      await tx.organization.delete({ where: { id } })
+    }, { timeout: 30000 })
 
     reply.code(204).send()
   })

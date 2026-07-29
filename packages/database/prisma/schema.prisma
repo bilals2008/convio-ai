@@ -62,7 +62,7 @@ model Membership {
   organizationId String
   role           MembershipRole @default(member)
   createdAt      DateTime       @default(now()) @db.Timestamptz(6)
-  organization   Organization   @relation(fields: [organizationId], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   profile        Profile        @relation(fields: [userId], references: [id])
 
   @@unique([userId, organizationId])
@@ -93,7 +93,7 @@ model Agent {
   widgetConfig    Json?
   creator         Profile?       @relation("AgentCreator", fields: [createdById], references: [id])
   knowledgeBase   KnowledgeBase? @relation(fields: [knowledgeBaseId], references: [id])
-  organization    Organization   @relation(fields: [organizationId], references: [id])
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   providerKey     ProviderKey?   @relation(fields: [providerKeyId], references: [id])
   tools           AgentTool[]
   mcpServers      AgentMcpServer[]
@@ -119,7 +119,7 @@ model ProviderKey {
   createdAt      DateTime     @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
   agents         Agent[]
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, provider])
   @@index([organizationId])
@@ -213,7 +213,7 @@ model KnowledgeBase {
   updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
   agents         Agent[]
   documents      Document[]
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
 }
@@ -228,7 +228,7 @@ model Document {
   status          String          @default("pending")
   createdAt       DateTime        @default(now()) @db.Timestamptz(6)
   fileKey         String?
-  knowledgeBase   KnowledgeBase    @relation(fields: [knowledgeBaseId], references: [id])
+  knowledgeBase   KnowledgeBase    @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
   chunks          DocumentChunk[]
   queries         DocumentQuery[]
 
@@ -271,7 +271,7 @@ model Tool {
   config         Json         @default("{}")
   createdAt      DateTime     @default(now()) @db.Timestamptz(6)
   agents         AgentTool[]
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
 }
@@ -290,7 +290,7 @@ model McpServer {
   lastTestedAt   DateTime?
   createdAt      DateTime     @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   agents         AgentMcpServer[]
 
   @@unique([organizationId, name])
@@ -349,7 +349,7 @@ model Invitation {
   expiresAt      DateTime
   acceptedAt     DateTime?
   createdAt      DateTime       @default(now()) @db.Timestamptz(6)
-  organization   Organization   @relation(fields: [organizationId], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invitedBy      Profile?       @relation(fields: [invitedById], references: [id])
 
   @@index([email])
@@ -367,7 +367,7 @@ model AuditLog {
   entityId       String?
   metadata       Json?
   createdAt      DateTime     @default(now()) @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, action])
@@ -403,7 +403,7 @@ model SsoConfig {
   enabled        Boolean      @default(false)
   createdAt      DateTime     @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("sso_configs")
 }
@@ -502,7 +502,7 @@ model Broadcast {
   failCount     Int        @default(0)
   createdAt     DateTime   @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime   @updatedAt @db.Timestamptz(6)
-  organization  Organization @relation(fields: [organizationId], references: [id])
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   agent         Agent        @relation(fields: [agentId], references: [id])
 
   @@index([organizationId, status])
@@ -518,7 +518,7 @@ model AvatarPreset {
   name           String
   category       String       @default("custom")
   createdAt      DateTime     @default(now()) @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@map("avatar_presets")

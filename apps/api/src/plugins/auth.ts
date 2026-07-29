@@ -49,16 +49,18 @@ export default fp(async function authPlugin(fastify: FastifyInstance) {
       return
     }
 
-    request.userId = userId
-
     const profile = await prisma.profile.findUnique({ where: { id: userId } })
-    if (profile) {
-      request.user = {
-        id: profile.id,
-        name: profile.name,
-        email: profile.email,
-        avatar: profile.avatar,
-      }
+    if (!profile) {
+      reply.code(401).send({ statusCode: 401, error: 'Unauthorized', message: 'User not found' })
+      return
+    }
+
+    request.userId = userId
+    request.user = {
+      id: profile.id,
+      name: profile.name,
+      email: profile.email,
+      avatar: profile.avatar,
     }
   })
 
@@ -66,16 +68,15 @@ export default fp(async function authPlugin(fastify: FastifyInstance) {
     const userId = await verifyToken(request)
     if (!userId) return
 
-    request.userId = userId
-
     const profile = await prisma.profile.findUnique({ where: { id: userId } })
-    if (profile) {
-      request.user = {
-        id: profile.id,
-        name: profile.name,
-        email: profile.email,
-        avatar: profile.avatar,
-      }
+    if (!profile) return
+
+    request.userId = userId
+    request.user = {
+      id: profile.id,
+      name: profile.name,
+      email: profile.email,
+      avatar: profile.avatar,
     }
   })
 }, {

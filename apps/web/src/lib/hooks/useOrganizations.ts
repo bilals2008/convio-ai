@@ -17,7 +17,7 @@ export function useOrganizations({ enabled = true }: { enabled?: boolean } = {})
       const res = await orgsApi.list()
       return (res.data.data || []) as Organization[]
     },
-    retry: false,
+    retry: 1,
     enabled,
   })
 }
