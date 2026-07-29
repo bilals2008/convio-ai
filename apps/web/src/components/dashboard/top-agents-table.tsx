@@ -195,6 +195,7 @@ export function TopAgentsTable() {
         </div>
       </CardHeader>
       <CardContent className="p-0">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -250,6 +251,7 @@ export function TopAgentsTable() {
             )}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   )

@@ -155,19 +155,19 @@ export default function DashboardOverviewPage() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight">
             {getGreeting()}, {firstName}
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Here&apos;s what&apos;s happening with your agents.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Here&apos;s what&apos;s happening with your agents.</p>
         </div>
-        <div className="flex gap-1 rounded-lg bg-muted p-1">
+        <div className="flex gap-0.5 sm:gap-1 rounded-lg bg-muted p-0.5 sm:p-1 overflow-x-auto">
           {dateRanges.map((range) => (
             <button
               key={range.value}
               type="button"
               onClick={() => setDateRange(range.value)}
               className={cn(
-                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                'rounded-md px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap',
                 dateRange === range.value
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground',
@@ -180,16 +180,16 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* ── KPI Cards ──────────────────────────────────────────────────── */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
         {kpiMetrics.map((m) => (
           <div
             key={m.label}
-            className="group flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-all duration-200 hover:border-border hover:shadow-sm"
+            className="group flex items-start justify-between gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5 sm:px-4 sm:py-3 transition-all duration-200 hover:border-border hover:shadow-sm"
           >
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{m.label}</span>
-              <span className="text-xl font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
-              <span className="mt-0.5 flex items-center gap-1.5 text-xs">
+            <div className="flex min-w-0 flex-col gap-0.5 sm:gap-1">
+              <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-widest text-muted-foreground truncate">{m.label}</span>
+              <span className="text-lg sm:text-xl font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
+              <span className="mt-0.5 flex items-center gap-1 text-[11px] sm:text-xs">
                 <span
                   className={cn(
                     'inline-flex items-center gap-0.5 font-medium',
@@ -200,16 +200,16 @@ export default function DashboardOverviewPage() {
                 >
                   {m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : '—'} {m.change}
                 </span>
-                <span className="text-muted-foreground">{m.period}</span>
+                <span className="text-muted-foreground hidden sm:inline">{m.period}</span>
               </span>
             </div>
             <div
               className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105',
+                'flex size-7 sm:size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105',
                 m.color,
               )}
             >
-              <m.icon className="size-4" />
+              <m.icon className="size-3.5 sm:size-4" />
             </div>
           </div>
         ))}
@@ -218,48 +218,48 @@ export default function DashboardOverviewPage() {
       {/* ── Quick Actions ─────────────────────────────────────────────── */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">Quick Actions</h2>
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
           <Link to="/agents/create">
-            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Plus className="size-4" />
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-2.5 sm:py-3">
+              <div className="flex size-7 sm:size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Plus className="size-3.5 sm:size-4" />
               </div>
-              <div className="text-left">
-                <div className="text-sm font-medium">New Agent</div>
-                <div className="text-xs text-muted-foreground">Create AI agent</div>
+              <div className="text-left min-w-0">
+                <div className="text-xs sm:text-sm font-medium truncate">New Agent</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">Create AI agent</div>
               </div>
             </Button>
           </Link>
           <Link to="/knowledge">
-            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
-                <BookOpen className="size-4" />
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-2.5 sm:py-3">
+              <div className="flex size-7 sm:size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                <BookOpen className="size-3.5 sm:size-4" />
               </div>
-              <div className="text-left">
-                <div className="text-sm font-medium">Knowledge Base</div>
-                <div className="text-xs text-muted-foreground">Manage docs</div>
+              <div className="text-left min-w-0">
+                <div className="text-xs sm:text-sm font-medium truncate">Knowledge Base</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">Manage docs</div>
               </div>
             </Button>
           </Link>
           <Link to="/conversations">
-            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-info/10 text-info">
-                <MessageCircle className="size-4" />
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-2.5 sm:py-3">
+              <div className="flex size-7 sm:size-8 items-center justify-center rounded-lg bg-info/10 text-info">
+                <MessageCircle className="size-3.5 sm:size-4" />
               </div>
-              <div className="text-left">
-                <div className="text-sm font-medium">Conversations</div>
-                <div className="text-xs text-muted-foreground">View chats</div>
+              <div className="text-left min-w-0">
+                <div className="text-xs sm:text-sm font-medium truncate">Conversations</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">View chats</div>
               </div>
             </Button>
           </Link>
           <Link to="/dashboard/analytics">
-            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
-                <BarChart3 className="size-4" />
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto py-2.5 sm:py-3">
+              <div className="flex size-7 sm:size-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
+                <BarChart3 className="size-3.5 sm:size-4" />
               </div>
-              <div className="text-left">
-                <div className="text-sm font-medium">Analytics</div>
-                <div className="text-xs text-muted-foreground">View stats</div>
+              <div className="text-left min-w-0">
+                <div className="text-xs sm:text-sm font-medium truncate">Analytics</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">View stats</div>
               </div>
             </Button>
           </Link>
@@ -267,7 +267,7 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* ── Chart ─────────────────────────────────────────────────────── */}
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
         <ChannelChart data={chartData} loading={isLoading} />
         <ActivityChart data={chartData} loading={isLoading} />
       </div>

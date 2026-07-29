@@ -100,27 +100,27 @@ export function RecentConversations() {
         ) : (
           <div className="divide-y divide-border">
             {conversations.map((conv: { id: string; agentName: string; agentAvatar?: string; channel: string; status: string; lastMessage: string; timestamp: string }) => (
-            <div key={conv.id} className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
-              <Avatar className="size-9 rounded-full">
+            <div key={conv.id} className="flex items-center gap-2.5 sm:gap-3 p-3 sm:p-4 hover:bg-muted/30 transition-colors">
+              <Avatar className="size-8 sm:size-9 rounded-full">
                 {conv.agentAvatar && <AvatarImage src={conv.agentAvatar} alt={conv.agentName} />}
                 <AvatarFallback className="rounded-full bg-primary/10 text-sm font-semibold text-primary">
                   {conv.agentName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium truncate">{conv.agentName}</p>
-                   <span className={cn('inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium', getChannelBadge(conv.channel))}>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <p className="text-xs sm:text-sm font-medium truncate">{conv.agentName}</p>
+                   <span className={cn('inline-flex items-center rounded px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium shrink-0', getChannelBadge(conv.channel))}>
                     {conv.channel}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
-                 <span className={cn('inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium', getStatusColor(conv.status))}>
+                 <span className={cn('inline-flex items-center rounded px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium', getStatusColor(conv.status))}>
                   {conv.status}
                 </span>
-                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground">
                   <Clock className="size-3" /> {conv.timestamp}
                 </span>
               </div>
