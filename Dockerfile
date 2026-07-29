@@ -8,8 +8,8 @@
 # =============================================================================
 
 # ── Stage 1: Install dependencies ──────────────────────────────────────────
-FROM node:22-alpine AS installer
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+FROM node:22-slim AS installer
+RUN corepack enable && corepack install -g pnpm@11.17.0
 
 WORKDIR /app
 
@@ -55,8 +55,8 @@ RUN pnpm exec prisma generate
 RUN pnpm --filter @convio/api build
 
 # ── Stage 3: Production runtime ────────────────────────────────────────────
-FROM node:22-alpine AS runner
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+FROM node:22-slim AS runner
+RUN corepack enable && corepack install -g pnpm@11.17.0 && apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
