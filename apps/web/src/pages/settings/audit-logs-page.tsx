@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   useReactTable,
@@ -21,6 +21,8 @@ import {
   Eye,
   CalendarIcon,
   X,
+  Users,
+  Activity,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { SearchInput } from '@/components/shared/search-input'
@@ -65,6 +67,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { StatCard } from '@/components/shared/stat-card'
 import { auditLogs as auditLogsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { cn, formatRelativeTime, formatDate } from '@/lib/utils'
@@ -126,12 +129,18 @@ interface AuditLog {
 export default function AuditLogsPage() {
   const { orgId, isLoading: orgLoading } = useOrg()
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedFilters, setSelectedFilters] = useState<{ id: string; label: string; group: string }[]>([])
   const [fromDate, setFromDate] = useState<Date | undefined>()
   const [toDate, setToDate] = useState<Date | undefined>()
   const [page, setPage] = useState(0)
   const [sorting, setSorting] = useState<SortingState>([])
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
 
   const filterItems = useMemo(() => [
     ...ACTIONS.map(a => ({ id: `action:${a}`, label: formatLabel(a), group: 'action' as const })),
@@ -145,7 +154,7 @@ export default function AuditLogsPage() {
     selectedFilters.filter(f => f.group === 'type').map(f => f.id.replace('type:', '')), [selectedFilters])
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['audit-logs', orgId, search, selectedFilters, fromDate, toDate, page],
+    queryKey: ['audit-logs', orgId, debouncedSearch, selectedFilters, fromDate, toDate, page],
     queryFn: async () => {
       const params: Record<string, string | number> = { limit: PAGE_SIZE, offset: page * PAGE_SIZE }
       if (search) params.search = search
@@ -157,11 +166,22 @@ export default function AuditLogsPage() {
       return res.data
     },
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
   })
 
   const logs = useMemo(() => (data?.data || []) as AuditLog[], [data])
   const total = data?.total || 0
   const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  const uniqueActors = useMemo(() => {
+    const ids = new Set(logs.map(l => l.actor?.id).filter(Boolean))
+    return ids.size
+  }, [logs])
+
+  const uniqueActions = useMemo(() => {
+    const types = new Set(logs.map(l => l.action))
+    return types.size
+  }, [logs])
 
   const clearDateFilters = () => {
     setFromDate(undefined)
@@ -333,6 +353,14 @@ export default function AuditLogsPage() {
           </Button>
         }
       />
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard title="Total Events" value={total} icon={ScrollText} color="text-primary" />
+        <StatCard title="Unique Actors" value={uniqueActors} icon={Users} color="text-blue-500" />
+        <StatCard title="Action Types" value={uniqueActions} icon={Activity} color="text-emerald-500" />
+        <StatCard title="Filters Active" value={selectedFilters.length + (hasDateFilters ? 1 : 0) + (search ? 1 : 0)} icon={ScrollText} color="text-amber-500" change={hasFilters ? 'active' : undefined} />
+      </div>
 
       {/* Filters */}
       <Card>
