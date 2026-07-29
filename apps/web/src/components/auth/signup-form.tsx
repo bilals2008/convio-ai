@@ -208,7 +208,7 @@ export function SignupForm({ plan, billing }: { plan?: string; billing?: string 
           onChange={(e) => setAgreed(e.target.checked)}
           className="mt-0.5 size-4 rounded border-input cursor-pointer accent-primary"
         />
-        <Label htmlFor="terms" className="text-sm font-normal cursor-pointer leading-relaxed">
+        <Label htmlFor="terms" className="text-sm max-sm:text-xs font-normal cursor-pointer leading-normal">
           I agree to the{' '}
           <a href="/terms" target="_blank" className="font-medium text-primary hover:text-primary/80 transition-colors">
             Terms of Service
