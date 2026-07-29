@@ -34,6 +34,7 @@ const widgetConfigFields = {
   headerGradientStart: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   headerGradientEnd: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   headerGradientDirection: z.number().min(0).max(360).optional(),
+  promptBgColor: z.string().optional(),
   borderColor: z.string().optional(),
   inputBgColor: z.string().optional(),
   sendBtnColor: z.string().optional(),

@@ -27,7 +27,7 @@ export function WidgetTyping() {
           </div>
         )}
       </div>
-      <div className="rounded-2xl rounded-bl-md bg-[hsl(var(--widget-muted))] px-4 py-3 shadow-sm">
+      <div className="rounded-2xl rounded-bl-md bg-[hsl(var(--widget-prompt-bg))] px-4 py-3 shadow-sm">
         <div className="flex items-center gap-1.5">
           <span
             className="size-2 rounded-full bg-[hsl(var(--widget-muted-foreground))]/50 animate-typing-dot"

@@ -294,7 +294,7 @@ export function AppearanceTab({
           </div>
 
           <div className="space-y-4 border-t border-border/60 pt-6">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-2">
               <ColorField
                 label="Primary"
                 description="Accent for the launcher button and user bubbles"
@@ -320,8 +320,8 @@ export function AppearanceTab({
               />
 
               <ColorField
-                label="Prompt bg"
-                description="Background color for AI response bubbles"
+                label="AI response"
+                description="Background color for the AI message bubbles"
                 value={promptBgColor}
                 onChange={onPromptBgColorChange}
                 presets={promptBgPresets}

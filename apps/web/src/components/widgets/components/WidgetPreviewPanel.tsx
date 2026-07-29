@@ -46,7 +46,7 @@ export function WidgetPreviewPanel({
   const replies = quickReplies && quickReplies.length > 0 ? quickReplies.slice(0, 4) : ['What can you help with?', 'How does this work?', 'Tell me about Convio', 'Get started']
 
   const headerStyle = headerGradient
-    ? { background: `linear-gradient(${headerGradientDirection || '135deg'}, hsl(var(--widget-header-start)), hsl(var(--widget-header-end)))` }
+    ? { background: `linear-gradient(var(--widget-header-direction, 135deg), hsl(var(--widget-header-start)), hsl(var(--widget-header-end)))` }
     : { background: `hsl(var(--widget-header-start))` }
 
   return (
@@ -147,7 +147,7 @@ export function WidgetPreviewPanel({
           <button type="button" className="flex size-8 shrink-0 items-center justify-center rounded-full transition-colors" style={{ color: `hsl(var(--widget-muted-foreground))` }}>
             <Smile className="size-5" />
           </button>
-          <div className="flex-1 rounded-xl px-3.5 py-2" style={{ backgroundColor: `hsl(var(--widget-muted))` }}>
+          <div className="flex-1 rounded-xl px-3.5 py-2" style={{ backgroundColor: `hsl(var(--widget-input-bg))` }}>
             <p className="text-[13px] leading-relaxed" style={{ color: `hsl(var(--widget-muted-foreground))`, opacity: 0.5 }}>
               {placeholderText || 'Enter your message...'}
             </p>
@@ -155,7 +155,7 @@ export function WidgetPreviewPanel({
           <button
             type="button"
             className="flex size-9 shrink-0 items-center justify-center rounded-full cursor-not-allowed"
-            style={{ backgroundColor: `hsl(var(--widget-muted))`, color: `hsl(var(--widget-muted-foreground))` }}
+            style={{ backgroundColor: `hsl(var(--widget-send-btn))`, color: `hsl(var(--widget-muted-foreground))` }}
           >
             <Send className="size-4" />
           </button>

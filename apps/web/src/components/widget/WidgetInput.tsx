@@ -98,7 +98,7 @@ export function WidgetInput() {
             </div>
           )}
         </div>
-        <div className="flex-1 rounded-xl bg-[hsl(var(--widget-muted))] px-3.5 py-2 transition-all duration-200">
+        <div className="flex-1 rounded-xl bg-[hsl(var(--widget-input-bg))] px-3.5 py-2 transition-all duration-200">
           <textarea
             ref={textareaRef}
             value={value}

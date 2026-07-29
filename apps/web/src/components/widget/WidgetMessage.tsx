@@ -50,7 +50,7 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
           'group relative max-w-[88%] px-3.5 py-2.5 text-[13px] leading-relaxed',
           isUser
             ? 'rounded-2xl rounded-br-md text-white'
-            : 'rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-muted))]',
+            : 'rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-prompt-bg))]',
           !isUser && !showAvatar && 'ml-9'
         )}
         style={
