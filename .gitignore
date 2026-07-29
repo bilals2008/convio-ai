@@ -45,3 +45,5 @@ coverage/
 
 # AI agent config
 .commandcode/
+
+.vercel

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Building2, Users, Settings, ArrowRight, Database, Bot } from 'lucide-react'
+import { Building2, Users, Settings, ArrowRight, Database, Bot, AlertTriangle } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout, DocFeatureCard, DocCardGrid, DocNextStepCard } from '@/components/docs'
 
 export default function OrganizationsPage() {
@@ -21,6 +21,10 @@ export default function OrganizationsPage() {
       <p>
         Organizations act as isolation boundaries. Agents in Org A cannot see or access data from Org B. Each org has its own subscription, API keys, and configuration — keeping teams and projects cleanly separated.
       </p>
+
+      <DocCallout variant="warning" icon={AlertTriangle} title="Organizations is a Beta feature">
+        This feature is currently in beta. Some functionality may change or be incomplete. If you run into issues, please let us know.
+      </DocCallout>
 
       <h2 id="when-to-use-orgs">When to Use Multiple Organizations</h2>
       <p>

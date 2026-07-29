@@ -14,6 +14,10 @@ export default function CloningAgentsPage() {
         description="Duplicate agent configurations to create variations, test changes safely, or manage iterations without losing your original setup."
       />
 
+      <DocCallout variant="warning" icon={AlertTriangle} title="Cloning is coming soon">
+        This feature is not yet available. It will be launched in a future release. Stay tuned!
+      </DocCallout>
+
       <h2 id="overview">Overview</h2>
       <p>
         Cloning creates an exact copy of an agent — same system prompt, model, tools, knowledge base connections, and settings. The clone starts in Draft status regardless of the original's status, so you can modify it without affecting the live agent.

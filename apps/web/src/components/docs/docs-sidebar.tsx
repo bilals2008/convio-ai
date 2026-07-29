@@ -85,6 +85,11 @@ export function DocsSidebar() {
                       )}
                     >
                       <span className="truncate">{item.title}</span>
+                      {item.beta && (
+                        <span className="ml-auto shrink-0 rounded bg-warning/15 px-1 py-px text-[9px] font-semibold uppercase tracking-wider text-warning">
+                          Beta
+                        </span>
+                      )}
                     </Link>
                   )
                 })}

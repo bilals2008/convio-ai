@@ -30,7 +30,7 @@ export function BetaNotice() {
         </p>
         <p className="mb-6 text-sm text-muted-foreground">
           Something broken or missing?{' '}
-          <a href="mailto:teambillaldev@gmail.com" className="text-primary underline underline-offset-2 hover:text-primary/80">
+          <a href="mailto:teambilaldev@gmail.com" className="text-primary underline underline-offset-2 hover:text-primary/80">
             Tell us
           </a>
         </p>

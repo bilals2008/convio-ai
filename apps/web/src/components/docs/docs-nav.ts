@@ -27,6 +27,7 @@ export interface DocItem {
   icon: LucideIcon | React.ComponentType<{ className?: string }>
   description?: string
   soon?: boolean
+  beta?: boolean
 }
 
 export interface DocSection {
@@ -50,13 +51,13 @@ export const docSections: DocSection[] = [
   {
     title: 'Organizations',
     items: [
-      { title: 'Organizations', href: '/docs/organizations', icon: Users },
-      { title: 'Roles & Permissions', href: '/docs/roles', icon: Shield },
-      { title: 'Inviting Members', href: '/docs/inviting-members', icon: Users },
-      { title: 'Managing Members', href: '/docs/managing-members', icon: Users },
-      { title: 'Transfer Ownership', href: '/docs/transferring-ownership', icon: Users },
-      { title: 'Leaving an Org', href: '/docs/leaving-organization', icon: Users },
-      { title: 'Login Activity', href: '/docs/login-activity', icon: Shield },
+      { title: 'Organizations', href: '/docs/organizations', icon: Users, beta: true },
+      { title: 'Roles & Permissions', href: '/docs/roles', icon: Shield, beta: true },
+      { title: 'Inviting Members', href: '/docs/inviting-members', icon: Users, beta: true },
+      { title: 'Managing Members', href: '/docs/managing-members', icon: Users, beta: true },
+      { title: 'Transfer Ownership', href: '/docs/transferring-ownership', icon: Users, beta: true },
+      { title: 'Leaving an Org', href: '/docs/leaving-organization', icon: Users, beta: true },
+      { title: 'Login Activity', href: '/docs/login-activity', icon: Shield, beta: true },
     ],
   },
   {
@@ -70,7 +71,7 @@ export const docSections: DocSection[] = [
       { title: 'Welcome Messages', href: '/docs/welcome-messages', icon: MessageSquare },
       { title: 'Playground', href: '/docs/agent-playground', icon: Zap },
       { title: 'Agent Statuses', href: '/docs/agent-statuses', icon: Zap },
-      { title: 'Cloning Agents', href: '/docs/cloning-agents', icon: Bot },
+      { title: 'Cloning Agents', href: '/docs/cloning-agents', icon: Bot, soon: true },
     ],
   },
   {
