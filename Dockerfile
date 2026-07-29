@@ -56,7 +56,7 @@ RUN pnpm --filter @convio/api build
 
 # ── Stage 3: Production runtime ────────────────────────────────────────────
 FROM node:22-slim AS runner
-RUN corepack enable && corepack install -g pnpm@11.17.0 && apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack install -g pnpm@11.17.0 && apt-get update && apt-get install -y ca-certificates libatomic1 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
