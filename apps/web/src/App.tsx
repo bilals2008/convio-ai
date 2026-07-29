@@ -9,7 +9,7 @@ import { RedirectAuthenticated } from '@/components/auth/redirect-authenticated'
 import { OrgProvider } from '@/lib/org-context'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { AdminLayout } from '@/admin/admin-layout'
-import AdminDashboardPage from '@/admin/pages/admin-dashboard-page'
+
 import Landing from '@/pages/landing'
 import PricingPage from '@/pages/pricing-page'
 import ContactPage from '@/pages/contact-page'
@@ -41,6 +41,7 @@ import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
 import DataManagementPage from '@/pages/settings/data-management-page'
 import McpServersPage from '@/pages/settings/mcp-servers-page'
+import SettingsAuditLogsPage from '@/pages/settings/audit-logs-page'
 import { HelpLayout } from '@/components/help/help-layout'
 import HelpIndexPage from '@/pages/docs/help-index'
 import WhatIsConvioPage from '@/pages/docs/what-is-convio'
@@ -536,11 +537,12 @@ export function App() {
                 <Route path="mcp-servers" element={<McpServersPage />} />
                 <Route path="billing" element={<BillingPage />} />
                  <Route path="data" element={<DataManagementPage />} />
-               </Route>
+                 <Route path="audit-logs" element={<SettingsAuditLogsPage />} />
+                </Route>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
             <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Admin Dashboard — Coming Soon</div>} />
               <Route path="/admin/users" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">User Management — Coming Soon</div>} />
               <Route path="/admin/organizations" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Organizations — Coming Soon</div>} />
               <Route path="/admin/analytics" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Analytics — Coming Soon</div>} />

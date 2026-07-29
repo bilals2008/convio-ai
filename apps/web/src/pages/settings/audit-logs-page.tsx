@@ -4,7 +4,7 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
+
   flexRender,
   createColumnHelper,
   type SortingState,
@@ -99,17 +99,6 @@ function getEntityBadgeVariant(type: string) {
     invitation: 'entity_invitation',
   }
   return map[type] || 'entity_data_category'
-}
-
-function formatMetadata(metadata: Record<string, unknown> | null | undefined): { key: string; value: string }[] {
-  if (!metadata || typeof metadata !== 'object') return []
-  return Object.entries(metadata).map(([k, v]) => {
-    const label = k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
-    const val = typeof v === 'boolean' ? (v ? 'Yes' : 'No')
-      : v === null || v === undefined ? '—'
-      : String(v)
-    return { key: label, value: val }
-  })
 }
 
 function formatLabel(str: string) {
@@ -303,7 +292,7 @@ export default function AuditLogsPage() {
       size: 48,
       enableSorting: false,
     }),
-  ], [])
+  ], [columnHelper])
 
   const table = useReactTable({
     data: logs,

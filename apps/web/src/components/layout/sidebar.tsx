@@ -18,6 +18,7 @@ import {
   CreditCard,
   Database,
   Plug,
+  ScrollText,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -48,6 +49,7 @@ function useSettingsItems() {
     { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true, badge: 'Beta' },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
      { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
+    { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs', adminOnly: true },
   ].filter((item) => !item.adminOnly || (isAdmin && (!item.ownerOnly || isOwner)))
 }
 
@@ -331,6 +333,7 @@ function getMobileNavGroups(role?: string) {
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', badge: 'Beta' },
        { icon: Database, label: 'Data', href: '/settings/data' },
+       { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
      ] : []),
     { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
   ]

@@ -254,6 +254,19 @@ export const dataManagement = {
     `${api.defaults.baseURL}/organizations/${orgId}/export?format=${format}&scope=${scope}`,
 }
 
+export const auditLogs = {
+  list: (orgId: string, params?: {
+    action?: string
+    entityType?: string
+    actorId?: string
+    dateFrom?: string
+    dateTo?: string
+    search?: string
+    limit?: number
+    offset?: number
+  }) => api.get(`/organizations/${orgId}/audit-logs`, { params }),
+}
+
 export const publicApi = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
   headers: { 'Content-Type': 'application/json' },
