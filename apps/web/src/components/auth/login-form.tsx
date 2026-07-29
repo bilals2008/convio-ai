@@ -9,7 +9,7 @@ import { SocialLoginButtons } from './social-login-buttons'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 
-export function LoginForm() {
+export function LoginForm({ redirectTo }: { redirectTo?: string }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -27,7 +27,7 @@ export function LoginForm() {
     }
 
     login.mutate(
-      { email, password },
+      { email, password, redirectTo },
       {
         onError: (err) => {
           const msg = (err as { response?: { data?: { error?: string; message?: string } } }).response?.data

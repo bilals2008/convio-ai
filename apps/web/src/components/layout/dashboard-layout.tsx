@@ -7,6 +7,7 @@ import { SidebarContext } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
 import { ProClaimModal } from '@/components/landing/pro-claim-modal'
+import { NetworkStatusBanner } from '@/components/shared/network-status-banner'
 import { Button } from '@/components/ui/button'
 
 export function DashboardLayout() {
@@ -53,7 +54,7 @@ export function DashboardLayout() {
         </div>
         <div className="text-center">
           <h1 className="text-lg font-semibold text-foreground">Failed to create workspace</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{createError.message}</p>
+          <p className="mt-1 text-sm text-muted-foreground">We couldn't create your workspace. Please try again.</p>
         </div>
         <Button variant="outline" size="sm" onClick={retryCreate}>
           <RefreshCw className="size-3.5" />
@@ -71,6 +72,7 @@ export function DashboardLayout() {
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header />
+          <NetworkStatusBanner />
           <main className="flex-1 flex flex-col overflow-y-auto p-4 md:p-6">
             <Outlet />
           </main>

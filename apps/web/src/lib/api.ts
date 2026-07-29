@@ -1,5 +1,7 @@
 import axios from 'axios'
 import { supabase } from '@/lib/supabase'
+import { getFriendlyErrorMessage } from '@/lib/api/errors'
+import { captureError } from '@/lib/error-tracking'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
@@ -7,6 +9,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000,
 })
 
 export const apiRaw = axios.create({
@@ -35,18 +38,17 @@ api.interceptors.request.use(async (config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
+  (error) => {
     if (error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
-      await supabase.auth.signOut()
-      window.location.href = '/login'
+      captureError(error, { action: 'session-expired' })
+      supabase.auth.signOut()
+      const currentPath = window.location.pathname + window.location.search
+      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
       return Promise.reject(error)
     }
 
-    const data = error.response?.data
-    if (data?.message) {
-      error.message = data.message
-    }
-
+    const friendly = getFriendlyErrorMessage(error)
+    error.friendlyMessage = friendly
     return Promise.reject(error)
   }
 )

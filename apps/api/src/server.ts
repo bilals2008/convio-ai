@@ -118,6 +118,14 @@ async function start() {
     })
   }
 
+  process.on('unhandledRejection', (reason) => {
+    app.log.error({ err: reason }, 'Unhandled rejection')
+  })
+
+  process.on('uncaughtException', (error) => {
+    app.log.error({ err: error }, 'Uncaught exception')
+  })
+
   try {
     await app.listen({ port: PORT, host: HOST })
     app.log.info(`Server listening on ${HOST}:${PORT}`)

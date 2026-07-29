@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DollarSign, CheckCircle, Cpu, Users } from 'lucide-react'
+import { DollarSign, CheckCircle, Cpu, Users, AlertCircle } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { PageHeader } from '@/components/shared/page-header'
@@ -62,11 +62,13 @@ export default function AnalyticsPage() {
     return (
       <PageContainer>
         <PageHeader title="Analytics" description="Track performance across your agents and channels" />
-        <EmptyState
-          icon={Users}
-          title="Failed to load analytics"
-          description={(error as Error)?.message || 'Something went wrong. Please try again.'}
-        />
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-16 text-center">
+          <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-destructive/10">
+            <AlertCircle className="size-6 text-destructive" />
+          </div>
+          <p className="text-sm font-medium">Failed to load analytics</p>
+          <p className="mt-1 text-xs text-muted-foreground">Something went wrong. Please try again.</p>
+        </div>
       </PageContainer>
     )
   }

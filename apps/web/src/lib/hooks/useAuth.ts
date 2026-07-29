@@ -47,14 +47,20 @@ export function useLogin() {
   const navigate = useNavigate()
 
   return useMutation({
-    mutationFn: async (input: { email: string; password: string }) => {
-      const { data, error } = await supabase.auth.signInWithPassword(input)
+    mutationFn: async (input: { email: string; password: string; redirectTo?: string }) => {
+      const { email, password } = input
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       return data
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: ['auth', 'session'] })
       api.post('/auth/login-activity', { userAgent: navigator.userAgent }).catch(() => {})
+      const redirect = variables.redirectTo
+      if (redirect && !redirect.startsWith('/login')) {
+        navigate(redirect, { replace: true })
+        return
+      }
       const pendingRedirect = sessionStorage.getItem('pendingBillingRedirect')
       if (pendingRedirect) {
         sessionStorage.removeItem('pendingBillingRedirect')

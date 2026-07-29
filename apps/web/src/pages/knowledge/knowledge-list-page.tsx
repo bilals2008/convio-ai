@@ -88,7 +88,7 @@ import { KnowledgeCard, KnowledgeCardSkeleton } from '@/components/knowledge/kno
 import { KnowledgeTemplateModal, type KbTemplate } from '@/components/knowledge/knowledge-template-modal'
 import { SourcePickerModal, type SourceType } from '@/components/knowledge/source-picker-modal'
 import { FileIcon } from '@/components/shared/file-icon'
-import { toast } from 'sonner'
+import { toast } from '@/lib/toast'
 
 interface KnowledgeBase {
   id: string
@@ -189,7 +189,7 @@ export default function KnowledgeListPage() {
       toast.success('Knowledge base created')
       if (createdId) navigate(`/knowledge/${createdId}`)
     },
-    onError: (err: unknown) => toast.error(`Failed to create: ${err instanceof Error ? err.message : String(err)}`),
+    onError: () => toast.error('Failed to create knowledge base'),
   })
 
   const filtered = useMemo(() =>
