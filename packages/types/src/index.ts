@@ -153,6 +153,10 @@ export interface Analytics {
   createdAt: Date
 }
 
+// Permission types
+export type { Permission } from './permissions.js'
+export { ROLE_HIERARCHY, PERMISSIONS, canAccess, roleAtLeast } from './permissions.js'
+
 // API Response types
 export interface ApiResponse<T> {
   data: T

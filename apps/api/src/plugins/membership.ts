@@ -2,6 +2,7 @@ import fp from 'fastify-plugin'
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@convio/database'
 import { AppError } from './error.js'
+import { getMembership as cachedGetMembership, invalidate as invalidateCache } from '../services/membership-cache.js'
 
 export type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
 
@@ -54,6 +55,7 @@ declare module 'fastify' {
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
     requireOwner: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
     requireRoleAtLeast: (minimumRole: MembershipRole) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>
+    requirePermission: (permission: string) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>
     getMembership: (userId: string, orgId: string) => Promise<{ role: MembershipRole }>
     ensureAdmin: (userId: string, orgId: string) => Promise<void>
     ensureOwner: (userId: string, orgId: string) => Promise<void>
@@ -127,6 +129,18 @@ export default fp(async function membershipPlugin(fastify: FastifyInstance) {
       const membership = await getMembership(request.userId, orgId)
       if (ROLE_HIERARCHY[membership.role] < ROLE_HIERARCHY[minimumRole]) {
         throw new AppError(403, `${minimumRole} access required`, 'FORBIDDEN')
+      }
+      request.membership = membership
+    }
+  })
+
+  fastify.decorate('requirePermission', (permission: string) => {
+    return async (request: FastifyRequest, _reply: FastifyReply) => {
+      if (!request.userId) throw new AppError(401, 'Authentication required', 'UNAUTHORIZED')
+      const orgId = resolveOrgId(request)
+      const membership = await getMembership(request.userId, orgId)
+      if (!hasPermission(membership.role, permission)) {
+        throw new AppError(403, `You do not have permission: ${permission}`, 'FORBIDDEN')
       }
       request.membership = membership
     }

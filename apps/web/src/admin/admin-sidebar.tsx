@@ -1,16 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  BarChart3,
-  Brain,
-  Shield,
-  Activity,
-  Bell,
-  CreditCard,
-  Flag,
   ChevronLeft,
   ArrowLeft,
   LogOut,
@@ -31,39 +21,13 @@ import { SidebarGroup, SidebarItem } from '@/components/layout/sidebar-nav'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
-
-const adminNavItems = [
-  {
-    group: 'Admin',
-    items: [
-      { icon: LayoutDashboard, label: 'Dashboard', href: '/admin', exact: true },
-      { icon: Users, label: 'Users', href: '/admin/users' },
-      { icon: Building2, label: 'Organizations', href: '/admin/organizations' },
-      { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
-    ],
-  },
-  {
-    group: 'Monitor',
-    items: [
-      { icon: Brain, label: 'Agents', href: '/admin/agents' },
-      { icon: Activity, label: 'System Health', href: '/admin/system' },
-      { icon: Flag, label: 'Moderation', href: '/admin/moderation' },
-    ],
-  },
-  {
-    group: 'System',
-    items: [
-      { icon: CreditCard, label: 'Billing', href: '/admin/billing' },
-      { icon: Shield, label: 'Providers', href: '/admin/providers' },
-      { icon: Bell, label: 'Announcements', href: '/admin/announcements' },
-    ],
-  },
-]
+import { useAdminNav } from './navigation/use-admin-nav'
 
 export function AdminSidebar() {
   const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const navGroups = useAdminNav()
 
   const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -88,11 +52,11 @@ export function AdminSidebar() {
 
   const sidebarContent = (
     <aside
-      className={`
-        flex h-full flex-col bg-card border-r
-        ${collapsed ? 'w-[64px]' : 'w-[240px]'}
-        transition-[width] duration-200 ease-in-out
-      `}
+      className={cn(
+        'flex h-full flex-col bg-card border-r',
+        collapsed ? 'w-[64px]' : 'w-[240px]',
+        'transition-[width] duration-200 ease-in-out'
+      )}
       aria-label="Admin navigation"
     >
       {/* Logo + collapse */}
@@ -130,10 +94,10 @@ export function AdminSidebar() {
 
       <ScrollArea className="flex-1 min-h-0">
         <nav className="flex flex-col px-2 py-2">
-          {adminNavItems.map((group) => (
+          {navGroups.map((group) => (
             <SidebarGroup key={group.group} label={group.group}>
               {group.items.map((item) => (
-                <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} exact={item.exact} />
+                <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} exact={item.exact} badge={item.badge} />
               ))}
             </SidebarGroup>
           ))}
@@ -204,7 +168,7 @@ export function AdminSidebar() {
                 </div>
                 <ScrollArea className="flex-1">
                   <nav className="flex flex-col px-3 py-2">
-                    {adminNavItems.map((group) => (
+                    {navGroups.map((group) => (
                       <div key={group.group} className="space-y-1">
                         <h4 className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           {group.group}
