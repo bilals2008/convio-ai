@@ -251,6 +251,91 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // GET /api/admin/analytics — Platform-wide analytics with daily breakdown
+  fastify.get('/admin/analytics', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+  }, async (request) => {
+    const query = request.query as { cursor?: string; limit: number; search?: string }
+    const days = Math.min(query.limit || 30, 90)
+
+    const startDate = new Date(Date.now() - days * 86_400_000)
+
+    const [messages, convs, agents, users] = await Promise.all([
+      prisma.message.findMany({
+        where: { createdAt: { gte: startDate } },
+        select: { createdAt: true },
+      }),
+      prisma.conversation.findMany({
+        where: { createdAt: { gte: startDate } },
+        select: { createdAt: true, status: true, agentId: true },
+      }),
+      prisma.agent.count(),
+      prisma.profile.count(),
+    ])
+
+    const dayMap = new Map<string, { conversations: number; messages: number; users: Set<string> }>()
+    for (let i = 0; i < days; i++) {
+      const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
+      dayMap.set(d, { conversations: 0, messages: 0, users: new Set() })
+    }
+
+    for (const m of messages) {
+      const key = m.createdAt.toISOString().slice(0, 10)
+      dayMap.get(key)!.messages++
+    }
+    for (const c of convs) {
+      const key = c.createdAt.toISOString().slice(0, 10)
+      const entry = dayMap.get(key)!
+      entry.conversations++
+      if (c.agentId) entry.users.add(c.agentId)
+    }
+
+    const totalConversations = convs.length
+    const totalMessages = messages.length
+    const resolvedConvs = convs.filter((c) => c.status === 'resolved' || c.status === 'closed').length
+    const successRate = totalConversations > 0 ? Math.round((resolvedConvs / totalConversations) * 100) : 0
+
+    const dailyBreakdown = Array.from(dayMap.entries())
+      .map(([date, d]) => ({
+        date,
+        totalConversations: d.conversations,
+        totalMessages: d.messages,
+        uniqueUsers: d.users.size,
+        avgResponseTime: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+
+    const uniqueUsers = new Set(convs.map((c) => c.agentId).filter(Boolean)).size
+
+    const half = Math.floor(dailyBreakdown.length / 2)
+    const firstHalf = dailyBreakdown.slice(0, half)
+    const secondHalf = dailyBreakdown.slice(half)
+    const convsChange = firstHalf.length > 0 && secondHalf.length > 0
+      ? Math.round(((secondHalf.reduce((s, d) => s + d.totalConversations, 0) - firstHalf.reduce((s, d) => s + d.totalConversations, 0)) / firstHalf.reduce((s, d) => s + d.totalConversations, 0)) * 100)
+      : 0
+
+    return {
+      data: {
+        totalConversations,
+        totalMessages,
+        uniqueUsers,
+        avgResponseTime: 0,
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        successRate,
+        conversationsChange: convsChange,
+        messagesChange: 0,
+        usersChange: 0,
+        responseTimeChange: 0,
+        channelBreakdown: [],
+        dailyBreakdown,
+        totalCost: 0,
+      },
+    }
+  })
+
   // GET /api/admin/agents — All agents with cursor pagination + search
   fastify.get('/admin/agents', {
     preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],

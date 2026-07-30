@@ -18,6 +18,7 @@ import AdminOrgDetailPage from '@/admin/pages/org-detail-page'
 import AdminSystemPage from '@/admin/pages/system-page'
 import AdminAuditLogsPage from '@/admin/pages/audit-logs-page'
 import AdminAgentsPage from '@/admin/pages/agents-page'
+import AdminAnalyticsPage from '@/admin/pages/analytics-page'
 
 import Landing from '@/pages/landing'
 import PricingPage from '@/pages/pricing-page'
@@ -557,7 +558,7 @@ export function App() {
                 <Route path="/admin/users/:id" element={<AdminUserDetailPage />} />
                 <Route path="/admin/organizations" element={<AdminOrgsPage />} />
                 <Route path="/admin/organizations/:id" element={<AdminOrgDetailPage />} />
-                <Route path="/admin/analytics" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Analytics — Coming Soon</div>} />
+                <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
                 <Route path="/admin/agents" element={<AdminAgentsPage />} />
                 <Route path="/admin/system" element={<AdminSystemPage />} />
                 <Route path="/admin/moderation" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Moderation — Coming Soon</div>} />
