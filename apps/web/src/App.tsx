@@ -10,6 +10,13 @@ import { OrgProvider } from '@/lib/org-context'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { AdminLayout } from '@/admin/admin-layout'
 import { AdminGuard } from '@/admin/admin-guard'
+import AdminOverviewPage from '@/admin/pages/overview-page'
+import AdminUsersPage from '@/admin/pages/users-page'
+import AdminUserDetailPage from '@/admin/pages/user-detail-page'
+import AdminOrgsPage from '@/admin/pages/orgs-page'
+import AdminOrgDetailPage from '@/admin/pages/org-detail-page'
+import AdminSystemPage from '@/admin/pages/system-page'
+import AdminAuditLogsPage from '@/admin/pages/audit-logs-page'
 
 import Landing from '@/pages/landing'
 import PricingPage from '@/pages/pricing-page'
@@ -544,14 +551,16 @@ export function App() {
             </Route>
             <Route element={<AdminGuard />}>
               <Route element={<ErrorBoundary name="Admin"><AdminLayout /></ErrorBoundary>}>
-                <Route path="/admin" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Admin Dashboard — Coming Soon</div>} />
-                <Route path="/admin/users" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">User Management — Coming Soon</div>} />
-                <Route path="/admin/organizations" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Organizations — Coming Soon</div>} />
+                <Route path="/admin" element={<AdminOverviewPage />} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
+                <Route path="/admin/users/:id" element={<AdminUserDetailPage />} />
+                <Route path="/admin/organizations" element={<AdminOrgsPage />} />
+                <Route path="/admin/organizations/:id" element={<AdminOrgDetailPage />} />
                 <Route path="/admin/analytics" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Analytics — Coming Soon</div>} />
                 <Route path="/admin/agents" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Agent Monitoring — Coming Soon</div>} />
-                <Route path="/admin/system" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">System Health — Coming Soon</div>} />
+                <Route path="/admin/system" element={<AdminSystemPage />} />
                 <Route path="/admin/moderation" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Moderation — Coming Soon</div>} />
-                <Route path="/admin/audit-logs" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Audit Logs — Coming Soon</div>} />
+                <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
                 <Route path="/admin/billing" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Billing Overview — Coming Soon</div>} />
                 <Route path="/admin/providers" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Provider Management — Coming Soon</div>} />
                 <Route path="/admin/announcements" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Announcements — Coming Soon</div>} />
