@@ -251,6 +251,59 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // GET /api/admin/agents — All agents with cursor pagination + search
+  fastify.get('/admin/agents', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+  }, async (request) => {
+    const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
+
+    const where: Record<string, unknown> = {}
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { organization: { name: { contains: search, mode: 'insensitive' } } },
+      ]
+    }
+
+    const agents = await prisma.agent.findMany({
+      where,
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: { createdAt: 'desc' },
+      include: {
+        organization: { select: { id: true, name: true, slug: true } },
+      },
+    })
+
+    const hasNextPage = agents.length > limit
+    const items = hasNextPage ? agents.slice(0, limit) : agents
+
+    const agentIds = items.map((a) => a.id)
+    const convCounts = agentIds.length > 0
+      ? await prisma.conversation.groupBy({
+          by: ['agentId'],
+          where: { agentId: { in: agentIds } },
+          _count: true,
+        })
+      : []
+    const convMap = new Map(convCounts.map((c) => [c.agentId, c._count]))
+
+    return {
+      data: items.map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+        model: agent.model,
+        status: agent.status,
+        avatar: agent.avatar,
+        createdAt: agent.createdAt,
+        updatedAt: agent.updatedAt,
+        organization: agent.organization,
+        conversationCount: convMap.get(agent.id) || 0,
+      })),
+      nextCursor: hasNextPage ? items[items.length - 1].id : null,
+    }
+  })
+
   // GET /api/admin/system — System health overview
   fastify.get('/admin/system', adminGuard, async () => {
     const [conversationStats, activeDeployments, recentErrors] = await Promise.all([

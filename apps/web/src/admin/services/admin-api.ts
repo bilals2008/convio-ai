@@ -86,6 +86,18 @@ export interface PaginatedResponse<T> {
   nextCursor: string | null
 }
 
+export interface AdminAgent {
+  id: string
+  name: string
+  model: string
+  status: string
+  avatar: string | null
+  createdAt: string
+  updatedAt: string
+  organization: { id: string; name: string; slug: string }
+  conversationCount: number
+}
+
 export const adminApi = {
   stats: () => api.get<{ data: AdminStats }>('/admin/stats'),
 
@@ -98,6 +110,9 @@ export const adminApi = {
     api.get<PaginatedResponse<AdminOrg>>('/admin/organizations', { params }),
 
   org: (id: string) => api.get<{ data: AdminOrgDetail }>(`/admin/organizations/${id}`),
+
+  agents: (params?: { cursor?: string; limit?: number; search?: string }) =>
+    api.get<PaginatedResponse<AdminAgent>>('/admin/agents', { params }),
 
   system: () => api.get<{ data: SystemHealth }>('/admin/system'),
 

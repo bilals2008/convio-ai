@@ -54,6 +54,16 @@ export function useAdminOrg(id: string | undefined) {
   })
 }
 
+export function useAdminAgents(params?: { cursor?: string; limit?: number; search?: string }) {
+  return useQuery({
+    queryKey: ['admin', 'agents', params],
+    queryFn: async () => {
+      const res = await adminApi.agents(params)
+      return res.data
+    },
+  })
+}
+
 export function useSystemHealth() {
   return useQuery<SystemHealth>({
     queryKey: ['admin', 'system'],
