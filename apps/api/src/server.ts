@@ -12,6 +12,7 @@ import corsPlugin from './plugins/cors.js'
 import authPlugin from './plugins/auth.js'
 import validationPlugin from './plugins/validate.js'
 import membershipPlugin from './plugins/membership.js'
+import adminPlugin from './plugins/admin.js'
 import billingLimitsPlugin from './plugins/billing-limits.js'
 import auditLoggerPlugin from './plugins/audit-logger.js'
 import swaggerPlugin from './plugins/swagger.js'
@@ -40,6 +41,7 @@ import contactRoutes from './modules/contact/routes.js'
 import avatarPresetsRoutes from './modules/avatar-presets/routes.js'
 import statusRoutes from './modules/status/routes.js'
 import auditLogsRoutes from './modules/audit-logs/routes.js'
+import adminRoutes from './modules/admin/routes.js'
 import emailPlugin from './services/email.jsx'
 import { initDiscordGateway, shutdownDiscordGateway } from './services/discord-gateway.js'
 
@@ -56,6 +58,7 @@ async function buildServer() {
   await app.register(corsPlugin)
   await app.register(authPlugin)
   await app.register(membershipPlugin)
+  await app.register(adminPlugin)
   await app.register(billingLimitsPlugin)
   await app.register(auditLoggerPlugin)
   await app.register(validationPlugin)
@@ -90,6 +93,7 @@ async function buildServer() {
   await app.register(avatarPresetsRoutes, { prefix: '/api' })
   await app.register(statusRoutes, { prefix: '/api' })
   await app.register(auditLogsRoutes, { prefix: '/api' })
+  await app.register(adminRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {
