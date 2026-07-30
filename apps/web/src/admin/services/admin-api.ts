@@ -86,20 +86,39 @@ export interface PaginatedResponse<T> {
   nextCursor: string | null
 }
 
+export interface AdminAnalyticsDaily {
+  date: string
+  totalConversations: number
+  totalMessages: number
+  uniqueUsers: number
+  avgResponseTime: number
+  inputTokens: number
+  outputTokens: number
+}
+
 export interface AdminAnalytics {
   totalConversations: number
   totalMessages: number
   uniqueUsers: number
   successRate: number
   conversationsChange: number
-  dailyBreakdown: Array<{
-    date: string
-    totalConversations: number
-    totalMessages: number
-    uniqueUsers: number
-    avgResponseTime: number
-    inputTokens: number
-    outputTokens: number
+  messagesChange: number
+  usersChange: number
+  dailyBreakdown: AdminAnalyticsDaily[]
+  channelBreakdown: Array<{ channel: string; count: number }>
+  planDistribution: Array<{ plan: string; count: number }>
+  orgSignups: Array<{ date: string; count: number }>
+  totalOrgs: number
+  totalAgents: number
+  totalUsers: number
+  topOrgs: Array<{
+    id: string
+    name: string
+    slug: string
+    plan: string | null
+    logo: string | null
+    createdAt: string
+    conversationCount: number
   }>
 }
 

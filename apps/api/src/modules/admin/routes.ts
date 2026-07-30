@@ -257,37 +257,63 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const query = request.query as { cursor?: string; limit: number; search?: string }
     const days = Math.min(query.limit || 30, 90)
-
     const startDate = new Date(Date.now() - days * 86_400_000)
 
-    const [messages, convs, agents, users] = await Promise.all([
+    const [messages, convs, orgs, profiles, agents, deployments] = await Promise.all([
       prisma.message.findMany({
         where: { createdAt: { gte: startDate } },
         select: { createdAt: true },
       }),
       prisma.conversation.findMany({
         where: { createdAt: { gte: startDate } },
-        select: { createdAt: true, status: true, agentId: true },
+        select: { createdAt: true, status: true, agentId: true, channel: true },
       }),
-      prisma.agent.count(),
+      prisma.organization.findMany({
+        where: { createdAt: { gte: startDate } },
+        select: { createdAt: true, plan: true },
+      }),
       prisma.profile.count(),
+      prisma.agent.count(),
+      prisma.deployment.findMany({
+        where: { createdAt: { gte: startDate } },
+        select: { createdAt: true, channel: true },
+      }),
     ])
 
-    const dayMap = new Map<string, { conversations: number; messages: number; users: Set<string> }>()
+    const dayMap = new Map<string, { conversations: number; messages: number }>()
+    const orgDayMap = new Map<string, number>()
     for (let i = 0; i < days; i++) {
       const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
-      dayMap.set(d, { conversations: 0, messages: 0, users: new Set() })
+      dayMap.set(d, { conversations: 0, messages: 0 })
+      orgDayMap.set(d, 0)
     }
 
     for (const m of messages) {
       const key = m.createdAt.toISOString().slice(0, 10)
-      dayMap.get(key)!.messages++
+      const entry = dayMap.get(key)
+      if (entry) entry.messages++
     }
     for (const c of convs) {
       const key = c.createdAt.toISOString().slice(0, 10)
-      const entry = dayMap.get(key)!
-      entry.conversations++
-      if (c.agentId) entry.users.add(c.agentId)
+      const entry = dayMap.get(key)
+      if (entry) entry.conversations++
+    }
+    for (const o of orgs) {
+      const key = o.createdAt.toISOString().slice(0, 10)
+      if (orgDayMap.has(key)) orgDayMap.set(key, orgDayMap.get(key)! + 1)
+    }
+
+    const chBreakdown: Record<string, number> = {}
+    for (const c of convs) {
+      const ch = c.channel || 'web'
+      chBreakdown[ch] = (chBreakdown[ch] || 0) + 1
+    }
+
+    const planDist: Record<string, number> = {}
+    const allOrgs = await prisma.organization.findMany({ select: { plan: true } })
+    for (const o of allOrgs) {
+      const p = o.plan || 'free'
+      planDist[p] = (planDist[p] || 0) + 1
     }
 
     const totalConversations = convs.length
@@ -300,14 +326,16 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         date,
         totalConversations: d.conversations,
         totalMessages: d.messages,
-        uniqueUsers: d.users.size,
+        uniqueUsers: 0,
         avgResponseTime: 0,
         inputTokens: 0,
         outputTokens: 0,
       }))
       .sort((a, b) => a.date.localeCompare(b.date))
 
-    const uniqueUsers = new Set(convs.map((c) => c.agentId).filter(Boolean)).size
+    const orgSignups = Array.from(orgDayMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date))
 
     const half = Math.floor(dailyBreakdown.length / 2)
     const firstHalf = dailyBreakdown.slice(0, half)
@@ -316,22 +344,49 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       ? Math.round(((secondHalf.reduce((s, d) => s + d.totalConversations, 0) - firstHalf.reduce((s, d) => s + d.totalConversations, 0)) / firstHalf.reduce((s, d) => s + d.totalConversations, 0)) * 100)
       : 0
 
+    const topOrgs = await prisma.organization.findMany({
+      select: { id: true, name: true, slug: true, plan: true, logo: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    })
+    const orgIds = topOrgs.map((o) => o.id)
+    const convCounts = orgIds.length > 0
+      ? await prisma.conversation.groupBy({ by: ['agentId'], where: { agent: { organizationId: { in: orgIds } } }, _count: true })
+      : []
+    const agentOrgMap = orgIds.length > 0
+      ? await prisma.agent.findMany({ where: { organizationId: { in: orgIds } }, select: { id: true, organizationId: true } })
+      : []
+    const orgConvMap = new Map<string, number>()
+    for (const a of agentOrgMap) {
+      const count = convCounts.find((c) => c.agentId === a.id)?._count || 0
+      orgConvMap.set(a.organizationId, (orgConvMap.get(a.organizationId) || 0) + count)
+    }
+
     return {
       data: {
         totalConversations,
         totalMessages,
-        uniqueUsers,
-        avgResponseTime: 0,
-        totalInputTokens: 0,
-        totalOutputTokens: 0,
+        uniqueUsers: profiles,
         successRate,
         conversationsChange: convsChange,
         messagesChange: 0,
         usersChange: 0,
-        responseTimeChange: 0,
-        channelBreakdown: [],
         dailyBreakdown,
-        totalCost: 0,
+        channelBreakdown: Object.entries(chBreakdown).map(([channel, count]) => ({ channel, count })),
+        planDistribution: Object.entries(planDist).map(([plan, count]) => ({ plan, count })),
+        orgSignups,
+        totalOrgs: allOrgs.length,
+        totalAgents: agents,
+        totalUsers: profiles,
+        topOrgs: topOrgs.map((o) => ({
+          id: o.id,
+          name: o.name,
+          slug: o.slug,
+          plan: o.plan,
+          logo: o.logo,
+          createdAt: o.createdAt,
+          conversationCount: orgConvMap.get(o.id) || 0,
+        })),
       },
     }
   })
