@@ -90,7 +90,7 @@ class EmailService {
 
 export default fp(async function emailPlugin(fastify: FastifyInstance) {
   const apiKey = fastify.config.RESEND_API_KEY
-  const from = `Convio <${fastify.config.RESEND_FROM ?? 'team@convio.dev'}>`
+  const from = `Convio <${fastify.config.RESEND_FROM ?? 'teambilaldev@gmail.com'}>`
   const audienceId = fastify.config.RESEND_AUDIENCE_ID
 
   if (!apiKey) {

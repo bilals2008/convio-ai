@@ -6,6 +6,10 @@ import {
   searchQuerySchema,
   orgParamsSchema,
   userParamsSchema,
+  moderationQuerySchema,
+  violationQuerySchema,
+  announcementCreateSchema,
+  announcementUpdateSchema,
   auditLogQuerySchema,
 } from './admin-schema.js'
 
@@ -469,6 +473,258 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         errorsLast24h: recentErrors,
       },
     }
+  })
+
+  // GET /api/admin/moderation — Organization moderation configs with violation counts
+  fastify.get('/admin/moderation', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: moderationQuerySchema })],
+  }, async (request) => {
+    const { search, limit, offset } = request.query as { search?: string; limit: number; offset: number }
+
+    const where: Record<string, unknown> = {}
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { slug: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+
+    const [orgs, total] = await Promise.all([
+      prisma.organization.findMany({
+        where,
+        take: limit,
+        skip: offset,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          plan: true,
+          createdAt: true,
+          moderationConfig: true,
+        },
+      }),
+      prisma.organization.count({ where }),
+    ])
+
+    const orgIds = orgs.map((o) => o.id)
+    const violationCounts = orgIds.length > 0
+      ? await prisma.auditLog.groupBy({
+          by: ['organizationId'],
+          where: { organizationId: { in: orgIds }, action: 'moderation.violation' },
+          _count: true,
+        })
+      : []
+    const countMap = new Map(violationCounts.map((v) => [v.organizationId, v._count]))
+
+    return {
+      data: orgs.map((org) => ({
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        plan: org.plan,
+        createdAt: org.createdAt,
+        config: org.moderationConfig,
+        violationCount: countMap.get(org.id) || 0,
+      })),
+      total,
+    }
+  })
+
+  // GET /api/admin/moderation/violations — Paginated recent violations across platform
+  fastify.get('/admin/moderation/violations', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: violationQuerySchema })],
+  }, async (request) => {
+    const { search, limit, offset, severity, orgId } = request.query as {
+      search?: string; limit: number; offset: number; severity?: string; orgId?: string
+    }
+
+    const where: Record<string, unknown> = {
+      action: 'moderation.violation',
+    }
+    if (orgId) where.organizationId = orgId
+    if (severity) where.metadata = { path: ['severity'], equals: severity }
+
+    const [items, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.auditLog.count({ where }),
+    ])
+
+    const orgIds = [...new Set(items.map((l) => l.organizationId))]
+    const orgs = orgIds.length > 0
+      ? await prisma.organization.findMany({
+          where: { id: { in: orgIds } },
+          select: { id: true, name: true, slug: true },
+        })
+      : []
+    const orgMap = new Map(orgs.map((o) => [o.id, o]))
+
+    return {
+      data: items.map((log) => ({
+        id: log.id,
+        organizationId: log.organizationId,
+        organization: orgMap.get(log.organizationId) || null,
+        entityType: log.entityType,
+        entityId: log.entityId,
+        metadata: log.metadata,
+        createdAt: log.createdAt,
+      })),
+      total,
+    }
+  })
+
+  // GET /api/admin/provider-keys — All provider keys across orgs (masked)
+  fastify.get('/admin/provider-keys', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+  }, async (request) => {
+    const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
+
+    const where: Record<string, unknown> = {}
+    if (search) {
+      where.OR = [
+        { provider: { contains: search, mode: 'insensitive' } },
+        { label: { contains: search, mode: 'insensitive' } },
+        { organization: { name: { contains: search, mode: 'insensitive' } } },
+      ]
+    }
+
+    const keys = await prisma.providerKey.findMany({
+      where,
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: { createdAt: 'desc' },
+      include: { organization: { select: { id: true, name: true, slug: true } } },
+    })
+
+    const hasNextPage = keys.length > limit
+    const items = hasNextPage ? keys.slice(0, limit) : keys
+
+    return {
+      data: items.map((k) => ({
+        id: k.id,
+        provider: k.provider,
+        keyPreview: k.keyPreview,
+        label: k.label,
+        createdAt: k.createdAt,
+        updatedAt: k.updatedAt,
+        organization: k.organization,
+      })),
+      nextCursor: hasNextPage ? items[items.length - 1].id : null,
+    }
+  })
+
+  // GET /api/admin/billing — Platform billing overview (revenue, subs, invoices)
+  fastify.get('/admin/billing', adminGuard, async () => {
+    const [subscriptions, invoices, customers] = await Promise.all([
+      prisma.subscription.findMany({
+        select: { id: true, plan: true, status: true, createdAt: true, customerId: true },
+      }),
+      prisma.invoice.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { id: true, invoiceNumber: true, status: true, total: true, currency: true, createdAt: true, paidAt: true, customerId: true },
+      }),
+      prisma.billingCustomer.findMany({
+        select: { id: true, organizationId: true },
+      }),
+    ])
+
+    const customerOrgMap = new Map(customers.map((c) => [c.id, c.organizationId]))
+    const orgIds = [...new Set(customers.map((c) => c.organizationId))]
+    const orgs = orgIds.length > 0
+      ? await prisma.organization.findMany({ where: { id: { in: orgIds } }, select: { id: true, name: true, slug: true } })
+      : []
+    const orgMap = new Map(orgs.map((o) => [o.id, o]))
+
+    const activeSubs = subscriptions.filter((s) => s.status === 'active')
+    const planDist: Record<string, number> = {}
+    for (const s of subscriptions) {
+      planDist[s.plan] = (planDist[s.plan] || 0) + 1
+    }
+
+    const paidInvoices = invoices.filter((i) => i.status === 'paid')
+    const totalRevenue = paidInvoices.reduce((sum, i) => sum + i.total, 0)
+
+    return {
+      data: {
+        totalSubscriptions: subscriptions.length,
+        activeSubscriptions: activeSubs.length,
+        totalRevenue,
+        planDistribution: Object.entries(planDist).map(([plan, count]) => ({ plan, count })),
+        invoices: invoices.map((inv) => ({
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          status: inv.status,
+          total: inv.total,
+          currency: inv.currency,
+          createdAt: inv.createdAt,
+          paidAt: inv.paidAt,
+          organization: orgMap.get(customerOrgMap.get(inv.customerId) || '') || null,
+        })),
+        subscriptionsByStatus: Object.fromEntries(
+          Object.entries(
+            subscriptions.reduce((acc, s) => {
+              acc[s.status] = (acc[s.status] || 0) + 1
+              return acc
+            }, {} as Record<string, number>)
+          )
+        ),
+      },
+    }
+  })
+
+  // GET /api/admin/announcements — List all announcements
+  fastify.get('/admin/announcements', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+  }, async (request) => {
+    const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
+    const where: Record<string, unknown> = {}
+    if (search) where.title = { contains: search, mode: 'insensitive' }
+
+    const items = await prisma.announcement.findMany({
+      where,
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const hasNextPage = items.length > limit
+    const data = hasNextPage ? items.slice(0, limit) : items
+
+    return { data, nextCursor: hasNextPage ? data[data.length - 1].id : null }
+  })
+
+  // POST /api/admin/announcements — Create announcement
+  fastify.post('/admin/announcements', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: announcementCreateSchema })],
+  }, async (request) => {
+    const body = request.body as Record<string, unknown>
+    const announcement = await prisma.announcement.create({ data: body as any })
+    return { data: announcement }
+  })
+
+  // PATCH /api/admin/announcements/:id — Update announcement
+  fastify.patch('/admin/announcements/:id', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: announcementUpdateSchema, params: orgParamsSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const body = request.body as Record<string, unknown>
+    const announcement = await prisma.announcement.update({ where: { id }, data: body as any })
+    return { data: announcement }
+  })
+
+  // DELETE /api/admin/announcements/:id — Delete announcement
+  fastify.delete('/admin/announcements/:id', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    await prisma.announcement.delete({ where: { id } })
+    return { success: true }
   })
 
   // GET /api/admin/audit-logs — Platform audit logs with filters

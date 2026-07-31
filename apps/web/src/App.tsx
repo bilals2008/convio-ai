@@ -19,6 +19,10 @@ import AdminSystemPage from '@/admin/pages/system-page'
 import AdminAuditLogsPage from '@/admin/pages/audit-logs-page'
 import AdminAgentsPage from '@/admin/pages/agents-page'
 import AdminAnalyticsPage from '@/admin/pages/analytics-page'
+import AdminModerationPage from '@/admin/pages/moderation-page'
+import AdminBillingPage from '@/admin/pages/billing-page'
+import AdminProvidersPage from '@/admin/pages/providers-page'
+import AdminAnnouncementsPage from '@/admin/pages/announcements-page'
 
 import Landing from '@/pages/landing'
 import PricingPage from '@/pages/pricing-page'
@@ -561,11 +565,11 @@ export function App() {
                 <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
                 <Route path="/admin/agents" element={<AdminAgentsPage />} />
                 <Route path="/admin/system" element={<AdminSystemPage />} />
-                <Route path="/admin/moderation" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Moderation — Coming Soon</div>} />
+                <Route path="/admin/moderation" element={<AdminModerationPage />} />
                 <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
-                <Route path="/admin/billing" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Billing Overview — Coming Soon</div>} />
-                <Route path="/admin/providers" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Provider Management — Coming Soon</div>} />
-                <Route path="/admin/announcements" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Announcements — Coming Soon</div>} />
+                <Route path="/admin/billing" element={<AdminBillingPage />} />
+                <Route path="/admin/providers" element={<AdminProvidersPage />} />
+                <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
               </Route>
             </Route>
           </Routes>

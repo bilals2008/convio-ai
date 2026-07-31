@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics } from '@/admin/services/admin-api'
+import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminProviderKey, type Announcement, type ModerationOrgConfig, type ModerationViolation } from '@/admin/services/admin-api'
 
 export function useAdminStats() {
   return useQuery<AdminStats>({
@@ -83,6 +83,59 @@ export function useSystemHealth() {
       return res.data.data
     },
     refetchInterval: 30_000,
+  })
+}
+
+export function useAdminAnnouncements(params?: { cursor?: string; limit?: number; search?: string }) {
+  return useQuery({
+    queryKey: ['admin', 'announcements', params],
+    queryFn: async () => {
+      const res = await adminApi.announcements(params)
+      return res.data
+    },
+  })
+}
+
+export function useAdminProviderKeys(params?: { cursor?: string; limit?: number; search?: string }) {
+  return useQuery({
+    queryKey: ['admin', 'provider-keys', params],
+    queryFn: async () => {
+      const res = await adminApi.providerKeys(params)
+      return res.data
+    },
+  })
+}
+
+export function useAdminBilling() {
+  return useQuery<AdminBilling>({
+    queryKey: ['admin', 'billing'],
+    queryFn: async () => {
+      const res = await adminApi.billing()
+      return res.data.data
+    },
+    refetchInterval: 30_000,
+  })
+}
+
+export function useAdminModeration(params?: { search?: string; limit?: number; offset?: number }) {
+  return useQuery<{ data: ModerationOrgConfig[]; total: number }>({
+    queryKey: ['admin', 'moderation', params],
+    queryFn: async () => {
+      const res = await adminApi.moderationConfigs(params)
+      return res.data
+    },
+  })
+}
+
+export function useAdminModerationViolations(params?: {
+  search?: string; limit?: number; offset?: number; severity?: string; orgId?: string
+}) {
+  return useQuery<{ data: ModerationViolation[]; total: number }>({
+    queryKey: ['admin', 'moderation-violations', params],
+    queryFn: async () => {
+      const res = await adminApi.moderationViolations(params)
+      return res.data
+    },
   })
 }
 

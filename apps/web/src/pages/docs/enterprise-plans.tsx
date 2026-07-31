@@ -81,7 +81,7 @@ export default function EnterprisePlansPage() {
         Ready to discuss an enterprise plan? Our sales team will work with you to understand your requirements and build a custom proposal:
       </p>
       <ol>
-        <li>Visit <strong>convio.ai/enterprise</strong> or click <strong>Contact Sales</strong> in the dashboard.</li>
+        <li>Visit <strong>convio-blush.vercel.app/enterprise</strong> or click <strong>Contact Sales</strong> in the dashboard.</li>
         <li>Fill out the form with your organization details and requirements.</li>
         <li>A member of our enterprise team will reach out within 1 business day.</li>
       </ol>

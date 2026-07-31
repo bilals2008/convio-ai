@@ -33,7 +33,7 @@ export default function SecurityFAQsPage() {
 
       <h3 id="data-deletion">Can I delete my data?</h3>
       <p>
-        Yes. You can delete individual documents, knowledge bases, agents, or your entire account from the dashboard. When you delete an account, all associated data — conversations, documents, API keys, and configuration — is permanently removed within 30 days. You can also request immediate deletion by contacting <a href="mailto:security@convio.ai">security@convio.ai</a>.
+        Yes. You can delete individual documents, knowledge bases, agents, or your entire account from the dashboard. When you delete an account, all associated data — conversations, documents, API keys, and configuration — is permanently removed within 30 days. You can also request immediate deletion by contacting <a href="mailto:teambilaldev@gmail.com">teambilaldev@gmail.com</a>.
       </p>
 
       <h2 id="authentication">Authentication & Access</h2>
@@ -56,7 +56,7 @@ export default function SecurityFAQsPage() {
       </p>
 
       <DocCallout variant="info" icon={Shield} title="Security contact">
-        For security inquiries, vulnerability reports, or compliance questions, contact <a href="mailto:security@convio.ai">security@convio.ai</a>. We operate a responsible disclosure program and respond to reports within 48 hours.
+        For security inquiries, vulnerability reports, or compliance questions, contact <a href="mailto:teambilaldev@gmail.com">teambilaldev@gmail.com</a>. We operate a responsible disclosure program and respond to reports within 48 hours.
       </DocCallout>
 
       <h2 id="next-steps">Next Steps</h2>

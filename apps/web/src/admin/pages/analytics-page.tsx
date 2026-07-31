@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@tanstack/react-table'
 import { MessageSquare, CheckCircle, Building2, Bot, Users, BarChart3, Globe, TrendingUp, AlertCircle } from 'lucide-react'
 import { PageContainer, Section } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
@@ -8,6 +9,7 @@ import { ChannelPerformanceChart } from '@/components/analytics/channel-performa
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DataTableColumnHeader } from '@/components/admin/data-table-column-header'
 import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/chart'
 import { ChartTooltipContent } from '@/components/application/charts/charts-base'
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Tooltip } from 'recharts'
@@ -51,6 +53,43 @@ export default function AdminAnalyticsPage() {
     conversations: d.totalConversations,
     messages: d.totalMessages,
   }))
+
+  const [orgSorting, setOrgSorting] = useState<SortingState>([])
+  const orgColumns = useMemo<ColumnDef<any>[]>(() => [
+    {
+      accessorKey: 'name',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Organization" />,
+      cell: ({ row }) => (
+        <div>
+          <p className="text-sm font-medium">{row.original.name}</p>
+          <p className="text-xs text-muted-foreground">{row.original.slug}</p>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'plan',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Plan" />,
+      cell: ({ row }) => <StatusBadge status={row.original.plan || 'free'} />,
+    },
+    {
+      accessorKey: 'conversationCount',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Conversations" />,
+      cell: ({ row }) => <span className="tabular-nums">{row.original.conversationCount.toLocaleString()}</span>,
+    },
+    {
+      accessorKey: 'createdAt',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
+      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+    },
+  ], [])
+  const orgTable = useReactTable({
+    data: data?.topOrgs || [],
+    columns: orgColumns as ColumnDef<Record<string, unknown>>[],
+    state: { sorting: orgSorting },
+    onSortingChange: setOrgSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
 
   return (
     <PageContainer>
@@ -160,25 +199,22 @@ export default function AdminAnalyticsPage() {
         <Card>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Organization</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Conversations</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
+              {orgTable.getHeaderGroups().map((hg) => (
+                <TableRow key={hg.id}>
+                  {hg.headers.map((h) => (
+                    <TableHead key={h.id}>
+                      {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-              {data?.topOrgs.map((org) => (
-                <TableRow key={org.id}>
-                  <TableCell>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{org.name}</p>
-                      <p className="text-xs text-muted-foreground">{org.slug}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell><StatusBadge status={org.plan || 'free'} /></TableCell>
-                  <TableCell className="text-sm font-medium tabular-nums">{org.conversationCount.toLocaleString()}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{new Date(org.createdAt).toLocaleDateString()}</TableCell>
+              {orgTable.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                  ))}
                 </TableRow>
               ))}
             </TableBody>

@@ -134,6 +134,74 @@ export interface AdminAgent {
   conversationCount: number
 }
 
+export interface Announcement {
+  id: string
+  title: string
+  body: string
+  priority: string
+  published: boolean
+  startsAt: string | null
+  endsAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminProviderKey {
+  id: string
+  provider: string
+  keyPreview: string
+  label: string | null
+  createdAt: string
+  updatedAt: string
+  organization: { id: string; name: string; slug: string }
+}
+
+export interface AdminBilling {
+  totalSubscriptions: number
+  activeSubscriptions: number
+  totalRevenue: number
+  planDistribution: Array<{ plan: string; count: number }>
+  invoices: Array<{
+    id: string
+    invoiceNumber: string | null
+    status: string
+    total: number
+    currency: string
+    createdAt: string
+    paidAt: string | null
+    organization: { id: string; name: string; slug: string } | null
+  }>
+  subscriptionsByStatus: Record<string, number>
+}
+
+export interface ModerationOrgConfig {
+  id: string
+  name: string
+  slug: string
+  plan: string | null
+  createdAt: string
+  config: {
+    id: string
+    enabled: boolean
+    profanityEnabled: boolean
+    piiEnabled: boolean
+    injectionEnabled: boolean
+    blockOnViolation: boolean
+    customRules: unknown
+  } | null
+  violationCount: number
+}
+
+export interface ModerationViolation {
+  id: string
+  organizationId: string
+  organization: { id: string; name: string; slug: string } | null
+  entityType: string
+  entityId: string | null
+  metadata: Record<string, unknown> | null
+  createdAt: string
+}
+
 export const adminApi = {
   stats: () => api.get<{ data: AdminStats }>('/admin/stats'),
 
@@ -153,6 +221,28 @@ export const adminApi = {
     api.get<PaginatedResponse<AdminAgent>>('/admin/agents', { params }),
 
   system: () => api.get<{ data: SystemHealth }>('/admin/system'),
+
+  billing: () => api.get<{ data: AdminBilling }>('/admin/billing'),
+
+  providerKeys: (params?: { cursor?: string; limit?: number; search?: string }) =>
+    api.get<PaginatedResponse<AdminProviderKey>>('/admin/provider-keys', { params }),
+
+  announcements: (params?: { cursor?: string; limit?: number; search?: string }) =>
+    api.get<PaginatedResponse<Announcement>>('/admin/announcements', { params }),
+
+  createAnnouncement: (data: { title: string; body: string; priority?: string; published?: boolean; startsAt?: string; endsAt?: string }) =>
+    api.post<{ data: Announcement }>('/admin/announcements', data),
+
+  updateAnnouncement: (id: string, data: Partial<{ title: string; body: string; priority: string; published: boolean; startsAt: string; endsAt: string }>) =>
+    api.patch<{ data: Announcement }>(`/admin/announcements/${id}`, data),
+
+  deleteAnnouncement: (id: string) => api.delete(`/admin/announcements/${id}`),
+
+  moderationConfigs: (params?: { search?: string; limit?: number; offset?: number }) =>
+    api.get<{ data: ModerationOrgConfig[]; total: number }>('/admin/moderation', { params }),
+
+  moderationViolations: (params?: { search?: string; limit?: number; offset?: number; severity?: string; orgId?: string }) =>
+    api.get<{ data: ModerationViolation[]; total: number }>('/admin/moderation/violations', { params }),
 
   auditLogs: (params?: {
     action?: string; entityType?: string; actorId?: string

@@ -52,7 +52,7 @@ export default function BillingFAQsPage() {
 
       <h3 id="refunds">Do you offer refunds?</h3>
       <p>
-        Refunds are available within 14 days of a new subscription or upgrade if you haven't exceeded reasonable usage. Contact <a href="mailto:billing@convio.ai">billing@convio.ai</a> with your account details and reason for the refund request. Annual plan refunds are handled on a case-by-case basis.
+        Refunds are available within 14 days of a new subscription or upgrade if you haven't exceeded reasonable usage. Contact <a href="mailto:teambilaldev@gmail.com">teambilaldev@gmail.com</a> with your account details and reason for the refund request. Annual plan refunds are handled on a case-by-case basis.
       </p>
 
       <DocCallout variant="warning" icon={AlertTriangle} title="Downgrade impact">

@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { DocFeedback } from './doc-feedback'
 
 interface DocContentProps {
   children: ReactNode
@@ -33,6 +34,7 @@ export function DocContent({ children, className }: DocContentProps) {
       className
     )}>
       {children}
+      <DocFeedback />
     </div>
   )
 }

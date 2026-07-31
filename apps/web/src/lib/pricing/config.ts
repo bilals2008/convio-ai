@@ -122,7 +122,7 @@ export const pricingConfig: PricingConfig = {
         { text: 'SLA guarantee' },
       ],
       cta: 'Contact Sales',
-      href: 'mailto:sales@convio.ai',
+      href: 'mailto:teambilaldev@gmail.com',
       variant: 'outline',
       highlighted: false,
       icon: 'shield',

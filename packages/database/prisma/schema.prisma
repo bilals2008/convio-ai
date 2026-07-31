@@ -17,6 +17,8 @@ model Profile {
   createdAgents Agent[]      @relation("AgentCreator")
   memberships   Membership[]
   invitedMe     Invitation[]
+  onboarding    Onboarding?
+  docFeedback   DocFeedback[]
 
   @@index([email])
   @@map("profiles")
@@ -44,6 +46,7 @@ model Organization {
   billingCustomer  BillingCustomer?
   broadcasts       Broadcast[]
   avatarPresets    AvatarPreset[]
+  docFeedback      DocFeedback[]
 
 
   @@index([slug])
@@ -522,4 +525,50 @@ model AvatarPreset {
 
   @@index([organizationId])
   @@map("avatar_presets")
+}
+
+model Onboarding {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  status    String   @default("not_started")
+  goal      String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  profile   Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("onboarding")
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  body      String
+  priority  String   @default("normal")
+  published Boolean  @default(false)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([published, startsAt])
+  @@map("announcements")
+}
+
+model DocFeedback {
+  id             String       @id @default(uuid())
+  slug           String
+  helpful        Boolean
+  comment        String?
+  userId         String
+  organizationId String
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           Profile      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([slug, userId, organizationId])
+  @@index([organizationId, slug])
+  @@map("doc_feedback")
 }

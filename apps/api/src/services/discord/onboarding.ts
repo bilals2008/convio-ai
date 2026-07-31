@@ -34,8 +34,8 @@ export async function sendOnboarding(
     }],
     components: [
       buildActionRow([
-        buildLinkButton('Get Started', 'https://convio.ai/docs/discord'),
-        buildLinkButton('Configure', `https://convio.ai/settings?tab=deployments`),
+        buildLinkButton('Get Started', 'https://convio-blush.vercel.app/docs/discord'),
+        buildLinkButton('Configure', `https://convio-blush.vercel.app/settings?tab=deployments`),
       ]),
     ],
   })
