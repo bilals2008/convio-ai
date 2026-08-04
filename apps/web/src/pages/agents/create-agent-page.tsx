@@ -129,6 +129,20 @@ export default function CreateAgentPage() {
         prev.map((t) => (draft.suggestedTools!.includes(t.id) ? { ...t, enabled: true } : t))
       )
     }
+    if (draft.suggestedCapabilities?.length) {
+      setCapabilities((prev) =>
+        prev.map((c) =>
+          draft.suggestedCapabilities!.includes(c.id) ? { ...c, enabled: true } : c
+        )
+      )
+    }
+    if (draft.suggestedDeployments?.length) {
+      setDeploymentOptions((prev) =>
+        prev.map((o) =>
+          draft.suggestedDeployments!.includes(o.id) ? { ...o, enabled: true } : o
+        )
+      )
+    }
     toast.success('AI draft applied — review and create')
   }
 
@@ -227,7 +241,7 @@ export default function CreateAgentPage() {
           {/* Main form — 3/5 */}
           <div className="space-y-6 lg:col-span-3">
             {/* Create with AI */}
-            <div className="flex items-center justify-between rounded-xl border border-border/60 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 px-4 py-3 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 px-4 py-3 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500">
                   <Wand2 className="size-4.5" />

@@ -35,6 +35,20 @@ describe('parseAgentDraft', () => {
     expect(draft.suggestedTools).toBeUndefined()
   })
 
+  it('parses tools, capabilities, and deployments', () => {
+    const draft = parseAgentDraft(JSON.stringify({
+      name: 'SalesBot',
+      description: 'd',
+      systemPrompt: 'p',
+      suggestedTools: ['web-search'],
+      suggestedCapabilities: ['answer-questions', 'generate-leads'],
+      suggestedDeployments: ['web-chat-widget', 'whatsapp'],
+    }))
+    expect(draft.suggestedTools).toEqual(['web-search'])
+    expect(draft.suggestedCapabilities).toEqual(['answer-questions', 'generate-leads'])
+    expect(draft.suggestedDeployments).toEqual(['web-chat-widget', 'whatsapp'])
+  })
+
   it('rejects content with no JSON object', () => {
     expect(() => parseAgentDraft('sorry, I cannot help')).toThrowError(/unusable draft/)
   })

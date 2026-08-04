@@ -28,6 +28,8 @@ export const agentDraftSchema = z.object({
   toneOfVoice: z.string().max(50).optional(),
   language: z.string().max(50).optional(),
   suggestedTools: z.array(z.string()).max(10).optional(),
+  suggestedCapabilities: z.array(z.string()).max(10).optional(),
+  suggestedDeployments: z.array(z.string()).max(10).optional(),
 })
 
 export type AgentDraft = z.infer<typeof agentDraftSchema>
@@ -43,11 +45,14 @@ export const AGENT_GENERATION_PROMPT = `You design AI chat agents for a platform
   "toneOfVoice": string,     // one of: friendly, professional, casual, witty, empathetic
   "language": string,        // language the agent should respond in, e.g. english
   "suggestedTools": string[] // subset of: ["web-search", "calculator", "url-fetcher", "current-time"]. Only include tools that genuinely help this agent.
+  "suggestedCapabilities": string[] // subset of: ["answer-questions", "knowledge-search", "generate-leads", "book-appointments", "execute-actions"]. Capabilities the agent needs.
+  "suggestedDeployments": string[]  // subset of: ["web-chat-widget", "shareable-link", "whatsapp"]. Channels the agent should be available on.
 }
 
 Rules:
 - Make the systemPrompt specific and useful, not generic.
-- Never invent tools outside the allowed list.
+- Never invent tool, capability, or deployment ids outside the allowed lists.
+- Only include an id if it genuinely helps the agent (e.g. "generate-leads" only for lead capture, "web-search" only when it needs current info).
 - The suggestedModel MUST be one of the free opencode zen model ids:
   opencode/deepseek-v4-flash, opencode/mimo-v2.5, opencode/nemotron-3-ultra, opencode/north-mini-code, opencode/laguna-s-2.1
 - Never suggest gpt-*, claude-*, or gemini-* models.

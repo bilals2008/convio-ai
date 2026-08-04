@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { agents as agentsApi } from '@/lib/api'
-import { cn } from '@/lib/utils'
 
 export interface AgentDraft {
   name: string
@@ -15,6 +14,8 @@ export interface AgentDraft {
   toneOfVoice?: string
   language?: string
   suggestedTools?: string[]
+  suggestedCapabilities?: string[]
+  suggestedDeployments?: string[]
 }
 
 interface AgentAiModalProps {
@@ -30,6 +31,20 @@ const toolLabels: Record<string, string> = {
   calculator: 'Calculator',
   'url-fetcher': 'URL Fetcher',
   'current-time': 'Date & Time',
+}
+
+const capabilityLabels: Record<string, string> = {
+  'answer-questions': 'Answer Questions',
+  'knowledge-search': 'Knowledge Search',
+  'generate-leads': 'Generate Leads',
+  'book-appointments': 'Book Appointments',
+  'execute-actions': 'Execute Actions',
+}
+
+const deploymentLabels: Record<string, string> = {
+  'web-chat-widget': 'Web chat widget',
+  'shareable-link': 'Shareable link',
+  whatsapp: 'WhatsApp',
 }
 
 export function AgentAiModal({ open, onOpenChange, onApply, defaultModel, disabled }: AgentAiModalProps) {
@@ -77,7 +92,7 @@ export function AgentAiModal({ open, onOpenChange, onApply, defaultModel, disabl
         }
       }}
     >
-      <DialogContent style={{ width: '60vw', maxWidth: '60vw' }} className="h-[60vh] flex flex-col">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-[calc(100%-2rem)] sm:w-[60vw] sm:max-w-[60vw] h-[60vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Create with AI</DialogTitle>
           <DialogDescription>
@@ -137,13 +152,43 @@ export function AgentAiModal({ open, onOpenChange, onApply, defaultModel, disabl
                   <span>Temperature: {draft.suggestedTemperature}</span>
                 )}
                 {draft.toneOfVoice && <span>Tone: {draft.toneOfVoice}</span>}
-                {draft.suggestedTools && draft.suggestedTools.length > 0 && (
-                  <span className={cn('flex items-center gap-1')}>
-                    <Wrench className="size-3" />
-                    {draft.suggestedTools.map((t) => toolLabels[t] || t).join(', ')}
-                  </span>
-                )}
               </div>
+
+              {draft.suggestedTools && draft.suggestedTools.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                    <Wrench className="size-3" />
+                    Tools:
+                  </span>
+                  {draft.suggestedTools.map((t) => (
+                    <span key={t} className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-600 dark:text-amber-400">
+                      {toolLabels[t] || t}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {draft.suggestedCapabilities && draft.suggestedCapabilities.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-muted-foreground">Capabilities:</span>
+                  {draft.suggestedCapabilities.map((c) => (
+                    <span key={c} className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] text-indigo-600 dark:text-indigo-400">
+                      {capabilityLabels[c] || c}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {draft.suggestedDeployments && draft.suggestedDeployments.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-muted-foreground">Deploy to:</span>
+                  {draft.suggestedDeployments.map((d) => (
+                    <span key={d} className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-600 dark:text-cyan-400">
+                      {deploymentLabels[d] || d}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <Button type="button" variant="outline" className="w-full" onClick={handleApply}>
                 Use this draft
