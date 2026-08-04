@@ -278,7 +278,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         where: { createdAt: { gte: startDate } },
         select: { createdAt: true, plan: true },
       }),
-      prisma.profile.count(),
+      prisma.profile.findMany({ select: { createdAt: true } }),
       prisma.agent.count(),
       prisma.deployment.findMany({
         where: { createdAt: { gte: startDate } },
@@ -288,10 +288,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
     const dayMap = new Map<string, { conversations: number; messages: number }>()
     const orgDayMap = new Map<string, number>()
+    const userDayMap = new Map<string, number>()
     for (let i = 0; i < days; i++) {
       const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
       dayMap.set(d, { conversations: 0, messages: 0 })
       orgDayMap.set(d, 0)
+      userDayMap.set(d, 0)
     }
 
     for (const m of messages) {
@@ -307,6 +309,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     for (const o of orgs) {
       const key = o.createdAt.toISOString().slice(0, 10)
       if (orgDayMap.has(key)) orgDayMap.set(key, orgDayMap.get(key)! + 1)
+    }
+    for (const p of profiles) {
+      const key = p.createdAt.toISOString().slice(0, 10)
+      if (userDayMap.has(key)) userDayMap.set(key, userDayMap.get(key)! + 1)
     }
 
     const chBreakdown: Record<string, number> = {}
@@ -343,11 +349,23 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => a.date.localeCompare(b.date))
 
+    const userSignups = Array.from(userDayMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+
     const half = Math.floor(dailyBreakdown.length / 2)
     const firstHalf = dailyBreakdown.slice(0, half)
     const secondHalf = dailyBreakdown.slice(half)
     const convsChange = firstHalf.length > 0 && secondHalf.length > 0
       ? Math.round(((secondHalf.reduce((s, d) => s + d.totalConversations, 0) - firstHalf.reduce((s, d) => s + d.totalConversations, 0)) / firstHalf.reduce((s, d) => s + d.totalConversations, 0)) * 100)
+      : 0
+
+    const userCounts = userSignups.map((u) => u.count)
+    const firstUserHalf = userCounts.slice(0, half)
+    const secondUserHalf = userCounts.slice(half)
+    const firstUserTotal = firstUserHalf.reduce((s, c) => s + c, 0)
+    const usersChange = firstUserTotal > 0
+      ? Math.round(((secondUserHalf.reduce((s, c) => s + c, 0) - firstUserTotal) / firstUserTotal) * 100)
       : 0
 
     const topOrgs = await prisma.organization.findMany({
@@ -372,18 +390,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       data: {
         totalConversations,
         totalMessages,
-        uniqueUsers: profiles,
+        uniqueUsers: profiles.length,
         successRate,
         conversationsChange: convsChange,
         messagesChange: 0,
-        usersChange: 0,
+        usersChange,
         dailyBreakdown,
         channelBreakdown: Object.entries(chBreakdown).map(([channel, count]) => ({ channel, count })),
         planDistribution: Object.entries(planDist).map(([plan, count]) => ({ plan, count })),
         orgSignups,
+        userSignups,
         totalOrgs: allOrgs.length,
         totalAgents: agents,
-        totalUsers: profiles,
+        totalUsers: profiles.length,
         topOrgs: topOrgs.map((o) => ({
           id: o.id,
           name: o.name,

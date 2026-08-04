@@ -108,6 +108,7 @@ export interface AdminAnalytics {
   channelBreakdown: Array<{ channel: string; count: number }>
   planDistribution: Array<{ plan: string; count: number }>
   orgSignups: Array<{ date: string; count: number }>
+  userSignups: Array<{ date: string; count: number }>
   totalOrgs: number
   totalAgents: number
   totalUsers: number
