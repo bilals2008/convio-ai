@@ -1,10 +1,14 @@
 import type { FastifyInstance } from 'fastify'
 import { UAParser } from 'ua-parser-js'
 import { prisma } from '@convio/database'
+import { isPlatformAdminEmail } from '../../plugins/admin.js'
 
 export default async function authRoutes(fastify: FastifyInstance) {
   fastify.get('/auth/me', { preHandler: [fastify.authenticate] }, async (request, reply) => {
-    return reply.send({ user: request.user })
+    return reply.send({
+      user: request.user,
+      isPlatformAdmin: isPlatformAdminEmail(request.user!.email),
+    })
   })
 
   fastify.post('/auth/login-activity', { preHandler: [fastify.authenticate] }, async (request, reply) => {

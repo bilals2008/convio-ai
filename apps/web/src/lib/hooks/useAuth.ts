@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import api, { apiRaw } from '@/lib/api'
 import { toast } from '@/lib/toast'
+import { isStrongPassword } from '@/lib/password-strength'
 
 export interface User {
   id: string
@@ -13,6 +14,7 @@ export interface User {
 
 export interface Session {
   user: User
+  isPlatformAdmin: boolean
 }
 
 function getErrorMessage(error: unknown): string {
@@ -29,7 +31,10 @@ export function useSession() {
 
       try {
         const res = await apiRaw.get('/auth/me')
-        return { user: res.data.user }
+        return {
+          user: res.data.user,
+          isPlatformAdmin: !!res.data.isPlatformAdmin,
+        }
       } catch {
         await supabase.auth.signOut()
         toast.error('No account found. Please create a new account.')
@@ -51,6 +56,10 @@ export function useLogin() {
       const { email, password } = input
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
+      if (!isStrongPassword(password)) {
+        await supabase.auth.signOut()
+        throw new Error('Your password is too weak for our security policy — click "Forgot password?" to reset it with a stronger one.')
+      }
       return data
     },
     onSuccess: async (_data, variables) => {

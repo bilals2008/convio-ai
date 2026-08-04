@@ -6,6 +6,7 @@ interface AuthContextValue {
   session: Session | null | undefined
   user: Session['user'] | null | undefined
   isAuthenticated: boolean
+  isAdmin: boolean
   isLoading: boolean
   login: UseMutationResult<unknown, Error, { email: string; password: string }>
   signup: UseMutationResult<unknown, Error, { email: string; password: string; name: string }>
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         user: session?.user ?? null,
         isAuthenticated: !!session,
+        isAdmin: !!session?.isPlatformAdmin,
         isLoading,
         login,
         signup,
@@ -41,6 +43,7 @@ const DEFAULT_AUTH: AuthContextValue = {
   session: undefined,
   user: undefined,
   isAuthenticated: false,
+  isAdmin: false,
   isLoading: true,
   login: {} as AuthContextValue['login'],
   signup: {} as AuthContextValue['signup'],

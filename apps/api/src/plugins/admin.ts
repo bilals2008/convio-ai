@@ -13,19 +13,18 @@ function getAdminEmails(): Set<string> {
   return new Set(raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean))
 }
 
+export function isPlatformAdminEmail(email: string): boolean {
+  const adminEmails = getAdminEmails()
+  return adminEmails.size > 0 && adminEmails.has(email.toLowerCase())
+}
+
 export default fp(async function adminPlugin(fastify: FastifyInstance) {
   fastify.decorate('ensurePlatformAdmin', async (request: FastifyRequest, _reply: FastifyReply) => {
     if (!request.user) {
       throw new AppError(401, 'Authentication required', 'UNAUTHORIZED')
     }
 
-    const adminEmails = getAdminEmails()
-    if (adminEmails.size === 0) {
-      fastify.log.warn('PLATFORM_ADMIN_EMAILS not configured — admin routes disabled')
-      throw new AppError(403, 'Admin access not configured', 'FORBIDDEN')
-    }
-
-    if (!adminEmails.has(request.user.email.toLowerCase())) {
+    if (!isPlatformAdminEmail(request.user.email)) {
       throw new AppError(403, 'Platform admin access required', 'FORBIDDEN')
     }
   })
