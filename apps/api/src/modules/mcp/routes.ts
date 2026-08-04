@@ -12,10 +12,9 @@ const mcpParamsSchema = z.object({ id: z.string().uuid() })
 export default async function mcpRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/mcp-servers — Create MCP server
   fastify.post('/organizations/:orgId/mcp-servers', {
-    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema, body: createMcpServerSchema })],
+    preHandler: [fastify.authenticate, fastify.requireAdmin, validate({ params: orgParamsSchema, body: createMcpServerSchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    await fastify.ensureAdmin(request.userId!, orgId)
     const body = request.body as z.infer<typeof createMcpServerSchema>
     const server = await prisma.mcpServer.create({
       data: {
@@ -29,10 +28,9 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
 
   // GET /api/organizations/:orgId/mcp-servers — List MCP servers
   fastify.get('/organizations/:orgId/mcp-servers', {
-    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    await fastify.getMembership(request.userId!, orgId)
     const servers = await prisma.mcpServer.findMany({
       where: { organizationId: orgId },
       orderBy: { createdAt: 'desc' },

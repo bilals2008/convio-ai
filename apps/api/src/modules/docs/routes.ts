@@ -17,11 +17,10 @@ const summaryQuerySchema = z.object({
 
 export default async function docsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/docs/feedback', {
-    preHandler: [fastify.authenticate, validate({ params: paramsSchema, query: summaryQuerySchema })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: paramsSchema, query: summaryQuerySchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { slug } = request.query as { slug: string }
-    await fastify.getMembership(request.userId!, orgId)
 
     const [myVote, helpful, notHelpful] = await Promise.all([
       prisma.docFeedback.findUnique({
@@ -36,11 +35,10 @@ export default async function docsRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/organizations/:orgId/docs/feedback', {
-    preHandler: [fastify.authenticate, validate({ params: paramsSchema, body: feedbackBodySchema })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: paramsSchema, body: feedbackBodySchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { slug, helpful, comment } = request.body as { slug: string; helpful: boolean; comment?: string }
-    await fastify.getMembership(request.userId!, orgId)
 
     const vote = await prisma.docFeedback.upsert({
       where: { slug_userId_organizationId: { slug, userId: request.userId!, organizationId: orgId } },

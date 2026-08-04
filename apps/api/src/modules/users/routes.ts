@@ -30,13 +30,17 @@ export default async function usersRoutes(fastify: FastifyInstance) {
     return { data: user }
   })
 
-  // PATCH /api/users/me — Update current user profile
+  // PATCH /api/users/me — Update current user profile (email is auth-owned, never client-set)
   fastify.patch('/users/me', {
     preHandler: [fastify.authenticate, validate({ body: updateUserSchema })],
   }, async (request) => {
+    const body = request.body as Record<string, unknown>
+    const data: Record<string, unknown> = {}
+    if (body.name !== undefined) data.name = body.name
+    if (body.avatar !== undefined) data.avatar = body.avatar
     const user = await prisma.profile.update({
       where: { id: request.userId },
-      data: request.body as any,
+      data,
     })
     return { data: user }
   })
@@ -168,6 +172,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
   fastify.get('/users', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ query: paginationQuerySchema }),
     ],
   }, async (request) => {
@@ -176,8 +181,6 @@ export default async function usersRoutes(fastify: FastifyInstance) {
       cursor?: string
       limit: number
     }
-
-    await fastify.ensureAdmin(request.userId!, orgId)
 
     const memberships = await prisma.membership.findMany({
       where: { organizationId: orgId },
@@ -204,13 +207,12 @@ export default async function usersRoutes(fastify: FastifyInstance) {
   fastify.get('/users/:id', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: userByIdParamsSchema, query: userByIdQuerySchema }),
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const { orgId } = request.query as { orgId: string }
-
-    await fastify.ensureAdmin(request.userId!, orgId)
 
     const membership = await prisma.membership.findUnique({
       where: { userId_organizationId: { userId: id, organizationId: orgId } },

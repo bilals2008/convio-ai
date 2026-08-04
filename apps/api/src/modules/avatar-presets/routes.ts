@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
-import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
+import { AppError } from '../../plugins/error.js'
 
 const MAX_ORG_PRESETS = 5
 
@@ -13,10 +13,9 @@ const createSchema = z.object({
 
 export default async function avatarPresetsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/avatar-presets', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, fastify.requireMembership],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    await fastify.getMembership(request.userId!, orgId)
 
     const presets = await prisma.avatarPreset.findMany({
       where: { organizationId: orgId },
@@ -28,10 +27,9 @@ export default async function avatarPresetsRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/organizations/:orgId/avatar-presets', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, fastify.requireMembership],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    await fastify.getMembership(request.userId!, orgId)
 
     const count = await prisma.avatarPreset.count({ where: { organizationId: orgId } })
     if (count >= MAX_ORG_PRESETS) {
@@ -48,13 +46,9 @@ export default async function avatarPresetsRoutes(fastify: FastifyInstance) {
   })
 
   fastify.delete('/organizations/:orgId/avatar-presets/:id', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, fastify.requireOwner],
   }, async (request, reply) => {
     const { orgId, id } = request.params as { orgId: string; id: string }
-    const membership = await fastify.getMembership(request.userId!, orgId)
-    if (membership.role !== 'owner') {
-      throw new AppError(403, 'Only owners can delete avatar presets')
-    }
 
     await prisma.avatarPreset.delete({ where: { id, organizationId: orgId } })
     reply.code(204).send()

@@ -82,13 +82,12 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/agents', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       fastify.checkAgentLimit,
       validate({ params: orgParamsSchema, body: createAgentBodySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const body = request.body as Record<string, unknown>
     const { knowledgeBaseId, reasoningEffort, tools, ...rest } = body
@@ -114,12 +113,11 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/agent-templates', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     return { data: listTemplates() }
   })
@@ -171,13 +169,12 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/agents', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, query: agentsQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { cursor, limit } = request.query as { cursor?: string; limit: number }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const agents = await prisma.agent.findMany({
       where: { organizationId: orgId },
@@ -500,9 +497,11 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         parameters: h.schema.parameters,
       }))
 
-    // Load DB tools by ID and add to toolDefs
+    // DB tools by ID must belong to one of the caller's organizations
     const dbToolHandlers = toolIds.length > 0
-      ? await loadDbToolHandlers(prisma, toolIds)
+      ? await loadDbToolHandlers(prisma, toolIds, {
+          organization: { memberships: { some: { userId: request.userId! } } },
+        })
       : {}
     for (const handler of Object.values(dbToolHandlers)) {
       toolDefs.push({
@@ -516,7 +515,13 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const mcpToolHandlers: Record<string, { schema: { name: string; description: string; parameters: Record<string, unknown> }; execute: (args: Record<string, unknown>) => Promise<unknown> }> = {}
     if (mcpServerIds.length > 0) {
       const { McpClient } = await import('../../services/mcp/index.js')
-      const servers = await prisma.mcpServer.findMany({ where: { id: { in: mcpServerIds }, enabled: true } })
+      const servers = await prisma.mcpServer.findMany({
+        where: {
+          id: { in: mcpServerIds },
+          enabled: true,
+          organization: { memberships: { some: { userId: request.userId! } } },
+        },
+      })
       for (const server of servers) {
         try {
           const client = new McpClient({
@@ -562,6 +567,11 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     }
 
     if (knowledgeBaseId) {
+      const kb = await prisma.knowledgeBase.findFirst({
+        where: { id: knowledgeBaseId, organization: { memberships: { some: { userId: request.userId! } } } },
+        select: { id: true },
+      })
+      if (!kb) throw new AppError(403, 'Knowledge base not found in your organizations', 'FORBIDDEN')
       const context = await retrieveContext(message, knowledgeBaseId).catch(() => null)
       if (context) {
         systemContext +=

@@ -39,13 +39,12 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/billing/usage', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, query: billingUsageQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { month, year } = request.query as { month?: number; year?: number }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const usage = await getOrgUsage(orgId, month, year)
 
@@ -65,12 +64,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/billing/plan', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const plan = await getOrgPlan(orgId)
 
@@ -81,12 +79,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/billing/subscription', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const subscription = await getActiveSubscription(orgId)
 
@@ -97,12 +94,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/billing/invoices', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const invoices = await getBillingInvoices(orgId)
 
@@ -113,12 +109,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/billing/start-trial', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.ensureAdmin(request.userId!, orgId)
 
     const org = await prisma.organization.findUnique({ where: { id: orgId } })
     if (!org) throw new AppError(404, 'Organization not found', 'NOT_FOUND')
@@ -179,13 +174,12 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/billing/checkout', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: checkoutBodySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { plan: planKey, billingPeriod } = request.body as { plan: string; billingPeriod?: string }
-
-    await fastify.ensureAdmin(request.userId!, orgId)
 
     const paidPlans = ['pro', 'business', 'enterprise']
     if (paidPlans.includes(planKey)) {
@@ -239,12 +233,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/billing/portal', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.ensureAdmin(request.userId!, orgId)
 
     const customer = await prisma.billingCustomer.findUnique({
       where: { organizationId: orgId },

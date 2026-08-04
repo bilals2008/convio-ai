@@ -83,12 +83,10 @@ function assertPublicAccess(request: FastifyRequest, allowedDomains: string[]) {
 
 export default async function widgetsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/widgets', {
-    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema, query: widgetQuerySchema })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema, query: widgetQuerySchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { cursor, limit } = request.query as z.infer<typeof widgetQuerySchema>
-    await fastify.getMembership(request.userId!, orgId)
-
     const widgets = await prisma.widget.findMany({
       where: { organizationId: orgId, status: { not: 'archived' } },
       select: {
@@ -105,11 +103,10 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/organizations/:orgId/widgets', {
-    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema, body: createWidgetBodySchema })],
+    preHandler: [fastify.authenticate, fastify.requireAdmin, validate({ params: orgParamsSchema, body: createWidgetBodySchema })],
   }, async (request, reply) => {
     const { orgId } = request.params as { orgId: string }
     const { name, agentId, config } = request.body as z.infer<typeof createWidgetBodySchema>
-    await fastify.ensureAdmin(request.userId!, orgId)
     const agent = await prisma.agent.findFirst({ where: { id: agentId, organizationId: orgId }, select: { id: true, name: true, avatar: true } })
     if (!agent) throw new AppError(404, 'Agent not found in this organization')
 

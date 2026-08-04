@@ -28,12 +28,11 @@ export default async function toolsRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/tools', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: createToolBodySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.ensureAdmin(request.userId!, orgId)
 
     const body = request.body as z.infer<typeof createToolBodySchema>
 
@@ -52,12 +51,11 @@ export default async function toolsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/tools', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const tools = await prisma.tool.findMany({
       where: { organizationId: orgId },

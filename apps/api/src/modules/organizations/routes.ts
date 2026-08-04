@@ -46,15 +46,14 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations', {
     preHandler: [fastify.authenticate, fastify.checkOrgLimit, validate({ body: createOrganizationSchema })],
   }, async (request) => {
-    const { name, slug, logo, plan } = request.body as {
+    const { name, slug, logo } = request.body as {
       name: string
       slug: string
       logo?: string
-      plan?: string
     }
 
     const org = await prisma.organization.create({
-      data: { name, slug, logo, plan: plan || 'free' },
+      data: { name, slug, logo, plan: 'free' },
     })
 
     await prisma.membership.create({
@@ -100,12 +99,11 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:id', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
-
-    await fastify.getMembership(request.userId!, id)
 
     const org = await prisma.organization.findUnique({ where: { id } })
     if (!org) throw new AppError(404, 'Organization not found')
@@ -117,16 +115,22 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.patch('/organizations/:id', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: updateOrganizationSchema }),
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
 
-    await fastify.ensureAdmin(request.userId!, id)
+    const body = request.body as Record<string, unknown>
+    const data: Record<string, unknown> = {}
+    if (body.name !== undefined) data.name = body.name
+    if (body.slug !== undefined) data.slug = body.slug
+    if (body.logo !== undefined) data.logo = body.logo
+    // ponytail: plan is billing-owned — changes go through the billing module only
 
     const org = await prisma.organization.update({
       where: { id },
-      data: request.body as any,
+      data,
     })
 
     await fastify.auditLog({
@@ -145,12 +149,11 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.delete('/organizations/:id', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireOwner,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request, reply) => {
     const { id } = request.params as { id: string }
-
-    await fastify.ensureOwner(request.userId!, id)
 
     const orgToDelete = await prisma.organization.findUnique({ where: { id } })
     if (!orgToDelete) throw new AppError(404, 'Organization not found')
@@ -222,13 +225,12 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:id/members', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, query: membersQuerySchema }),
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const { cursor, limit } = request.query as { cursor?: string; limit: number }
-
-    await fastify.getMembership(request.userId!, id)
 
     const memberships = await prisma.membership.findMany({
       where: { organizationId: id },
@@ -261,13 +263,12 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:id/members', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: addMemberSchema }),
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const { userId: bodyUserId, email, role } = request.body as { userId?: string; email?: string; role: 'admin' | 'member' | 'viewer' }
-
-    await fastify.ensureAdmin(request.userId!, id)
 
     let userId = bodyUserId
 
@@ -341,13 +342,12 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:id/members/bulk', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: bulkInviteBodySchema }),
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const { members } = request.body as { members: Array<{ email: string; role: string }> }
-
-    await fastify.ensureAdmin(request.userId!, id)
 
     const inviter = await prisma.profile.findUnique({ where: { id: request.userId } })
     const org = await prisma.organization.findUnique({ where: { id } })
@@ -460,13 +460,12 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:id/invitations', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: bulkInviteBodySchema }),
     ],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const { members } = request.body as { members: Array<{ email: string; role: string }> }
-
-    await fastify.ensureAdmin(request.userId!, id)
 
     const inviter = await prisma.profile.findUnique({ where: { id: request.userId } })
     const org = await prisma.organization.findUnique({ where: { id } })
@@ -609,13 +608,12 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   fastify.patch('/organizations/:id/members/:userId/role', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireOwner,
       validate({ params: memberParamsSchema, body: updateRoleSchema }),
     ],
   }, async (request) => {
     const { id, userId } = request.params as { id: string; userId: string }
     const { role } = request.body as { role: string }
-
-    await fastify.ensureOwner(request.userId!, id)
 
     const targetMembership = await prisma.membership.findUnique({
       where: { userId_organizationId: { userId, organizationId: id } },

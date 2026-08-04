@@ -102,13 +102,12 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/knowledge-bases', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, body: createKbBodySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { name, description, templateId } = request.body as { name: string; description?: string; templateId?: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const kb = await prisma.knowledgeBase.create({
       data: { organizationId: orgId, name, description },
@@ -149,13 +148,12 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/knowledge-bases', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, query: kbListQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { cursor, limit } = request.query as { cursor?: string; limit: number }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const kbs = await prisma.knowledgeBase.findMany({
       where: { organizationId: orgId },
@@ -202,11 +200,11 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/knowledge-templates', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    await fastify.getMembership(request.userId!, orgId)
     return { data: listKnowledgeTemplates() }
   })
 
