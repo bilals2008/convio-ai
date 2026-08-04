@@ -104,6 +104,8 @@ export const agents = {
   templates: (orgId: string) => api.get(`/organizations/${orgId}/agent-templates`),
   createFromTemplate: (orgId: string, template: string, overrides?: Record<string, unknown>) =>
     api.post(`/agents/from-template`, { organizationId: orgId, template, ...(overrides || {}) }),
+  generateDraft: (description: string, model?: string) =>
+    api.post(`/agents/generate`, { description, model }),
 }
 
 export const moderation = {

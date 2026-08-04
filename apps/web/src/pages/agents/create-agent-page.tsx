@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Loader2, Plus, Globe, Link, Plug, User, BrainCircuit, BookOpen, Wrench, Zap, LayoutTemplate } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Globe, Link, Plug, User, BrainCircuit, BookOpen, Wrench, Zap, LayoutTemplate, Wand2 } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
@@ -21,6 +21,7 @@ import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/ag
 import { AgentKnowledgeSources } from '@/components/agents/agent-knowledge-sources'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
 import { AgentTemplateModal, type AgentTemplate } from '@/components/agents/agent-template-modal'
+import { AgentAiModal, type AgentDraft } from '@/components/agents/agent-ai-modal'
 import { agents as agentsApi, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
@@ -70,6 +71,7 @@ export default function CreateAgentPage() {
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] = useState<string>('')
   const [mcpModalOpen, setMcpModalOpen] = useState(false)
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
+  const [aiModalOpen, setAiModalOpen] = useState(false)
 
   const { data: mcpServers } = useQuery({
     queryKey: ['mcp-servers', orgId],
@@ -104,6 +106,30 @@ export default function CreateAgentPage() {
     if (template.suggestedModel && models.some((m) => m.id === template.suggestedModel)) {
       form.setValue('model', template.suggestedModel, { shouldValidate: true })
     }
+  }
+
+  const applyAiDraft = (draft: AgentDraft) => {
+    form.setValue('name', draft.name, { shouldValidate: true })
+    form.setValue('description', draft.description || '')
+    form.setValue('systemPrompt', draft.systemPrompt || '')
+    if (typeof draft.suggestedTemperature === 'number') {
+      form.setValue('temperature', draft.suggestedTemperature)
+    }
+    if (
+      draft.suggestedModel &&
+      draft.suggestedModel.startsWith('opencode/') &&
+      models.some((m) => m.id === draft.suggestedModel)
+    ) {
+      form.setValue('model', draft.suggestedModel, { shouldValidate: true })
+    }
+    if (draft.toneOfVoice) form.setValue('toneOfVoice', draft.toneOfVoice)
+    if (draft.language) form.setValue('language', draft.language)
+    if (draft.suggestedTools?.length) {
+      setTools((prev) =>
+        prev.map((t) => (draft.suggestedTools!.includes(t.id) ? { ...t, enabled: true } : t))
+      )
+    }
+    toast.success('AI draft applied — review and create')
   }
 
   const createMutation = useMutation({
@@ -200,6 +226,23 @@ export default function CreateAgentPage() {
         <div className="grid gap-6 lg:grid-cols-5">
           {/* Main form — 3/5 */}
           <div className="space-y-6 lg:col-span-3">
+            {/* Create with AI */}
+            <div className="flex items-center justify-between rounded-xl border border-border/60 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 px-4 py-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500">
+                  <Wand2 className="size-4.5" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Create with AI</p>
+                  <p className="text-xs text-muted-foreground">Describe your agent in plain language and let AI draft it.</p>
+                </div>
+              </div>
+              <Button type="button" size="sm" onClick={() => setAiModalOpen(true)} disabled={saving || modelsLoading}>
+                <Wand2 className="size-3.5" />
+                Try it
+              </Button>
+            </div>
+
             {/* Template picker */}
             <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 shadow-sm">
               <div className="flex items-center gap-3">
@@ -504,6 +547,18 @@ export default function CreateAgentPage() {
         onOpenChange={setTemplateModalOpen}
         activeTemplateId={activeTemplate}
         onSelect={applyTemplate}
+        disabled={saving}
+      />
+
+      <AgentAiModal
+        open={aiModalOpen}
+        onOpenChange={setAiModalOpen}
+        onApply={applyAiDraft}
+        defaultModel={
+          form.getValues('model') ||
+          models.find((m) => m.id.startsWith('opencode/'))?.id ||
+          models[0]?.id
+        }
         disabled={saving}
       />
     </PageContainer>

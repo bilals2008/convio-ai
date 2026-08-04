@@ -7,6 +7,7 @@ import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { getTemplate, listTemplates } from './templates.js'
+import { AGENT_GENERATION_PROMPT, PROVIDER_ENV_KEYS, parseAgentDraft } from './agent-generator.js'
 import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
 import { getOrgPlan } from '../../services/billing.js'
 import { z } from 'zod'
@@ -75,6 +76,11 @@ const fromTemplateBodySchema = z.object({
 const updateAgentBodySchema = updateAgentSchema.extend({
   knowledgeBaseId: z.string().uuid().optional().nullable(),
   tools: z.array(z.string()).optional(),
+})
+
+const generateAgentBodySchema = z.object({
+  description: z.string().trim().min(3).max(2000),
+  model: z.string().min(1).optional(),
 })
 
 export default async function agentsRoutes(fastify: FastifyInstance) {
@@ -163,6 +169,60 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     })
 
     return { data: agent }
+  })
+
+  // POST /api/agents/generate — Generate an agent draft from a description (member only)
+  fastify.post('/agents/generate', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ body: generateAgentBodySchema }),
+    ],
+  }, async (request) => {
+    const { description, model } = request.body as z.infer<typeof generateAgentBodySchema>
+
+    // Resolve the caller's org so we can use their BYOK provider keys.
+    const membership = await prisma.membership.findFirst({
+      where: { userId: request.userId },
+      include: { organization: { include: { providerKeys: true } } },
+    })
+    const userKeyMap = new Map(
+      (membership?.organization?.providerKeys || []).map((k) => [k.provider, k.apiKey])
+    )
+
+    const genModel = model || 'opencode/deepseek-v4-flash-free'
+    let provider
+    try {
+      provider = getProviderForModel(genModel)
+    } catch {
+      throw new AppError(400, `No provider configured for model: ${genModel}`)
+    }
+
+    const apiKey = userKeyMap.get(provider.id) || process.env[PROVIDER_ENV_KEYS[provider.id]]
+    if (!apiKey && provider.id !== 'opencode') {
+      throw new AppError(
+        400,
+        'No API key configured for the selected model provider. Add one in Settings → Provider Keys.'
+      )
+    }
+
+    let result
+    try {
+      result = await provider.generate({
+        model: genModel,
+        messages: [
+          { role: 'system', content: AGENT_GENERATION_PROMPT },
+          { role: 'user', content: description },
+        ],
+        temperature: 0.7,
+        maxTokens: 2048,
+        apiKey,
+      })
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Generation failed'
+      throw new AppError(502, `AI generation failed: ${msg}`)
+    }
+
+    return { data: parseAgentDraft(result.content) }
   })
 
   // GET /api/organizations/:orgId/agents — List agents (member only, cursor pagination)
