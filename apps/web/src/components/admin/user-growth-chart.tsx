@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Users } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -74,6 +74,7 @@ export function UserGrowthChart() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} />
+                <YAxis tickLine={false} axisLine={false} width={36} allowDecimals={false} />
                 <XAxis
                   dataKey="date"
                   tickLine={false}
