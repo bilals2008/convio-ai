@@ -11,6 +11,8 @@ import {
   announcementCreateSchema,
   announcementUpdateSchema,
   auditLogQuerySchema,
+  planCreateSchema,
+  planUpdateSchema,
 } from './admin-schema.js'
 
 export default async function adminRoutes(fastify: FastifyInstance) {
@@ -724,6 +726,40 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { id } = request.params as { id: string }
     await prisma.announcement.delete({ where: { id } })
+    return { success: true }
+  })
+
+  // GET /api/admin/plans — List all pricing plans
+  fastify.get('/admin/plans', adminGuard, async () => {
+    const plans = await prisma.plan.findMany({ orderBy: { sortOrder: 'asc' } })
+    return { data: plans }
+  })
+
+  // POST /api/admin/plans — Create a plan
+  fastify.post('/admin/plans', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: planCreateSchema })],
+  }, async (request) => {
+    const body = request.body as Record<string, unknown>
+    const plan = await prisma.plan.create({ data: body as any })
+    return { data: plan }
+  })
+
+  // PATCH /api/admin/plans/:id — Update a plan
+  fastify.patch('/admin/plans/:id', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: planUpdateSchema, params: orgParamsSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const body = request.body as Record<string, unknown>
+    const plan = await prisma.plan.update({ where: { id }, data: body as any })
+    return { data: plan }
+  })
+
+  // DELETE /api/admin/plans/:id — Delete a plan
+  fastify.delete('/admin/plans/:id', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    await prisma.plan.delete({ where: { id } })
     return { success: true }
   })
 

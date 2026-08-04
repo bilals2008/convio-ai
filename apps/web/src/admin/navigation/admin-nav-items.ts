@@ -11,6 +11,7 @@ import {
   Shield,
   Megaphone,
   ThumbsUp,
+  Tags,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -66,6 +67,7 @@ export const adminNavGroups: NavGroup[] = [
     items: [
       { icon: ScrollText, label: 'Audit Logs', href: '/admin/audit-logs', permission: 'admin.audit.read' },
       { icon: CreditCard, label: 'Billing', href: '/admin/billing', permission: 'admin.billing.read' },
+      { icon: Tags, label: 'Pricing', href: '/admin/pricing', permission: 'admin.billing.read' },
       { icon: Shield, label: 'Providers', href: '/admin/providers', permission: 'admin.providers.read' },
       { icon: Megaphone, label: 'Announcements', href: '/admin/announcements', permission: 'admin.announcements.read' },
     ],

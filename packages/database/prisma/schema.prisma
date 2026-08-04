@@ -556,6 +556,36 @@ model Announcement {
   @@map("announcements")
 }
 
+model Plan {
+  id                       String   @id @default(uuid())
+  key                      String   @unique
+  name                     String
+  description              String?
+  price                    String?
+  priceMonthly             Float?
+  yearlyPrice              String?
+  period                   String?
+  badge                    String?
+  highlighted              Boolean  @default(false)
+  comingSoon               Boolean  @default(false)
+  cta                      String?
+  href                     String?
+  variant                  String?
+  icon                     String?
+  iconColor                String?
+  features                 Json     @default("[]")
+  limits                   Json     @default("{}")
+  active                   Boolean  @default(true)
+  sortOrder                Int      @default(0)
+  providerMonthlyProductId String?
+  providerYearlyProductId  String?
+  createdAt                DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt                DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([active, sortOrder])
+  @@map("plans")
+}
+
 model DocFeedback {
   id             String       @id @default(uuid())
   slug           String

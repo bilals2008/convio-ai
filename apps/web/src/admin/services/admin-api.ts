@@ -221,6 +221,38 @@ export interface AdminDocFeedback {
   }>
 }
 
+export interface AdminPlan {
+  id: string
+  key: string
+  name: string
+  description: string | null
+  price: string | null
+  priceMonthly: number | null
+  yearlyPrice: string | null
+  period: string | null
+  badge: string | null
+  highlighted: boolean
+  comingSoon: boolean
+  cta: string | null
+  href: string | null
+  variant: string | null
+  icon: string | null
+  iconColor: string | null
+  features: Array<{ text: string; included?: boolean }>
+  limits: {
+    agents: number | null
+    messagesPerMonth: number | null
+    knowledgeBases: number | null
+    organizations: number | null
+  } | null
+  active: boolean
+  sortOrder: number
+  providerMonthlyProductId: string | null
+  providerYearlyProductId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export const adminApi = {
   stats: () => api.get<{ data: AdminStats }>('/admin/stats'),
 
@@ -270,4 +302,13 @@ export const adminApi = {
   }) => api.get<{ data: AuditLogEntry[]; total: number }>('/admin/audit-logs', { params }),
 
   docsFeedback: () => api.get<{ data: AdminDocFeedback }>('/admin/docs-feedback'),
+
+  plans: () => api.get<{ data: AdminPlan[] }>('/admin/plans'),
+
+  createPlan: (data: Partial<AdminPlan>) => api.post<{ data: AdminPlan }>('/admin/plans', data),
+
+  updatePlan: (id: string, data: Partial<AdminPlan>) =>
+    api.patch<{ data: AdminPlan }>(`/admin/plans/${id}`, data),
+
+  deletePlan: (id: string) => api.delete(`/admin/plans/${id}`),
 }

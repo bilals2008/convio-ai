@@ -42,6 +42,7 @@ import avatarPresetsRoutes from './modules/avatar-presets/routes.js'
 import statusRoutes from './modules/status/routes.js'
 import auditLogsRoutes from './modules/audit-logs/routes.js'
 import docsRoutes from './modules/docs/routes.js'
+import plansRoutes from './modules/plans/routes.js'
 import adminRoutes from './modules/admin/routes.js'
 import emailPlugin from './services/email.jsx'
 import { initDiscordGateway, shutdownDiscordGateway } from './services/discord-gateway.js'
@@ -95,6 +96,7 @@ async function buildServer() {
   await app.register(statusRoutes, { prefix: '/api' })
   await app.register(auditLogsRoutes, { prefix: '/api' })
   await app.register(docsRoutes, { prefix: '/api' })
+  await app.register(plansRoutes, { prefix: '/api' })
   await app.register(adminRoutes, { prefix: '/api' })
 
   // 404

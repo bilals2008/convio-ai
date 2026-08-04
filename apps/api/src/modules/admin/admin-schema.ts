@@ -49,3 +49,35 @@ export const auditLogQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(25),
   offset: z.coerce.number().min(0).default(0),
 })
+
+export const planSchema = z.object({
+  key: z.string().min(1).max(50),
+  name: z.string().min(1).max(100),
+  description: z.string().max(300).nullish(),
+  price: z.string().max(50).nullish(),
+  priceMonthly: z.coerce.number().min(0).nullish(),
+  yearlyPrice: z.string().max(50).nullish(),
+  period: z.string().max(20).nullish(),
+  badge: z.string().max(50).nullish(),
+  highlighted: z.boolean().default(false),
+  comingSoon: z.boolean().default(false),
+  cta: z.string().max(50).nullish(),
+  href: z.string().max(300).nullish(),
+  variant: z.enum(['default', 'outline']).default('outline'),
+  icon: z.string().max(30).nullish(),
+  iconColor: z.string().max(50).nullish(),
+  features: z.array(z.object({ text: z.string().max(200), included: z.boolean().optional() })).max(100).optional(),
+  limits: z.object({
+    agents: z.number().min(0).nullish(),
+    messagesPerMonth: z.number().min(0).nullish(),
+    knowledgeBases: z.number().min(0).nullish(),
+    organizations: z.number().min(0).nullish(),
+  }).optional(),
+  active: z.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).default(0),
+  providerMonthlyProductId: z.string().max(200).nullish(),
+  providerYearlyProductId: z.string().max(200).nullish(),
+})
+
+export const planCreateSchema = planSchema
+export const planUpdateSchema = planSchema.partial()

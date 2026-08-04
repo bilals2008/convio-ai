@@ -21,6 +21,8 @@ import AdminAgentsPage from '@/admin/pages/agents-page'
 import AdminAnalyticsPage from '@/admin/pages/analytics-page'
 import AdminModerationPage from '@/admin/pages/moderation-page'
 import AdminBillingPage from '@/admin/pages/billing-page'
+import AdminPricingPage from '@/admin/pages/pricing-page'
+import AdminPlanDetailPage from '@/admin/pages/plan-detail-page'
 import AdminProvidersPage from '@/admin/pages/providers-page'
 import AdminAnnouncementsPage from '@/admin/pages/announcements-page'
 import AdminDocsFeedbackPage from '@/admin/pages/docs-feedback-page'
@@ -569,6 +571,8 @@ export function App() {
                 <Route path="/admin/moderation" element={<AdminModerationPage />} />
                 <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
                 <Route path="/admin/billing" element={<AdminBillingPage />} />
+                <Route path="/admin/pricing" element={<AdminPricingPage />} />
+                <Route path="/admin/pricing/:id" element={<AdminPlanDetailPage />} />
                 <Route path="/admin/providers" element={<AdminProvidersPage />} />
                 <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
                 <Route path="/admin/docs-feedback" element={<AdminDocsFeedbackPage />} />

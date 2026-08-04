@@ -1,12 +1,13 @@
 import type { FastifyInstance } from 'fastify'
 import crypto from 'crypto'
 import { prisma } from '@convio/database'
-import { PLANS, CREEM_TEST_MODE, APP_URL } from '@convio/config'
+import { CREEM_TEST_MODE, APP_URL } from '@convio/config'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { checkoutBodySchema, billingUsageQuerySchema } from '@convio/validation'
 import { z } from 'zod'
 import { getOrgPlan, getOrgUsage, getActiveSubscription, getBillingInvoices } from '../../services/billing.js'
+import { getPlanFromProductId, getPlanDef } from '../../services/plans.js'
 
 const CREEM_API = CREEM_TEST_MODE ? 'https://test-api.creem.io' : 'https://api.creem.io'
 
@@ -186,14 +187,14 @@ export default async function billingRoutes(fastify: FastifyInstance) {
       throw new AppError(400, 'Paid plans are coming soon! Only the Free plan is available right now.', 'COMING_SOON')
     }
 
-    const planDef = PLANS[planKey]
+    const planDef = await getPlanDef(planKey)
     if (!planDef) {
       throw new AppError(400, `Checkout not available for this plan`, 'CHECKOUT_UNAVAILABLE')
     }
 
     const productId = billingPeriod === 'yearly'
-      ? (planDef as any).providerYearlyProductId
-      : (planDef as any).providerMonthlyProductId
+      ? planDef.providerYearlyProductId
+      : planDef.providerMonthlyProductId
 
     if (!productId) {
       throw new AppError(400, `Checkout not available for this plan/period`, 'CHECKOUT_UNAVAILABLE')
@@ -360,7 +361,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
           const productId = String(eventObject.product?.id || eventObject.product)
           const creemCustomerId = String(eventObject.customer?.id || eventObject.customer)
           const status = eventType === 'subscription.trialing' ? 'on_trial' : 'active'
-          const plan = getPlanFromProductId(productId)
+          const plan = await getPlanFromProductId(productId)
           const orgId = eventObject.metadata?.orgId as string | undefined
 
           const bc = await prisma.billingCustomer.findUnique({
@@ -517,7 +518,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
             : eventObject.product
               ? String(eventObject.product)
               : undefined
-          const plan = productId ? getPlanFromProductId(productId) : undefined
+          const plan = productId ? await getPlanFromProductId(productId) : undefined
 
           const updateData: Record<string, unknown> = {
             status: eventObject.status || 'active',
@@ -586,10 +587,3 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   })
 }
 
-function getPlanFromProductId(productId: string): string {
-  for (const [key, plan] of Object.entries(PLANS)) {
-    const p = plan as any
-    if (p.providerMonthlyProductId === productId || p.providerYearlyProductId === productId) return key
-  }
-  return 'free'
-}

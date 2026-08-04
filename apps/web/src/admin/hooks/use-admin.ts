@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminProviderKey, type Announcement, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback } from '@/admin/services/admin-api'
+import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminProviderKey, type Announcement, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan } from '@/admin/services/admin-api'
 
 export function useAdminStats() {
   return useQuery<AdminStats>({
@@ -161,5 +161,15 @@ export function useAdminDocFeedback() {
       return res.data.data
     },
     refetchInterval: 30_000,
+  })
+}
+
+export function useAdminPlans() {
+  return useQuery<AdminPlan[]>({
+    queryKey: ['admin', 'plans'],
+    queryFn: async () => {
+      const res = await adminApi.plans()
+      return res.data.data
+    },
   })
 }
