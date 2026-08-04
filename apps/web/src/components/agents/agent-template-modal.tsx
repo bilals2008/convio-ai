@@ -131,10 +131,21 @@ export function AgentTemplateModal({ open, onOpenChange, activeTemplateId, onSel
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setSearch(''); setActiveCategory('all') } }}>
       <DialogContent style={{ maxWidth: '80vw' }} className="h-[80vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <DialogTitle>Choose a template</DialogTitle>
-              <DialogDescription>Prefill the prompt and settings, then customize.</DialogDescription>
+          <DialogTitle>Choose a template</DialogTitle>
+          <DialogDescription>Prefill the prompt and settings, then customize.</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-4 px-6 pt-4">
+          {/* Search + import */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search templates..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9"
+              />
             </div>
             <Button
               type="button"
@@ -142,7 +153,7 @@ export function AgentTemplateModal({ open, onOpenChange, activeTemplateId, onSel
               size="sm"
               disabled={disabled}
               onClick={() => fileInputRef.current?.click()}
-              className="shrink-0"
+              className="shrink-0 h-9"
             >
               <Upload className="size-3.5" />
               Import JSON
@@ -153,19 +164,6 @@ export function AgentTemplateModal({ open, onOpenChange, activeTemplateId, onSel
               accept="application/json,.json"
               className="hidden"
               onChange={handleImport}
-            />
-          </div>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-4 px-6 pt-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search templates..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9"
             />
           </div>
 
