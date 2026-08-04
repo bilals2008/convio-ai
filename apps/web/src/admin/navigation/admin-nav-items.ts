@@ -10,6 +10,7 @@ import {
   CreditCard,
   Shield,
   Megaphone,
+  ThumbsUp,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -25,6 +26,7 @@ export type NavPermission =
   | 'admin.billing.read'
   | 'admin.providers.read'
   | 'admin.announcements.read'
+  | 'admin.docs-feedback.read'
 
 export interface NavItem {
   icon: LucideIcon
@@ -56,6 +58,7 @@ export const adminNavGroups: NavGroup[] = [
       { icon: Brain, label: 'Agents', href: '/admin/agents', permission: 'admin.agents.read' },
       { icon: Activity, label: 'System Health', href: '/admin/system', permission: 'admin.system.read' },
       { icon: Flag, label: 'Moderation', href: '/admin/moderation', permission: 'admin.moderation.read' },
+      { icon: ThumbsUp, label: 'Docs Feedback', href: '/admin/docs-feedback', permission: 'admin.docs-feedback.read' },
     ],
   },
   {
@@ -81,4 +84,5 @@ export const fullAdminPermissions: NavPermission[] = [
   'admin.billing.read',
   'admin.providers.read',
   'admin.announcements.read',
+  'admin.docs-feedback.read',
 ]

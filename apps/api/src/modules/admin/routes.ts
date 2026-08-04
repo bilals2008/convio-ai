@@ -795,4 +795,59 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
     return { data: enriched, total }
   })
+
+  // GET /api/admin/docs-feedback — Docs "was this helpful" summary (platform admin only)
+  fastify.get('/admin/docs-feedback', adminGuard, async () => {
+    const [total, helpful, recent] = await Promise.all([
+      prisma.docFeedback.count(),
+      prisma.docFeedback.count({ where: { helpful: true } }),
+      prisma.docFeedback.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 25,
+        include: {
+          user: { select: { id: true, name: true, email: true, avatar: true } },
+          organization: { select: { id: true, name: true, slug: true } },
+        },
+      }),
+    ])
+
+    const slugRows = await prisma.docFeedback.groupBy({
+      by: ['slug', 'helpful'],
+      _count: { _all: true },
+      orderBy: { slug: 'asc' },
+    })
+    const map = new Map<string, { helpful: number; notHelpful: number }>()
+    for (const row of slugRows) {
+      const entry = map.get(row.slug) ?? { helpful: 0, notHelpful: 0 }
+      if (row.helpful) entry.helpful = row._count._all
+      else entry.notHelpful = row._count._all
+      map.set(row.slug, entry)
+    }
+    const perSlug = [...map.entries()]
+      .map(([slug, counts]) => ({ slug, ...counts, total: counts.helpful + counts.notHelpful }))
+      .sort((a, b) => b.total - a.total)
+
+    const notHelpful = total - helpful
+
+    return {
+      data: {
+        summary: {
+          totalVotes: total,
+          helpful,
+          notHelpful,
+          helpRate: total > 0 ? Math.round((helpful / total) * 100) : 0,
+        },
+        perPage: perSlug,
+        recent: recent.map((f) => ({
+          id: f.id,
+          slug: f.slug,
+          helpful: f.helpful,
+          comment: f.comment,
+          createdAt: f.createdAt,
+          user: { name: f.user.name, email: f.user.email, avatar: f.user.avatar },
+          organization: { name: f.organization.name, slug: f.organization.slug },
+        })),
+      },
+    }
+  })
 }

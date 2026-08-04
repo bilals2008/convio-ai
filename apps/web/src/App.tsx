@@ -23,6 +23,7 @@ import AdminModerationPage from '@/admin/pages/moderation-page'
 import AdminBillingPage from '@/admin/pages/billing-page'
 import AdminProvidersPage from '@/admin/pages/providers-page'
 import AdminAnnouncementsPage from '@/admin/pages/announcements-page'
+import AdminDocsFeedbackPage from '@/admin/pages/docs-feedback-page'
 
 import Landing from '@/pages/landing'
 import PricingPage from '@/pages/pricing-page'
@@ -570,6 +571,7 @@ export function App() {
                 <Route path="/admin/billing" element={<AdminBillingPage />} />
                 <Route path="/admin/providers" element={<AdminProvidersPage />} />
                 <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
+                <Route path="/admin/docs-feedback" element={<AdminDocsFeedbackPage />} />
               </Route>
             </Route>
           </Routes>

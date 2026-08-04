@@ -202,6 +202,25 @@ export interface ModerationViolation {
   createdAt: string
 }
 
+export interface AdminDocFeedback {
+  summary: {
+    totalVotes: number
+    helpful: number
+    notHelpful: number
+    helpRate: number
+  }
+  perPage: Array<{ slug: string; helpful: number; notHelpful: number; total: number }>
+  recent: Array<{
+    id: string
+    slug: string
+    helpful: boolean
+    comment: string | null
+    createdAt: string
+    user: { name: string | null; email: string; avatar: string | null }
+    organization: { name: string; slug: string }
+  }>
+}
+
 export const adminApi = {
   stats: () => api.get<{ data: AdminStats }>('/admin/stats'),
 
@@ -249,4 +268,6 @@ export const adminApi = {
     dateFrom?: string; dateTo?: string; search?: string
     limit?: number; offset?: number
   }) => api.get<{ data: AuditLogEntry[]; total: number }>('/admin/audit-logs', { params }),
+
+  docsFeedback: () => api.get<{ data: AdminDocFeedback }>('/admin/docs-feedback'),
 }
