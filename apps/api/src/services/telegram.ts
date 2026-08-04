@@ -79,12 +79,15 @@ export async function sendTelegramMessage(
 
 export async function setTelegramWebhook(
   botToken: string,
-  url: string
+  url: string,
+  secretToken?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const data = await apiCall(botToken, 'setWebhook', {
+  const body: Record<string, unknown> = {
     url,
     allowed_updates: ['message', 'callback_query', 'my_chat_member'],
-  })
+  }
+  if (secretToken) body.secret_token = secretToken
+  const data = await apiCall(botToken, 'setWebhook', body)
   if (!data.ok) return { success: false, error: data.description || 'Failed to set webhook' }
   return { success: true }
 }
