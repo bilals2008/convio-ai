@@ -7,7 +7,7 @@ import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { getTemplate, listTemplates } from './templates.js'
-import { AGENT_GENERATION_PROMPT, PROVIDER_ENV_KEYS, parseAgentDraft } from './agent-generator.js'
+import { AGENT_GENERATION_PROMPT, resolveGenerationProvider, parseAgentDraft } from './agent-generator.js'
 import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
 import { getOrgPlan } from '../../services/billing.js'
 import { z } from 'zod'
@@ -180,30 +180,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { description, model } = request.body as z.infer<typeof generateAgentBodySchema>
 
-    // Resolve the caller's org so we can use their BYOK provider keys.
-    const membership = await prisma.membership.findFirst({
-      where: { userId: request.userId },
-      include: { organization: { include: { providerKeys: true } } },
-    })
-    const userKeyMap = new Map(
-      (membership?.organization?.providerKeys || []).map((k) => [k.provider, k.apiKey])
-    )
-
-    const genModel = model || 'opencode/deepseek-v4-flash-free'
-    let provider
-    try {
-      provider = getProviderForModel(genModel)
-    } catch {
-      throw new AppError(400, `No provider configured for model: ${genModel}`)
-    }
-
-    const apiKey = userKeyMap.get(provider.id) || process.env[PROVIDER_ENV_KEYS[provider.id]]
-    if (!apiKey && provider.id !== 'opencode') {
-      throw new AppError(
-        400,
-        'No API key configured for the selected model provider. Add one in Settings → Provider Keys.'
-      )
-    }
+    const { provider, apiKey, model: genModel } = await resolveGenerationProvider(request.userId!, model)
 
     let result
     try {

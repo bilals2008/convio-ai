@@ -3,6 +3,8 @@ import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { getWidgetCorsHeaders } from '../../plugins/cors.js'
+import { resolveGenerationProvider } from '../agents/agent-generator.js'
+import { WIDGET_GENERATION_PROMPT, parseWidgetDraft } from './generator.js'
 import { z } from 'zod'
 
 const widgetStatuses = ['draft', 'active', 'paused', 'archived'] as const
@@ -50,6 +52,10 @@ const createWidgetBodySchema = z.object({
   agentId: z.string().uuid(),
   config: widgetConfigSchema.optional(),
 })
+const generateWidgetBodySchema = z.object({
+  description: z.string().trim().min(3).max(2000),
+  model: z.string().min(1).optional(),
+})
 const updateWidgetBodySchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   agentId: z.string().uuid().optional(),
@@ -82,6 +88,33 @@ function assertPublicAccess(request: FastifyRequest, allowedDomains: string[]) {
 }
 
 export default async function widgetsRoutes(fastify: FastifyInstance) {
+  fastify.post('/widgets/generate', {
+    preHandler: [fastify.authenticate, validate({ body: generateWidgetBodySchema })],
+  }, async (request) => {
+    const { description, model } = request.body as z.infer<typeof generateWidgetBodySchema>
+
+    const { provider, apiKey, model: genModel } = await resolveGenerationProvider(request.userId!, model)
+
+    let result
+    try {
+      result = await provider.generate({
+        model: genModel,
+        messages: [
+          { role: 'system', content: WIDGET_GENERATION_PROMPT },
+          { role: 'user', content: description },
+        ],
+        temperature: 0.7,
+        maxTokens: 2048,
+        apiKey,
+      })
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Generation failed'
+      throw new AppError(502, `AI generation failed: ${msg}`)
+    }
+
+    return { data: parseWidgetDraft(result.content) }
+  })
+
   fastify.get('/organizations/:orgId/widgets', {
     preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema, query: widgetQuerySchema })],
   }, async (request) => {

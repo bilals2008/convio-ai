@@ -3,6 +3,9 @@
 
 import { z } from 'zod'
 import { AppError } from '../../plugins/error.js'
+import { prisma } from '@convio/database'
+import { getProviderForModel } from '@convio/ai/providers'
+import type { AIProvider } from '@convio/ai'
 
 export const PROVIDER_ENV_KEYS: Record<string, string> = {
   openai: 'OPENAI_API_KEY',
@@ -58,16 +61,53 @@ Rules:
 - Never suggest gpt-*, claude-*, or gemini-* models.
 - Return valid JSON only.`
 
+/** Resolve a usable generation provider + key for a user (BYOK first, env fallback). */
+export async function resolveGenerationProvider(
+  userId: string,
+  model?: string,
+): Promise<{ provider: AIProvider; apiKey?: string; model: string }> {
+  const membership = await prisma.membership.findFirst({
+    where: { userId },
+    include: { organization: { include: { providerKeys: true } } },
+  })
+  const userKeyMap = new Map(
+    (membership?.organization?.providerKeys || []).map((k) => [k.provider, k.apiKey])
+  )
+
+  const genModel = model || 'opencode/deepseek-v4-flash-free'
+  let provider
+  try {
+    provider = getProviderForModel(genModel)
+  } catch {
+    throw new AppError(400, `No provider configured for model: ${genModel}`)
+  }
+
+  const apiKey = userKeyMap.get(provider.id) || process.env[PROVIDER_ENV_KEYS[provider.id]]
+  if (!apiKey && provider.id !== 'opencode') {
+    throw new AppError(
+      400,
+      'No API key configured for the selected model provider. Add one in Settings → Provider Keys.'
+    )
+  }
+
+  return { provider, apiKey, model: genModel }
+}
+
+/** Extract the first JSON object from an LLM response (handles code fences and prose). */
+export function extractJsonObject(content: string): unknown {
+  let raw = content.trim()
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (fence) raw = fence[1].trim()
+  const start = raw.indexOf('{')
+  const end = raw.lastIndexOf('}')
+  if (start === -1 || end === -1 || end <= start) throw new Error('No JSON object found')
+  return JSON.parse(raw.slice(start, end + 1))
+}
+
 /** Extract the JSON object from an LLM response (handles code fences and prose). */
 export function parseAgentDraft(content: string): AgentDraft {
   try {
-    let raw = content.trim()
-    const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (fence) raw = fence[1].trim()
-    const start = raw.indexOf('{')
-    const end = raw.lastIndexOf('}')
-    if (start === -1 || end === -1 || end <= start) throw new Error('No JSON object found')
-    return agentDraftSchema.parse(JSON.parse(raw.slice(start, end + 1)))
+    return agentDraftSchema.parse(extractJsonObject(content))
   } catch (error) {
     const detail = error instanceof z.ZodError
       ? `missing ${error.issues.map((i) => i.path.join('.')).join(', ')}`

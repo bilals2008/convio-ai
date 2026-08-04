@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Code2, Eye, Sun, Moon, Layout, Palette, Star } from 'lucide-react'
+import { Code2, Eye, Sun, Moon, Layout, Palette, Wand2 } from 'lucide-react'
 import { ChatWidget } from '@/components/widget'
 import { PageContainer } from '@/components/shared/page-container'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -20,7 +20,7 @@ import { useWidgetForm } from './hooks/useWidgetForm'
 import { AppearanceTab } from './components/AppearanceTab'
 import { InstallTab } from './components/InstallTab'
 import { LayoutTab } from './components/LayoutTab'
-import { TemplateTab } from './components/TemplateTab'
+import { DesignAiTab } from './components/DesignAiTab'
 import { WidgetPreviewPanel } from './components/WidgetPreviewPanel'
 import { isLightColor } from './helpers'
 import { cn } from '@/lib/utils'
@@ -94,9 +94,7 @@ export default function WidgetConfigPage() {
     copied,
     activeTab,
     setActiveTab,
-    activeTemplate,
-    setActiveTemplate,
-    applyTemplate,
+    applyAiDraft,
     deleteOpen,
     setDeleteOpen,
     isDirty,
@@ -178,9 +176,9 @@ export default function WidgetConfigPage() {
                 <Layout className="size-4" />
                 Layout
               </TabsTrigger>
-               <TabsTrigger value="templates">
-                 <Star className="size-4" />
-                 Templates
+               <TabsTrigger value="design">
+                 <Wand2 className="size-4" />
+                 Design
                </TabsTrigger>
                <TabsTrigger value="install">
                  <Code2 className="size-4" />
@@ -249,11 +247,8 @@ export default function WidgetConfigPage() {
                 />
               </TabsContent>
 
-               <TabsContent value="templates">
-                 <TemplateTab
-                   activeTemplate={activeTemplate}
-                   onSelectTemplate={applyTemplate}
-                 />
+               <TabsContent value="design">
+                 <DesignAiTab onApplyAiDraft={applyAiDraft} disabled={save.isPending} />
                </TabsContent>
 
                <TabsContent value="install">

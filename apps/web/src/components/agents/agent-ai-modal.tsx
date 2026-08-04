@@ -92,7 +92,7 @@ export function AgentAiModal({ open, onOpenChange, onApply, defaultModel, disabl
         }
       }}
     >
-      <DialogContent className="w-[calc(100%-2rem)] max-w-[calc(100%-2rem)] sm:w-[60vw] sm:max-w-[60vw] h-[60vh] flex flex-col">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-[calc(100%-2rem)] sm:w-[60vw] sm:max-w-[60vw] h-[60vh] sm:h-[66vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Create with AI</DialogTitle>
           <DialogDescription>

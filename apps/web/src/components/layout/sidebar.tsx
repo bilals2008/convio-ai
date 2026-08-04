@@ -19,10 +19,12 @@ import {
   Database,
   Plug,
   ScrollText,
+  Wand2,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -170,6 +172,17 @@ export function Sidebar() {
 
       {/* User section */}
       <div className="border-t border-border/50 p-2 mt-auto">
+        <div className={cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground/70', collapsed && 'justify-center px-0')}>
+          <Wand2 className="size-4 shrink-0 text-muted-foreground/60" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 truncate text-left">Ask AI</span>
+              <Badge variant="beta" className="text-[10px] px-1.5 py-0 h-4 leading-none">
+                Soon
+              </Badge>
+            </>
+          )}
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger
             className={cn(
@@ -277,7 +290,15 @@ export function Sidebar() {
                 </ScrollArea>
 
                 <div className="border-t p-4 shrink-0">
-                  <DropdownMenu>
+                  <div className="flex items-center gap-3 rounded-lg p-1 text-sm text-muted-foreground/70">
+                    <Wand2 className="size-4 shrink-0 text-muted-foreground/60" />
+                    <span className="flex-1 truncate">Ask AI</span>
+                    <Badge variant="beta" className="text-[10px] px-1.5 py-0 h-4 leading-none">
+                      Soon
+                    </Badge>
+                  </div>
+                  <div className="mt-2">
+                    <DropdownMenu>
                     <DropdownMenuTrigger
                       onClick={() => setMobileOpen(false)}
                       className="flex w-full items-center gap-3 rounded-lg p-1 -m-1 transition-colors hover:bg-muted outline-none"
@@ -313,6 +334,7 @@ export function Sidebar() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </div>
                 </div>
               </aside>
             </div>

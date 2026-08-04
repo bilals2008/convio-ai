@@ -5,7 +5,8 @@ import { toast } from 'sonner'
 import { widgets as widgetsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import type { WidgetDetail, ApiError } from '../types'
-import { type LauncherTemplate, type ThemeMode, type LauncherIcon } from '../constants'
+import { type ThemeMode, type LauncherIcon } from '../constants'
+import type { WidgetDraft as WidgetAiDraft } from '../components/DesignAiTab'
 import { sanitizeDomain } from '../helpers'
 
 export function useWidgetForm(widgetId: string) {
@@ -51,7 +52,6 @@ export function useWidgetForm(widgetId: string) {
   const [quickReplies, setQuickReplies] = useState<string[]>([])
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('appearance')
-  const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   useEffect(() => {
@@ -255,24 +255,31 @@ export function useWidgetForm(widgetId: string) {
     setDomains((prev) => prev.filter((x) => x !== d))
   }, [])
 
-  const applyTemplate = useCallback(
-    (template: LauncherTemplate) => {
-      const cfg = template.config
-      if (cfg.primaryColor !== undefined) setPrimaryColor(cfg.primaryColor)
-      if (cfg.backgroundColor !== undefined) setBackgroundColor(cfg.backgroundColor)
-      if (cfg.textColor !== undefined) setTextColor(cfg.textColor)
-      if (cfg.promptBgColor !== undefined) setPromptBgColor(cfg.promptBgColor)
-      if (cfg.headerGradientStart !== undefined) setHeaderGradientStart(cfg.headerGradientStart)
-      if (cfg.headerGradientEnd !== undefined) setHeaderGradientEnd(cfg.headerGradientEnd)
-      if (cfg.borderColor !== undefined) setBorderColor(cfg.borderColor)
-      if (cfg.inputBgColor !== undefined) setInputBgColor(cfg.inputBgColor)
-      if (cfg.sendBtnColor !== undefined) setSendBtnColor(cfg.sendBtnColor)
-      if (cfg.position !== undefined) setPosition(cfg.position)
-      if (cfg.widgetHeight !== undefined) setWidgetHeight(cfg.widgetHeight)
-      if (cfg.widgetWidth !== undefined) setWidgetWidth(cfg.widgetWidth)
-      if (cfg.launcherSize !== undefined) setLauncherSize(cfg.launcherSize)
-      if (cfg.borderRadius !== undefined) setBorderRadius(cfg.borderRadius)
-      setActiveTemplate(template.id)
+  const applyAiDraft = useCallback(
+    (draft: WidgetAiDraft) => {
+      if (draft.name) setName(draft.name)
+      if (draft.primaryColor) setPrimaryColor(draft.primaryColor)
+      if (draft.backgroundColor) setBackgroundColor(draft.backgroundColor)
+      if (draft.textColor) setTextColor(draft.textColor)
+      if (draft.promptBgColor) setPromptBgColor(draft.promptBgColor)
+      if (draft.headerGradientStart) setHeaderGradientStart(draft.headerGradientStart)
+      if (draft.headerGradientEnd) setHeaderGradientEnd(draft.headerGradientEnd)
+      if (draft.headerGradientDirection !== undefined) setHeaderGradientDirection(draft.headerGradientDirection)
+      if (draft.borderColor) setBorderColor(draft.borderColor)
+      if (draft.inputBgColor) setInputBgColor(draft.inputBgColor)
+      if (draft.sendBtnColor) setSendBtnColor(draft.sendBtnColor)
+      if (draft.agentName) setAgentName(draft.agentName)
+      if (draft.headerTitle) setHeaderTitle(draft.headerTitle)
+      if (draft.headerSubtitle) setHeaderSubtitle(draft.headerSubtitle)
+      if (draft.placeholderText) setPlaceholderText(draft.placeholderText)
+      if (draft.quickReplies) setQuickReplies(draft.quickReplies.slice(0, 4))
+      if (draft.themeMode) setThemeMode(draft.themeMode)
+      if (draft.position) setPosition(draft.position)
+      if (draft.widgetWidth) setWidgetWidth(draft.widgetWidth)
+      if (draft.launcherSize) setLauncherSize(draft.launcherSize)
+      if (draft.borderRadius) setBorderRadius(draft.borderRadius)
+      setActiveTab('appearance')
+      toast.success('AI design applied — review and save')
     },
     [],
   )
@@ -341,9 +348,7 @@ export function useWidgetForm(widgetId: string) {
     copied,
     activeTab,
     setActiveTab,
-    activeTemplate,
-    setActiveTemplate,
-    applyTemplate,
+    applyAiDraft,
     deleteOpen,
     setDeleteOpen,
     isDirty,

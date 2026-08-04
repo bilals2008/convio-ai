@@ -179,6 +179,8 @@ export const widgets = {
   update: (id: string, data: Record<string, unknown>) => api.patch(`/widgets/${id}`, data),
   delete: (id: string) => api.delete(`/widgets/${id}`),
   getEmbed: (id: string) => api.get(`/widgets/${id}/embed`),
+  generateDraft: (description: string, model?: string) =>
+    api.post(`/widgets/generate`, { description, model }),
 }
 
 export const deployments = {
