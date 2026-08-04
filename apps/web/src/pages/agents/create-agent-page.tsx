@@ -106,6 +106,11 @@ export default function CreateAgentPage() {
     if (template.suggestedModel && models.some((m) => m.id === template.suggestedModel)) {
       form.setValue('model', template.suggestedModel, { shouldValidate: true })
     }
+    if (template.suggestedTools?.length) {
+      setTools((prev) =>
+        prev.map((t) => (template.suggestedTools!.includes(t.id) ? { ...t, enabled: true } : t))
+      )
+    }
   }
 
   const applyAiDraft = (draft: AgentDraft) => {
