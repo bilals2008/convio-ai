@@ -80,7 +80,7 @@ export const pricingConfig: PricingConfig = {
       variant: 'outline',
       highlighted: false,
       icon: 'star',
-      iconColor: 'text-blue-500',
+      iconColor: 'text-info',
     },
     {
       key: 'pro',
@@ -104,7 +104,7 @@ export const pricingConfig: PricingConfig = {
       variant: 'default',
       highlighted: true,
       icon: 'crown',
-      iconColor: 'text-emerald-500',
+      iconColor: 'text-primary',
     },
     {
       key: 'enterprise',
@@ -126,7 +126,7 @@ export const pricingConfig: PricingConfig = {
       variant: 'outline',
       highlighted: false,
       icon: 'shield',
-      iconColor: 'text-violet-500',
+      iconColor: 'text-chart-4',
     },
   ],
   footer: 'All plans include RAG and community access. Prices in USD.',

@@ -1,19 +1,26 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
-import { ArrowRight, ArrowUpRight, Zap, Check, MessageSquare, BarChart3, Globe } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Check, MessageSquare, BarChart3, Globe } from 'lucide-react'
 import { HeroBackground } from './hero-background'
 
 function ProductPreview() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
-      <AspectRatio ratio={16 / 9} className="bg-secondary/20">
+    <div className="relative">
+      <div className="pointer-events-none absolute -inset-6 -z-10 rounded-[32px] bg-primary/[0.07] blur-[60px]" />
+      <div className="flex items-center gap-1.5 rounded-t-2xl border border-b-0 border-border bg-card px-3 py-2.5">
+        <span className="size-2.5 rounded-full bg-destructive/70" />
+        <span className="size-2.5 rounded-full bg-warning/70" />
+        <span className="size-2.5 rounded-full bg-success/70" />
+        <div className="ml-3 h-5 w-full max-w-[200px] rounded-md bg-muted" />
+      </div>
+      <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-b-2xl border border-border bg-secondary/20">
         <img
           src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/hero.avif"
           alt="AI agent dashboard preview"
-          className="object-cover opacity-90 transition-opacity duration-500 hover:opacity-100"
+          className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/15 to-transparent pointer-events-none" />
       </AspectRatio>
     </div>
   )
@@ -28,14 +35,11 @@ export function HeroSection() {
         <div className="flex flex-col items-center text-center">
           <a
             href="#channels"
-            className="group inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[12px] text-foreground/80 backdrop-blur transition-colors hover:border-primary/30"
+            className="group inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            <span className="inline-flex items-center gap-1 text-primary">
-              <Zap className="size-3.5" />
-              New
-            </span>
-            <span className="text-muted-foreground">AI-powered customer intelligence</span>
-            <ArrowUpRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <span className="text-primary">New —</span>
+            AI-powered customer intelligence
+            <ArrowUpRight className="size-3.5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </a>
 
           <h1 className="mt-6 max-w-[16ch] font-heading text-[clamp(34px,5.6vw,66px)] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground">

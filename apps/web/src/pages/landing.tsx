@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Navbar, HeroSection, TrustedBySection, EverythingSection, Pricing, CTA, Footer } from '@/components/landing'
+import { Navbar, HeroSection, TrustedBySection, ChannelsSection, EverythingSection, Pricing, CTA, Footer } from '@/components/landing'
 import { ChatWidget } from '@/components/widget'
 import { BetaNotice } from '@/components/landing/beta-notice'
 import { publicApi } from '@/lib/api'
@@ -24,6 +24,7 @@ export default function Landing() {
       <main>
         <HeroSection />
         <TrustedBySection />
+        <ChannelsSection />
         <EverythingSection />
         <Pricing />
         <CTA />

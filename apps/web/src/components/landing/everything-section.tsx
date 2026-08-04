@@ -2,12 +2,11 @@ import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { SectionHeading } from './section-heading'
 import { ScrollReveal } from './scroll-reveal'
-import { FloatingOrbs } from './floating-orbs'
-import { Check, Database, Bot, Puzzle } from 'lucide-react'
+import { Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const FEATURES = [
   {
-    icon: Database,
     title: 'Knowledge Base',
     description:
       'Upload docs, connect APIs, or paste URLs. Your agent learns from your data.',
@@ -21,7 +20,6 @@ const FEATURES = [
     cubeImage: '/features/cube-brand.webp',
   },
   {
-    icon: Bot,
     title: 'AI Models',
     description:
       'Choose from leading models or fine-tune your own. Deploy the best performer.',
@@ -35,7 +33,6 @@ const FEATURES = [
     cubeImage: '/features/cube-sales.webp',
   },
   {
-    icon: Puzzle,
     title: 'Tools & Integrations',
     description:
       'Connect your stack. Give agents access to databases, CRMs, and APIs.',
@@ -50,40 +47,72 @@ const FEATURES = [
   },
 ]
 
-const TRUST_ITEMS = [
-  { label: 'Enterprise Ready' },
-  { label: 'Secure & Private' },
-  { label: 'Built for Scale' },
-]
+const TRUST_ITEMS = ['Enterprise Ready', 'Secure & Private', 'Built for Scale']
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
+  hidden: { opacity: 0, y: 24 },
+  visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: i * 0.08 },
-  }),
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  },
+}
+
+function FeatureRow({ feature, index }: { feature: (typeof FEATURES)[number]; index: number }) {
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: '-80px' })
+  const reversed = index % 2 === 1
+
+  return (
+    <motion.article
+      ref={ref}
+      initial="hidden"
+      animate={inView ? 'visible' : 'hidden'}
+      variants={fadeUp}
+      className="grid items-center gap-10 border-t border-border py-16 md:py-20 lg:grid-cols-2 lg:gap-16"
+    >
+      <div className={cn(reversed && 'lg:order-2')}>
+        <span className="font-mono text-xs text-muted-foreground/70">
+          {String(index + 1).padStart(2, '0')}
+        </span>
+        <h3 className="mt-3 font-heading text-2xl font-semibold tracking-[-0.02em] text-foreground md:text-[32px] md:leading-[1.15]">
+          {feature.title}
+        </h3>
+        <p className="mt-3 max-w-md text-[15px] leading-[1.7] text-muted-foreground">
+          {feature.description}
+        </p>
+        <ul className="mt-6 space-y-2.5">
+          {feature.bullets.map((bullet) => (
+            <li key={bullet} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+              <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+              <span>{bullet}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className={cn('group', reversed && 'lg:order-1')}>
+        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-secondary/20">
+          <img
+            src={feature.bgImage}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <img
+            src={feature.cubeImage}
+            alt=""
+            className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 object-contain transition-transform duration-500 group-hover:scale-110 md:h-40 md:w-40"
+          />
+        </div>
+      </div>
+    </motion.article>
+  )
 }
 
 export function EverythingSection() {
-  const gridRef = useRef(null)
-  const trustRef = useRef(null)
-  const gridInView = useInView(gridRef, { once: true, margin: '-60px' })
-  const trustInView = useInView(trustRef, { once: true, margin: '-40px' })
-
   return (
-    <section
-      id="everything"
-      className="relative overflow-hidden border-b border-border bg-background"
-    >
-      <FloatingOrbs />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[400px] w-[600px] -translate-x-1/2 bg-glow-green opacity-30"
-      />
-
-      <div className="relative mx-auto max-w-[1160px] px-5 md:px-10 py-20 md:py-28">
+    <section id="everything" className="border-b border-border bg-background">
+      <div className="mx-auto max-w-[1160px] px-5 md:px-10 py-20 md:py-28">
         <ScrollReveal>
           <SectionHeading
             eyebrow="Features"
@@ -92,92 +121,20 @@ export function EverythingSection() {
           />
         </ScrollReveal>
 
-        {/* Feature cards */}
-        <div
-          ref={gridRef}
-          className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {FEATURES.map((feature, i) => {
-            const Icon = feature.icon
-            return (
-              <motion.div
-                key={feature.title}
-                custom={i}
-                initial="hidden"
-                animate={gridInView ? 'visible' : 'hidden'}
-                variants={fadeUp}
-                className="group relative flex flex-col rounded-2xl border border-border bg-card transition-all duration-300 hover:border-border/60 hover:shadow-soft-lg"
-              >
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                  style={{
-                    background: 'radial-gradient(300px circle at 50% 0%, hsl(var(--primary) / 0.04), transparent 60%)',
-                  }}
-                />
-
-                <div className="relative flex flex-1 flex-col p-6">
-                  <div className="relative h-56 w-full overflow-hidden rounded-xl">
-                    <img
-                      src={feature.bgImage}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                    <img
-                      src={feature.cubeImage}
-                      alt=""
-                      className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 object-contain transition-transform duration-500 group-hover:-translate-y-1/2 group-hover:scale-110"
-                    />
-                  </div>
-
-                  <div className="mt-5 flex items-center gap-3">
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 transition-transform duration-300 group-hover:scale-110">
-                      <Icon className="size-[18px] text-primary" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                      {feature.title}
-                    </h3>
-                  </div>
-
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                    {feature.description}
-                  </p>
-
-                  <ul className="mt-5 flex flex-col gap-2.5">
-                    {feature.bullets.map((bullet) => (
-                      <li
-                        key={bullet}
-                        className="flex items-start gap-2.5 text-sm text-muted-foreground"
-                      >
-                        <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                        <span>{bullet}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </motion.div>
-            )
-          })}
+        <div className="mt-10 md:mt-14">
+          {FEATURES.map((feature, i) => (
+            <FeatureRow key={feature.title} feature={feature} index={i} />
+          ))}
         </div>
 
-        {/* Trust row */}
-        <motion.div
-          ref={trustRef}
-          initial={{ opacity: 0, y: 12 }}
-          animate={trustInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-14 flex flex-wrap items-center justify-center gap-8"
-        >
-          {TRUST_ITEMS.map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center gap-2 text-sm font-medium text-muted-foreground"
-            >
-              <span className="size-1.5 rounded-full bg-primary" />
-              {item.label}
-            </div>
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-border pt-8 text-sm font-medium text-muted-foreground">
+          {TRUST_ITEMS.map((item, i) => (
+            <span key={item} className="inline-flex items-center gap-8">
+              {i > 0 && <span className="text-primary/40">·</span>}
+              {item}
+            </span>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   )

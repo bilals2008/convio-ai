@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Menu, X, LogOut, LayoutDashboard, User, Sun, Moon, BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -27,6 +27,11 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const { theme, setTheme } = useTheme()
   const { user, isAuthenticated, isLoading, logout } = useAuth()
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
 
   useEffect(() => {
     function tick() {
@@ -56,9 +61,14 @@ export function Navbar() {
 
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
+              const active = link.href.startsWith('/') && pathname === link.href
               const inner = (
                 <>
-                  <span className="absolute inset-0 rounded-md bg-primary/0 ring-1 ring-transparent transition-[background-color,box-shadow] duration-300 ease-out group-hover:bg-primary/10 group-hover:ring-primary/15" />
+                  <span
+                    className={`absolute inset-0 rounded-md ring-1 transition-[background-color,box-shadow] duration-300 ease-out group-hover:bg-primary/10 group-hover:ring-primary/15 ${
+                      active ? 'bg-primary/10 ring-primary/15' : 'bg-primary/0 ring-transparent'
+                    }`}
+                  />
                   <span className="relative z-10 flex items-center">
                     <DirectionHover title={link.label} fontSize={13} />
                   </span>
@@ -66,7 +76,14 @@ export function Navbar() {
               )
               const cls = "group relative rounded-md px-3 py-1.5 text-[13px] font-medium transition-[transform] duration-200 ease-out hover:-translate-y-[1px]"
               return link.href.startsWith('/') ? (
-                <Link key={link.href} to={link.href} className={cls}>{inner}</Link>
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={cls}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {inner}
+                </Link>
               ) : (
                 <a key={link.href} href={link.href} className={cls}>{inner}</a>
               )
@@ -162,36 +179,56 @@ export function Navbar() {
         </div>
       </div>
 
-      {isOpen && (
-        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur px-5 py-4 space-y-3">
-          {navLinks.map((link) => {
-            const cls = "block text-sm font-medium text-muted-foreground hover:text-foreground"
-            const inner = <DirectionHover title={link.label} fontSize={14} hoverColor="var(--foreground)" />
-            return link.href.startsWith('/') ? (
-              <Link key={link.href} to={link.href} className={cls} onClick={() => setIsOpen(false)}>{inner}</Link>
-            ) : (
-              <a key={link.href} href={link.href} className={cls} onClick={() => setIsOpen(false)}>{inner}</a>
-            )
-          })}
-          <div className="flex flex-col gap-2 pt-3 border-t border-border">
-            {!isLoading && !isAuthenticated && (
-              <>
-                <Link to="/login" onClick={() => setIsOpen(false)}>
-                  <Button variant="ghost" className="w-full">Log In</Button>
-                </Link>
-                <Link to="/signup" onClick={() => setIsOpen(false)}>
-                  <Button className="w-full">Get Started</Button>
-                </Link>
-              </>
-            )}
-            {!isLoading && isAuthenticated && (
-              <Link to="/dashboard" onClick={() => setIsOpen(false)}>
-                <Button className="w-full">Dashboard</Button>
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="md:hidden overflow-hidden border-b border-border bg-background/95 backdrop-blur"
+          >
+            <div className="px-5 py-4 space-y-3">
+              {navLinks.map((link) => {
+                const active = link.href.startsWith('/') && pathname === link.href
+                const cls = `block text-sm font-medium ${
+                  active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`
+                const inner = (
+                  <DirectionHover
+                    title={link.label}
+                    fontSize={14}
+                    textColor={active ? 'var(--foreground)' : 'var(--muted-foreground)'}
+                    hoverColor="var(--foreground)"
+                  />
+                )
+                return link.href.startsWith('/') ? (
+                  <Link key={link.href} to={link.href} className={cls} onClick={() => setIsOpen(false)} aria-current={active ? 'page' : undefined}>{inner}</Link>
+                ) : (
+                  <a key={link.href} href={link.href} className={cls} onClick={() => setIsOpen(false)}>{inner}</a>
+                )
+              })}
+              <div className="flex flex-col gap-2 pt-3 border-t border-border">
+                {!isLoading && !isAuthenticated && (
+                  <>
+                    <Link to="/login" onClick={() => setIsOpen(false)}>
+                      <Button variant="ghost" className="w-full">Log In</Button>
+                    </Link>
+                    <Link to="/signup" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full">Get Started</Button>
+                    </Link>
+                  </>
+                )}
+                {!isLoading && isAuthenticated && (
+                  <Link to="/dashboard" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full">Dashboard</Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   )
 }

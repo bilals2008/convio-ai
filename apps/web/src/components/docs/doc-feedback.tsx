@@ -38,7 +38,7 @@ export function DocFeedback() {
           onClick={() => vote(true)}
           className={cn(
             'gap-1.5 text-[12px]',
-            data?.myVote?.helpful && 'bg-primary text-primary-foreground hover:bg-primary/90'
+            data?.myVote?.helpful && 'border-primary/50 bg-primary/10 text-primary'
           )}
         >
           <ThumbsUp className="size-3.5" />
@@ -52,7 +52,7 @@ export function DocFeedback() {
           onClick={() => vote(false)}
           className={cn(
             'gap-1.5 text-[12px]',
-            data?.myVote?.helpful === false && 'bg-primary text-primary-foreground hover:bg-primary/90'
+            data?.myVote?.helpful === false && 'border-primary/50 bg-primary/10 text-primary'
           )}
         >
           <ThumbsDown className="size-3.5" />
