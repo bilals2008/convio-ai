@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { adminNavGroups, type NavPermission } from './admin-nav-items'
-import type { NavGroup } from './admin-nav-items'
 
 const defaultPermissions: NavPermission[] = [
   'admin.access',
@@ -15,6 +14,7 @@ const defaultPermissions: NavPermission[] = [
   'admin.providers.read',
   'admin.announcements.read',
   'admin.docs-feedback.read',
+  'admin.knowledge.read',
 ]
 
 export function useAdminNav(userPermissions?: NavPermission[]) {

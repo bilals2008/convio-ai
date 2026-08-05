@@ -26,6 +26,9 @@ import AdminPlanDetailPage from '@/admin/pages/plan-detail-page'
 import AdminProvidersPage from '@/admin/pages/providers-page'
 import AdminAnnouncementsPage from '@/admin/pages/announcements-page'
 import AdminDocsFeedbackPage from '@/admin/pages/docs-feedback-page'
+import AdminKnowledgeBasesPage from '@/admin/pages/knowledge-bases-page'
+import AdminKnowledgeBaseDetailPage from '@/admin/pages/knowledge-base-detail-page'
+import AdminKnowledgeDocumentDetailPage from '@/admin/pages/knowledge-document-detail-page'
 
 import Landing from '@/pages/landing'
 import PricingPage from '@/pages/pricing-page'
@@ -576,6 +579,9 @@ export function App() {
                 <Route path="/admin/providers" element={<AdminProvidersPage />} />
                 <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
                 <Route path="/admin/docs-feedback" element={<AdminDocsFeedbackPage />} />
+                <Route path="/admin/knowledge-bases" element={<AdminKnowledgeBasesPage />} />
+                <Route path="/admin/knowledge-bases/:id" element={<AdminKnowledgeBaseDetailPage />} />
+                <Route path="/admin/knowledge-bases/:kbId/documents/:documentId" element={<AdminKnowledgeDocumentDetailPage />} />
               </Route>
             </Route>
           </Routes>

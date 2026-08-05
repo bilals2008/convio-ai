@@ -1,5 +1,77 @@
-import { useQuery } from '@tanstack/react-query'
-import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminProviderKey, type Announcement, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan } from '@/admin/services/admin-api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail } from '@/admin/services/admin-api'
+
+export function invalidateAdminUsers(queryClient: ReturnType<typeof useQueryClient>) {
+  return queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+}
+
+export function useAdminUsers(params?: {
+  cursor?: string
+  limit?: number
+  search?: string
+  status?: string
+  plan?: string
+  orgId?: string
+  verified?: string
+  createdFrom?: string
+  createdTo?: string
+  activeFrom?: string
+  activeTo?: string
+}) {
+  return useQuery({
+    queryKey: ['admin', 'users', params],
+    queryFn: async () => {
+      const res = await adminApi.users(params)
+      return res.data
+    },
+  })
+}
+
+export function useAdminUserAction(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ type, id }: { type: 'suspend' | 'activate' | 'verify' | 'reset' | 'impersonate' | 'logout' | 'delete'; id: string }) => {
+      switch (type) {
+        case 'suspend': return adminApi.suspendUser(id)
+        case 'activate': return adminApi.activateUser(id)
+        case 'verify': return adminApi.verifyUserEmail(id)
+        case 'reset': return adminApi.resetUserPassword(id)
+        case 'impersonate': return adminApi.impersonateUser(id)
+        case 'logout': return adminApi.forceLogoutUser(id)
+        case 'delete': return adminApi.deleteUser(id)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      onSuccess?.()
+    },
+  })
+}
+
+export function useAdminBulkUsers(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { ids: string[]; action: 'suspend' | 'activate' | 'verify' | 'delete' }) => adminApi.bulkUsers(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      onSuccess?.()
+    },
+  })
+}
+
+export function useAdminUpdateUser(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name?: string | null; avatar?: string | null } }) => adminApi.updateUser(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', 'detail'] })
+      onSuccess?.()
+    },
+  })
+}
 
 export function useAdminStats() {
   return useQuery<AdminStats>({
@@ -12,22 +84,23 @@ export function useAdminStats() {
   })
 }
 
-export function useAdminUsers(params?: { cursor?: string; limit?: number; search?: string }) {
-  return useQuery({
-    queryKey: ['admin', 'users', params],
-    queryFn: async () => {
-      const res = await adminApi.users(params)
-      return res.data
-    },
-  })
-}
-
 export function useAdminUser(id: string | undefined) {
   return useQuery<AdminUserDetail>({
     queryKey: ['admin', 'users', id],
     queryFn: async () => {
       const res = await adminApi.user(id!)
       return res.data.data
+    },
+    enabled: !!id,
+  })
+}
+
+export function useAdminUserConversations(id: string | undefined, params?: { cursor?: string; limit?: number }) {
+  return useQuery({
+    queryKey: ['admin', 'users', id, 'conversations', params],
+    queryFn: async () => {
+      const res = await adminApi.userConversations(id!, params)
+      return res.data
     },
     enabled: !!id,
   })
@@ -171,5 +244,37 @@ export function useAdminPlans() {
       const res = await adminApi.plans()
       return res.data.data
     },
+  })
+}
+
+export function useAdminKnowledgeBases(params?: { cursor?: string; limit?: number; search?: string }) {
+  return useQuery({
+    queryKey: ['admin', 'knowledge-bases', params],
+    queryFn: async () => {
+      const res = await adminApi.knowledgeBases(params)
+      return res.data
+    },
+  })
+}
+
+export function useAdminKnowledgeBase(id: string | undefined) {
+  return useQuery<AdminKnowledgeBaseDetail>({
+    queryKey: ['admin', 'knowledge-bases', id],
+    queryFn: async () => {
+      const res = await adminApi.knowledgeBase(id!)
+      return res.data.data
+    },
+    enabled: !!id,
+  })
+}
+
+export function useAdminKnowledgeDocument(kbId: string | undefined, documentId: string | undefined) {
+  return useQuery<AdminKnowledgeDocumentDetail>({
+    queryKey: ['admin', 'knowledge-bases', kbId, 'documents', documentId],
+    queryFn: async () => {
+      const res = await adminApi.knowledgeDocument(kbId!, documentId!)
+      return res.data.data
+    },
+    enabled: !!kbId && !!documentId,
   })
 }

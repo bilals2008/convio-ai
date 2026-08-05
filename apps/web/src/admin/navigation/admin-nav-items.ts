@@ -12,6 +12,7 @@ import {
   Megaphone,
   ThumbsUp,
   Tags,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -28,6 +29,7 @@ export type NavPermission =
   | 'admin.providers.read'
   | 'admin.announcements.read'
   | 'admin.docs-feedback.read'
+  | 'admin.knowledge.read'
 
 export interface NavItem {
   icon: LucideIcon
@@ -58,6 +60,7 @@ export const adminNavGroups: NavGroup[] = [
     items: [
       { icon: Brain, label: 'Agents', href: '/admin/agents', permission: 'admin.agents.read' },
       { icon: Activity, label: 'System Health', href: '/admin/system', permission: 'admin.system.read' },
+      { icon: BookOpen, label: 'Knowledge Bases', href: '/admin/knowledge-bases', permission: 'admin.knowledge.read' },
       { icon: Flag, label: 'Moderation', href: '/admin/moderation', permission: 'admin.moderation.read' },
       { icon: ThumbsUp, label: 'Docs Feedback', href: '/admin/docs-feedback', permission: 'admin.docs-feedback.read' },
     ],
@@ -87,4 +90,5 @@ export const fullAdminPermissions: NavPermission[] = [
   'admin.providers.read',
   'admin.announcements.read',
   'admin.docs-feedback.read',
+  'admin.knowledge.read',
 ]

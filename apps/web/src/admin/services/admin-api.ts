@@ -2,6 +2,11 @@ import api from '@/lib/api'
 
 export interface AdminStats {
   totalUsers: number
+  activeUsers: number
+  suspendedUsers: number
+  verifiedUsers: number
+  payingUsers: number
+  newUsers30d: number
   totalOrgs: number
   totalAgents: number
   messagesLast24h: number
@@ -13,12 +18,21 @@ export interface AdminUser {
   name: string | null
   email: string
   avatar: string | null
+  status: string
+  emailVerified: boolean
   createdAt: string
   updatedAt: string
   orgCount: number
+  plan: string
+  organizations: Array<{ id: string; name: string; slug: string; plan: string | null }>
+  agentCount: number
+  conversationCount: number
+  messageCount: number
+  tokensUsed: number
+  lastActive: string | null
 }
 
-export interface AdminUserDetail extends Omit<AdminUser, 'orgCount'> {
+export interface AdminUserDetail extends Omit<AdminUser, 'orgCount' | 'plan' | 'organizations' | 'agentCount' | 'conversationCount' | 'messageCount' | 'tokensUsed' | 'lastActive'> {
   organizations: Array<{
     id: string
     name: string
@@ -26,6 +40,31 @@ export interface AdminUserDetail extends Omit<AdminUser, 'orgCount'> {
     plan: string | null
     role: string
     joinedAt: string
+    subscription: {
+      plan: string
+      status: string
+      renewsAt: string | null
+      endsAt: string | null
+      cancelAtPeriodEnd: boolean
+    } | null
+    invoices: Array<{
+      id: string
+      invoiceNumber: string | null
+      status: string
+      total: number
+      currency: string
+      createdAt: string
+      paidAt: string | null
+    }>
+  }>
+  agents: Array<{
+    id: string
+    name: string
+    model: string
+    status: string
+    createdAt: string
+    updatedAt: string
+    organization: { id: string; name: string; slug: string }
   }>
   recentLogins: Array<{
     ipAddress: string | null
@@ -36,6 +75,22 @@ export interface AdminUserDetail extends Omit<AdminUser, 'orgCount'> {
     status: string
     createdAt: string
   }>
+  usage: {
+    conversationCount: number
+    messageCount: number
+    tokensUsed: number
+    knowledgeBaseCount: number
+    agentCountInOrgs: number
+    channelBreakdown: Array<{ channel: string; count: number }>
+    lastActive: string | null
+  }
+}
+
+export interface AdminActionLink {
+  link?: string
+  actionLink?: string
+  email?: string
+  sent?: boolean
 }
 
 export interface AdminOrg {
@@ -254,13 +309,100 @@ export interface AdminPlan {
   updatedAt: string
 }
 
+export interface AdminKnowledgeBase {
+  id: string
+  name: string
+  description: string | null
+  createdAt: string
+  organization: { id: string; name: string; slug: string }
+  documentCount: number
+  agentCount: number
+  chunkCount: number
+  queryCount: number
+}
+
+export interface AdminKnowledgeDocument {
+  id: string
+  name: string
+  type: string
+  status: string
+  url: string | null
+  fileKey: string | null
+  createdAt: string
+  chunkCount: number
+  queryCount: number
+  successCount: number
+}
+
+export interface AdminKnowledgeBaseDetail {
+  id: string
+  name: string
+  description: string | null
+  createdAt: string
+  updatedAt: string
+  organization: { id: string; name: string; slug: string }
+  documents: AdminKnowledgeDocument[]
+}
+
+export interface AdminKnowledgeDocumentDetail {
+  id: string
+  name: string
+  type: string
+  status: string
+  url: string | null
+  fileKey: string | null
+  content: string | null
+  createdAt: string
+  chunkCount: number
+  successCount: number
+  chunks: Array<{ id: string; content: string; createdAt: string }>
+  queries: Array<{ id: string; success: boolean; createdAt: string }>
+}
+
 export const adminApi = {
   stats: () => api.get<{ data: AdminStats }>('/admin/stats'),
 
-  users: (params?: { cursor?: string; limit?: number; search?: string }) =>
-    api.get<PaginatedResponse<AdminUser>>('/admin/users', { params }),
+  users: (params?: {
+    cursor?: string
+    limit?: number
+    search?: string
+    status?: string
+    plan?: string
+    orgId?: string
+    verified?: string
+    createdFrom?: string
+    createdTo?: string
+    activeFrom?: string
+    activeTo?: string
+  }) => api.get<PaginatedResponse<AdminUser>>('/admin/users', { params }),
 
   user: (id: string) => api.get<{ data: AdminUserDetail }>(`/admin/users/${id}`),
+
+  updateUser: (id: string, data: { name?: string | null; avatar?: string | null }) =>
+    api.patch<{ data: { id: string; name: string | null; email: string; avatar: string | null; status: string; updatedAt: string } }>(`/admin/users/${id}`, data),
+
+  userConversations: (id: string, params?: { cursor?: string; limit?: number }) =>
+    api.get<PaginatedResponse<{
+      id: string
+      channel: string
+      status: string
+      contactName: string | null
+      messageCount: number
+      createdAt: string
+      updatedAt: string
+      agent: { id: string; name: string; organization: { id: string; name: string; slug: string } }
+    }>>(`/admin/users/${id}/conversations`, { params }),
+
+  suspendUser: (id: string) => api.post(`/admin/users/${id}/suspend`),
+  activateUser: (id: string) => api.post(`/admin/users/${id}/activate`),
+  verifyUserEmail: (id: string) => api.post(`/admin/users/${id}/verify-email`),
+  resetUserPassword: (id: string) => api.post<{ data: AdminActionLink }>(`/admin/users/${id}/reset-password`),
+  impersonateUser: (id: string) => api.post<{ data: AdminActionLink }>(`/admin/users/${id}/impersonate`),
+  forceLogoutUser: (id: string) => api.post(`/admin/users/${id}/force-logout`),
+  deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
+
+  bulkUsers: (body: { ids: string[]; action: 'suspend' | 'activate' | 'verify' | 'delete' }) =>
+    api.post<{ data: { processed: number; failed: Array<{ id: string; ok: boolean; error?: string }> } }>('/admin/users/bulk', body),
 
   orgs: (params?: { cursor?: string; limit?: number; search?: string }) =>
     api.get<PaginatedResponse<AdminOrg>>('/admin/organizations', { params }),
@@ -312,4 +454,12 @@ export const adminApi = {
     api.patch<{ data: AdminPlan }>(`/admin/plans/${id}`, data),
 
   deletePlan: (id: string) => api.delete(`/admin/plans/${id}`),
+
+  knowledgeBases: (params?: { cursor?: string; limit?: number; search?: string }) =>
+    api.get<PaginatedResponse<AdminKnowledgeBase>>('/admin/knowledge-bases', { params }),
+
+  knowledgeBase: (id: string) => api.get<{ data: AdminKnowledgeBaseDetail }>(`/admin/knowledge-bases/${id}`),
+
+  knowledgeDocument: (kbId: string, documentId: string) =>
+    api.get<{ data: AdminKnowledgeDocumentDetail }>(`/admin/knowledge-bases/${kbId}/documents/${documentId}`),
 }

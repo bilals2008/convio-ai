@@ -1,8 +1,12 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
+import type { Prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
+import { createClient } from '@supabase/supabase-js'
+import { deleteUserAccount } from '../users/delete-user.js'
 import {
+  paginationSchema,
   searchQuerySchema,
   orgParamsSchema,
   userParamsSchema,
@@ -13,7 +17,22 @@ import {
   auditLogQuerySchema,
   planCreateSchema,
   planUpdateSchema,
+  knowledgeParamsSchema,
+  knowledgeDocumentParamsSchema,
+  adminUserQuerySchema,
+  adminUserUpdateSchema,
+  adminUserActionSchema,
+  adminBulkActionSchema,
 } from './admin-schema.js'
+
+const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, enterprise: 2 }
+
+function getSupabaseAdmin() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return null
+  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  })
+}
 
 export default async function adminRoutes(fastify: FastifyInstance) {
   const adminGuard = { preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin] }
@@ -22,12 +41,20 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get('/admin/stats', adminGuard, async () => {
     const [
       totalUsers,
+      activeUsers,
+      suspendedUsers,
+      verifiedUsers,
+      newUsers30d,
       totalOrgs,
       totalAgents,
       messagesLast24h,
       conversationsLast24h,
     ] = await Promise.all([
       prisma.profile.count(),
+      prisma.profile.count({ where: { status: 'active' } }),
+      prisma.profile.count({ where: { status: 'suspended' } }),
+      prisma.profile.count({ where: { emailVerified: true } }),
+      prisma.profile.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } } }),
       prisma.organization.count(),
       prisma.agent.count(),
       prisma.message.count({
@@ -38,9 +65,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }),
     ])
 
+    const payingRows = await prisma.membership.groupBy({
+      by: ['userId'],
+      where: { organization: { plan: { not: 'free' } } },
+    })
+
     return {
       data: {
         totalUsers,
+        activeUsers,
+        suspendedUsers,
+        verifiedUsers,
+        payingUsers: payingRows.length,
+        newUsers30d,
         totalOrgs,
         totalAgents,
         messagesLast24h,
@@ -49,18 +86,57 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // GET /api/admin/users — All users with cursor pagination + search
+  // GET /api/admin/users — All users with filters (plan/status/org/date ranges) + usage metrics
   fastify.get('/admin/users', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: adminUserQuerySchema })],
   }, async (request) => {
-    const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
+    const { cursor, limit, search, status, plan, orgId, verified, createdFrom, createdTo, activeFrom, activeTo } =
+      request.query as {
+        cursor?: string
+        limit: number
+        search?: string
+        status?: string
+        plan?: string
+        orgId?: string
+        verified?: string
+        createdFrom?: Date
+        createdTo?: Date
+        activeFrom?: Date
+        activeTo?: Date
+      }
 
-    const where: Record<string, unknown> = {}
+    const where: Prisma.ProfileWhereInput = {}
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
       ]
+    }
+    if (status) where.status = status
+    if (verified) where.emailVerified = verified === 'true'
+    if (plan || orgId) {
+      where.memberships = {
+        some: {
+          ...(plan ? { organization: { plan } } : {}),
+          ...(orgId ? { organizationId: orgId } : {}),
+        },
+      }
+    }
+    if (createdFrom || createdTo) {
+      where.createdAt = {
+        ...(createdFrom ? { gte: createdFrom } : {}),
+        ...(createdTo ? { lte: createdTo } : {}),
+      }
+    }
+    if (activeFrom || activeTo) {
+      where.loginActivity = {
+        some: {
+          createdAt: {
+            ...(activeFrom ? { gte: activeFrom } : {}),
+            ...(activeTo ? { lte: activeTo } : {}),
+          },
+        },
+      }
     }
 
     const users = await prisma.profile.findMany({
@@ -74,30 +150,86 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const items = hasNextPage ? users.slice(0, limit) : users
 
     const userIds = items.map((u) => u.id)
-    const membershipCounts = userIds.length > 0
-      ? await prisma.membership.groupBy({
-          by: ['userId'],
-          where: { userId: { in: userIds } },
-          _count: true,
-        })
-      : []
-    const countMap = new Map(membershipCounts.map((m) => [m.userId, m._count]))
+
+    const [memberships, agentCounts, convCounts, tokenRows, loginLatest] = await Promise.all([
+      userIds.length > 0
+        ? prisma.membership.findMany({
+            where: { userId: { in: userIds } },
+            select: {
+              userId: true,
+              role: true,
+              organization: { select: { id: true, name: true, slug: true, plan: true } },
+            },
+          })
+        : Promise.resolve([]),
+      userIds.length > 0
+        ? prisma.agent.groupBy({ by: ['createdById'], where: { createdById: { in: userIds } }, _count: true })
+        : Promise.resolve([]),
+      userIds.length > 0
+        ? prisma.conversation.groupBy({ by: ['userId'], where: { userId: { in: userIds } }, _count: true })
+        : Promise.resolve([]),
+      userIds.length > 0
+        ? prisma.$queryRaw<Array<{ userId: string; messageCount: number; inputTokens: number; outputTokens: number }>>`
+            SELECT c."userId", COUNT(m.id)::int AS "messageCount",
+                   COALESCE(SUM(m."input_tokens"), 0)::int AS "inputTokens",
+                   COALESCE(SUM(m."output_tokens"), 0)::int AS "outputTokens"
+            FROM "Conversation" c
+            JOIN "Message" m ON m."conversationId" = c.id
+            WHERE c."userId" = ANY(${userIds})
+            GROUP BY c."userId"`
+        : Promise.resolve([]),
+      userIds.length > 0
+        ? prisma.loginActivity.groupBy({
+            by: ['userId'],
+            where: { userId: { in: userIds } },
+            _max: { createdAt: true },
+          })
+        : Promise.resolve([]),
+    ])
+
+    const orgByUser = new Map<string, Array<{ id: string; name: string; slug: string; plan: string | null; role: string }>>()
+    for (const m of memberships) {
+      const list = orgByUser.get(m.userId) || []
+      list.push({ ...m.organization, role: m.role })
+      orgByUser.set(m.userId, list)
+    }
+    const agentsByUser = new Map(agentCounts.map((a) => [a.createdById!, a._count]))
+    const convsByUser = new Map(convCounts.map((c) => [c.userId!, c._count]))
+    const tokensByUser = new Map(tokenRows.map((t) => [t.userId, t]))
+    const lastActiveByUser = new Map(loginLatest.map((l) => [l.userId, l._max.createdAt]))
 
     return {
-      data: items.map((user) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        orgCount: countMap.get(user.id) || 0,
-      })),
+      data: items.map((user) => {
+        const orgs = orgByUser.get(user.id) || []
+        const bestPlan = orgs.reduce((best, o) => {
+          if (!o.plan) return best
+          return (PLAN_RANK[o.plan] ?? 0) > (PLAN_RANK[best] ?? 0) ? o.plan : best
+        }, 'free')
+        const tokens = tokensByUser.get(user.id)
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          status: user.status,
+          emailVerified: user.emailVerified,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          orgCount: orgs.length,
+          plan: bestPlan,
+          organizations: orgs.map((o) => ({ id: o.id, name: o.name, slug: o.slug, plan: o.plan })),
+          agentCount: agentsByUser.get(user.id) || 0,
+          conversationCount: convsByUser.get(user.id) || 0,
+          messageCount: tokens?.messageCount || 0,
+          tokensUsed: (tokens?.inputTokens || 0) + (tokens?.outputTokens || 0),
+          lastActive: lastActiveByUser.get(user.id) || null,
+        }
+      }),
       nextCursor: hasNextPage ? items[items.length - 1].id : null,
     }
   })
 
-  // GET /api/admin/users/:id — Single user detail
+  // GET /api/admin/users/:id — Single user detail with usage, billing, agents + activity
   fastify.get('/admin/users/:id', {
     preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: userParamsSchema })],
   }, async (request) => {
@@ -106,18 +238,94 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const user = await prisma.profile.findUnique({ where: { id } })
     if (!user) throw new AppError(404, 'User not found')
 
-    const [memberships, loginActivity] = await Promise.all([
+    const [memberships, loginActivity, agentRows, convCounts, tokenRows, kbCounts, deploymentRows] = await Promise.all([
       prisma.membership.findMany({
         where: { userId: id },
-        include: { organization: { select: { id: true, name: true, slug: true, plan: true } } },
+        include: {
+          organization: {
+            select: {
+              id: true, name: true, slug: true, plan: true,
+              billingCustomer: {
+                select: {
+                  id: true,
+                  subscriptions: { select: { id: true, plan: true, status: true, renewsAt: true, endsAt: true, cancelAtPeriodEnd: true } },
+                  invoices: { select: { id: true, invoiceNumber: true, status: true, total: true, currency: true, createdAt: true, paidAt: true } },
+                },
+              },
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.loginActivity.findMany({
         where: { userId: id },
         orderBy: { createdAt: 'desc' },
-        take: 10,
+        take: 25,
+      }),
+      prisma.agent.findMany({
+        where: { createdById: id },
+        select: { id: true, name: true, model: true, status: true, createdAt: true, updatedAt: true, organization: { select: { id: true, name: true, slug: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      prisma.conversation.groupBy({ by: ['userId'], where: { userId: id }, _count: true }),
+      prisma.$queryRaw<Array<{ userId: string; messageCount: number; inputTokens: number; outputTokens: number }>>`
+        SELECT c."userId", COUNT(m.id)::int AS "messageCount",
+               COALESCE(SUM(m."input_tokens"), 0)::int AS "inputTokens",
+               COALESCE(SUM(m."output_tokens"), 0)::int AS "outputTokens"
+        FROM "Conversation" c
+        JOIN "Message" m ON m."conversationId" = c.id
+        WHERE c."userId" = ${id}
+        GROUP BY c."userId"`,
+      prisma.knowledgeBase.groupBy({ by: ['organizationId'], where: { organization: { memberships: { some: { userId: id } } } }, _count: true }),
+      prisma.deployment.groupBy({
+        by: ['channel'],
+        where: { agent: { organization: { memberships: { some: { userId: id } } } } },
+        _count: true,
       }),
     ])
+
+    const conversationCount = convCounts[0]?._count || 0
+    const tokenRow = tokenRows[0]
+    const messageCount = tokenRow?.messageCount || 0
+    const tokensUsed = (tokenRow?.inputTokens || 0) + (tokenRow?.outputTokens || 0)
+    const kbCount = kbCounts.reduce((sum, k) => sum + k._count, 0)
+    const agentIdsInOrgs = memberships.length > 0
+      ? (await prisma.agent.findMany({
+          where: { organizationId: { in: memberships.map((m) => m.organizationId) } },
+          select: { id: true },
+        })).length
+      : 0
+
+    const orgs = memberships.map((m) => {
+      const customer = m.organization.billingCustomer
+      return {
+        id: m.organization.id,
+        name: m.organization.name,
+        slug: m.organization.slug,
+        plan: m.organization.plan,
+        role: m.role,
+        joinedAt: m.createdAt,
+        subscription: customer && customer.subscriptions[0]
+          ? {
+              plan: customer.subscriptions[0].plan,
+              status: customer.subscriptions[0].status,
+              renewsAt: customer.subscriptions[0].renewsAt,
+              endsAt: customer.subscriptions[0].endsAt,
+              cancelAtPeriodEnd: customer.subscriptions[0].cancelAtPeriodEnd,
+            }
+          : null,
+        invoices: (customer?.invoices || []).map((i) => ({
+          id: i.id,
+          invoiceNumber: i.invoiceNumber,
+          status: i.status,
+          total: i.total,
+          currency: i.currency,
+          createdAt: i.createdAt,
+          paidAt: i.paidAt,
+        })),
+      }
+    })
 
     return {
       data: {
@@ -125,15 +333,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
+        status: user.status,
+        emailVerified: user.emailVerified,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
-        organizations: memberships.map((m) => ({
-          id: m.organization.id,
-          name: m.organization.name,
-          slug: m.organization.slug,
-          plan: m.organization.plan,
-          role: m.role,
-          joinedAt: m.createdAt,
+        organizations: orgs,
+        agents: agentRows.map((a) => ({
+          id: a.id,
+          name: a.name,
+          model: a.model,
+          status: a.status,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
+          organization: a.organization,
         })),
         recentLogins: loginActivity.map((l) => ({
           ipAddress: l.ipAddress,
@@ -144,8 +356,254 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           status: l.status,
           createdAt: l.createdAt,
         })),
+        usage: {
+          conversationCount,
+          messageCount,
+          tokensUsed,
+          knowledgeBaseCount: kbCount,
+          agentCountInOrgs: agentIdsInOrgs,
+          channelBreakdown: deploymentRows.map((d) => ({ channel: d.channel, count: d._count })),
+          lastActive: loginActivity[0]?.createdAt || null,
+        },
       },
     }
+  })
+
+  // GET /api/admin/users/:id/conversations — Recent conversations where the user is the account actor
+  fastify.get('/admin/users/:id/conversations', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: userParamsSchema, query: paginationSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { cursor, limit } = request.query as { cursor?: string; limit: number }
+
+    const items = await prisma.conversation.findMany({
+      where: { userId: id },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        channel: true,
+        status: true,
+        contactName: true,
+        createdAt: true,
+        updatedAt: true,
+        agent: {
+          select: { id: true, name: true, organization: { select: { id: true, name: true, slug: true } } },
+        },
+        _count: { select: { messages: true } },
+      },
+    })
+
+    const hasNextPage = items.length > limit
+    const page = hasNextPage ? items.slice(0, limit) : items
+
+    return {
+      data: page.map((c) => ({
+        id: c.id,
+        channel: c.channel,
+        status: c.status,
+        contactName: c.contactName,
+        messageCount: c._count.messages,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        agent: c.agent,
+      })),
+      nextCursor: hasNextPage ? page[page.length - 1].id : null,
+    }
+  })
+
+  // PATCH /api/admin/users/:id — Edit user profile (name/avatar)
+  fastify.patch('/admin/users/:id', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: userParamsSchema, body: adminUserUpdateSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const body = request.body as { name?: string | null; avatar?: string | null }
+
+    const existing = await prisma.profile.findUnique({ where: { id } })
+    if (!existing) throw new AppError(404, 'User not found')
+
+    const user = await prisma.profile.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.avatar !== undefined ? { avatar: body.avatar } : {}),
+      },
+    })
+    return { data: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, status: user.status, updatedAt: user.updatedAt } }
+  })
+
+  // POST /api/admin/users/:id/suspend — Suspend account (blocks login via Supabase ban + marks status)
+  fastify.post('/admin/users/:id/suspend', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const user = await prisma.profile.findUnique({ where: { id } })
+    if (!user) throw new AppError(404, 'User not found')
+
+    const supabaseAdmin = getSupabaseAdmin()
+    if (supabaseAdmin) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { ban_duration: '8760h' })
+      if (error) throw new AppError(500, `Failed to suspend auth user: ${error.message}`, 'SUPABASE_ERROR')
+    }
+
+    const updated = await prisma.profile.update({ where: { id }, data: { status: 'suspended' } })
+    return { data: { id: updated.id, status: updated.status } }
+  })
+
+  // POST /api/admin/users/:id/activate — Re-activate account
+  fastify.post('/admin/users/:id/activate', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const user = await prisma.profile.findUnique({ where: { id } })
+    if (!user) throw new AppError(404, 'User not found')
+
+    const supabaseAdmin = getSupabaseAdmin()
+    if (supabaseAdmin) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { ban_duration: 'none' })
+      if (error) throw new AppError(500, `Failed to unban auth user: ${error.message}`, 'SUPABASE_ERROR')
+    }
+
+    const updated = await prisma.profile.update({ where: { id }, data: { status: 'active' } })
+    return { data: { id: updated.id, status: updated.status } }
+  })
+
+  // POST /api/admin/users/:id/verify-email — Mark email as confirmed in Supabase auth
+  fastify.post('/admin/users/:id/verify-email', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const user = await prisma.profile.findUnique({ where: { id } })
+    if (!user) throw new AppError(404, 'User not found')
+
+    const supabaseAdmin = getSupabaseAdmin()
+    if (supabaseAdmin) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { email_confirm: true })
+      if (error) throw new AppError(500, `Failed to verify email: ${error.message}`, 'SUPABASE_ERROR')
+    }
+
+    const updated = await prisma.profile.update({ where: { id }, data: { emailVerified: true } })
+    return { data: { id: updated.id, emailVerified: updated.emailVerified } }
+  })
+
+  // POST /api/admin/users/:id/reset-password — Send password recovery link to user's email
+  fastify.post('/admin/users/:id/reset-password', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const user = await prisma.profile.findUnique({ where: { id } })
+    if (!user) throw new AppError(404, 'User not found')
+
+    const supabaseAdmin = getSupabaseAdmin()
+    if (!supabaseAdmin) throw new AppError(500, 'Supabase service role not configured', 'CONFIGURATION_ERROR')
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({ type: 'recovery', email: user.email })
+    if (error) throw new AppError(500, `Failed to generate recovery link: ${error.message}`, 'SUPABASE_ERROR')
+
+    return { data: { sent: true, email: user.email, actionLink: data.properties.action_link } }
+  })
+
+  // POST /api/admin/users/:id/impersonate — Generate a login link the admin can open to access the account
+  // ponytail: recovery link as impersonation; upgrade to a minted session token if real SSO-style access is needed
+  fastify.post('/admin/users/:id/impersonate', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const user = await prisma.profile.findUnique({ where: { id } })
+    if (!user) throw new AppError(404, 'User not found')
+
+    const supabaseAdmin = getSupabaseAdmin()
+    if (!supabaseAdmin) throw new AppError(500, 'Supabase service role not configured', 'CONFIGURATION_ERROR')
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({ type: 'recovery', email: user.email })
+    if (error) throw new AppError(500, `Failed to generate impersonation link: ${error.message}`, 'SUPABASE_ERROR')
+
+    return { data: { link: data.properties.action_link, email: user.email } }
+  })
+
+  // POST /api/admin/users/:id/force-logout — Revoke all active sessions globally
+  fastify.post('/admin/users/:id/force-logout', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const user = await prisma.profile.findUnique({ where: { id } })
+    if (!user) throw new AppError(404, 'User not found')
+
+    const supabaseAdmin = getSupabaseAdmin()
+    if (!supabaseAdmin) throw new AppError(500, 'Supabase service role not configured', 'CONFIGURATION_ERROR')
+    const { error: logoutError } = await supabaseAdmin.auth.admin.signOut(id, 'global')
+    if (logoutError) {
+      // admin.signOut expects a user JWT, not a user id — fall back to the GoTrue admin endpoint
+      const res = await fetch(`${process.env.SUPABASE_URL!}/auth/v1/admin/users/${id}/logout`, {
+        method: 'POST',
+        headers: {
+          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+        },
+      })
+      if (!res.ok && res.status !== 204) {
+        throw new AppError(500, `Failed to revoke sessions: ${res.status}`, 'SUPABASE_ERROR')
+      }
+    }
+
+    return { data: { revoked: true } }
+  })
+
+  // DELETE /api/admin/users/:id — Hard delete user account (auth + profile + owned orgs)
+  fastify.delete('/admin/users/:id', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const user = await prisma.profile.findUnique({ where: { id } })
+    if (!user) throw new AppError(404, 'User not found')
+
+    await deleteUserAccount(request.log, id)
+    reply.code(204).send()
+  })
+
+  // POST /api/admin/users/bulk — Bulk suspend/activate/verify/delete users
+  fastify.post('/admin/users/bulk', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: adminBulkActionSchema })],
+  }, async (request) => {
+    const { ids, action } = request.body as { ids: string[]; action: 'suspend' | 'activate' | 'verify' | 'delete' }
+
+    const supabaseAdmin = getSupabaseAdmin()
+    const results: Array<{ id: string; ok: boolean; error?: string }> = []
+
+    for (const id of ids) {
+      try {
+        const user = await prisma.profile.findUnique({ where: { id } })
+        if (!user) throw new AppError(404, 'User not found')
+
+        if (action === 'delete') {
+          await deleteUserAccount(request.log, id)
+        } else {
+          if (supabaseAdmin) {
+            if (action === 'suspend') {
+              const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { ban_duration: '8760h' })
+              if (error) throw new Error(error.message)
+            } else if (action === 'activate') {
+              const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { ban_duration: 'none' })
+              if (error) throw new Error(error.message)
+            } else if (action === 'verify') {
+              const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { email_confirm: true })
+              if (error) throw new Error(error.message)
+            }
+          }
+          await prisma.profile.update({
+            where: { id },
+            data: action === 'suspend' ? { status: 'suspended' }
+              : action === 'activate' ? { status: 'active' }
+              : { emailVerified: true },
+          })
+        }
+        results.push({ id, ok: true })
+      } catch (err) {
+        results.push({ id, ok: false, error: err instanceof Error ? err.message : 'Unknown error' })
+      }
+    }
+
+    const failed = results.filter((r) => !r.ok)
+    return { data: { processed: results.length, failed } }
   })
 
   // GET /api/admin/organizations — All orgs with pagination + search
@@ -780,6 +1238,162 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string }
     await prisma.plan.delete({ where: { id } })
     return { success: true }
+  })
+
+  // GET /api/admin/knowledge-bases — All knowledge bases with org + usage counts
+  fastify.get('/admin/knowledge-bases', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+  }, async (request) => {
+    const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
+
+    const where: Record<string, unknown> = {}
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { organization: { name: { contains: search, mode: 'insensitive' } } },
+        { organization: { slug: { contains: search, mode: 'insensitive' } } },
+      ]
+    }
+
+    const kbs = await prisma.knowledgeBase.findMany({
+      where,
+      take: limit + 1,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { createdAt: 'desc' },
+      include: {
+        organization: { select: { id: true, name: true, slug: true } },
+        _count: { select: { documents: true, agents: true } },
+        documents: { select: { _count: { select: { chunks: true, queries: true } } } },
+      },
+    })
+
+    const nextCursor = kbs.length > limit ? kbs.pop()!.id : null
+
+    const data = kbs.map((kb) => {
+      let chunkCount = 0
+      let queryCount = 0
+      for (const doc of kb.documents) {
+        chunkCount += doc._count.chunks
+        queryCount += doc._count.queries
+      }
+      return {
+        id: kb.id,
+        name: kb.name,
+        description: kb.description,
+        createdAt: kb.createdAt,
+        organization: kb.organization,
+        documentCount: kb._count.documents,
+        agentCount: kb._count.agents,
+        chunkCount,
+        queryCount,
+      }
+    })
+
+    return { data, nextCursor }
+  })
+
+  // GET /api/admin/knowledge-bases/:id — KB detail with documents + usage
+  fastify.get('/admin/knowledge-bases/:kbId', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: knowledgeParamsSchema })],
+  }, async (request) => {
+    const { kbId } = request.params as { kbId: string }
+
+    const kb = await prisma.knowledgeBase.findUnique({
+      where: { id: kbId },
+      include: {
+        organization: { select: { id: true, name: true, slug: true } },
+        documents: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            _count: { select: { chunks: true, queries: true } },
+          },
+        },
+      },
+    })
+
+    if (!kb) {
+      throw new AppError(404, 'Knowledge base not found', 'NOT_FOUND')
+    }
+
+    const queryStats = await prisma.documentQuery.groupBy({
+      by: ['documentId', 'success'],
+      where: { document: { knowledgeBaseId: kbId } },
+      _count: { _all: true },
+    })
+    const successByDoc = new Map<string, number>()
+    for (const row of queryStats) {
+      if (row.success) successByDoc.set(row.documentId, row._count._all)
+    }
+
+    return {
+      data: {
+        id: kb.id,
+        name: kb.name,
+        description: kb.description,
+        createdAt: kb.createdAt,
+        updatedAt: kb.updatedAt,
+        organization: kb.organization,
+        documents: kb.documents.map((doc) => ({
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+          status: doc.status,
+          url: doc.url,
+          fileKey: doc.fileKey,
+          createdAt: doc.createdAt,
+          chunkCount: doc._count.chunks,
+          queryCount: doc._count.queries,
+          successCount: successByDoc.get(doc.id) ?? 0,
+        })),
+      },
+    }
+  })
+
+  // GET /api/admin/knowledge-bases/:kbId/documents/:documentId — Document chunks + query history
+  fastify.get('/admin/knowledge-bases/:kbId/documents/:documentId', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: knowledgeDocumentParamsSchema })],
+  }, async (request) => {
+    const { kbId, documentId } = request.params as { kbId: string; documentId: string }
+
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, knowledgeBaseId: kbId },
+      include: {
+        chunks: {
+          select: { id: true, content: true, createdAt: true },
+          orderBy: { createdAt: 'asc' },
+          take: 50,
+        },
+        queries: {
+          select: { id: true, success: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 25,
+        },
+      },
+    })
+
+    if (!document) {
+      throw new AppError(404, 'Document not found', 'NOT_FOUND')
+    }
+
+    const chunkCount = await prisma.documentChunk.count({ where: { documentId } })
+    const successCount = await prisma.documentQuery.count({ where: { documentId, success: true } })
+
+    return {
+      data: {
+        id: document.id,
+        name: document.name,
+        type: document.type,
+        status: document.status,
+        url: document.url,
+        fileKey: document.fileKey,
+        content: document.content,
+        createdAt: document.createdAt,
+        chunkCount,
+        successCount,
+        chunks: document.chunks,
+        queries: document.queries,
+      },
+    }
   })
 
   // GET /api/admin/audit-logs — Platform audit logs with filters

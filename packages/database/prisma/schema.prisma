@@ -12,6 +12,8 @@ model Profile {
   email         String
   name          String?
   avatar        String?
+  status        String       @default("active")
+  emailVerified Boolean      @default(false)
   createdAt     DateTime     @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
   createdAgents Agent[]      @relation("AgentCreator")
@@ -19,8 +21,11 @@ model Profile {
   invitedMe     Invitation[]
   onboarding    Onboarding?
   docFeedback   DocFeedback[]
+  loginActivity LoginActivity[]
 
   @@index([email])
+  @@index([status])
+  @@index([emailVerified])
   @@map("profiles")
 }
 
@@ -481,6 +486,7 @@ model LoginActivity {
   location  String?
   status    String   @default("success")
   createdAt DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
+  profile   Profile  @relation(fields: [userId], references: [id])
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])

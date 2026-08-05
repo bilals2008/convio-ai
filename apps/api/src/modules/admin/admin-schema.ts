@@ -9,6 +9,31 @@ export const searchQuerySchema = paginationSchema.extend({
   search: z.string().max(100).optional(),
 })
 
+export const adminUserQuerySchema = searchQuerySchema.extend({
+  status: z.string().max(50).optional(),
+  plan: z.string().max(50).optional(),
+  orgId: z.string().uuid().optional(),
+  verified: z.enum(['true', 'false']).optional(),
+  createdFrom: z.coerce.date().optional(),
+  createdTo: z.coerce.date().optional(),
+  activeFrom: z.coerce.date().optional(),
+  activeTo: z.coerce.date().optional(),
+})
+
+export const adminUserUpdateSchema = z.object({
+  name: z.string().max(120).nullish(),
+  avatar: z.string().max(500).nullish(),
+})
+
+export const adminUserActionSchema = z.object({
+  id: z.string().uuid(),
+})
+
+export const adminBulkActionSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(200),
+  action: z.enum(['suspend', 'activate', 'verify', 'delete']),
+})
+
 export const orgParamsSchema = z.object({
   id: z.string().uuid(),
 })
@@ -81,3 +106,12 @@ export const planSchema = z.object({
 
 export const planCreateSchema = planSchema
 export const planUpdateSchema = planSchema.partial()
+
+export const knowledgeParamsSchema = z.object({
+  kbId: z.string().uuid(),
+})
+
+export const knowledgeDocumentParamsSchema = z.object({
+  kbId: z.string().uuid(),
+  documentId: z.string().uuid(),
+})
