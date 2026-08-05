@@ -24,6 +24,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -108,6 +109,7 @@ export default function AdminUsersPage() {
   const [editName, setEditName] = useState('')
   const [deleting, setDeleting] = useState<AdminUser | null>(null)
   const [linkResult, setLinkResult] = useState<{ title: string; description: string; link: string } | null>(null)
+  const [bulkAction, setBulkAction] = useState<'suspend' | 'activate' | 'verify' | 'delete' | null>(null)
 
   const { data: stats, isLoading: statsLoading } = useAdminStats()
   const { data, isLoading } = useAdminUsers({
@@ -171,6 +173,7 @@ export default function AdminUsersPage() {
 
   const doBulk = async (type: 'suspend' | 'activate' | 'verify' | 'delete') => {
     const ids = [...selected]
+    setBulkAction(type)
     try {
       const res = await bulk.mutateAsync({ ids, action: type })
       const failed = res.data.data.failed
@@ -179,6 +182,8 @@ export default function AdminUsersPage() {
       setSelected(new Set())
     } catch (err) {
       toast.error((err as { friendlyMessage?: string }).friendlyMessage || 'Bulk action failed')
+    } finally {
+      setBulkAction(null)
     }
   }
 
@@ -341,8 +346,6 @@ export default function AdminUsersPage() {
     getSortedRowModel: getSortedRowModel(),
   })
 
-  const busy = action.isPending || bulk.isPending
-
   return (
     <div>
       <PageHeader
@@ -423,14 +426,52 @@ export default function AdminUsersPage() {
         </div>
 
         {selected.size > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-muted/30 px-3 py-2">
+          <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-3 py-1.5">
             <span className="text-xs font-medium text-muted-foreground">{selected.size} selected</span>
-            <Button size="sm" variant="outline" onClick={() => doBulk('suspend')} disabled={busy}><Ban className="size-3.5" /> Suspend</Button>
-            <Button size="sm" variant="outline" onClick={() => doBulk('activate')} disabled={busy}><CheckCircle2 className="size-3.5" /> Activate</Button>
-            <Button size="sm" variant="outline" onClick={() => doBulk('verify')} disabled={busy}><Mail className="size-3.5" /> Verify</Button>
-            <Button size="sm" variant="destructive" onClick={() => doBulk('delete')} disabled={busy}><Trash2 className="size-3.5" /> Delete</Button>
-            <Button size="sm" variant="ghost" onClick={exportCsv} disabled={busy}><Download className="size-3.5" /> Export CSV</Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
+            <div className="ml-auto flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger render={
+                  <Button size="icon" variant="outline" className="size-7" onClick={() => doBulk('suspend')} disabled={bulk.isPending}>
+                    {bulkAction === 'suspend' ? <Loader2 className="size-3.5 animate-spin" /> : <Ban className="size-3.5" />}
+                  </Button>
+                } />
+                <TooltipContent side="top">Suspend</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger render={
+                  <Button size="icon" variant="outline" className="size-7" onClick={() => doBulk('activate')} disabled={bulk.isPending}>
+                    {bulkAction === 'activate' ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+                  </Button>
+                } />
+                <TooltipContent side="top">Activate</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger render={
+                  <Button size="icon" variant="outline" className="size-7" onClick={() => doBulk('verify')} disabled={bulk.isPending}>
+                    {bulkAction === 'verify' ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
+                  </Button>
+                } />
+                <TooltipContent side="top">Verify email</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger render={
+                  <Button size="icon" variant="outline" className="size-7 text-destructive hover:text-destructive" onClick={() => doBulk('delete')} disabled={bulk.isPending}>
+                    {bulkAction === 'delete' ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                  </Button>
+                } />
+                <TooltipContent side="top">Delete</TooltipContent>
+              </Tooltip>
+              <span className="mx-1 h-4 w-px bg-border" />
+              <Tooltip>
+                <TooltipTrigger render={
+                  <Button size="icon" variant="ghost" className="size-7" onClick={exportCsv} disabled={bulk.isPending}>
+                    <Download className="size-3.5" />
+                  </Button>
+                } />
+                <TooltipContent side="top">Export CSV</TooltipContent>
+              </Tooltip>
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setSelected(new Set())}>Clear</Button>
+            </div>
           </div>
         )}
 
