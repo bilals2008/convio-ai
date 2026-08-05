@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { UserAvatar } from '@/components/admin/user-avatar'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { RoleBadge } from '@/components/admin/role-badge'
 import { UserStatusBadge, VerifiedBadge } from '@/components/admin/user-verification'
 import { ActionLinkDialog } from '@/components/admin/action-link-dialog'
@@ -123,37 +123,49 @@ export default function AdminUserDetailPage() {
       </Button>
 
       <Card>
-        <CardContent className="p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <UserAvatar name={user.name} email={user.email} avatar={user.avatar} size="md" />
+        <div className="flex flex-col gap-5 p-6 sm:p-7 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-5">
+            <Avatar size="lg" className="mt-1 size-14">
+              <AvatarImage src={user.avatar || undefined} />
+              <AvatarFallback className="text-base bg-primary/10 text-primary font-semibold">
+                {(user.name || user.email || '?').slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 space-y-2">
               <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-lg font-semibold">{user.name || 'Unknown'}</h1>
-                  <UserStatusBadge status={user.status} />
-                  <VerifiedBadge verified={user.emailVerified} />
-                  <Badge variant="outline" className={cn('border-transparent capitalize', PLAN_COLORS[bestPlan] || 'bg-muted text-muted-foreground')}>{bestPlan} plan</Badge>
-                </div>
+                <h1 className="text-2xl font-semibold tracking-tight">{user.name || 'Unknown'}</h1>
                 <p className="mt-0.5 text-sm text-muted-foreground">{user.email}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Joined {new Date(user.createdAt).toLocaleDateString()} · Updated {new Date(user.updatedAt).toLocaleDateString()}
-                  {user.usage.lastActive && <> · Last active {formatRelativeTime(user.usage.lastActive)}</>}
-                </p>
               </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setEditing(true); setEditName(user.name || '') }}>
-                <Pencil className="size-3.5" /> Edit
-              </Button>
-              {user.status !== 'suspended' ? (
-                <Button variant="outline" size="sm" onClick={() => doAction('suspend')}><Ban className="size-3.5" /> Suspend</Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => doAction('activate')}><CheckCircle2 className="size-3.5" /> Activate</Button>
-              )}
-              <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}><Trash2 className="size-3.5" /> Delete</Button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <UserStatusBadge status={user.status} />
+                <VerifiedBadge verified={user.emailVerified} />
+                <Badge variant="outline" className={cn('border-transparent capitalize', PLAN_COLORS[bestPlan] || 'bg-muted text-muted-foreground')}>{bestPlan} plan</Badge>
+              </div>
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+                <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
+                <span aria-hidden>·</span>
+                <span>Updated {new Date(user.updatedAt).toLocaleDateString()}</span>
+                {user.usage.lastActive && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span>Last active {formatRelativeTime(user.usage.lastActive)}</span>
+                  </>
+                )}
+              </p>
             </div>
           </div>
-        </CardContent>
+          <div className="flex flex-wrap items-center gap-2 lg:gap-1.5 lg:rounded-xl lg:border lg:border-border/60 lg:bg-muted/30 lg:p-1.5">
+            <Button variant="ghost" size="sm" className="h-9 lg:h-8" onClick={() => { setEditing(true); setEditName(user.name || '') }}>
+              <Pencil className="size-3.5" /> Edit
+            </Button>
+            {user.status !== 'suspended' ? (
+              <Button variant="ghost" size="sm" className="h-9 lg:h-8" onClick={() => doAction('suspend')}><Ban className="size-3.5" /> Suspend</Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="h-9 lg:h-8" onClick={() => doAction('activate')}><CheckCircle2 className="size-3.5" /> Activate</Button>
+            )}
+            <Button variant="ghost" size="sm" className="h-9 text-destructive hover:text-destructive lg:h-8" onClick={() => setConfirmDelete(true)}><Trash2 className="size-3.5" /> Delete</Button>
+          </div>
+        </div>
       </Card>
 
       <Tabs defaultValue="overview">
