@@ -464,7 +464,14 @@ export default function AdminUsersPage() {
                 </TableRow>
               ) : (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="cursor-pointer" onClick={() => navigate(`/admin/users/${row.original.id}`)}>
+                  <TableRow
+                    key={row.id}
+                    className="cursor-pointer odd:bg-muted/30 data-[selected]:bg-muted"
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('[data-slot="checkbox"], button, a, input, select, textarea')) return
+                      navigate(`/admin/users/${row.original.id}`)
+                    }}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
