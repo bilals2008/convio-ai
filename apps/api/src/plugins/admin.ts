@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { prisma } from '@convio/database'
 import { AppError } from './error.js'
 
 declare module 'fastify' {
@@ -13,9 +14,14 @@ function getAdminEmails(): Set<string> {
   return new Set(raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean))
 }
 
-export function isPlatformAdminEmail(email: string): boolean {
+export async function isPlatformAdmin(email: string): Promise<boolean> {
   const adminEmails = getAdminEmails()
-  return adminEmails.size > 0 && adminEmails.has(email.toLowerCase())
+  if (adminEmails.size > 0 && adminEmails.has(email.toLowerCase())) return true
+
+  const grant = await prisma.adminGrant.findFirst({
+    where: { email: email.toLowerCase(), expiresAt: { gt: new Date() } },
+  })
+  return !!grant
 }
 
 export default fp(async function adminPlugin(fastify: FastifyInstance) {
@@ -24,7 +30,7 @@ export default fp(async function adminPlugin(fastify: FastifyInstance) {
       throw new AppError(401, 'Authentication required', 'UNAUTHORIZED')
     }
 
-    if (!isPlatformAdminEmail(request.user.email)) {
+    if (!(await isPlatformAdmin(request.user.email))) {
       throw new AppError(403, 'Platform admin access required', 'FORBIDDEN')
     }
   })

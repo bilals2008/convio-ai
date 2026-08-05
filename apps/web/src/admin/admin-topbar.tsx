@@ -15,6 +15,7 @@ const breadcrumbLabels: Record<string, string> = {
   billing: 'Billing',
   providers: 'Providers',
   announcements: 'Announcements',
+  access: 'Admin Access',
 }
 
 export function AdminTopbar() {

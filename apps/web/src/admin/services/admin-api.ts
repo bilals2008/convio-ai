@@ -462,4 +462,20 @@ export const adminApi = {
 
   knowledgeDocument: (kbId: string, documentId: string) =>
     api.get<{ data: AdminKnowledgeDocumentDetail }>(`/admin/knowledge-bases/${kbId}/documents/${documentId}`),
+
+  adminGrants: () => api.get<{ data: AdminGrant[] }>('/admin/grants'),
+
+  createAdminGrant: (data: { email: string; hours: number }) =>
+    api.post<{ data: AdminGrant }>('/admin/grants', data),
+
+  deleteAdminGrant: (id: string) => api.delete(`/admin/grants/${id}`),
+}
+
+export interface AdminGrant {
+  id: string
+  email: string
+  expiresAt: string
+  grantedById: string | null
+  createdAt: string
+  grantedBy: { id: string; name: string | null; email: string } | null
 }

@@ -22,6 +22,7 @@ model Profile {
   onboarding    Onboarding?
   docFeedback   DocFeedback[]
   loginActivity LoginActivity[]
+  adminGrants   AdminGrant[]
 
   @@index([email])
   @@index([status])
@@ -607,4 +608,17 @@ model DocFeedback {
   @@unique([slug, userId, organizationId])
   @@index([organizationId, slug])
   @@map("doc_feedback")
+}
+
+model AdminGrant {
+  id          String    @id @default(uuid())
+  email       String
+  expiresAt   DateTime  @db.Timestamptz(6)
+  grantedById String?
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  grantedBy   Profile?  @relation(fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([grantedById])
+  @@map("admin_grants")
 }

@@ -15,6 +15,7 @@ const defaultPermissions: NavPermission[] = [
   'admin.announcements.read',
   'admin.docs-feedback.read',
   'admin.knowledge.read',
+  'admin.access.manage',
 ]
 
 export function useAdminNav(userPermissions?: NavPermission[]) {

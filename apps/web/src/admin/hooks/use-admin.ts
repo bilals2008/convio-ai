@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail } from '@/admin/services/admin-api'
+import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant } from '@/admin/services/admin-api'
 
 export function invalidateAdminUsers(queryClient: ReturnType<typeof useQueryClient>) {
   return queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -276,5 +276,27 @@ export function useAdminKnowledgeDocument(kbId: string | undefined, documentId: 
       return res.data.data
     },
     enabled: !!kbId && !!documentId,
+  })
+}
+
+export function useAdminGrants() {
+  return useQuery<AdminGrant[]>({
+    queryKey: ['admin', 'grants'],
+    queryFn: async () => {
+      const res = await adminApi.adminGrants()
+      return res.data.data
+    },
+  })
+}
+
+export function useAdminGrantActions(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ action, id, data }: { action: 'create' | 'delete'; id?: string; data?: { email: string; hours: number } }) =>
+      action === 'create' ? adminApi.createAdminGrant(data!) : adminApi.deleteAdminGrant(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'grants'] })
+      onSuccess?.()
+    },
   })
 }

@@ -23,6 +23,8 @@ import {
   adminUserUpdateSchema,
   adminUserActionSchema,
   adminBulkActionSchema,
+  adminGrantCreateSchema,
+  adminGrantParamsSchema,
 } from './admin-schema.js'
 
 const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, enterprise: 2 }
@@ -1518,5 +1520,47 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         })),
       },
     }
+  })
+
+  // GET /api/admin/grants — List active temporary admin grants
+  fastify.get('/admin/grants', { preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin] }, async () => {
+    const grants = await prisma.adminGrant.findMany({
+      orderBy: { expiresAt: 'desc' },
+      include: { grantedBy: { select: { id: true, name: true, email: true } } },
+    })
+    return { data: grants }
+  })
+
+  // POST /api/admin/grants — Grant temporary admin access for N hours
+  fastify.post('/admin/grants', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: adminGrantCreateSchema })],
+  }, async (request) => {
+    const { email, hours } = request.body as { email: string; hours: number }
+    const normalized = email.toLowerCase()
+
+    const existing = await prisma.adminGrant.findFirst({
+      where: { email: normalized, expiresAt: { gt: new Date() } },
+    })
+    if (existing) {
+      throw new AppError(409, 'Active grant already exists for this email', 'CONFLICT')
+    }
+
+    const grant = await prisma.adminGrant.create({
+      data: {
+        email: normalized,
+        expiresAt: new Date(Date.now() + hours * 60 * 60 * 1000),
+        grantedById: request.userId,
+      },
+    })
+    return { data: grant }
+  })
+
+  // DELETE /api/admin/grants/:id — Revoke an admin grant
+  fastify.delete('/admin/grants/:id', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminGrantParamsSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    await prisma.adminGrant.deleteMany({ where: { id } })
+    return { data: { id } }
   })
 }

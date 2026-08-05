@@ -5,6 +5,15 @@ export const paginationSchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(20),
 })
 
+export const adminGrantCreateSchema = z.object({
+  email: z.string().email(),
+  hours: z.coerce.number().min(1).max(720).default(24),
+})
+
+export const adminGrantParamsSchema = z.object({
+  id: z.string().uuid(),
+})
+
 export const searchQuerySchema = paginationSchema.extend({
   search: z.string().max(100).optional(),
 })
