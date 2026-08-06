@@ -14,5 +14,9 @@
   "scripts": {
     "type-check": "tsc --noEmit",
     "lint": "eslint src/"
+  },
+  "dependencies": {
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.0"
   }
 }
