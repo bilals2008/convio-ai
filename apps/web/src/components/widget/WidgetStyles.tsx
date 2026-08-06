@@ -48,6 +48,7 @@ export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Reco
   const border = theme.borderColor ? hexToHsl(theme.borderColor) : null
   const inputBg = theme.inputBgColor ? hexToHsl(theme.inputBgColor) : null
   const sendBtn = theme.sendBtnColor ? hexToHsl(theme.sendBtnColor) : null
+  const footerBg = theme.footerBgColor ? hexToHsl(theme.footerBgColor) : null
 
   const bgL = isDark ? Math.min(bg.l, 18) : bg.l
   const textL = isDark ? Math.max(text.l, 85) : text.l
@@ -64,7 +65,7 @@ export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Reco
       : `${primary.h} ${Math.max(primary.s * 0.2, 3)}% ${isDark ? 25 : 88}%`,
     '--widget-header-start': `${headerStart.h} ${headerStart.s}% ${headerStart.l}%`,
     '--widget-header-end': `${headerEnd.h} ${headerEnd.s}% ${headerEnd.l}%`,
-    '--widget-header-direction': `${(theme.headerGradientDirection || '135').toString().replace(/deg$/i, '')}deg`,
+    '--widget-header-direction': `${(theme.headerGradientDirection ?? '135').toString().replace(/deg$/i, '')}deg`,
     '--widget-prompt-bg': promptBg
       ? `${promptBg.h} ${promptBg.s}% ${promptBg.l}%`
       : `${bg.h} ${Math.max(bg.s, 5)}% ${isDark ? 22 : 93}%`,
@@ -74,6 +75,9 @@ export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Reco
     '--widget-send-btn': sendBtn
       ? `${sendBtn.h} ${sendBtn.s}% ${sendBtn.l}%`
       : `${primary.h} ${primary.s}% ${primary.l}%`,
+    '--widget-footer-bg': footerBg
+      ? `${footerBg.h} ${footerBg.s}% ${footerBg.l}%`
+      : `${bg.h} ${Math.max(bg.s, 5)}% ${bgL}%`,
   }
 
   return vars

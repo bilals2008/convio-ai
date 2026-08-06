@@ -23,11 +23,10 @@ const widgetConfigFields = {
   greeting: z.string().trim().min(1).max(200).default('Hello! How can I help you?'),
   quickReplies: z.array(z.string().trim().min(1).max(60)).max(4).default([]),
   agentName: z.string().trim().min(1).max(50).default('Assistant'),
-  agentAvatar: z.string().url().optional(),
+  agentAvatar: z.union([z.string().url(), z.literal('')]).optional(),
   headerTitle: z.string().trim().max(100).optional(),
   headerSubtitle: z.string().trim().max(100).optional(),
   showOnlineIndicator: z.boolean().optional(),
-  launcherIcon: z.enum(['chat', 'sparkle', 'message', 'headphones', 'bot', 'help']).optional(),
   launcherLabel: z.string().trim().max(50).optional(),
   placeholderText: z.string().trim().max(120).optional(),
   showPoweredBy: z.boolean().optional(),
@@ -40,6 +39,7 @@ const widgetConfigFields = {
   borderColor: z.string().optional(),
   inputBgColor: z.string().optional(),
   sendBtnColor: z.string().optional(),
+  footerBgColor: z.string().optional(),
   widgetHeight: z.number().min(300).max(900).optional(),
   widgetWidth: z.enum(['narrow', 'default', 'wide']).optional(),
   launcherSize: z.enum(['small', 'default', 'large']).optional(),
@@ -178,7 +178,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     }
     const allowedDomains = body.allowedDomains ? normalizeDomains(body.allowedDomains) : existing.allowedDomains
     if (body.status === 'active' && allowedDomains.length === 0) throw new AppError(400, 'Add at least one allowed domain before publishing')
-    const config = body.config ? { ...defaultWidgetConfig, ...(existing.config as object), ...body.config } : undefined
+    const config = body.config ? { ...(existing.config as object), ...body.config } : undefined
     const widget = await prisma.widget.update({
       where: { id },
       data: { name: body.name, agentId: body.agentId, status: body.status, allowedDomains: body.allowedDomains ? allowedDomains : undefined, config },
@@ -219,6 +219,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     if (!widget) throw new AppError(404, 'Widget not found')
     assertPublicAccess(request, widget.allowedDomains)
     reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
+    reply.header('Cache-Control', 'no-store')
     return { data: widget }
   })
 

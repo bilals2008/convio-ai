@@ -25,10 +25,10 @@ export interface ChatWidgetProps {
   headerTitle?: string
   headerSubtitle?: string
   showOnlineIndicator?: boolean
-  launcherIcon?: 'chat' | 'sparkle' | 'message' | 'headphones' | 'bot' | 'help'
   launcherLabel?: string
   placeholderText?: string
   showPoweredBy?: boolean
+  widgetHeight?: number
 }
 
 const defaultTheme: WidgetTheme = {
@@ -42,6 +42,7 @@ const defaultTheme: WidgetTheme = {
   borderColor: '',
   inputBgColor: '',
   sendBtnColor: '',
+  footerBgColor: '',
 }
 
 function WidgetBackdrop({ show, onClose }: { show: boolean; onClose: () => void }) {
@@ -78,13 +79,13 @@ export function ChatWidget({
   headerTitle,
   headerSubtitle,
   showOnlineIndicator,
-  launcherIcon,
   launcherLabel,
   placeholderText,
   showPoweredBy,
+  widgetHeight,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient })
+  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight })
 
   const stateValue = {
     isOpen: widget.isOpen,
@@ -111,10 +112,10 @@ export function ChatWidget({
     headerTitle,
     headerSubtitle,
     showOnlineIndicator,
-    launcherIcon,
     launcherLabel,
     placeholderText,
     showPoweredBy,
+    widgetHeight,
     onSendMessage: widget.sendMessage,
     onToggle: widget.toggleWidget,
     onClose: widget.closeWidget,

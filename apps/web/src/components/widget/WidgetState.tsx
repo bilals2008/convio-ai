@@ -22,11 +22,11 @@ export interface WidgetStateValue {
   widgetWidth: 'narrow' | 'default' | 'wide'
   launcherSize: 'small' | 'default' | 'large'
   borderRadius: 'none' | 'default' | 'full'
+  widgetHeight?: number
   headerGradient: boolean
   headerTitle?: string
   headerSubtitle?: string
   showOnlineIndicator?: boolean
-  launcherIcon?: 'chat' | 'sparkle' | 'message' | 'headphones' | 'bot' | 'help'
   launcherLabel?: string
   placeholderText?: string
   showPoweredBy?: boolean

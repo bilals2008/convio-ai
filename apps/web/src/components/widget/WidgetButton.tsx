@@ -1,22 +1,11 @@
 import { cn } from '@/lib/utils'
 import { useWidgetState } from './WidgetState'
-import { MessageCircle, Sparkles, MessageSquareText, Headphones, Bot, HelpCircle, X } from 'lucide-react'
+import { MessageCircle, X } from 'lucide-react'
 
 const SIZE_MAP = { small: 'size-12', default: 'size-14', large: 'size-16' }
 
-const ICON_MAP = {
-  chat: MessageCircle,
-  sparkle: Sparkles,
-  message: MessageSquareText,
-  headphones: Headphones,
-  bot: Bot,
-  help: HelpCircle,
-}
-
 export function WidgetButton() {
-  const { isOpen, isEmbed, unreadCount, agentAvatar, agentName, position, launcherSize, launcherIcon, launcherLabel, onToggle } = useWidgetState()
-
-  const IconComponent = launcherIcon ? ICON_MAP[launcherIcon] : MessageCircle
+  const { isOpen, isEmbed, unreadCount, agentAvatar, agentName, position, launcherSize, launcherLabel, onToggle } = useWidgetState()
 
   if (isEmbed && isOpen) return null
   if (isOpen) return null
@@ -49,7 +38,7 @@ export function WidgetButton() {
         {agentAvatar ? (
           <img src={agentAvatar} alt={agentName} className="size-full rounded-full object-cover" />
         ) : (
-          <IconComponent className="size-5 text-white" />
+          <MessageCircle className="size-5 text-white" />
         )}
         {launcherLabel && (
           <span className="absolute -top-8 text-nowrap text-[10px] font-medium text-muted-foreground bg-background px-2 py-0.5 rounded-full shadow-sm border border-border">

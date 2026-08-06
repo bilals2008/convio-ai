@@ -19,6 +19,7 @@ export const widgetDraftSchema = z.object({
   borderColor: z.string().max(20).optional(),
   inputBgColor: z.string().max(20).optional(),
   sendBtnColor: z.string().max(20).optional(),
+  footerBgColor: z.string().max(20).optional(),
   headerTitle: z.string().max(100).optional(),
   headerSubtitle: z.string().max(100).optional(),
   agentName: z.string().max(50).optional(),
@@ -43,6 +44,7 @@ const COLOR_KEYS = [
   'borderColor',
   'inputBgColor',
   'sendBtnColor',
+  'footerBgColor',
 ] as const
 
 export const WIDGET_GENERATION_PROMPT = `You design the look and feel of an embedded website chat widget called a Convio widget. The user describes their brand or website, and you respond with ONLY a single valid JSON object (no markdown fences, no commentary) matching this schema:
@@ -59,6 +61,7 @@ export const WIDGET_GENERATION_PROMPT = `You design the look and feel of an embe
   "borderColor": string,             // optional widget border as #rrggbb
   "inputBgColor": string,            // optional input background as #rrggbb
   "sendBtnColor": string,            // optional send button color as #rrggbb
+  "footerBgColor": string,           // optional footer/input area background as #rrggbb
   "headerTitle": string,             // text shown in the widget header
   "headerSubtitle": string,          // small subtitle under the header title
   "agentName": string,               // assistant display name

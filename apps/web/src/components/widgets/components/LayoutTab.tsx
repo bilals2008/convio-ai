@@ -52,129 +52,127 @@ export function LayoutTab({
   onBorderRadiusChange,
 }: LayoutTabProps) {
   return (
-    <div className="space-y-5">
-      <SectionCard
-        icon={<Move className="size-3.5" />}
-        title="Widget"
-        description="Position, size and shape of the widget window."
-      >
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Position</p>
-            <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5" role="radiogroup">
-              {(['bottom-right', 'bottom-left'] as const).map((pos) => (
-                <button
-                  key={pos}
-                  role="radio"
-                  aria-checked={position === pos}
-                  onClick={() => onPositionChange(pos)}
-                  className={cn(
-                    'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                    position === pos
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {pos === 'bottom-right' ? 'Right' : 'Left'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Height</p>
-            <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5" role="radiogroup">
-              {HEIGHT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  role="radio"
-                  aria-checked={widgetHeight === opt.value}
-                  onClick={() => onWidgetHeightChange(opt.value)}
-                  className={cn(
-                    'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                    widgetHeight === opt.value
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Width</p>
-            <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5" role="radiogroup">
-              {WIDTH_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  role="radio"
-                  aria-checked={widgetWidth === opt.value}
-                  onClick={() => onWidgetWidthChange(opt.value)}
-                  className={cn(
-                    'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                    widgetWidth === opt.value
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Launcher size</p>
-            <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5" role="radiogroup">
-              {LAUNCHER_SIZE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  role="radio"
-                  aria-checked={launcherSize === opt.value}
-                  onClick={() => onLauncherSizeChange(opt.value)}
-                  className={cn(
-                    'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                    launcherSize === opt.value
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Corner radius</p>
-            <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5" role="radiogroup">
-              {BORDER_RADIUS_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  role="radio"
-                  aria-checked={borderRadius === opt.value}
-                  onClick={() => onBorderRadiusChange(opt.value)}
-                  className={cn(
-                    'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                    borderRadius === opt.value
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+    <SectionCard
+      icon={<Move className="size-3.5" />}
+      title="Layout"
+      description="Position, size and shape of the widget window"
+    >
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div className="space-y-2.5">
+          <p className="text-xs font-medium text-foreground">Position</p>
+          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+            {(['bottom-right', 'bottom-left'] as const).map((pos) => (
+              <button
+                key={pos}
+                role="radio"
+                aria-checked={position === pos}
+                onClick={() => onPositionChange(pos)}
+                className={cn(
+                  'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                  position === pos
+                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
+                    : 'text-muted-foreground/70 hover:text-foreground',
+                )}
+              >
+                {pos === 'bottom-right' ? 'Bottom right' : 'Bottom left'}
+              </button>
+            ))}
           </div>
         </div>
-      </SectionCard>
-    </div>
+
+        <div className="space-y-2.5">
+          <p className="text-xs font-medium text-foreground">Height</p>
+          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+            {HEIGHT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                role="radio"
+                aria-checked={widgetHeight === opt.value}
+                onClick={() => onWidgetHeightChange(opt.value)}
+                className={cn(
+                  'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                  widgetHeight === opt.value
+                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
+                    : 'text-muted-foreground/70 hover:text-foreground',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2.5">
+          <p className="text-xs font-medium text-foreground">Width</p>
+          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+            {WIDTH_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                role="radio"
+                aria-checked={widgetWidth === opt.value}
+                onClick={() => onWidgetWidthChange(opt.value)}
+                className={cn(
+                  'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                  widgetWidth === opt.value
+                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
+                    : 'text-muted-foreground/70 hover:text-foreground',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2.5">
+          <p className="text-xs font-medium text-foreground">Launcher size</p>
+          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+            {LAUNCHER_SIZE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                role="radio"
+                aria-checked={launcherSize === opt.value}
+                onClick={() => onLauncherSizeChange(opt.value)}
+                className={cn(
+                  'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                  launcherSize === opt.value
+                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
+                    : 'text-muted-foreground/70 hover:text-foreground',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2.5">
+          <p className="text-xs font-medium text-foreground">Corner radius</p>
+          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+            {BORDER_RADIUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                role="radio"
+                aria-checked={borderRadius === opt.value}
+                onClick={() => onBorderRadiusChange(opt.value)}
+                className={cn(
+                  'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                  borderRadius === opt.value
+                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
+                    : 'text-muted-foreground/70 hover:text-foreground',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </SectionCard>
   )
 }

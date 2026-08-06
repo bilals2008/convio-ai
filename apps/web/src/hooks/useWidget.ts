@@ -19,6 +19,7 @@ export interface WidgetTheme {
   borderColor: string
   inputBgColor: string
   sendBtnColor: string
+  footerBgColor: string
 }
 
 export interface WidgetConfig {
@@ -36,8 +37,8 @@ export interface WidgetConfig {
   launcherSize?: 'small' | 'default' | 'large'
   borderRadius?: 'none' | 'default' | 'full'
   headerGradient?: boolean
+  widgetHeight?: number
 }
-
 const defaultTheme: WidgetTheme = {
   primaryColor: '#fb923c',
   backgroundColor: '#1c1c1c',
@@ -49,6 +50,7 @@ const defaultTheme: WidgetTheme = {
   borderColor: '',
   inputBgColor: '',
   sendBtnColor: '',
+  footerBgColor: '',
 }
 
 function generateId(): string {
@@ -289,5 +291,6 @@ export function useWidget(config: WidgetConfig) {
     closeWidget,
     toggleWidget,
     setIsMinimized,
+    widgetHeight: config.widgetHeight,
   }
 }
