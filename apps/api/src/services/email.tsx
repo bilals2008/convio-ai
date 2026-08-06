@@ -59,6 +59,12 @@ class EmailService {
     await this.client.contacts.create({ email, audienceId: this.audienceId }).catch(() => {})
   }
 
+  async sendNotification({ to, subject, html }: { to: string; subject: string; html: string }) {
+    if (!this.client) return { success: false, error: 'Resend not configured' }
+    const result = await this.client.emails.send({ from: this.from, to, subject, html })
+    return result
+  }
+
   async sendContact({ name, email, subject, message }: { name: string; email: string; subject: string; message: string }) {
     if (!this.client) return { success: false, error: 'Resend not configured' }
 

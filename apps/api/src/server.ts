@@ -45,6 +45,8 @@ import docsRoutes from './modules/docs/routes.js'
 import plansRoutes from './modules/plans/routes.js'
 import adminRoutes from './modules/admin/routes.js'
 import emailPlugin from './services/email.jsx'
+import notificationsPlugin from './services/notifications/index.js'
+import notificationsRoutes from './modules/notifications/routes.js'
 import { initDiscordGateway, shutdownDiscordGateway } from './services/discord-gateway.js'
 
 
@@ -67,6 +69,7 @@ async function buildServer() {
   await app.register(swaggerPlugin)
   await app.register(rateLimitPlugin)
   await app.register(emailPlugin)
+  await app.register(notificationsPlugin)
   await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024 } })
   await app.register(formbody)
 
@@ -98,6 +101,7 @@ async function buildServer() {
   await app.register(docsRoutes, { prefix: '/api' })
   await app.register(plansRoutes, { prefix: '/api' })
   await app.register(adminRoutes, { prefix: '/api' })
+  await app.register(notificationsRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {

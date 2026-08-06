@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { AppError } from '../../plugins/error.js'
+import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 
 const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'kie', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'opencode']
@@ -65,6 +66,12 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
       },
     })
 
+    emitDomainEvent(NOTIFICATION_EVENTS.API_KEY_GENERATED, {
+      organizationId: orgId,
+      userId: request.userId,
+      entityName: provider,
+    })
+
     return { data: { id: key.id, provider: key.provider, keyPreview: key.keyPreview, label: key.label, createdAt: key.createdAt } }
   })
 
@@ -106,6 +113,13 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
     if (!existing) throw new AppError(404, 'Provider key not found')
 
     await prisma.providerKey.delete({ where: { id: keyId } })
+
+    emitDomainEvent(NOTIFICATION_EVENTS.API_KEY_REVOKED, {
+      organizationId: orgId,
+      userId: request.userId,
+      entityName: existing.provider,
+    })
+
     reply.code(204).send()
   })
 }

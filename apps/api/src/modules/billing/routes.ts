@@ -8,6 +8,7 @@ import { checkoutBodySchema, billingUsageQuerySchema } from '@convio/validation'
 import { z } from 'zod'
 import { getOrgPlan, getOrgUsage, getActiveSubscription, getBillingInvoices } from '../../services/billing.js'
 import { getPlanFromProductId, getPlanDef } from '../../services/plans.js'
+import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 
 const CREEM_API = CREEM_TEST_MODE ? 'https://test-api.creem.io' : 'https://api.creem.io'
 
@@ -385,6 +386,13 @@ export default async function billingRoutes(fastify: FastifyInstance) {
                   endsAt: eventObject.ends_at ? new Date(eventObject.ends_at) : null,
                 },
               })
+
+              if (eventType === 'subscription.paid' || eventType === 'subscription.active') {
+                emitDomainEvent(NOTIFICATION_EVENTS.SUBSCRIPTION_RENEWED, {
+                  organizationId: bc.organizationId,
+                  entityName: plan,
+                })
+              }
             } else {
               await prisma.subscription.create({
                 data: {
@@ -442,10 +450,23 @@ export default async function billingRoutes(fastify: FastifyInstance) {
         case 'subscription.past_due': {
           const subscriptionId = String(eventObject.id)
 
+          const sub = await prisma.subscription.findUnique({
+            where: { providerSubscriptionId: subscriptionId },
+            include: { customer: true },
+          })
+
           await prisma.subscription.updateMany({
             where: { providerSubscriptionId: subscriptionId },
             data: { status: 'past_due' },
           })
+
+          if (sub) {
+            emitDomainEvent(NOTIFICATION_EVENTS.PAYMENT_FAILED, {
+              organizationId: sub.customer.organizationId,
+              entityName: sub.plan,
+              metadata: { error: 'Your latest payment could not be processed. Update your payment method to avoid service interruption.' },
+            })
+          }
 
           break
         }
@@ -495,6 +516,14 @@ export default async function billingRoutes(fastify: FastifyInstance) {
               where: { id: sub.customer.organizationId },
               data: { plan: 'free' },
             })
+
+            const now = new Date()
+            if (sub.trialEndsAt && sub.trialEndsAt <= now) {
+              emitDomainEvent(NOTIFICATION_EVENTS.TRIAL_EXPIRED, {
+                organizationId: sub.customer.organizationId,
+                entityName: sub.plan,
+              })
+            }
           }
 
           break

@@ -23,6 +23,8 @@ model Profile {
   docFeedback   DocFeedback[]
   loginActivity LoginActivity[]
   adminGrants   AdminGrant[]
+  notifications Notification[]
+  notificationPreferences NotificationPreference[]
 
   @@index([email])
   @@index([status])
@@ -53,6 +55,8 @@ model Organization {
   broadcasts       Broadcast[]
   avatarPresets    AvatarPreset[]
   docFeedback      DocFeedback[]
+  notifications    Notification[]
+  notificationPreferences NotificationPreference[]
 
 
   @@index([slug])
@@ -548,21 +552,6 @@ model Onboarding {
   @@map("onboarding")
 }
 
-model Announcement {
-  id        String   @id @default(uuid())
-  title     String
-  body      String
-  priority  String   @default("normal")
-  published Boolean  @default(false)
-  startsAt  DateTime?
-  endsAt    DateTime?
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @db.Timestamptz(6)
-
-  @@index([published, startsAt])
-  @@map("announcements")
-}
-
 model Plan {
   id                       String   @id @default(uuid())
   key                      String   @unique
@@ -621,4 +610,120 @@ model AdminGrant {
   @@index([email])
   @@index([grantedById])
   @@map("admin_grants")
+}
+
+enum NotificationCategory {
+  system
+  organization
+  agent
+  conversation
+  knowledge
+  integration
+  billing
+  analytics
+  security
+  user
+}
+
+enum NotificationPriority {
+  critical
+  high
+  medium
+  low
+  info
+}
+
+enum NotificationStatus {
+  unread
+  read
+  archived
+}
+
+enum NotificationChannel {
+  in_app
+  email
+  sms
+  whatsapp
+  push
+  discord
+  slack
+}
+
+enum NotificationDeliveryStatus {
+  pending
+  sent
+  delivered
+  failed
+}
+
+model Notification {
+  id             String                 @id @default(uuid())
+  organizationId String?
+  userId         String
+  title          String
+  message        String?
+  type           String
+  category       NotificationCategory   @default(system)
+  priority       NotificationPriority   @default(info)
+  status         NotificationStatus     @default(unread)
+  metadata       Json?
+  actionUrl      String?
+  dedupeKey      String?
+  readAt         DateTime?              @db.Timestamptz(6)
+  archivedAt     DateTime?              @db.Timestamptz(6)
+  expiresAt      DateTime?              @db.Timestamptz(6)
+  createdAt      DateTime               @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime               @updatedAt @db.Timestamptz(6)
+  deliveries     NotificationDelivery[]
+  profile        Profile                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization?          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, status, createdAt(sort: Desc)])
+  @@index([userId, category, status, createdAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([priority, createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  organizationId   String?
+  emailEnabled     Boolean  @default(true)
+  pushEnabled      Boolean  @default(true)
+  inAppEnabled     Boolean  @default(true)
+  digestFrequency  String   @default("never")
+  quietHours       Json     @default("{}")
+  categorySettings Json     @default("{}")
+  muteAll          Boolean  @default(false)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+  profile          Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("notification_preferences")
+}
+
+model NotificationDelivery {
+  id             String                   @id @default(uuid())
+  notificationId String
+  channel        NotificationChannel
+  status         NotificationDeliveryStatus @default(pending)
+  sentAt         DateTime?                @db.Timestamptz(6)
+  deliveredAt    DateTime?                @db.Timestamptz(6)
+  failedAt       DateTime?                @db.Timestamptz(6)
+  retryCount     Int                      @default(0)
+  error          Json?
+  createdAt      DateTime                 @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime                 @updatedAt @db.Timestamptz(6)
+  notification   Notification             @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([status, retryCount])
+  @@index([status, createdAt])
+  @@map("notification_deliveries")
 }

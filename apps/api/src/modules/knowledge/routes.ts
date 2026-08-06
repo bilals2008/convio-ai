@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
+import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 import { uploadFile, deleteFile } from '../../lib/storage.js'
 import { processDocument, processPdf, embedText } from '../../services/processor.js'
@@ -69,6 +70,16 @@ const updateDocBodySchema = z.object({
   content: z.string().max(50000).optional().nullable(),
   url: z.string().url().optional().nullable(),
 })
+
+function emitDocumentUploaded(orgId: string, actorId: string, doc: { id: string; name: string }, knowledgeBaseId: string) {
+  emitDomainEvent(NOTIFICATION_EVENTS.DOCUMENT_UPLOADED, {
+    organizationId: orgId,
+    actorId,
+    entityId: doc.id,
+    entityName: doc.name,
+    metadata: { knowledgeBaseId },
+  })
+}
 
 function runIndexing(documentId: string, log: FastifyInstance['log'], pdfPath?: string) {
   const work = pdfPath
@@ -332,6 +343,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
       },
     })
 
+    emitDocumentUploaded(kb.organizationId, request.userId!, doc, id)
     runIndexing(doc.id, request.log)
 
     return { data: { ...doc, chunkCount: 0 } }
@@ -380,6 +392,8 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
         },
       })
 
+      emitDocumentUploaded(kb.organizationId, request.userId!, doc, id)
+
       const tmpPath = join(tmpdir(), `convio-upload-${doc.id}.pdf`)
       await writeFile(tmpPath, buffer)
       processPdf(tmpPath, doc.id)
@@ -414,6 +428,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
       },
     })
 
+    emitDocumentUploaded(kb.organizationId, request.userId!, doc, id)
     runIndexing(doc.id, request.log)
 
     return { data: { ...doc, chunkCount: 0 } }

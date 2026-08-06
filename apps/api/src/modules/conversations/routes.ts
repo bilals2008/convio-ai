@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
+import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 
 const conversationStatuses = ['active', 'waiting', 'resolved', 'closed', 'archived'] as const
@@ -71,6 +72,13 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.create({
       data: { agentId, userId: userId || request.userId, channel },
+    })
+
+    emitDomainEvent(NOTIFICATION_EVENTS.CONVERSATION_STARTED, {
+      organizationId: agent.organizationId,
+      userId,
+      entityId: conversation.id,
+      entityName: conversation.contactName ?? undefined,
     })
 
     let userName: string | undefined

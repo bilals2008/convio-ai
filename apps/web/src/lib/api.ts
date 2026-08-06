@@ -295,4 +295,7 @@ export const publicApi = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+export { notifications, notificationPreferences } from './api/notifications'
+export type { NotificationItem, NotificationListResponse, NotificationPreferences } from './api/notifications'
+
 export default api

@@ -4,6 +4,7 @@ import crypto from 'node:crypto'
 import { validate } from '../../plugins/validate.js'
 import { createOrganizationSchema, updateOrganizationSchema, membershipRoleSchema } from '@convio/validation'
 import { AppError } from '../../plugins/error.js'
+import { NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 
 const orgParamsSchema = z.object({
@@ -444,6 +445,13 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
       where: { userId_organizationId: { userId, organizationId: id } },
     })
 
+    fastify.emitEvent(NOTIFICATION_EVENTS.MEMBER_REMOVED, {
+      organizationId: id,
+      userId: isSelf ? undefined : userId,
+      actorId: request.userId,
+      metadata: { role: targetMembership.role },
+    })
+
     await fastify.auditLog({
       organizationId: id,
       actorId: request.userId,
@@ -500,6 +508,13 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
             invitedById: request.userId,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           },
+        })
+
+        fastify.emitEvent(NOTIFICATION_EVENTS.MEMBER_INVITED, {
+          organizationId: id,
+          actorId: request.userId,
+          entityName: member.email,
+          metadata: { email: member.email, role: member.role },
         })
 
         await fastify.auditLog({
@@ -590,6 +605,12 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
       data: { userId: request.userId!, organizationId: invitation.organizationId, role: invitation.role },
     })
 
+    fastify.emitEvent(NOTIFICATION_EVENTS.MEMBER_JOINED, {
+      organizationId: invitation.organizationId,
+      userId: request.userId,
+      entityName: profile.name ?? profile.email,
+    })
+
     await prisma.invitation.update({ where: { id: invitation.id }, data: { acceptedAt: new Date() } })
 
     await fastify.auditLog({
@@ -644,6 +665,14 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
     where: { userId_organizationId: { userId, organizationId: id } },
     data: { role: role as any },
     include: { profile: true },
+  })
+
+  fastify.emitEvent(NOTIFICATION_EVENTS.MEMBER_ROLE_CHANGED, {
+    organizationId: id,
+    userId,
+    actorId: request.userId,
+    entityName: updated.profile?.name ?? updated.profile?.email ?? 'the organization',
+    metadata: { role },
   })
 
     await fastify.auditLog({

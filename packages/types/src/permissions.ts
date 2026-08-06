@@ -47,6 +47,8 @@ export type Permission =
   | 'data.export'
   | 'data.delete'
   | 'data.wipe'
+  | 'notification.read'
+  | 'notification.manage'
 
 export const PERMISSIONS: Record<Permission, MembershipRole[]> = {
   'org.read': ['viewer', 'member', 'admin', 'owner'],
@@ -88,6 +90,8 @@ export const PERMISSIONS: Record<Permission, MembershipRole[]> = {
   'data.export': ['member', 'admin', 'owner'],
   'data.delete': ['admin', 'owner'],
   'data.wipe': ['owner'],
+  'notification.read': ['viewer', 'member', 'admin', 'owner'],
+  'notification.manage': ['viewer', 'member', 'admin', 'owner'],
 }
 
 export function canAccess(role: MembershipRole, permission: Permission): boolean {

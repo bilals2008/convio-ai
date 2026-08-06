@@ -10,6 +10,7 @@ import { getTemplate, listTemplates } from './templates.js'
 import { AGENT_GENERATION_PROMPT, resolveGenerationProvider, parseAgentDraft } from './agent-generator.js'
 import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
 import { getOrgPlan } from '../../services/billing.js'
+import { NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 
 // Tools that consume server-side resources (e.g. Tavily web search) are Pro+ only.
@@ -112,6 +113,13 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       } as any,
     })
 
+    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_CREATED, {
+      organizationId: orgId,
+      actorId: request.userId,
+      entityId: agent.id,
+      entityName: agent.name,
+    })
+
     return { data: agent }
   })
 
@@ -157,6 +165,13 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         knowledgeBaseId: body.knowledgeBaseId || null,
         providerKeyId: body.providerKeyId ?? null,
       } as any,
+    })
+
+    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_CREATED, {
+      organizationId,
+      actorId: request.userId,
+      entityId: agent.id,
+      entityName: agent.name,
     })
 
     await fastify.auditLog({
@@ -289,6 +304,13 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       data: updateData as any,
     })
 
+    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_UPDATED, {
+      organizationId: existing.organizationId,
+      actorId: request.userId,
+      entityId: agent.id,
+      entityName: agent.name,
+    })
+
     return { data: agent }
   })
 
@@ -307,6 +329,14 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
     await prisma.widget.deleteMany({ where: { agentId: id } })
+
+    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_DELETED, {
+      organizationId: existing.organizationId,
+      actorId: request.userId,
+      entityId: existing.id,
+      entityName: existing.name,
+    })
+
     await prisma.agent.delete({ where: { id } })
     reply.code(204).send()
   })
@@ -745,6 +775,15 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       where: { id },
       data: { status },
     })
+
+    if (status === 'active') {
+      fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_PUBLISHED, {
+        organizationId: existing.organizationId,
+        actorId: request.userId,
+        entityId: agent.id,
+        entityName: agent.name,
+      })
+    }
 
     return { data: agent }
   })
