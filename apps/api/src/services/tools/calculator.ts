@@ -3,7 +3,7 @@ export function calculate(expression: string): { result?: number; error?: string
     return { error: 'No expression provided' }
   }
 
-  let sanitized = expression
+  const sanitized = expression
     .replace(/\s/g, '')
     .replace(/×/g, '*')
     .replace(/÷/g, '/')

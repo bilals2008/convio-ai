@@ -211,7 +211,7 @@ export function DeploymentForm({ agents, onSave, onCancel }: DeploymentFormProps
     e.preventDefault()
     setSaving(true)
     try {
-      let finalConfig = { ...config }
+      const finalConfig = { ...config }
       if (isWhatsApp) {
         finalConfig.provider = provider
           if (provider === 'kapso') {
