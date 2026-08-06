@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
 import { ThumbsUp, ThumbsDown, FileText, TrendingUp, AlertCircle, MessageSquare } from 'lucide-react'
 import { PageContainer, Section } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'

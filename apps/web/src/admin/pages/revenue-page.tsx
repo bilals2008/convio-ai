@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, flexRender, type SortingState, type ColumnDef } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, type TooltipProps } from 'recharts'
 import { DollarSign, TrendingUp, Zap, Users, UserPlus, RefreshCcw, Download, FileDown, Search, AlertCircle } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'

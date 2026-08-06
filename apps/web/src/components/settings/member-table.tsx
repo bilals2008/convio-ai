@@ -8,7 +8,7 @@ import {
   type SortingState,
   type ColumnDef,
   type Column,
-} from '@tanstack/react-table'
+} from '@/lib/table'
 import { User, ArrowUpDown, ArrowDown, ArrowUp, Pencil, Trash2, Loader2 } from 'lucide-react'
 import {
   Table,

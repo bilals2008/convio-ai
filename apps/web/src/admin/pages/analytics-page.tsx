@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
 import { MessageSquare, CheckCircle, Building2, Bot, Users, BarChart3, Globe, TrendingUp, AlertCircle } from 'lucide-react'
 import { PageContainer, Section } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
@@ -32,21 +32,6 @@ const signupConfig = {
 export default function AdminAnalyticsPage() {
   const [days, setDays] = useState(30)
   const { data, isLoading, isError } = useAdminAnalytics(days)
-
-  if (isLoading) return <PageContainer>
-    <PageHeader title="Platform Analytics" description="Aggregated metrics across all organizations." />
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[88px] rounded-xl" />)}
-    </div>
-    <div className="grid gap-6 lg:grid-cols-2">
-      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[300px] rounded-xl" />)}
-    </div>
-  </PageContainer>
-
-  if (isError) return <PageContainer>
-    <PageHeader title="Platform Analytics" description="Aggregated metrics across all organizations." />
-    <EmptyState icon={AlertCircle} title="Failed to load analytics" description="Something went wrong. Please try again." />
-  </PageContainer>
 
   const chartData = (data?.dailyBreakdown || []).map((d) => ({
     date: d.date,
@@ -90,6 +75,21 @@ export default function AdminAnalyticsPage() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
+
+  if (isLoading) return <PageContainer>
+    <PageHeader title="Platform Analytics" description="Aggregated metrics across all organizations." />
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[88px] rounded-xl" />)}
+    </div>
+    <div className="grid gap-6 lg:grid-cols-2">
+      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[300px] rounded-xl" />)}
+    </div>
+  </PageContainer>
+
+  if (isError) return <PageContainer>
+    <PageHeader title="Platform Analytics" description="Aggregated metrics across all organizations." />
+    <EmptyState icon={AlertCircle} title="Failed to load analytics" description="Something went wrong. Please try again." />
+  </PageContainer>
 
   return (
     <PageContainer>

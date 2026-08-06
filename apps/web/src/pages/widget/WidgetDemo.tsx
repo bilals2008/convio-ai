@@ -196,7 +196,10 @@ function WidgetEmbedPage() {
 export default function WidgetDemoPage() {
   const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true'
   if (isEmbed) return <WidgetEmbedPage />
+  return <WidgetDemoEditor />
+}
 
+function WidgetDemoEditor() {
   const { orgId } = useOrg()
 
   const [config, setConfig] = useState<DemoConfig>({

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
 import {
   ArrowLeft, Building2, Bot, MessagesSquare, Mail, Globe, ShieldCheck,
   Pencil, Ban, CheckCircle2, KeyRound, Eye, LogOut, Trash2, CreditCard, Cpu, Loader2, Lock,
@@ -71,27 +71,9 @@ export default function AdminUserDetailPage() {
   const [linkResult, setLinkResult] = useState<{ title: string; description: string; link: string } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-5 w-24 bg-muted animate-pulse rounded" />
-        <div className="h-36 bg-muted animate-pulse rounded-xl" />
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-sm text-muted-foreground">User not found.</p>
-        <Button variant="link" onClick={() => navigate('/admin/users')}>Back to users</Button>
-      </div>
-    )
-  }
-
   const doAction = async (type: 'suspend' | 'activate' | 'verify' | 'reset' | 'impersonate' | 'logout' | 'delete') => {
     try {
-      const res = await action.mutateAsync({ type, id: user.id })
+      const res = await action.mutateAsync({ type, id: user!.id })
       if (type === 'reset' || type === 'impersonate') {
         const link = (res as { data: { data: AdminActionLink } }).data.data
         const linkValue = (link.link || link.actionLink) ?? ''
@@ -114,13 +96,13 @@ export default function AdminUserDetailPage() {
     }
   }
 
-  const bestPlan = user.organizations.reduce((best, o) => {
+  const bestPlan = (user?.organizations ?? []).reduce((best, o) => {
     if (!o.plan) return best
     const rank = { free: 0, pro: 1, enterprise: 2 } as Record<string, number>
     return (rank[o.plan] || 0) > (rank[best] || 0) ? o.plan : best
   }, 'free')
 
-  const allInvoices = user.organizations.flatMap((o) =>
+  const allInvoices = (user?.organizations ?? []).flatMap((o) =>
     o.invoices.map((i) => ({ ...i, org: o.name }))
   ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
@@ -151,7 +133,7 @@ export default function AdminUserDetailPage() {
     getSortedRowModel: getSortedRowModel(),
   })
 
-  const agentColumns = useMemo<ColumnDef<(typeof user.agents)[number]>[]>(() => [
+  const agentColumns = useMemo<ColumnDef<NonNullable<typeof user>['agents'][number]>[]>(() => [
     { accessorKey: 'name', header: ({ column }) => <DataTableColumnHeader column={column} title="Agent" />,
       cell: ({ row }) => <span className="text-sm font-medium">{row.original.name}</span> },
     { accessorKey: 'model', header: ({ column }) => <DataTableColumnHeader column={column} title="Model" />,
@@ -165,18 +147,18 @@ export default function AdminUserDetailPage() {
   ], [])
 
   const agentTable = useReactTable({
-    data: user.agents,
+    data: user?.agents ?? [],
     columns: agentColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
 
-  const totalLogins = user.recentLogins.length
-  const uniqueIps = new Set(user.recentLogins.map((l) => l.ipAddress).filter(Boolean)).size
-  const uniqueDevices = new Set(user.recentLogins.map((l) => l.device).filter(Boolean)).size
-  const successLogins = user.recentLogins.filter((l) => l.status === 'success').length
+  const totalLogins = (user?.recentLogins ?? []).length
+  const uniqueIps = new Set((user?.recentLogins ?? []).map((l) => l.ipAddress).filter(Boolean)).size
+  const uniqueDevices = new Set((user?.recentLogins ?? []).map((l) => l.device).filter(Boolean)).size
+  const successLogins = (user?.recentLogins ?? []).filter((l) => l.status === 'success').length
 
-  const loginColumns = useMemo<ColumnDef<(typeof user.recentLogins)[number]>[]>(() => [
+  const loginColumns = useMemo<ColumnDef<NonNullable<typeof user>['recentLogins'][number]>[]>(() => [
     { accessorKey: 'createdAt', header: ({ column }) => <DataTableColumnHeader column={column} title="Time" />,
       cell: ({ row }) => <span className="text-xs">{new Date(row.original.createdAt).toLocaleString()}</span> },
     { accessorKey: 'ipAddress', header: ({ column }) => <DataTableColumnHeader column={column} title="IP Address" />,
@@ -193,11 +175,29 @@ export default function AdminUserDetailPage() {
   ], [])
 
   const loginTable = useReactTable({
-    data: user.recentLogins,
+    data: user?.recentLogins ?? [],
     columns: loginColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-5 w-24 bg-muted animate-pulse rounded" />
+        <div className="h-36 bg-muted animate-pulse rounded-xl" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <p className="text-sm text-muted-foreground">User not found.</p>
+        <Button variant="link" onClick={() => navigate('/admin/users')}>Back to users</Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

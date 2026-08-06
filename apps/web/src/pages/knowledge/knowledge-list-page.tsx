@@ -9,7 +9,7 @@ import {
   flexRender,
   createColumnHelper,
   type SortingState,
-} from '@tanstack/react-table'
+} from '@/lib/table'
 import {
   Plus,
   BookOpen,

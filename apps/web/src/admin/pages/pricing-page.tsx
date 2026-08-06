@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
 import { useQueryClient } from '@tanstack/react-query'
 import { Tags, Plus, Pencil, Trash2, Star, List, LayoutGrid, Bot, MessageSquare, Database, Building2, ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { PageHeader } from '@/components/admin/page-header'

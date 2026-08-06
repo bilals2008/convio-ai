@@ -9,7 +9,7 @@ import {
   type SortingState,
   type ColumnDef,
   type Column,
-} from '@tanstack/react-table'
+} from '@/lib/table'
 import {
   Plus,
   Plug,

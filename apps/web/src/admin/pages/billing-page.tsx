@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
 import { CreditCard, DollarSign, Receipt, TrendingUp } from 'lucide-react'
 import { PageHeader } from '@/components/admin/page-header'
 import { DataTableColumnHeader } from '@/components/admin/data-table-column-header'

@@ -114,6 +114,7 @@ function useEffectiveDark(themeMode: 'auto' | 'light' | 'dark'): boolean {
 
     setIsDark(matchDark())
 
+    let cleanupObserver: (() => void) | undefined
     const isPreview = !!document.querySelector('.convio-widget')?.closest('[data-widget-preview]')
 
     if (!isPreview) {
@@ -122,7 +123,7 @@ function useEffectiveDark(themeMode: 'auto' | 'light' | 'dark'): boolean {
         attributes: true,
         attributeFilter: ['class', 'data-theme'],
       })
-      var cleanupObserver = () => observer.disconnect()
+      cleanupObserver = () => observer.disconnect()
     }
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)')

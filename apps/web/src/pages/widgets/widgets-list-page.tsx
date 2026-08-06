@@ -9,7 +9,7 @@ import {
   getSortedRowModel,
   useReactTable,
   type SortingState,
-} from '@tanstack/react-table'
+} from '@/lib/table'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import {
