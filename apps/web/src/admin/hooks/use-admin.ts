@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant } from '@/admin/services/admin-api'
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminRevenue, type RevenuePeriod, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant } from '@/admin/services/admin-api'
 
 export function invalidateAdminUsers(queryClient: ReturnType<typeof useQueryClient>) {
   return queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -135,6 +135,8 @@ export function useAdminAnalytics(days = 30) {
       return res.data.data
     },
     refetchInterval: 30_000,
+    // ponytail: keep prior data on range change so charts never unmount (recharts+React19 Suspense loop)
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -159,16 +161,6 @@ export function useSystemHealth() {
   })
 }
 
-export function useAdminAnnouncements(params?: { cursor?: string; limit?: number; search?: string }) {
-  return useQuery({
-    queryKey: ['admin', 'announcements', params],
-    queryFn: async () => {
-      const res = await adminApi.announcements(params)
-      return res.data
-    },
-  })
-}
-
 export function useAdminProviderKeys(params?: { cursor?: string; limit?: number; search?: string }) {
   return useQuery({
     queryKey: ['admin', 'provider-keys', params],
@@ -187,6 +179,19 @@ export function useAdminBilling() {
       return res.data.data
     },
     refetchInterval: 30_000,
+  })
+}
+
+export function useAdminRevenue(period: RevenuePeriod = 'monthly') {
+  return useQuery<AdminRevenue>({
+    queryKey: ['admin', 'revenue', period],
+    queryFn: async () => {
+      const res = await adminApi.revenue(period)
+      return res.data.data
+    },
+    refetchInterval: 60_000,
+    // ponytail: keep prior data on period switch so charts never unmount (recharts+React19 Suspense loop)
+    placeholderData: keepPreviousData,
   })
 }
 
