@@ -190,18 +190,6 @@ export interface AdminAgent {
   conversationCount: number
 }
 
-export interface Announcement {
-  id: string
-  title: string
-  body: string
-  priority: string
-  published: boolean
-  startsAt: string | null
-  endsAt: string | null
-  createdAt: string
-  updatedAt: string
-}
-
 export interface AdminProviderKey {
   id: string
   provider: string
@@ -228,6 +216,47 @@ export interface AdminBilling {
     organization: { id: string; name: string; slug: string } | null
   }>
   subscriptionsByStatus: Record<string, number>
+}
+
+export type RevenuePeriod = 'weekly' | 'monthly' | 'yearly'
+
+export interface AdminRevenueTimeline {
+  label: string
+  revenue: number
+  loss: number
+  profit: number
+  newSubs: number
+  churnedSubs: number
+  active: number
+}
+
+export interface AdminRevenue {
+  period: RevenuePeriod
+  summary: {
+    totalRevenue: number
+    revenueChange: number
+    totalLoss: number
+    netProfit: number
+    mrr: number
+    mrrChange: number
+    activeSubscriptions: number
+    newSubscriptions: number
+    churnedSubscriptions: number
+    churnRate: number
+    avgOrderValue: number
+  }
+  timeline: AdminRevenueTimeline[]
+  planRevenue: Array<{ plan: string; revenue: number }>
+  recentInvoices: Array<{
+    id: string
+    invoiceNumber: string | null
+    status: string
+    total: number
+    currency: string
+    paidAt: string
+    plan: string
+    organization: { id: string; name: string; slug: string } | null
+  }>
 }
 
 export interface ModerationOrgConfig {
@@ -418,6 +447,8 @@ export const adminApi = {
 
   billing: () => api.get<{ data: AdminBilling }>('/admin/billing'),
 
+  revenue: (period: RevenuePeriod) => api.get<{ data: AdminRevenue }>('/admin/revenue', { params: { period } }),
+
   providerKeys: (params?: { cursor?: string; limit?: number; search?: string }) =>
     api.get<PaginatedResponse<AdminProviderKey>>('/admin/provider-keys', { params }),
 
@@ -426,17 +457,6 @@ export const adminApi = {
 
   sendNotification: (data: { email: string; title: string; message?: string; type?: string; priority?: string; category?: string; actionUrl?: string; expiresAt?: string }) =>
     api.post<{ ok: boolean }>('/admin/notifications/send', data),
-
-  announcements: (params?: { cursor?: string; limit?: number; search?: string }) =>
-    api.get<PaginatedResponse<Announcement>>('/admin/announcements', { params }),
-
-  createAnnouncement: (data: { title: string; body: string; priority?: string; published?: boolean; startsAt?: string; endsAt?: string }) =>
-    api.post<{ data: Announcement }>('/admin/announcements', data),
-
-  updateAnnouncement: (id: string, data: Partial<{ title: string; body: string; priority: string; published: boolean; startsAt: string; endsAt: string }>) =>
-    api.patch<{ data: Announcement }>(`/admin/announcements/${id}`, data),
-
-  deleteAnnouncement: (id: string) => api.delete(`/admin/announcements/${id}`),
 
   moderationConfigs: (params?: { search?: string; limit?: number; offset?: number }) =>
     api.get<{ data: ModerationOrgConfig[]; total: number }>('/admin/moderation', { params }),

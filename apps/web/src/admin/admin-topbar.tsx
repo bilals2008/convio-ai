@@ -14,7 +14,7 @@ const breadcrumbLabels: Record<string, string> = {
   'audit-logs': 'Audit Logs',
   billing: 'Billing',
   providers: 'Providers',
-  announcements: 'Announcements',
+  notifications: 'Notifications',
   access: 'Admin Access',
 }
 

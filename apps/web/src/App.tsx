@@ -19,12 +19,13 @@ import AdminSystemPage from '@/admin/pages/system-page'
 import AdminAuditLogsPage from '@/admin/pages/audit-logs-page'
 import AdminAgentsPage from '@/admin/pages/agents-page'
 import AdminAnalyticsPage from '@/admin/pages/analytics-page'
+import AdminRevenuePage from '@/admin/pages/revenue-page'
 import AdminModerationPage from '@/admin/pages/moderation-page'
 import AdminBillingPage from '@/admin/pages/billing-page'
 import AdminPricingPage from '@/admin/pages/pricing-page'
 import AdminPlanDetailPage from '@/admin/pages/plan-detail-page'
 import AdminProvidersPage from '@/admin/pages/providers-page'
-import AdminAnnouncementsPage from '@/admin/pages/announcements-page'
+import AdminNotificationsPage from '@/admin/pages/notifications-page'
 import AdminDocsFeedbackPage from '@/admin/pages/docs-feedback-page'
 import AdminKnowledgeBasesPage from '@/admin/pages/knowledge-bases-page'
 import AdminKnowledgeBaseDetailPage from '@/admin/pages/knowledge-base-detail-page'
@@ -63,6 +64,8 @@ import BillingPage from '@/pages/settings/billing-page'
 import DataManagementPage from '@/pages/settings/data-management-page'
 import McpServersPage from '@/pages/settings/mcp-servers-page'
 import SettingsAuditLogsPage from '@/pages/settings/audit-logs-page'
+import NotificationPreferencesPage from '@/pages/settings/notification-preferences-page'
+import NotificationsPage from '@/pages/notifications-page'
 import { HelpLayout } from '@/components/help/help-layout'
 import HelpIndexPage from '@/pages/docs/help-index'
 import WhatIsConvioPage from '@/pages/docs/what-is-convio'
@@ -559,7 +562,9 @@ export function App() {
                 <Route path="billing" element={<BillingPage />} />
                  <Route path="data" element={<DataManagementPage />} />
                  <Route path="audit-logs" element={<SettingsAuditLogsPage />} />
+                 <Route path="notifications" element={<NotificationPreferencesPage />} />
                 </Route>
+              <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
             <Route element={<AdminGuard />}>
@@ -570,6 +575,7 @@ export function App() {
                 <Route path="/admin/organizations" element={<AdminOrgsPage />} />
                 <Route path="/admin/organizations/:id" element={<AdminOrgDetailPage />} />
                 <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+                <Route path="/admin/revenue" element={<AdminRevenuePage />} />
                 <Route path="/admin/agents" element={<AdminAgentsPage />} />
                 <Route path="/admin/system" element={<AdminSystemPage />} />
                 <Route path="/admin/moderation" element={<AdminModerationPage />} />
@@ -578,7 +584,7 @@ export function App() {
                 <Route path="/admin/pricing" element={<AdminPricingPage />} />
                 <Route path="/admin/pricing/:id" element={<AdminPlanDetailPage />} />
                 <Route path="/admin/providers" element={<AdminProvidersPage />} />
-                <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
+                <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
                 <Route path="/admin/docs-feedback" element={<AdminDocsFeedbackPage />} />
                 <Route path="/admin/access" element={<AdminAccessPage />} />
                 <Route path="/admin/knowledge-bases" element={<AdminKnowledgeBasesPage />} />

@@ -12,7 +12,6 @@ const defaultPermissions: NavPermission[] = [
   'admin.audit.read',
   'admin.billing.read',
   'admin.providers.read',
-  'admin.announcements.read',
   'admin.docs-feedback.read',
   'admin.knowledge.read',
   'admin.access.manage',

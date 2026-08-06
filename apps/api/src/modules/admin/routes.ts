@@ -12,8 +12,6 @@ import {
   userParamsSchema,
   moderationQuerySchema,
   violationQuerySchema,
-  announcementCreateSchema,
-  announcementUpdateSchema,
   auditLogQuerySchema,
   planCreateSchema,
   planUpdateSchema,
@@ -25,9 +23,60 @@ import {
   adminBulkActionSchema,
   adminGrantCreateSchema,
   adminGrantParamsSchema,
+  revenueQuerySchema,
 } from './admin-schema.js'
 
 const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, enterprise: 2 }
+
+type RevenuePeriod = 'weekly' | 'monthly' | 'yearly'
+
+function buildRevenueBuckets(period: RevenuePeriod, now = new Date()) {
+  const buckets: Array<{ start: Date; end: Date; label: string }> = []
+  let count = 0
+  let windowStart: Date
+
+  if (period === 'weekly') {
+    count = 12
+    const monday = new Date(now)
+    monday.setHours(0, 0, 0, 0)
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+    for (let i = count - 1; i >= 0; i--) {
+      const start = new Date(monday)
+      start.setDate(monday.getDate() - i * 7)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 7)
+      buckets.push({ start, end, label: start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) })
+    }
+    windowStart = buckets[0].start
+  } else if (period === 'monthly') {
+    count = 12
+    for (let i = count - 1; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const end = new Date(start.getFullYear(), start.getMonth() + 1, 1)
+      buckets.push({ start, end, label: start.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) })
+    }
+    windowStart = buckets[0].start
+  } else {
+    count = 5
+    for (let i = count - 1; i >= 0; i--) {
+      const start = new Date(now.getFullYear() - i, 0, 1)
+      buckets.push({ start, end: new Date(start.getFullYear() + 1, 0, 1), label: String(start.getFullYear()) })
+    }
+    windowStart = buckets[0].start
+  }
+
+  let prevStart: Date
+  if (period === 'weekly') {
+    prevStart = new Date(windowStart)
+    prevStart.setDate(prevStart.getDate() - 7 * count)
+  } else if (period === 'monthly') {
+    prevStart = new Date(windowStart.getFullYear(), windowStart.getMonth() - count, 1)
+  } else {
+    prevStart = new Date(windowStart.getFullYear() - count, 0, 1)
+  }
+
+  return { buckets, windowStart, prevStart }
+}
 
 function getSupabaseAdmin() {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return null
@@ -1159,53 +1208,154 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // GET /api/admin/announcements — List all announcements
-  fastify.get('/admin/announcements', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+  // GET /api/admin/revenue — Revenue analytics aggregated by week/month/year
+  // ponytail: no explicit cost model in the DB, so "loss" = churned subscription value + uncollectible invoices
+  fastify.get('/admin/revenue', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: revenueQuerySchema })],
   }, async (request) => {
-    const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
-    const where: Record<string, unknown> = {}
-    if (search) where.title = { contains: search, mode: 'insensitive' }
+    const { period } = request.query as { period: RevenuePeriod }
 
-    const items = await prisma.announcement.findMany({
-      where,
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      orderBy: { createdAt: 'desc' },
+    const [invoices, subscriptions, plans] = await Promise.all([
+      prisma.invoice.findMany({
+        select: { id: true, subscriptionId: true, customerId: true, status: true, total: true, currency: true, invoiceNumber: true, paidAt: true, createdAt: true },
+      }),
+      prisma.subscription.findMany({
+        select: { id: true, plan: true, status: true, createdAt: true, endsAt: true },
+      }),
+      prisma.plan.findMany({ select: { key: true, priceMonthly: true } }),
+    ])
+
+    const priceByPlan = new Map<string, number>(plans.map((p) => [p.key, p.priceMonthly || 0]))
+    const priceOf = (plan: string) => priceByPlan.get(plan) ?? 0
+
+    const { buckets, windowStart, prevStart } = buildRevenueBuckets(period)
+    const rows = buckets.map((b) => ({ ...b, revenue: 0, loss: 0, newSubs: 0, churnedSubs: 0, active: 0, paidInvoices: 0 }))
+
+    const rowIndexOf = (date: Date) => {
+      for (let i = 0; i < rows.length; i++) {
+        if (date >= rows[i].start && date < rows[i].end) return i
+      }
+      return -1
+    }
+
+    let prevRevenue = 0
+    for (const inv of invoices) {
+      const date = inv.paidAt ?? inv.createdAt
+      const i = rowIndexOf(date)
+      if (inv.status === 'paid') {
+        if (i >= 0) {
+          rows[i].revenue += inv.total
+          rows[i].paidInvoices++
+        }
+        if (date >= prevStart && date < windowStart) prevRevenue += inv.total
+      }
+      if ((inv.status === 'uncollectible' || inv.status === 'void') && i >= 0) {
+        rows[i].loss += inv.total
+      }
+    }
+
+    for (const sub of subscriptions) {
+      const createdI = rowIndexOf(sub.createdAt)
+      if (createdI >= 0) rows[createdI].newSubs++
+      if (sub.endsAt) {
+        const endI = rowIndexOf(sub.endsAt)
+        if (endI >= 0) {
+          rows[endI].churnedSubs++
+          rows[endI].loss += priceOf(sub.plan) * 100
+        }
+      }
+    }
+
+    const activeAt = (t: Date) => subscriptions.filter((s) => s.createdAt <= t && (!s.endsAt || s.endsAt > t))
+    let running = activeAt(windowStart).length
+    for (const r of rows) {
+      running += r.newSubs - r.churnedSubs
+      r.active = running
+    }
+
+    const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0)
+    const totalLoss = rows.reduce((s, r) => s + r.loss, 0)
+    const newSubscriptions = rows.reduce((s, r) => s + r.newSubs, 0)
+    const churnedSubscriptions = rows.reduce((s, r) => s + r.churnedSubs, 0)
+    const paidInvoiceCount = rows.reduce((s, r) => s + r.paidInvoices, 0)
+
+    const mrr = subscriptions.filter((s) => s.status === 'active').reduce((sum, s) => sum + priceOf(s.plan), 0)
+    const mrrStart = activeAt(windowStart).reduce((sum, s) => sum + priceOf(s.plan), 0)
+    const activeStartCount = activeAt(windowStart).length
+
+    // inv.total is in cents (Creem order.amount); priceMonthly is in dollars — normalize to dollars
+    const toDollars = (cents: number) => Math.round(cents) / 100
+
+    const timeline = rows.map((r) => ({
+      label: r.label,
+      revenue: toDollars(r.revenue),
+      loss: toDollars(r.loss),
+      profit: toDollars(r.revenue - r.loss),
+      newSubs: r.newSubs,
+      churnedSubs: r.churnedSubs,
+      active: r.active,
+    }))
+
+    const subPlanMap = new Map(subscriptions.map((s) => [s.id, s.plan]))
+    const planRevenue: Record<string, number> = {}
+    for (const inv of invoices) {
+      if (inv.status !== 'paid' || rowIndexOf(inv.paidAt ?? inv.createdAt) < 0) continue
+      const plan = (inv.subscriptionId && subPlanMap.get(inv.subscriptionId)) || 'one-off'
+      planRevenue[plan] = (planRevenue[plan] || 0) + inv.total
+    }
+
+    const custIds = [...new Set(invoices.map((i) => i.customerId))]
+    const customers = await prisma.billingCustomer.findMany({
+      where: { id: { in: custIds } },
+      select: { id: true, organizationId: true },
     })
+    const custOrgMap = new Map(customers.map((c) => [c.id, c.organizationId]))
+    const orgIds = [...new Set(customers.map((c) => c.organizationId))]
+    const orgs = await prisma.organization.findMany({
+      where: { id: { in: orgIds } },
+      select: { id: true, name: true, slug: true },
+    })
+    const orgMap = new Map(orgs.map((o) => [o.id, o]))
 
-    const hasNextPage = items.length > limit
-    const data = hasNextPage ? items.slice(0, limit) : items
+    const recentInvoices = invoices
+      .filter((i) => i.status === 'paid')
+      .map((i) => ({ ...i, paidDate: i.paidAt ?? i.createdAt }))
+      .filter((i) => i.paidDate >= windowStart)
+      .sort((a, b) => b.paidDate.getTime() - a.paidDate.getTime())
+      .slice(0, 10)
 
-    return { data, nextCursor: hasNextPage ? data[data.length - 1].id : null }
-  })
-
-  // POST /api/admin/announcements — Create announcement
-  fastify.post('/admin/announcements', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: announcementCreateSchema })],
-  }, async (request) => {
-    const body = request.body as Record<string, unknown>
-    const announcement = await prisma.announcement.create({ data: body as any })
-    return { data: announcement }
-  })
-
-  // PATCH /api/admin/announcements/:id — Update announcement
-  fastify.patch('/admin/announcements/:id', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: announcementUpdateSchema, params: orgParamsSchema })],
-  }, async (request) => {
-    const { id } = request.params as { id: string }
-    const body = request.body as Record<string, unknown>
-    const announcement = await prisma.announcement.update({ where: { id }, data: body as any })
-    return { data: announcement }
-  })
-
-  // DELETE /api/admin/announcements/:id — Delete announcement
-  fastify.delete('/admin/announcements/:id', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema })],
-  }, async (request) => {
-    const { id } = request.params as { id: string }
-    await prisma.announcement.delete({ where: { id } })
-    return { success: true }
+    return {
+      data: {
+        period,
+        summary: {
+          totalRevenue: toDollars(totalRevenue),
+          revenueChange: prevRevenue > 0 ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 100) : 0,
+          totalLoss: toDollars(totalLoss),
+          netProfit: toDollars(totalRevenue - totalLoss),
+          mrr: Math.round(mrr * 100) / 100,
+          mrrChange: mrrStart > 0 ? Math.round(((mrr - mrrStart) / mrrStart) * 100) : 0,
+          activeSubscriptions: subscriptions.filter((s) => s.status === 'active').length,
+          newSubscriptions,
+          churnedSubscriptions,
+          churnRate: activeStartCount > 0 ? Math.round((churnedSubscriptions / activeStartCount) * 100) : 0,
+          avgOrderValue: paidInvoiceCount > 0 ? toDollars(totalRevenue / paidInvoiceCount) : 0,
+        },
+        timeline,
+        planRevenue: Object.entries(planRevenue)
+          .map(([plan, revenue]) => ({ plan, revenue: toDollars(revenue) }))
+          .sort((a, b) => b.revenue - a.revenue),
+        recentInvoices: recentInvoices.map((inv) => ({
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          status: inv.status,
+          total: inv.total / 100,
+          currency: inv.currency,
+          paidAt: inv.paidDate,
+          plan: (inv.subscriptionId && subPlanMap.get(inv.subscriptionId)) || 'one-off',
+          organization: orgMap.get(custOrgMap.get(inv.customerId) || '') || null,
+        })),
+      },
+    }
   })
 
   // GET /api/admin/plans — List all pricing plans

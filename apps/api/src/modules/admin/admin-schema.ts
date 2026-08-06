@@ -62,17 +62,6 @@ export const violationQuerySchema = moderationQuerySchema.extend({
   orgId: z.string().uuid().optional(),
 })
 
-export const announcementCreateSchema = z.object({
-  title: z.string().min(1).max(200),
-  body: z.string().min(1).max(5000),
-  priority: z.enum(['low', 'normal', 'high', 'critical']).default('normal'),
-  published: z.boolean().default(false),
-  startsAt: z.coerce.date().optional(),
-  endsAt: z.coerce.date().optional(),
-})
-
-export const announcementUpdateSchema = announcementCreateSchema.partial()
-
 export const auditLogQuerySchema = z.object({
   action: z.string().optional(),
   entityType: z.string().optional(),
@@ -123,4 +112,8 @@ export const knowledgeParamsSchema = z.object({
 export const knowledgeDocumentParamsSchema = z.object({
   kbId: z.string().uuid(),
   documentId: z.string().uuid(),
+})
+
+export const revenueQuerySchema = z.object({
+  period: z.enum(['weekly', 'monthly', 'yearly']).default('monthly'),
 })

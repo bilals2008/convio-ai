@@ -3,17 +3,18 @@ import {
   Users,
   Building2,
   BarChart3,
+  Wallet,
   Brain,
   Activity,
   Flag,
   ScrollText,
   CreditCard,
   Shield,
-  Megaphone,
   ThumbsUp,
   Tags,
   BookOpen,
   KeyRound,
+  Bell,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -28,7 +29,6 @@ export type NavPermission =
   | 'admin.audit.read'
   | 'admin.billing.read'
   | 'admin.providers.read'
-  | 'admin.announcements.read'
   | 'admin.docs-feedback.read'
   | 'admin.knowledge.read'
   | 'admin.access.manage'
@@ -55,6 +55,7 @@ export const adminNavGroups: NavGroup[] = [
       { icon: Users, label: 'Users', href: '/admin/users', permission: 'admin.users.read' },
       { icon: Building2, label: 'Organizations', href: '/admin/organizations', permission: 'admin.orgs.read' },
       { icon: BarChart3, label: 'Analytics', href: '/admin/analytics', permission: 'admin.analytics.read' },
+      { icon: Wallet, label: 'Revenue', href: '/admin/revenue', permission: 'admin.billing.read' },
     ],
   },
   {
@@ -74,7 +75,7 @@ export const adminNavGroups: NavGroup[] = [
       { icon: CreditCard, label: 'Billing', href: '/admin/billing', permission: 'admin.billing.read' },
       { icon: Tags, label: 'Pricing', href: '/admin/pricing', permission: 'admin.billing.read' },
       { icon: Shield, label: 'Providers', href: '/admin/providers', permission: 'admin.providers.read' },
-      { icon: Megaphone, label: 'Announcements', href: '/admin/announcements', permission: 'admin.announcements.read' },
+      { icon: Bell, label: 'Notifications', href: '/admin/notifications', permission: 'admin.system.read' },
       { icon: KeyRound, label: 'Admin Access', href: '/admin/access', permission: 'admin.access.manage' },
     ],
   },
@@ -91,7 +92,6 @@ export const fullAdminPermissions: NavPermission[] = [
   'admin.audit.read',
   'admin.billing.read',
   'admin.providers.read',
-  'admin.announcements.read',
   'admin.docs-feedback.read',
   'admin.knowledge.read',
   'admin.access.manage',
