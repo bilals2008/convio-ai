@@ -11,10 +11,11 @@ interface SidebarItemProps {
   label: string
   href: string
   badge?: string | number
+  badgeVariant?: string
   exact?: boolean
 }
 
-export function SidebarItem({ icon: Icon, label, href, badge, exact }: SidebarItemProps) {
+export function SidebarItem({ icon: Icon, label, href, badge, badgeVariant = 'beta', exact }: SidebarItemProps) {
   const { collapsed } = useSidebar()
 
   const link = (
@@ -43,7 +44,7 @@ export function SidebarItem({ icon: Icon, label, href, badge, exact }: SidebarIt
             <>
               <span className="flex-1 truncate">{label}</span>
               {badge != null && (
-                <Badge variant="beta" className="text-[10px] px-1.5 py-0 h-4 leading-none">
+                <Badge variant={badgeVariant as 'beta'} className="text-[10px] px-1.5 py-0 h-4 leading-none">
                   {badge}
                 </Badge>
               )}

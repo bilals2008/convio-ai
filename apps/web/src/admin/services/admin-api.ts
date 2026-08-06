@@ -421,6 +421,12 @@ export const adminApi = {
   providerKeys: (params?: { cursor?: string; limit?: number; search?: string }) =>
     api.get<PaginatedResponse<AdminProviderKey>>('/admin/provider-keys', { params }),
 
+  broadcastNotification: (data: { title: string; message?: string; type?: string; priority?: string; category?: string; actionUrl?: string; expiresAt?: string }) =>
+    api.post<{ delivered: number }>('/admin/notifications/broadcast', data),
+
+  sendNotification: (data: { email: string; title: string; message?: string; type?: string; priority?: string; category?: string; actionUrl?: string; expiresAt?: string }) =>
+    api.post<{ ok: boolean }>('/admin/notifications/send', data),
+
   announcements: (params?: { cursor?: string; limit?: number; search?: string }) =>
     api.get<PaginatedResponse<Announcement>>('/admin/announcements', { params }),
 

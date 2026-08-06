@@ -20,6 +20,7 @@ import {
   Plug,
   ScrollText,
   Wand2,
+  Bell,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -36,10 +37,12 @@ import { SidebarGroup, SidebarItem } from './sidebar-nav'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
+import { useUnreadCount } from '@/lib/hooks/use-notifications'
 import { cn } from '@/lib/utils'
 
 function useSettingsItems() {
-  const { org } = useOrg()
+  const { org, orgId } = useOrg()
+  const { data: unread } = useUnreadCount(orgId ?? undefined, !!orgId)
   const role = org?.role
   const isAdmin = role === 'owner' || role === 'admin'
   const isOwner = role === 'owner'
@@ -50,6 +53,7 @@ function useSettingsItems() {
     { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
     { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true, badge: 'Beta' },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
+    { icon: Bell, label: 'Notifications', href: '/settings/notifications', adminOnly: false, badge: unread?.unread ? unread.unread : undefined, badgeVariant: 'default' },
      { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
     { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs', adminOnly: true },
   ].filter((item) => !item.adminOnly || (isAdmin && (!item.ownerOnly || isOwner)))
@@ -62,7 +66,7 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
     return (
       <div className="space-y-0.5 mt-4">
         {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} />
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} badgeVariant={item.badgeVariant} />
         ))}
       </div>
     )
@@ -75,7 +79,7 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
       </div>
       <div className="flex flex-col gap-0.5">
         {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} />
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} badgeVariant={item.badgeVariant} />
         ))}
       </div>
     </div>
