@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { chartForTool } from '../modules/admin-assistant/tools.ts'
+import { chartForTool } from '../modules/admin-assistant/tools'
 
 const c1 = chartForTool('agent_stats', {
   total: 3,
