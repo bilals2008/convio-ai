@@ -9,7 +9,7 @@ import {
   flexRender,
   createColumnHelper,
   type SortingState,
-} from '@tanstack/react-table'
+} from '@/lib/table'
 import {
   Plus,
   Brain,
@@ -25,6 +25,7 @@ import {
   ArrowUp,
   ChevronLeft,
   ChevronRight,
+  ArrowUpRight,
 } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -195,7 +196,12 @@ function AgentCard({
           <Clock className="size-3" />
           {formatDate(agent.updatedAt || agent.createdAt)}
         </div>
-        <DropdownMenu>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-0.5 rounded-md bg-muted/30 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+          <ArrowUpRight className="size-3" />
+          Open
+        </span>
+          <DropdownMenu>
           <DropdownMenuTrigger
             onClick={(e) => e.stopPropagation()}
             className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -216,6 +222,7 @@ function AgentCard({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
       </CardContent>
     </Card>

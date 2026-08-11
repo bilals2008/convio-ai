@@ -7,8 +7,10 @@ import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { getTemplate, listTemplates } from './templates.js'
+import { AGENT_GENERATION_PROMPT, resolveGenerationProvider, parseAgentDraft } from './agent-generator.js'
 import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
 import { getOrgPlan } from '../../services/billing.js'
+import { NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 
 // Tools that consume server-side resources (e.g. Tavily web search) are Pro+ only.
@@ -77,18 +79,22 @@ const updateAgentBodySchema = updateAgentSchema.extend({
   tools: z.array(z.string()).optional(),
 })
 
+const generateAgentBodySchema = z.object({
+  description: z.string().trim().min(3).max(2000),
+  model: z.string().min(1).optional(),
+})
+
 export default async function agentsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/agents — Create agent (member only)
   fastify.post('/organizations/:orgId/agents', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       fastify.checkAgentLimit,
       validate({ params: orgParamsSchema, body: createAgentBodySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const body = request.body as Record<string, unknown>
     const { knowledgeBaseId, reasoningEffort, tools, ...rest } = body
@@ -107,6 +113,13 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       } as any,
     })
 
+    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_CREATED, {
+      organizationId: orgId,
+      actorId: request.userId,
+      entityId: agent.id,
+      entityName: agent.name,
+    })
+
     return { data: agent }
   })
 
@@ -114,12 +127,11 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/agent-templates', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     return { data: listTemplates() }
   })
@@ -155,6 +167,13 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       } as any,
     })
 
+    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_CREATED, {
+      organizationId,
+      actorId: request.userId,
+      entityId: agent.id,
+      entityName: agent.name,
+    })
+
     await fastify.auditLog({
       organizationId,
       actorId: request.userId,
@@ -167,17 +186,47 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     return { data: agent }
   })
 
+  // POST /api/agents/generate — Generate an agent draft from a description (member only)
+  fastify.post('/agents/generate', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ body: generateAgentBodySchema }),
+    ],
+  }, async (request) => {
+    const { description, model } = request.body as z.infer<typeof generateAgentBodySchema>
+
+    const { provider, apiKey, model: genModel } = await resolveGenerationProvider(request.userId!, model)
+
+    let result
+    try {
+      result = await provider.generate({
+        model: genModel,
+        messages: [
+          { role: 'system', content: AGENT_GENERATION_PROMPT },
+          { role: 'user', content: description },
+        ],
+        temperature: 0.7,
+        maxTokens: 2048,
+        apiKey,
+      })
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Generation failed'
+      throw new AppError(502, `AI generation failed: ${msg}`)
+    }
+
+    return { data: parseAgentDraft(result.content) }
+  })
+
   // GET /api/organizations/:orgId/agents — List agents (member only, cursor pagination)
   fastify.get('/organizations/:orgId/agents', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, query: agentsQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { cursor, limit } = request.query as { cursor?: string; limit: number }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const agents = await prisma.agent.findMany({
       where: { organizationId: orgId },
@@ -255,6 +304,13 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       data: updateData as any,
     })
 
+    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_UPDATED, {
+      organizationId: existing.organizationId,
+      actorId: request.userId,
+      entityId: agent.id,
+      entityName: agent.name,
+    })
+
     return { data: agent }
   })
 
@@ -273,6 +329,14 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
     await prisma.widget.deleteMany({ where: { agentId: id } })
+
+    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_DELETED, {
+      organizationId: existing.organizationId,
+      actorId: request.userId,
+      entityId: existing.id,
+      entityName: existing.name,
+    })
+
     await prisma.agent.delete({ where: { id } })
     reply.code(204).send()
   })
@@ -500,9 +564,11 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         parameters: h.schema.parameters,
       }))
 
-    // Load DB tools by ID and add to toolDefs
+    // DB tools by ID must belong to one of the caller's organizations
     const dbToolHandlers = toolIds.length > 0
-      ? await loadDbToolHandlers(prisma, toolIds)
+      ? await loadDbToolHandlers(prisma, toolIds, {
+          organization: { memberships: { some: { userId: request.userId! } } },
+        })
       : {}
     for (const handler of Object.values(dbToolHandlers)) {
       toolDefs.push({
@@ -516,7 +582,13 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const mcpToolHandlers: Record<string, { schema: { name: string; description: string; parameters: Record<string, unknown> }; execute: (args: Record<string, unknown>) => Promise<unknown> }> = {}
     if (mcpServerIds.length > 0) {
       const { McpClient } = await import('../../services/mcp/index.js')
-      const servers = await prisma.mcpServer.findMany({ where: { id: { in: mcpServerIds }, enabled: true } })
+      const servers = await prisma.mcpServer.findMany({
+        where: {
+          id: { in: mcpServerIds },
+          enabled: true,
+          organization: { memberships: { some: { userId: request.userId! } } },
+        },
+      })
       for (const server of servers) {
         try {
           const client = new McpClient({
@@ -562,6 +634,11 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     }
 
     if (knowledgeBaseId) {
+      const kb = await prisma.knowledgeBase.findFirst({
+        where: { id: knowledgeBaseId, organization: { memberships: { some: { userId: request.userId! } } } },
+        select: { id: true },
+      })
+      if (!kb) throw new AppError(403, 'Knowledge base not found in your organizations', 'FORBIDDEN')
       const context = await retrieveContext(message, knowledgeBaseId).catch(() => null)
       if (context) {
         systemContext +=
@@ -698,6 +775,15 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       where: { id },
       data: { status },
     })
+
+    if (status === 'active') {
+      fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_PUBLISHED, {
+        organizationId: existing.organizationId,
+        actorId: request.userId,
+        entityId: agent.id,
+        entityName: agent.name,
+      })
+    }
 
     return { data: agent }
   })

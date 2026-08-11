@@ -75,6 +75,7 @@ Rules for AI agents working on this codebase.
   - Use Date Picker pattern (Popover + Calendar), not raw `<input type="date">`
   - Use Combobox with `multiple` + chips for multi-select, not basic Select
   - Use TanStack Table for data tables, not manual `<table>` elements
+  - Use Zebra effect (`odd:bg-muted/30`) on table rows for alternating row striping
 
 ## Icons
 

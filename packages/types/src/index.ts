@@ -153,6 +153,19 @@ export interface Analytics {
   createdAt: Date
 }
 
+// Onboarding types
+export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped'
+export type OnboardingGoal = 'create_agent' | 'create_chatbot' | 'connect_whatsapp' | 'upload_kb' | 'explore'
+
+export interface Onboarding {
+  status: OnboardingStatus
+  goal?: OnboardingGoal | null
+}
+
+// Permission types
+export type { Permission } from './permissions.js'
+export { ROLE_HIERARCHY, PERMISSIONS, canAccess, roleAtLeast } from './permissions.js'
+
 // API Response types
 export interface ApiResponse<T> {
   data: T

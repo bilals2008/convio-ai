@@ -233,14 +233,15 @@ export async function loadAgentToolHandlers(
 export async function loadDbToolHandlers(
   prisma: {
     tool: {
-      findMany: (args: { where: { id: { in: string[] } } }) => Promise<Array<{ id: string; name: string; description: string; type: string; config: unknown; organizationId: string }>>
+      findMany: (args: { where: { id: { in: string[] } } & Record<string, unknown> }) => Promise<Array<{ id: string; name: string; description: string; type: string; config: unknown; organizationId: string }>>
     }
   },
-  toolIds: string[]
+  toolIds: string[],
+  extraWhere: Record<string, unknown> = {},
 ): Promise<Record<string, ToolHandler>> {
   if (toolIds.length === 0) return {}
   const dbTools = await prisma.tool.findMany({
-    where: { id: { in: toolIds } },
+    where: { id: { in: toolIds }, ...extraWhere },
   })
   const handlers: Record<string, ToolHandler> = {}
   for (const dbTool of dbTools) {

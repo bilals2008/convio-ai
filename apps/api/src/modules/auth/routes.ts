@@ -1,10 +1,15 @@
 import type { FastifyInstance } from 'fastify'
 import { UAParser } from 'ua-parser-js'
 import { prisma } from '@convio/database'
+import { isPlatformAdmin } from '../../plugins/admin.js'
+import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 
 export default async function authRoutes(fastify: FastifyInstance) {
   fastify.get('/auth/me', { preHandler: [fastify.authenticate] }, async (request, reply) => {
-    return reply.send({ user: request.user })
+    return reply.send({
+      user: request.user,
+      isPlatformAdmin: await isPlatformAdmin(request.user!.email),
+    })
   })
 
   fastify.post('/auth/login-activity', { preHandler: [fastify.authenticate] }, async (request, reply) => {
@@ -37,6 +42,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
         location,
         status: 'success',
       },
+    })
+
+    emitDomainEvent(NOTIFICATION_EVENTS.NEW_LOGIN, {
+      userId: request.userId,
+      metadata: { browser, os, location, device: device === 'desktop' ? 'Desktop' : 'Mobile' },
     })
 
     return reply.code(201).send({ id: activity.id })

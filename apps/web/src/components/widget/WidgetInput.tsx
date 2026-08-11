@@ -70,7 +70,7 @@ export function WidgetInput() {
   const canSend = value.trim() && !isTyping
 
   return (
-    <div className="convio-input shrink-0 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] sm:rounded-b-2xl">
+    <div className="convio-input shrink-0 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-footer-bg))] sm:rounded-b-2xl">
       <div className="flex items-end gap-2 p-3">
         <div className="relative" ref={emojiRef}>
           <button

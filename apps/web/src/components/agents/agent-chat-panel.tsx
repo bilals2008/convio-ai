@@ -106,12 +106,10 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
             if (data === '[DONE]') break
             try {
               const parsed = JSON.parse(data)
-              if (parsed.content) {
+              if (parsed.error) throw new Error(parsed.error)
+              if (parsed.type === 'text' && parsed.content) {
                 assistantContent += parsed.content
                 setStreamingContent(assistantContent)
-              }
-              if (parsed.error) {
-                throw new Error(parsed.error)
               }
             } catch (e) {
               if (e instanceof Error && e.message !== 'No response body') throw e

@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { HexColorPicker } from 'react-colorful'
-import { Check, HelpCircle, Pipette } from 'lucide-react'
+import { Check, Pipette } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isLightColor } from '../helpers'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 
 interface ColorPreset {
@@ -14,7 +13,7 @@ interface ColorPreset {
 
 interface ColorFieldProps {
   label: string
-  description: string
+  description?: string
   value: string
   onChange: (color: string) => void
   presets: readonly ColorPreset[]
@@ -25,7 +24,11 @@ function isValidHex(hex: string): boolean {
 }
 
 function normalizeHex(hex: string): string {
-  return hex.startsWith('#') ? hex : `#${hex}`
+  let h = hex.startsWith('#') ? hex : `#${hex}`
+  if (/^#[0-9A-Fa-f]{3}$/.test(h)) {
+    h = `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}`
+  }
+  return h
 }
 
 export function ColorField({ label, description, value, onChange, presets }: ColorFieldProps) {
@@ -54,20 +57,15 @@ export function ColorField({ label, description, value, onChange, presets }: Col
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-baseline justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium">{label}</span>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <HelpCircle className="size-3.5 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent>{description}</TooltipContent>
-          </Tooltip>
-        </div>
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-foreground">{label}</span>
+        {description && (
+          <span className="text-[11px] text-muted-foreground/70">{description}</span>
+        )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {presets.map((p) => {
           const selected = value === p.color
           return (
@@ -80,17 +78,17 @@ export function ColorField({ label, description, value, onChange, presets }: Col
               onClick={() => onChange(p.color)}
               title={p.label}
               className={cn(
-                'relative size-9 rounded-lg ring-1 transition-all duration-200',
-                'hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'relative size-8 rounded-lg transition-all duration-150',
+                'hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
                 selected
-                  ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                  : 'ring-foreground/10 hover:ring-foreground/20',
+                  ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-card'
+                  : 'ring-1 ring-border/40 hover:ring-border/80',
               )}
               style={{ backgroundColor: p.color }}
             >
               {selected && (
                 <Check
-                  className="absolute inset-0 m-auto size-4 drop-shadow-sm"
+                  className="absolute inset-0 m-auto size-3.5 drop-shadow-sm"
                   style={{ color: isLightColor(p.color) ? '#1f2937' : '#ffffff' }}
                 />
               )}
@@ -101,26 +99,26 @@ export function ColorField({ label, description, value, onChange, presets }: Col
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger
             className={cn(
-              'relative flex size-9 items-center justify-center overflow-hidden rounded-lg ring-1 transition-all duration-200',
-              'ring-foreground/10 hover:ring-foreground/20',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              'relative flex size-8 items-center justify-center overflow-hidden rounded-lg transition-all duration-150',
+              'ring-1 ring-border/40 hover:ring-border/80',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
             )}
           >
             <span className="absolute inset-0" style={{ backgroundColor: value }} />
-            <span className="relative flex items-center justify-center rounded-md bg-background/80 px-1 py-0.5 backdrop-blur-sm">
-              <Pipette className="size-3.5 text-foreground" />
+            <span className="relative flex items-center justify-center rounded bg-background/70 p-0.5 backdrop-blur-sm">
+              <Pipette className="size-3 text-foreground" />
             </span>
           </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-3">
-            <div className="space-y-3">
+          <PopoverContent className="w-[200px] p-2.5" align="start">
+            <div className="space-y-2.5">
               <HexColorPicker
                 color={value}
                 onChange={onChange}
-                style={{ width: '100%', height: 150 }}
+                style={{ width: '100%', height: 130 }}
               />
               <div className="flex items-center gap-2">
                 <div
-                  className="size-8 shrink-0 rounded-md ring-1 ring-foreground/10"
+                  className="size-7 shrink-0 rounded-md ring-1 ring-border/40"
                   style={{ backgroundColor: value }}
                 />
                 <Input
@@ -130,7 +128,7 @@ export function ColorField({ label, description, value, onChange, presets }: Col
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleHexBlur()
                   }}
-                  className="h-8 flex-1 font-mono text-xs"
+                  className="h-7 flex-1 font-mono text-xs"
                   maxLength={7}
                   aria-label={`${label} hex value`}
                 />

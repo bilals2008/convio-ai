@@ -21,6 +21,7 @@ export interface WidgetConfig {
   borderColor?: string
   inputBgColor?: string
   sendBtnColor?: string
+  footerBgColor?: string
   position?: 'bottom-right' | 'bottom-left'
   widgetHeight?: number
   widgetWidth?: 'narrow' | 'default' | 'wide'
@@ -32,7 +33,6 @@ export interface WidgetConfig {
   headerTitle?: string
   headerSubtitle?: string
   showOnlineIndicator?: boolean
-  launcherIcon?: 'chat' | 'sparkle' | 'message' | 'headphones' | 'bot' | 'help'
   launcherLabel?: string
   placeholderText?: string
   showPoweredBy?: boolean

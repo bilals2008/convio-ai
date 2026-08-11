@@ -17,12 +17,12 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/analytics', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, query: dateRangeQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { from, to } = request.query as { from?: string; to?: string }
-    await fastify.getMembership(request.userId!, orgId)
     const data = await service.getOrgAnalytics(orgId, from, to)
     return { data }
   })
@@ -67,12 +67,12 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/analytics/top-agents', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, query: topAgentsQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { from, to, limit } = request.query as { from?: string; to?: string; limit: number }
-    await fastify.getMembership(request.userId!, orgId)
     const data = await service.getTopAgents(orgId, from, to, limit)
     return { data }
   })
@@ -81,12 +81,12 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/analytics/top-documents', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, query: topDocsQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { limit } = request.query as { limit: number }
-    await fastify.getMembership(request.userId!, orgId)
 
     const rows = await prisma.$queryRawUnsafe<
       Array<{ id: string; name: string; queries: bigint; successCount: bigint }>

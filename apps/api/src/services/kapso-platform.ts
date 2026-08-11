@@ -95,6 +95,14 @@ export async function registerMessageWebhook(
   return { ...(data as Record<string, unknown>), secretKey: secret }
 }
 
+export function verifyWebhookSignature(rawBody: string, signature: string, secret: string): boolean {
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
+  const signatureBuf = Buffer.from(signature)
+  const expectedBuf = Buffer.from(expected)
+  if (signatureBuf.length !== expectedBuf.length) return false
+  return crypto.timingSafeEqual(signatureBuf, expectedBuf)
+}
+
 export async function sendPlatformMessage(
   phoneNumberId: string,
   to: string,

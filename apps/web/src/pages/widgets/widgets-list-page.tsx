@@ -9,7 +9,7 @@ import {
   getSortedRowModel,
   useReactTable,
   type SortingState,
-} from '@tanstack/react-table'
+} from '@/lib/table'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import {
@@ -313,7 +313,7 @@ export default function WidgetsListPage() {
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()
-                    window.open(`/widget/demo?embed=true&widgetKey=${w.publicKey}`, '_blank')
+                    window.open(`/widget/demo?embed=true&widgetKey=${w.publicKey}&preview=true`, '_blank')
                   }}
                 >
                   <Eye className="size-4" />

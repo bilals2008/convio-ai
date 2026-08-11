@@ -2,10 +2,11 @@ import { useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { ScrollReveal } from './scroll-reveal'
 import { SectionHeading } from './section-heading'
 import { FloatingOrbs } from './floating-orbs'
-import { Check, Zap, Shield, Crown } from 'lucide-react'
+import { Check, Zap, Shield, Star, Crown } from 'lucide-react'
 import { pricingConfig } from '@/lib/pricing/config'
 import type { PlanConfig } from '@/lib/pricing/config'
 import { cn } from '@/lib/utils'
@@ -16,7 +17,7 @@ const { plans, section } = pricingConfig
 const PLAN_ICONS: Record<string, React.ReactNode> = {
   zap: <Zap className="size-5" />,
   shield: <Shield className="size-5" />,
-  star: <Zap className="size-5" />,
+  star: <Star className="size-5" />,
   crown: <Crown className="size-5" />,
 }
 
@@ -150,24 +151,15 @@ export function Pricing() {
             <span className={cn('text-sm transition-colors', !isYearly ? 'text-foreground font-medium' : 'text-muted-foreground')}>
               Monthly
             </span>
-            <button
-              onClick={() => setIsYearly(!isYearly)}
-              className={cn(
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                isYearly ? 'bg-primary' : 'bg-muted',
-              )}
-            >
-              <span
-                className={cn(
-                  'inline-block size-4 rounded-full bg-white transition-transform',
-                  isYearly ? 'translate-x-6' : 'translate-x-1',
-                )}
-              />
-            </button>
+            <Switch
+              checked={isYearly}
+              onCheckedChange={setIsYearly}
+              aria-label="Toggle yearly billing"
+            />
             <span className={cn('text-sm transition-colors', isYearly ? 'text-foreground font-medium' : 'text-muted-foreground')}>
               Yearly
             </span>
-            <Badge className="bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0 h-4 font-medium">
+            <Badge className="bg-success/15 text-success border border-success/30 text-[10px] px-1.5 py-0 h-4 font-medium">
               Save 20%
             </Badge>
           </div>

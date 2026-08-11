@@ -16,14 +16,13 @@ const listQuerySchema = z.object({
 
 export default async function auditLogsRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/audit-logs', {
-    preHandler: [fastify.authenticate, validate({
+    preHandler: [fastify.authenticate, fastify.requirePermission('audit-log.read'), validate({
       params: z.object({ orgId: z.string().uuid() }),
       query: listQuerySchema,
     })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const query = request.query as z.infer<typeof listQuerySchema>
-    await fastify.getMembership(request.userId!, orgId)
 
     const where: Record<string, unknown> = { organizationId: orgId }
 

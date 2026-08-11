@@ -153,7 +153,31 @@ function WidgetEmbedPage() {
       agentName={agentName}
       agentAvatar={agentAvatar}
       quickReplies={quickReplies}
-      theme={{ primaryColor, backgroundColor, textColor: isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6' }}
+      themeMode={config.themeMode || 'auto'}
+      widgetWidth={config.widgetWidth || 'default'}
+      launcherSize={config.launcherSize || 'default'}
+      borderRadius={config.borderRadius || 'default'}
+      headerGradient={config.headerGradient !== false}
+      headerTitle={config.headerTitle || undefined}
+      headerSubtitle={config.headerSubtitle || undefined}
+      showOnlineIndicator={config.showOnlineIndicator}
+      launcherLabel={config.launcherLabel || undefined}
+      placeholderText={config.placeholderText || undefined}
+      showPoweredBy={config.showPoweredBy}
+      widgetHeight={config.widgetHeight}
+      theme={{
+        primaryColor,
+        backgroundColor,
+        textColor: config.textColor || (isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6'),
+        promptBgColor: config.promptBgColor || '#2a2a2a',
+        headerGradientStart: config.headerGradientStart || '#fb923c',
+        headerGradientEnd: config.headerGradientEnd || '#c2410c',
+        headerGradientDirection: `${config.headerGradientDirection ?? 135}deg`,
+        borderColor: config.borderColor || '',
+        inputBgColor: config.inputBgColor || '',
+        sendBtnColor: config.sendBtnColor || '',
+        footerBgColor: config.footerBgColor || '',
+      }}
     />
   }
 
@@ -165,16 +189,17 @@ function WidgetEmbedPage() {
     const agentName = params.get('agentName') || 'Convio Demo'
     const agentAvatar = params.get('agentAvatar') || undefined
     const quickReplies = (params.get('quickReplies') || 'What can you help with?\nHow does pricing work?\nTell me about features\nGet started guide').split('\n').map(s => s.trim()).filter(Boolean)
-    return <ChatWidget agentId={agentId} position={position} greeting={greeting} agentName={agentName} agentAvatar={agentAvatar} quickReplies={quickReplies} theme={{ primaryColor, backgroundColor, textColor: isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6' }} />
-  }
-
-  return null
+    return <ChatWidget agentId={agentId} position={position} greeting={greeting} agentName={agentName} agentAvatar={agentAvatar} quickReplies={quickReplies} theme={{ primaryColor, backgroundColor, textColor: config?.textColor || (isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6') }} />
+  }  return null
 }
 
 export default function WidgetDemoPage() {
   const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true'
   if (isEmbed) return <WidgetEmbedPage />
+  return <WidgetDemoEditor />
+}
 
+function WidgetDemoEditor() {
   const { orgId } = useOrg()
 
   const [config, setConfig] = useState<DemoConfig>({

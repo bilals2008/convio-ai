@@ -161,6 +161,8 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       return reply.code(404).send({ error: 'Agent not found' })
     }
 
+    await fastify.getMembership(request.userId!, agent.organizationId)
+
     let provider
     try {
       provider = getProviderForModel(agent.model)

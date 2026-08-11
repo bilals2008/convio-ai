@@ -8,7 +8,7 @@ import {
   type SortingState,
   type ColumnDef,
   type Column,
-} from '@tanstack/react-table'
+} from '@/lib/table'
 import { useState } from 'react'
 import { Bot, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'

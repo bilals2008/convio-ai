@@ -27,6 +27,7 @@ import {
   generateSetupLink,
   registerMessageWebhook,
   listPhoneNumbers,
+  verifyWebhookSignature,
 } from '../../services/kapso-platform.js'
 
 
@@ -120,6 +121,7 @@ const sensitiveKeys = new Set([
   'authToken',
   'kapsoApiKey',
   'kapsoWebhookSecret',
+  'telegramWebhookSecret',
 ])
 
 function maskSensitive(config: unknown): unknown {
@@ -388,8 +390,11 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       const webhookBaseUrl = (finalConfig.webhookUrl as string) || fastify.config.PUBLIC_URL
       if (botToken && webhookBaseUrl) {
         const webhookUrl = `${webhookBaseUrl}/api/deployments/${deployment.id}/telegram-webhook`
-        const result = await setTelegramWebhook(botToken, webhookUrl)
+        const secretToken = crypto.randomUUID().replace(/-/g, '')
+        const result = await setTelegramWebhook(botToken, webhookUrl, secretToken)
         if (result.success) {
+          finalConfig.telegramWebhookSecret = secretToken
+          await prisma.deployment.update({ where: { id: deployment.id }, data: { config: finalConfig as any } })
           request.log.info({ deploymentId: deployment.id, webhookUrl }, 'Telegram webhook registered')
           await setTelegramCommands(botToken).catch(() => {})
         } else {
@@ -805,6 +810,13 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       return reply.code(200).send('OK')
     }
 
+    // Verify HMAC-SHA256 signature over the raw body (timing-safe)
+    const secret = config.kapsoWebhookSecret as string | undefined
+    const signature = request.headers['x-webhook-signature'] as string | undefined
+    if (!secret || !signature || !verifyWebhookSignature((request as unknown as { rawBody: string }).rawBody, signature, secret)) {
+      return reply.code(401).send('Invalid signature')
+    }
+
     const phoneNumberId = config.phoneNumberId as string
     const event = request.headers['x-webhook-event'] as string
 
@@ -903,6 +915,14 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     if (!botToken) {
       request.log.warn({ deploymentId: id }, 'Telegram webhook: missing bot token')
       return reply.code(200).send('OK')
+    }
+
+    // Verify X-Telegram-Bot-Api-Secret-Token (set only for deployments registered after this secret feature)
+    const secretToken = config.telegramWebhookSecret as string | undefined
+    const receivedToken = request.headers['x-telegram-bot-api-secret-token'] as string | undefined
+    if (secretToken && (!receivedToken || receivedToken !== secretToken)) {
+      request.log.warn({ deploymentId: id }, 'Telegram webhook: invalid secret token')
+      return reply.code(401).send('Unauthorized')
     }
 
     const update = request.body as TelegramUpdate
@@ -1163,7 +1183,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
   })
 
   // Broadcast management endpoints
-  // POST /api/broadcasts — Create a new broadcast
+  // POST /api/broadcasts — Create a new broadcast (member of the target org only)
   fastify.post('/broadcasts', {
     preHandler: [fastify.authenticate],
   }, async (request) => {
@@ -1178,30 +1198,46 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       scheduleCron?: string
       scheduleAt?: string
     }
+    await fastify.getMembership(request.userId!, body.organizationId)
+    const agent = await prisma.agent.findFirst({
+      where: { id: body.agentId, organizationId: body.organizationId },
+      select: { id: true },
+    })
+    if (!agent) throw new AppError(404, 'Agent not found in this organization')
     const result = await createBroadcast(body)
     return { data: result }
   })
 
-  // POST /api/broadcasts/:id/execute — Execute a broadcast immediately
+  // POST /api/broadcasts/:id/execute — Execute a broadcast immediately (member of the org only)
   fastify.post('/broadcasts/:id/execute', {
     preHandler: [fastify.authenticate],
   }, async (request) => {
     const { id } = request.params as { id: string }
+    const broadcast = await prisma.broadcast.findUnique({ where: { id }, select: { organizationId: true } })
+    if (!broadcast) throw new AppError(404, 'Broadcast not found')
+    await fastify.getMembership(request.userId!, broadcast.organizationId)
     const result = await executeBroadcast(id)
     return { data: result }
   })
 
-  // POST /api/broadcasts/process — Process all scheduled broadcasts (called by cron)
-  fastify.post('/broadcasts/process', async () => {
+  // POST /api/broadcasts/process — Process all scheduled broadcasts (called by cron, guarded by CRON_SECRET when set)
+  fastify.post('/broadcasts/process', async (request) => {
+    const secret = process.env.CRON_SECRET
+    if (secret && request.headers['x-cron-secret'] !== secret) {
+      throw new AppError(403, 'Unauthorized', 'FORBIDDEN')
+    }
     await processScheduledBroadcasts()
     return { data: { processed: true } }
   })
 
-  // POST /api/telegram-broadcasts/:id/execute — Execute a Telegram broadcast
+  // POST /api/telegram-broadcasts/:id/execute — Execute a Telegram broadcast (member of the org only)
   fastify.post('/telegram-broadcasts/:id/execute', {
     preHandler: [fastify.authenticate],
   }, async (request) => {
     const { id } = request.params as { id: string }
+    const broadcast = await prisma.broadcast.findUnique({ where: { id }, select: { organizationId: true } })
+    if (!broadcast) throw new AppError(404, 'Broadcast not found')
+    await fastify.getMembership(request.userId!, broadcast.organizationId)
     const result = await executeTelegramBroadcast(id)
     return { data: result }
   })

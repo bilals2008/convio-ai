@@ -103,7 +103,7 @@ export function ChatView() {
     if (!id) return
 
     const channel = supabase.channel(`conversation:${id}`, {
-      config: { broadcast: { self: true } },
+      config: { broadcast: { self: false } },
     })
 
     channel.on('broadcast', { event: 'message' }, () => {

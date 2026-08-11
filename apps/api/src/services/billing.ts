@@ -1,6 +1,6 @@
 import { prisma } from '@convio/database'
-import { PLANS } from '@convio/config'
 import type { BillingPlan } from '@convio/types'
+import { getPlanDef, getPlanTierMap } from './plans.js'
 
 export async function getOrgPlan(orgId: string): Promise<BillingPlan> {
   const org = await prisma.organization.findUnique({
@@ -41,7 +41,7 @@ export async function getOrgPlan(orgId: string): Promise<BillingPlan> {
     }
   }
 
-  const planDef = PLANS[planKey] || PLANS.free
+  const planDef = (await getPlanDef(planKey)) ?? (await getPlanDef('free'))!
 
   return {
     name: planKey as BillingPlan['name'],
@@ -113,8 +113,6 @@ export async function checkMessageLimit(orgId: string) {
   }
 }
 
-const PLAN_TIER: Record<string, number> = { free: 0, pro: 1, business: 2, enterprise: 3 }
-
 export async function checkOrgLimit(userId: string) {
   const memberships = await prisma.membership.findMany({
     where: { userId },
@@ -122,13 +120,14 @@ export async function checkOrgLimit(userId: string) {
   })
 
   const orgCount = memberships.length
+  const tierMap = await getPlanTierMap()
   const maxTier = memberships.reduce((highest, m) => {
-    const tier = PLAN_TIER[m.organization.plan as string] ?? 0
+    const tier = tierMap[m.organization.plan as string] ?? 0
     return tier > highest ? tier : highest
   }, 0)
 
-  const planKey = Object.entries(PLAN_TIER).find(([, t]) => t === maxTier)?.[0] || 'free'
-  const planDef = PLANS[planKey]
+  const planKey = Object.entries(tierMap).find(([, t]) => t === maxTier)?.[0] || 'free'
+  const planDef = (await getPlanDef(planKey)) ?? (await getPlanDef('free'))!
   const limit = planDef.limits.organizations
 
   return {

@@ -3,6 +3,8 @@ import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { getWidgetCorsHeaders } from '../../plugins/cors.js'
+import { resolveGenerationProvider } from '../agents/agent-generator.js'
+import { WIDGET_GENERATION_PROMPT, parseWidgetDraft } from './generator.js'
 import { z } from 'zod'
 
 const widgetStatuses = ['draft', 'active', 'paused', 'archived'] as const
@@ -21,11 +23,10 @@ const widgetConfigFields = {
   greeting: z.string().trim().min(1).max(200).default('Hello! How can I help you?'),
   quickReplies: z.array(z.string().trim().min(1).max(60)).max(4).default([]),
   agentName: z.string().trim().min(1).max(50).default('Assistant'),
-  agentAvatar: z.string().url().optional(),
+  agentAvatar: z.union([z.string().url(), z.literal('')]).optional(),
   headerTitle: z.string().trim().max(100).optional(),
   headerSubtitle: z.string().trim().max(100).optional(),
   showOnlineIndicator: z.boolean().optional(),
-  launcherIcon: z.enum(['chat', 'sparkle', 'message', 'headphones', 'bot', 'help']).optional(),
   launcherLabel: z.string().trim().max(50).optional(),
   placeholderText: z.string().trim().max(120).optional(),
   showPoweredBy: z.boolean().optional(),
@@ -38,6 +39,7 @@ const widgetConfigFields = {
   borderColor: z.string().optional(),
   inputBgColor: z.string().optional(),
   sendBtnColor: z.string().optional(),
+  footerBgColor: z.string().optional(),
   widgetHeight: z.number().min(300).max(900).optional(),
   widgetWidth: z.enum(['narrow', 'default', 'wide']).optional(),
   launcherSize: z.enum(['small', 'default', 'large']).optional(),
@@ -49,6 +51,10 @@ const createWidgetBodySchema = z.object({
   name: z.string().trim().min(1).max(100),
   agentId: z.string().uuid(),
   config: widgetConfigSchema.optional(),
+})
+const generateWidgetBodySchema = z.object({
+  description: z.string().trim().min(3).max(2000),
+  model: z.string().min(1).optional(),
 })
 const updateWidgetBodySchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
@@ -82,13 +88,38 @@ function assertPublicAccess(request: FastifyRequest, allowedDomains: string[]) {
 }
 
 export default async function widgetsRoutes(fastify: FastifyInstance) {
+  fastify.post('/widgets/generate', {
+    preHandler: [fastify.authenticate, validate({ body: generateWidgetBodySchema })],
+  }, async (request) => {
+    const { description, model } = request.body as z.infer<typeof generateWidgetBodySchema>
+
+    const { provider, apiKey, model: genModel } = await resolveGenerationProvider(request.userId!, model)
+
+    let result
+    try {
+      result = await provider.generate({
+        model: genModel,
+        messages: [
+          { role: 'system', content: WIDGET_GENERATION_PROMPT },
+          { role: 'user', content: description },
+        ],
+        temperature: 0.7,
+        maxTokens: 2048,
+        apiKey,
+      })
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Generation failed'
+      throw new AppError(502, `AI generation failed: ${msg}`)
+    }
+
+    return { data: parseWidgetDraft(result.content) }
+  })
+
   fastify.get('/organizations/:orgId/widgets', {
-    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema, query: widgetQuerySchema })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema, query: widgetQuerySchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { cursor, limit } = request.query as z.infer<typeof widgetQuerySchema>
-    await fastify.getMembership(request.userId!, orgId)
-
     const widgets = await prisma.widget.findMany({
       where: { organizationId: orgId, status: { not: 'archived' } },
       select: {
@@ -105,11 +136,10 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/organizations/:orgId/widgets', {
-    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema, body: createWidgetBodySchema })],
+    preHandler: [fastify.authenticate, fastify.requireAdmin, validate({ params: orgParamsSchema, body: createWidgetBodySchema })],
   }, async (request, reply) => {
     const { orgId } = request.params as { orgId: string }
     const { name, agentId, config } = request.body as z.infer<typeof createWidgetBodySchema>
-    await fastify.ensureAdmin(request.userId!, orgId)
     const agent = await prisma.agent.findFirst({ where: { id: agentId, organizationId: orgId }, select: { id: true, name: true, avatar: true } })
     if (!agent) throw new AppError(404, 'Agent not found in this organization')
 
@@ -148,7 +178,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     }
     const allowedDomains = body.allowedDomains ? normalizeDomains(body.allowedDomains) : existing.allowedDomains
     if (body.status === 'active' && allowedDomains.length === 0) throw new AppError(400, 'Add at least one allowed domain before publishing')
-    const config = body.config ? { ...defaultWidgetConfig, ...(existing.config as object), ...body.config } : undefined
+    const config = body.config ? { ...(existing.config as object), ...body.config } : undefined
     const widget = await prisma.widget.update({
       where: { id },
       data: { name: body.name, agentId: body.agentId, status: body.status, allowedDomains: body.allowedDomains ? allowedDomains : undefined, config },
@@ -189,6 +219,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     if (!widget) throw new AppError(404, 'Widget not found')
     assertPublicAccess(request, widget.allowedDomains)
     reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
+    reply.header('Cache-Control', 'no-store')
     return { data: widget }
   })
 

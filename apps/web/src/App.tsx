@@ -9,6 +9,31 @@ import { RedirectAuthenticated } from '@/components/auth/redirect-authenticated'
 import { OrgProvider } from '@/lib/org-context'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { AdminLayout } from '@/admin/admin-layout'
+import { AdminGuard } from '@/admin/admin-guard'
+import AdminOverviewPage from '@/admin/pages/overview-page'
+import AdminUsersPage from '@/admin/pages/users-page'
+import AdminUserDetailPage from '@/admin/pages/user-detail-page'
+import AdminOrgsPage from '@/admin/pages/orgs-page'
+import AdminOrgDetailPage from '@/admin/pages/org-detail-page'
+import AdminSystemPage from '@/admin/pages/system-page'
+import AdminAuditLogsPage from '@/admin/pages/audit-logs-page'
+import AdminAgentsPage from '@/admin/pages/agents-page'
+import AdminAnalyticsPage from '@/admin/pages/analytics-page'
+import AdminRevenuePage from '@/admin/pages/revenue-page'
+import AdminModerationPage from '@/admin/pages/moderation-page'
+import AdminBillingPage from '@/admin/pages/billing-page'
+import AdminPricingPage from '@/admin/pages/pricing-page'
+import AdminPlanDetailPage from '@/admin/pages/plan-detail-page'
+import AdminProvidersPage from '@/admin/pages/providers-page'
+import AdminNotificationsPage from '@/admin/pages/notifications-page'
+import AdminDocsFeedbackPage from '@/admin/pages/docs-feedback-page'
+import AdminKnowledgeBasesPage from '@/admin/pages/knowledge-bases-page'
+import AdminKnowledgeBaseDetailPage from '@/admin/pages/knowledge-base-detail-page'
+import AdminKnowledgeDocumentDetailPage from '@/admin/pages/knowledge-document-detail-page'
+import AdminAccessPage from '@/admin/pages/admin-access-page'
+import AdminAssistantPage from '@/admin/pages/assistant-page'
+import AdminTicketsPage from '@/admin/pages/tickets-page'
+import AdminTicketDetailPage from '@/admin/pages/ticket-detail-page'
 
 import Landing from '@/pages/landing'
 import PricingPage from '@/pages/pricing-page'
@@ -42,6 +67,10 @@ import BillingPage from '@/pages/settings/billing-page'
 import DataManagementPage from '@/pages/settings/data-management-page'
 import McpServersPage from '@/pages/settings/mcp-servers-page'
 import SettingsAuditLogsPage from '@/pages/settings/audit-logs-page'
+import NotificationPreferencesPage from '@/pages/settings/notification-preferences-page'
+import SupportTicketsPage from '@/pages/support/support-tickets-page'
+import SupportTicketDetailPage from '@/pages/support/support-ticket-detail-page'
+import NotificationsPage from '@/pages/notifications-page'
 import { HelpLayout } from '@/components/help/help-layout'
 import HelpIndexPage from '@/pages/docs/help-index'
 import WhatIsConvioPage from '@/pages/docs/what-is-convio'
@@ -538,20 +567,40 @@ export function App() {
                 <Route path="billing" element={<BillingPage />} />
                  <Route path="data" element={<DataManagementPage />} />
                  <Route path="audit-logs" element={<SettingsAuditLogsPage />} />
+                 <Route path="notifications" element={<NotificationPreferencesPage />} />
                 </Route>
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/support" element={<SupportTicketsPage />} />
+              <Route path="/support/:ticketId" element={<SupportTicketDetailPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
-            <Route element={<ErrorBoundary name="Admin"><AdminLayout /></ErrorBoundary>}>
-              <Route path="/admin" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Admin Dashboard — Coming Soon</div>} />
-              <Route path="/admin/users" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">User Management — Coming Soon</div>} />
-              <Route path="/admin/organizations" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Organizations — Coming Soon</div>} />
-              <Route path="/admin/analytics" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Analytics — Coming Soon</div>} />
-              <Route path="/admin/agents" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Agent Monitoring — Coming Soon</div>} />
-              <Route path="/admin/system" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">System Health — Coming Soon</div>} />
-              <Route path="/admin/moderation" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Moderation — Coming Soon</div>} />
-              <Route path="/admin/billing" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Billing Overview — Coming Soon</div>} />
-              <Route path="/admin/providers" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Provider Management — Coming Soon</div>} />
-              <Route path="/admin/announcements" element={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Announcements — Coming Soon</div>} />
+            <Route element={<AdminGuard />}>
+              <Route element={<ErrorBoundary name="Admin"><AdminLayout /></ErrorBoundary>}>
+                <Route path="/admin" element={<AdminOverviewPage />} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
+                <Route path="/admin/users/:id" element={<AdminUserDetailPage />} />
+                <Route path="/admin/organizations" element={<AdminOrgsPage />} />
+                <Route path="/admin/organizations/:id" element={<AdminOrgDetailPage />} />
+                <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+                <Route path="/admin/revenue" element={<AdminRevenuePage />} />
+                <Route path="/admin/agents" element={<AdminAgentsPage />} />
+                <Route path="/admin/system" element={<AdminSystemPage />} />
+                <Route path="/admin/moderation" element={<AdminModerationPage />} />
+                <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
+                <Route path="/admin/billing" element={<AdminBillingPage />} />
+                <Route path="/admin/pricing" element={<AdminPricingPage />} />
+                <Route path="/admin/pricing/:id" element={<AdminPlanDetailPage />} />
+                <Route path="/admin/providers" element={<AdminProvidersPage />} />
+                <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
+                <Route path="/admin/docs-feedback" element={<AdminDocsFeedbackPage />} />
+                <Route path="/admin/access" element={<AdminAccessPage />} />
+                <Route path="/admin/knowledge-bases" element={<AdminKnowledgeBasesPage />} />
+                <Route path="/admin/knowledge-bases/:id" element={<AdminKnowledgeBaseDetailPage />} />
+                <Route path="/admin/knowledge-bases/:kbId/documents/:documentId" element={<AdminKnowledgeDocumentDetailPage />} />
+                <Route path="/admin/assistant" element={<AdminAssistantPage />} />
+                <Route path="/admin/tickets" element={<AdminTicketsPage />} />
+                <Route path="/admin/tickets/:ticketId" element={<AdminTicketDetailPage />} />
+              </Route>
             </Route>
           </Routes>
             </OrgProvider>

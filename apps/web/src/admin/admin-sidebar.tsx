@@ -1,16 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  BarChart3,
-  Brain,
-  Shield,
-  Activity,
-  Bell,
-  CreditCard,
-  Flag,
   ChevronLeft,
   ArrowLeft,
   LogOut,
@@ -31,39 +21,15 @@ import { SidebarGroup, SidebarItem } from '@/components/layout/sidebar-nav'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
-
-const adminNavItems = [
-  {
-    group: 'Admin',
-    items: [
-      { icon: LayoutDashboard, label: 'Dashboard', href: '/admin', exact: true },
-      { icon: Users, label: 'Users', href: '/admin/users' },
-      { icon: Building2, label: 'Organizations', href: '/admin/organizations' },
-      { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
-    ],
-  },
-  {
-    group: 'Monitor',
-    items: [
-      { icon: Brain, label: 'Agents', href: '/admin/agents' },
-      { icon: Activity, label: 'System Health', href: '/admin/system' },
-      { icon: Flag, label: 'Moderation', href: '/admin/moderation' },
-    ],
-  },
-  {
-    group: 'System',
-    items: [
-      { icon: CreditCard, label: 'Billing', href: '/admin/billing' },
-      { icon: Shield, label: 'Providers', href: '/admin/providers' },
-      { icon: Bell, label: 'Announcements', href: '/admin/announcements' },
-    ],
-  },
-]
+import { useAdminNav } from './navigation/use-admin-nav'
+import { useAdminTicketStats } from './hooks/use-admin'
 
 export function AdminSidebar() {
   const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const navGroups = useAdminNav()
+  const { data: ticketStats } = useAdminTicketStats()
 
   const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -88,11 +54,11 @@ export function AdminSidebar() {
 
   const sidebarContent = (
     <aside
-      className={`
-        flex h-full flex-col bg-card border-r
-        ${collapsed ? 'w-[64px]' : 'w-[240px]'}
-        transition-[width] duration-200 ease-in-out
-      `}
+      className={cn(
+        'flex h-full flex-col bg-card border-r',
+        collapsed ? 'w-[64px]' : 'w-[240px]',
+        'transition-[width] duration-200 ease-in-out'
+      )}
       aria-label="Admin navigation"
     >
       {/* Logo + collapse */}
@@ -130,11 +96,16 @@ export function AdminSidebar() {
 
       <ScrollArea className="flex-1 min-h-0">
         <nav className="flex flex-col px-2 py-2">
-          {adminNavItems.map((group) => (
+          {navGroups.map((group) => (
             <SidebarGroup key={group.group} label={group.group}>
-              {group.items.map((item) => (
-                <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} exact={item.exact} />
-              ))}
+              {group.items.map((item) => {
+                const openCount = item.href === '/admin/tickets' && ticketStats && ticketStats.open > 0
+                  ? ticketStats.open
+                  : undefined
+                return (
+                  <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} exact={item.exact} badge={openCount ?? item.badge} />
+                )
+              })}
             </SidebarGroup>
           ))}
         </nav>
@@ -204,23 +175,31 @@ export function AdminSidebar() {
                 </div>
                 <ScrollArea className="flex-1">
                   <nav className="flex flex-col px-3 py-2">
-                    {adminNavItems.map((group) => (
+                    {navGroups.map((group) => (
                       <div key={group.group} className="space-y-1">
                         <h4 className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           {group.group}
                         </h4>
                         <div className="flex flex-col gap-0.5">
-                          {group.items.map((item) => (
-                            <Link
-                              key={item.href}
-                              to={item.href}
-                              onClick={() => setMobileOpen(false)}
-                              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                            >
-                              <item.icon className="size-4 shrink-0" />
-                              <span className="flex-1 truncate">{item.label}</span>
-                            </Link>
-                          ))}
+                          {group.items.map((item) => {
+                    const openCount = item.href === '/admin/tickets' ? ticketStats?.open ?? 0 : undefined
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        <item.icon className="size-4 shrink-0" />
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {openCount != null && openCount > 0 && (
+                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-medium text-primary-foreground">
+                            {openCount}
+                          </span>
+                        )}
+                      </Link>
+                    )
+                  })}
                         </div>
                       </div>
                     ))}

@@ -7,7 +7,7 @@ import {
   type SortingState,
   type ColumnDef,
   type Column,
-} from '@tanstack/react-table'
+} from '@/lib/table'
 import { ArrowUpDown, ArrowDown, ArrowUp, Monitor, Smartphone, Tablet, Globe } from 'lucide-react'
 import {
   Table,

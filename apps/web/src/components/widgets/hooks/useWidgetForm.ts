@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { widgets as widgetsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import type { WidgetDetail, ApiError } from '../types'
-import { type LauncherTemplate, type ThemeMode, type LauncherIcon } from '../constants'
+import { type ThemeMode } from '../constants'
+import type { WidgetDraft as WidgetAiDraft } from '../components/DesignAiTab'
 import { sanitizeDomain } from '../helpers'
 
 export function useWidgetForm(widgetId: string) {
@@ -34,6 +35,7 @@ export function useWidgetForm(widgetId: string) {
   const [borderColor, setBorderColor] = useState('')
   const [inputBgColor, setInputBgColor] = useState('')
   const [sendBtnColor, setSendBtnColor] = useState('')
+  const [footerBgColor, setFooterBgColor] = useState('')
   const [widgetHeight, setWidgetHeight] = useState(540)
   const [widgetWidth, setWidgetWidth] = useState<'narrow' | 'default' | 'wide'>('default')
   const [launcherSize, setLauncherSize] = useState<'small' | 'default' | 'large'>('default')
@@ -44,18 +46,19 @@ export function useWidgetForm(widgetId: string) {
   const [headerTitle, setHeaderTitle] = useState('')
   const [headerSubtitle, setHeaderSubtitle] = useState('')
   const [showOnlineIndicator, setShowOnlineIndicator] = useState(true)
-  const [launcherIcon, setLauncherIcon] = useState<LauncherIcon>('chat')
   const [launcherLabel, setLauncherLabel] = useState('')
   const [placeholderText, setPlaceholderText] = useState('')
   const [showPoweredBy, setShowPoweredBy] = useState(true)
   const [quickReplies, setQuickReplies] = useState<string[]>([])
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('appearance')
-  const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const initializedWidgetId = useRef<string | null>(null)
 
   useEffect(() => {
     if (!widget) return
+    if (initializedWidgetId.current === widget.id) return
+    initializedWidgetId.current = widget.id
     setName(widget.name)
     setDomains(widget.allowedDomains ?? [])
     setPosition(widget.config.position ?? 'bottom-right')
@@ -70,6 +73,7 @@ export function useWidgetForm(widgetId: string) {
     setBorderColor(widget.config.borderColor ?? '')
     setInputBgColor(widget.config.inputBgColor ?? '')
     setSendBtnColor(widget.config.sendBtnColor ?? '')
+    setFooterBgColor(widget.config.footerBgColor ?? '')
     setWidgetHeight(widget.config.widgetHeight ?? 540)
     setWidgetWidth(widget.config.widgetWidth ?? 'default')
     setLauncherSize(widget.config.launcherSize ?? 'default')
@@ -80,7 +84,6 @@ export function useWidgetForm(widgetId: string) {
     setHeaderTitle(widget.config.headerTitle ?? '')
     setHeaderSubtitle(widget.config.headerSubtitle ?? '')
     setShowOnlineIndicator(widget.config.showOnlineIndicator ?? true)
-    setLauncherIcon(widget.config.launcherIcon ?? 'chat')
     setLauncherLabel(widget.config.launcherLabel ?? '')
     setPlaceholderText(widget.config.placeholderText ?? '')
     setShowPoweredBy(widget.config.showPoweredBy ?? true)
@@ -104,6 +107,7 @@ export function useWidgetForm(widgetId: string) {
         borderColor: widget.config.borderColor ?? '',
         inputBgColor: widget.config.inputBgColor ?? '',
         sendBtnColor: widget.config.sendBtnColor ?? '',
+        footerBgColor: widget.config.footerBgColor ?? '',
         widgetHeight: widget.config.widgetHeight ?? 540,
         widgetWidth: widget.config.widgetWidth ?? 'default',
         launcherSize: widget.config.launcherSize ?? 'default',
@@ -114,7 +118,6 @@ export function useWidgetForm(widgetId: string) {
         headerTitle: widget.config.headerTitle ?? '',
         headerSubtitle: widget.config.headerSubtitle ?? '',
         showOnlineIndicator: widget.config.showOnlineIndicator ?? true,
-        launcherIcon: widget.config.launcherIcon ?? 'chat',
         launcherLabel: widget.config.launcherLabel ?? '',
         placeholderText: widget.config.placeholderText ?? '',
         showPoweredBy: widget.config.showPoweredBy ?? true,
@@ -135,6 +138,7 @@ export function useWidgetForm(widgetId: string) {
         borderColor,
         inputBgColor,
         sendBtnColor,
+        footerBgColor,
         widgetHeight,
         widgetWidth,
         launcherSize,
@@ -145,14 +149,13 @@ export function useWidgetForm(widgetId: string) {
         headerTitle,
         headerSubtitle,
         showOnlineIndicator,
-        launcherIcon,
         launcherLabel,
         placeholderText,
         showPoweredBy,
         quickReplies: quickReplies.join(','),
       }
       return JSON.stringify(current) !== JSON.stringify(saved)
-    }, [widget, name, domains, position, primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, headerGradient, borderColor, inputBgColor, sendBtnColor, widgetHeight, widgetWidth, launcherSize, borderRadius, agentName, agentAvatar, themeMode, headerTitle, headerSubtitle, showOnlineIndicator, launcherIcon, launcherLabel, placeholderText, showPoweredBy, quickReplies])
+    }, [widget, name, domains, position, primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, headerGradient, borderColor, inputBgColor, sendBtnColor, footerBgColor, widgetHeight, widgetWidth, launcherSize, borderRadius, agentName, agentAvatar, themeMode, headerTitle, headerSubtitle, showOnlineIndicator, launcherLabel, placeholderText, showPoweredBy, quickReplies])
 
   useEffect(() => {
     if (!isDirty) return
@@ -183,6 +186,7 @@ export function useWidgetForm(widgetId: string) {
           borderColor,
           inputBgColor,
           sendBtnColor,
+          footerBgColor,
           widgetHeight,
           widgetWidth,
           launcherSize,
@@ -192,13 +196,12 @@ export function useWidgetForm(widgetId: string) {
           headerTitle,
           headerSubtitle,
           showOnlineIndicator,
-          launcherIcon,
           launcherLabel,
           placeholderText,
           showPoweredBy,
           quickReplies,
           greeting: widget?.config?.greeting || 'Hi there!',
-          ...(agentAvatar ? { agentAvatar } : {}),
+          agentAvatar,
         },
       }),
     onSuccess: () => {
@@ -255,24 +258,32 @@ export function useWidgetForm(widgetId: string) {
     setDomains((prev) => prev.filter((x) => x !== d))
   }, [])
 
-  const applyTemplate = useCallback(
-    (template: LauncherTemplate) => {
-      const cfg = template.config
-      if (cfg.primaryColor !== undefined) setPrimaryColor(cfg.primaryColor)
-      if (cfg.backgroundColor !== undefined) setBackgroundColor(cfg.backgroundColor)
-      if (cfg.textColor !== undefined) setTextColor(cfg.textColor)
-      if (cfg.promptBgColor !== undefined) setPromptBgColor(cfg.promptBgColor)
-      if (cfg.headerGradientStart !== undefined) setHeaderGradientStart(cfg.headerGradientStart)
-      if (cfg.headerGradientEnd !== undefined) setHeaderGradientEnd(cfg.headerGradientEnd)
-      if (cfg.borderColor !== undefined) setBorderColor(cfg.borderColor)
-      if (cfg.inputBgColor !== undefined) setInputBgColor(cfg.inputBgColor)
-      if (cfg.sendBtnColor !== undefined) setSendBtnColor(cfg.sendBtnColor)
-      if (cfg.position !== undefined) setPosition(cfg.position)
-      if (cfg.widgetHeight !== undefined) setWidgetHeight(cfg.widgetHeight)
-      if (cfg.widgetWidth !== undefined) setWidgetWidth(cfg.widgetWidth)
-      if (cfg.launcherSize !== undefined) setLauncherSize(cfg.launcherSize)
-      if (cfg.borderRadius !== undefined) setBorderRadius(cfg.borderRadius)
-      setActiveTemplate(template.id)
+  const applyAiDraft = useCallback(
+    (draft: WidgetAiDraft) => {
+      if (draft.name) setName(draft.name)
+      if (draft.primaryColor) setPrimaryColor(draft.primaryColor)
+      if (draft.backgroundColor) setBackgroundColor(draft.backgroundColor)
+      if (draft.textColor) setTextColor(draft.textColor)
+      if (draft.promptBgColor) setPromptBgColor(draft.promptBgColor)
+      if (draft.headerGradientStart) setHeaderGradientStart(draft.headerGradientStart)
+      if (draft.headerGradientEnd) setHeaderGradientEnd(draft.headerGradientEnd)
+      if (draft.headerGradientDirection !== undefined) setHeaderGradientDirection(draft.headerGradientDirection)
+      if (draft.borderColor) setBorderColor(draft.borderColor)
+      if (draft.inputBgColor) setInputBgColor(draft.inputBgColor)
+      if (draft.sendBtnColor) setSendBtnColor(draft.sendBtnColor)
+      if (draft.footerBgColor) setFooterBgColor(draft.footerBgColor)
+      if (draft.agentName) setAgentName(draft.agentName)
+      if (draft.headerTitle) setHeaderTitle(draft.headerTitle)
+      if (draft.headerSubtitle) setHeaderSubtitle(draft.headerSubtitle)
+      if (draft.placeholderText) setPlaceholderText(draft.placeholderText)
+      if (draft.quickReplies) setQuickReplies(draft.quickReplies.slice(0, 4))
+      if (draft.themeMode) setThemeMode(draft.themeMode)
+      if (draft.position) setPosition(draft.position)
+      if (draft.widgetWidth) setWidgetWidth(draft.widgetWidth)
+      if (draft.launcherSize) setLauncherSize(draft.launcherSize)
+      if (draft.borderRadius) setBorderRadius(draft.borderRadius)
+      setActiveTab('appearance')
+      toast.success('AI design applied — review and save')
     },
     [],
   )
@@ -308,6 +319,8 @@ export function useWidgetForm(widgetId: string) {
     setInputBgColor,
     sendBtnColor,
     setSendBtnColor,
+    footerBgColor,
+    setFooterBgColor,
     widgetHeight,
     setWidgetHeight,
     widgetWidth,
@@ -328,8 +341,6 @@ export function useWidgetForm(widgetId: string) {
     setHeaderSubtitle,
     showOnlineIndicator,
     setShowOnlineIndicator,
-    launcherIcon,
-    setLauncherIcon,
     launcherLabel,
     setLauncherLabel,
     placeholderText,
@@ -341,9 +352,7 @@ export function useWidgetForm(widgetId: string) {
     copied,
     activeTab,
     setActiveTab,
-    activeTemplate,
-    setActiveTemplate,
-    applyTemplate,
+    applyAiDraft,
     deleteOpen,
     setDeleteOpen,
     isDirty,

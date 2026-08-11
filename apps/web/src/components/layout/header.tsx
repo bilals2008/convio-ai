@@ -1,4 +1,5 @@
-import { Search, Bell, Moon, Sun, Menu, Clock } from 'lucide-react'
+import { Search, Moon, Sun, Menu, Clock, BookOpen } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useTheme } from 'next-themes'
@@ -6,11 +7,17 @@ import { Separator } from '@/components/ui/separator'
 import { useSidebar } from '@/lib/sidebar-context'
 import { usePlan } from '@/lib/hooks/use-billing'
 import { Badge } from '@/components/ui/badge'
+import { NotificationBell } from '@/components/notifications/notification-bell'
+import { useOrg } from '@/lib/org-context'
+import { useNotificationStream } from '@/lib/realtime/notifications'
 
 export function Header() {
   const { theme, setTheme } = useTheme()
   const { toggleMobile } = useSidebar()
   const { data: plan } = usePlan()
+  const { orgId } = useOrg()
+
+  useNotificationStream({ orgId: orgId ?? undefined })
 
   const isOnTrial = plan?.isTrial && plan?.trialEndsAt
   const daysLeft = isOnTrial
@@ -43,9 +50,12 @@ export function Header() {
             {daysLeft === 0 ? 'Trial ends today' : `${daysLeft}d left`}
           </Badge>
         )}
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell className="size-4" />
-        </Button>
+        {orgId && <NotificationBell orgId={orgId} />}
+        <Link to="/docs" aria-label="Docs">
+          <Button variant="ghost" size="icon">
+            <BookOpen className="size-4" />
+          </Button>
+        </Link>
         <Separator orientation="vertical" className="h-6" />
         <Button
           variant="ghost"

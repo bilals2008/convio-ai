@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { AppError } from '../../plugins/error.js'
+import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 
 const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'kie', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'opencode']
@@ -22,10 +23,9 @@ function maskKey(key: string): string {
 
 export default async function providerKeysRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/provider-keys', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, fastify.requireMembership],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    await fastify.getMembership(request.userId!, orgId)
 
     const keys = await prisma.providerKey.findMany({
       where: { organizationId: orgId },
@@ -44,10 +44,7 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/organizations/:orgId/provider-keys', {
-    preHandler: [fastify.authenticate, async (request) => {
-      const { orgId } = request.params as { orgId: string }
-      await fastify.ensureAdmin(request.userId!, orgId)
-    }],
+    preHandler: [fastify.authenticate, fastify.requireAdmin],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { provider, apiKey, label } = createKeySchema.parse(request.body)
@@ -69,14 +66,17 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
       },
     })
 
+    emitDomainEvent(NOTIFICATION_EVENTS.API_KEY_GENERATED, {
+      organizationId: orgId,
+      userId: request.userId,
+      entityName: provider,
+    })
+
     return { data: { id: key.id, provider: key.provider, keyPreview: key.keyPreview, label: key.label, createdAt: key.createdAt } }
   })
 
   fastify.patch('/organizations/:orgId/provider-keys/:keyId', {
-    preHandler: [fastify.authenticate, async (request) => {
-      const { orgId } = request.params as { orgId: string }
-      await fastify.ensureAdmin(request.userId!, orgId)
-    }],
+    preHandler: [fastify.authenticate, fastify.requireAdmin],
   }, async (request) => {
     const { orgId, keyId } = request.params as { orgId: string; keyId: string }
     const { apiKey, label } = updateKeySchema.parse(request.body)
@@ -103,10 +103,7 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
   })
 
   fastify.delete('/organizations/:orgId/provider-keys/:keyId', {
-    preHandler: [fastify.authenticate, async (request) => {
-      const { orgId } = request.params as { orgId: string }
-      await fastify.ensureAdmin(request.userId!, orgId)
-    }],
+    preHandler: [fastify.authenticate, fastify.requireAdmin],
   }, async (request, reply) => {
     const { orgId, keyId } = request.params as { orgId: string; keyId: string }
 
@@ -116,6 +113,13 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
     if (!existing) throw new AppError(404, 'Provider key not found')
 
     await prisma.providerKey.delete({ where: { id: keyId } })
+
+    emitDomainEvent(NOTIFICATION_EVENTS.API_KEY_REVOKED, {
+      organizationId: orgId,
+      userId: request.userId,
+      entityName: existing.provider,
+    })
+
     reply.code(204).send()
   })
 }

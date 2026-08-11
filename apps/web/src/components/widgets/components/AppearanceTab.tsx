@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Palette, PaintBucket, Upload, X, Loader2, Image as ImageIcon } from 'lucide-react'
+import { Palette, PaintBucket, Upload, X, Loader2, Image as ImageIcon, MessageCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ import {
   borderColorPresets,
   inputBgPresets,
   sendBtnPresets,
+  footerBgPresets,
   THEME_MODES,
   type ThemeMode,
 } from '../constants'
@@ -37,7 +38,7 @@ function QuickReplyInput({ onAdd }: { onAdd: (val: string) => void }) {
   }, [val, onAdd])
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       <Input
         ref={inputRef}
         value={val}
@@ -84,6 +85,8 @@ interface AppearanceTabProps {
   onInputBgColorChange: (value: string) => void
   sendBtnColor: string
   onSendBtnColorChange: (value: string) => void
+  footerBgColor: string
+  onFooterBgColorChange: (value: string) => void
   themeMode: ThemeMode
   onThemeModeChange: (value: ThemeMode) => void
   headerTitle: string
@@ -98,6 +101,8 @@ interface AppearanceTabProps {
   onShowPoweredByChange: (value: boolean) => void
   quickReplies: string[]
   onQuickRepliesChange: (value: string[]) => void
+  launcherLabel: string
+  onLauncherLabelChange: (value: string) => void
 }
 
 export function AppearanceTab({
@@ -127,6 +132,8 @@ export function AppearanceTab({
   onInputBgColorChange,
   sendBtnColor,
   onSendBtnColorChange,
+  footerBgColor,
+  onFooterBgColorChange,
   themeMode,
   onThemeModeChange,
   headerTitle,
@@ -141,6 +148,8 @@ export function AppearanceTab({
   onShowPoweredByChange,
   quickReplies,
   onQuickRepliesChange,
+  launcherLabel,
+  onLauncherLabelChange,
 }: AppearanceTabProps) {
   const { orgId } = useOrg()
   const { upload, isUploading, progress } = useAgentAvatarUpload()
@@ -181,15 +190,15 @@ export function AppearanceTab({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 [&>*+*]:border-t [&>*+*]:border-border/40 [&>*+*]:pt-6">
       <SectionCard
         icon={<Palette className="size-3.5" />}
-        title="Appearance"
+        title="Agent"
       >
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="agentName" className="text-sm font-medium">
-              Agent name
+            <Label htmlFor="agentName" className="text-xs font-medium text-foreground">
+              Display name
             </Label>
             <Input
               id="agentName"
@@ -201,23 +210,23 @@ export function AppearanceTab({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Avatar</Label>
+            <Label className="text-xs font-medium text-foreground">Avatar</Label>
             <div className="flex items-center gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ring-border/60">
+              <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ring-border/40 bg-muted/20">
                 {agentAvatar ? (
                   <img src={agentAvatar} alt="" className="size-full object-cover" />
                 ) : (
-                  <ImageIcon className="size-4 text-muted-foreground" />
+                  <ImageIcon className="size-4 text-muted-foreground/50" />
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="h-8 text-xs"
+                  className="h-8 text-xs gap-1.5"
                 >
                   {isUploading ? (
                     <Loader2 className="size-3 animate-spin" />
@@ -239,7 +248,7 @@ export function AppearanceTab({
                   size="sm"
                   onClick={() => setPresetModalOpen(true)}
                   disabled={isUploading}
-                  className="h-8 text-xs"
+                  className="h-8 text-xs gap-1.5"
                 >
                   <Palette className="size-3" />
                   Preset
@@ -248,12 +257,12 @@ export function AppearanceTab({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => onAgentAvatarChange('')}
                     disabled={isUploading}
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                    className="size-8 text-muted-foreground/50 hover:text-destructive"
                   >
-                    <X className="size-3" />
+                    <X className="size-3.5" />
                   </Button>
                 )}
               </div>
@@ -265,10 +274,40 @@ export function AppearanceTab({
               onSelect={onAgentAvatarChange}
             />
           </div>
+        </div>
+      </SectionCard>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Color scheme</Label>
-            <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5" role="radiogroup">
+      <SectionCard
+        icon={<MessageCircle className="size-3.5" />}
+        title="Launcher"
+        description="The floating button that opens the widget"
+      >
+        <div className="space-y-2">
+          <Label htmlFor="launcherLabel" className="text-xs font-medium text-foreground">
+            Label
+          </Label>
+          <Input
+            id="launcherLabel"
+            value={launcherLabel}
+            onChange={(e) => onLauncherLabelChange(e.target.value)}
+            placeholder="Chat with us"
+            maxLength={50}
+            className="h-9 text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground/60">
+            Optional text shown beside the launcher button.
+          </p>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        icon={<Palette className="size-3.5" />}
+        title="Colors"
+      >
+        <div className="space-y-5">
+          <div className="space-y-2.5">
+            <p className="text-xs font-medium text-foreground">Theme mode</p>
+            <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
               {THEME_MODES.map((mode) => (
                 <button
                   key={mode.value}
@@ -277,56 +316,48 @@ export function AppearanceTab({
                   aria-checked={themeMode === mode.value}
                   onClick={() => onThemeModeChange(mode.value)}
                   className={cn(
-                    'rounded-md px-3 py-1.5 text-xs font-medium transition-all',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                    'rounded-md px-3.5 py-1.5 text-xs font-medium transition-all',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                     themeMode === mode.value
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
+                      ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
+                      : 'text-muted-foreground/70 hover:text-foreground',
                   )}
                 >
                   {mode.label}
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              {themeMode === 'auto' ? 'Follows the visitor\'s system setting' : themeMode === 'light' ? 'Always uses light colors' : 'Always uses dark colors'}
-            </p>
           </div>
 
-          <div className="space-y-4 border-t border-border/60 pt-6">
-            <div className="grid gap-4 grid-cols-2">
-              <ColorField
-                label="Primary"
-                description="Accent for the launcher button and user bubbles"
-                value={primaryColor}
-                onChange={onPrimaryColorChange}
-                presets={primaryPresets}
-              />
-
-              <ColorField
-                label="Background"
-                description="Main background of the widget window"
-                value={backgroundColor}
-                onChange={onBackgroundColorChange}
-                presets={bgPresets}
-              />
-
-              <ColorField
-                label="Text"
-                description="Color of message text and labels"
-                value={textColor}
-                onChange={onTextColorChange}
-                presets={textPresets}
-              />
-
-              <ColorField
-                label="AI response"
-                description="Background color for the AI message bubbles"
-                value={promptBgColor}
-                onChange={onPromptBgColorChange}
-                presets={promptBgPresets}
-              />
-            </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <ColorField
+              label="Primary"
+              description="Launcher & user bubbles"
+              value={primaryColor}
+              onChange={onPrimaryColorChange}
+              presets={primaryPresets}
+            />
+            <ColorField
+              label="Background"
+              description="Widget window"
+              value={backgroundColor}
+              onChange={onBackgroundColorChange}
+              presets={bgPresets}
+            />
+            <ColorField
+              label="Text"
+              description="Message text"
+              value={textColor}
+              onChange={onTextColorChange}
+              presets={textPresets}
+            />
+            <ColorField
+              label="AI response"
+              description="AI bubble bg"
+              value={promptBgColor}
+              onChange={onPromptBgColorChange}
+              presets={promptBgPresets}
+            />
           </div>
         </div>
       </SectionCard>
@@ -334,43 +365,40 @@ export function AppearanceTab({
       <SectionCard
         icon={<PaintBucket className="size-3.5" />}
         title="Header"
-        description="Background for the widget header"
       >
-        <div className="space-y-3">
+        <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Gradient</Label>
+            <span className="text-xs font-medium text-foreground">Use gradient</span>
             <button
               type="button"
               role="switch"
               aria-checked={headerGradient}
               onClick={() => onHeaderGradientChange(!headerGradient)}
               className={cn(
-                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                headerGradient ? 'bg-primary' : 'bg-muted'
+                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                headerGradient ? 'bg-primary' : 'bg-muted-foreground/20',
               )}
             >
               <span
                 className={cn(
-                  'pointer-events-none inline-block size-4 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200',
-                  headerGradient ? 'translate-x-4' : 'translate-x-0'
+                  'pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200',
+                  headerGradient ? 'translate-x-4' : 'translate-x-0.5',
                 )}
               />
             </button>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
             <ColorField
               label={headerGradient ? 'Gradient start' : 'Color'}
-              description={headerGradient ? 'Starting color of the header gradient' : 'Solid header background color'}
               value={headerGradientStart}
               onChange={onHeaderGradientStartChange}
               presets={headerStartPresets}
             />
-
             {headerGradient && (
               <ColorField
                 label="Gradient end"
-                description="Ending color of the header gradient"
                 value={headerGradientEnd}
                 onChange={onHeaderGradientEndChange}
                 presets={headerEndPresets}
@@ -379,10 +407,10 @@ export function AppearanceTab({
           </div>
 
           {headerGradient && (
-            <div className="space-y-1.5">
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Direction</Label>
-                <span className="text-xs text-muted-foreground tabular-nums">{headerGradientDirection}°</span>
+                <span className="text-xs font-medium text-foreground">Direction</span>
+                <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">{headerGradientDirection}°</span>
               </div>
               <input
                 type="range"
@@ -390,17 +418,10 @@ export function AppearanceTab({
                 max={360}
                 value={headerGradientDirection}
                 onChange={(e) => onHeaderGradientDirectionChange(Number(e.target.value))}
-                className="w-full h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
-                />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>0°</span>
-                <span>90°</span>
-                <span>180°</span>
-                <span>270°</span>
-                <span>360°</span>
-              </div>
+                className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+              />
               <div
-                className="h-10 rounded-lg ring-1 ring-foreground/10"
+                className="h-8 rounded-lg ring-1 ring-border/30"
                 style={{
                   background: `linear-gradient(${headerGradientDirection}deg, ${headerGradientStart}, ${headerGradientEnd})`,
                 }}
@@ -410,7 +431,7 @@ export function AppearanceTab({
 
           {!headerGradient && (
             <div
-              className="h-10 rounded-lg ring-1 ring-foreground/10"
+              className="h-8 rounded-lg ring-1 ring-border/30"
               style={{ backgroundColor: headerGradientStart }}
             />
           )}
@@ -420,42 +441,43 @@ export function AppearanceTab({
       <SectionCard
         icon={<PaintBucket className="size-3.5" />}
         title="Header content"
-        description="Title, subtitle, and indicators"
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="headerTitle" className="text-xs font-medium">Title</Label>
+            <Label htmlFor="headerTitle" className="text-xs font-medium text-foreground">Title</Label>
             <Input id="headerTitle" value={headerTitle} onChange={(e) => onHeaderTitleChange(e.target.value)} placeholder="Chat with us" className="h-9 text-sm" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="headerSubtitle" className="text-xs font-medium">Subtitle</Label>
+            <Label htmlFor="headerSubtitle" className="text-xs font-medium text-foreground">Subtitle</Label>
             <Input id="headerSubtitle" value={headerSubtitle} onChange={(e) => onHeaderSubtitleChange(e.target.value)} placeholder="We're online" className="h-9 text-sm" />
           </div>
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-medium">Online indicator</Label>
+          <div className="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
+            <span className="text-xs font-medium text-foreground">Online indicator</span>
             <button type="button" role="switch" aria-checked={showOnlineIndicator} onClick={() => onShowOnlineIndicatorChange(!showOnlineIndicator)}
-              className={cn('relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors', showOnlineIndicator ? 'bg-primary' : 'bg-muted')}>
-              <span className={cn('pointer-events-none inline-block size-5 rounded-full bg-white shadow-lg ring-0 transition-transform', showOnlineIndicator ? 'translate-x-5' : 'translate-x-0')} />
+              className={cn('relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors', showOnlineIndicator ? 'bg-primary' : 'bg-muted-foreground/20')}>
+              <span className={cn('pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform', showOnlineIndicator ? 'translate-x-4' : 'translate-x-0.5')} />
             </button>
           </div>
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-medium">Powered by Convio</Label>
+          <div className="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
+            <span className="text-xs font-medium text-foreground">Powered by Convio</span>
             <button type="button" role="switch" aria-checked={showPoweredBy} onClick={() => onShowPoweredByChange(!showPoweredBy)}
-              className={cn('relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors', showPoweredBy ? 'bg-primary' : 'bg-muted')}>
-              <span className={cn('pointer-events-none inline-block size-5 rounded-full bg-white shadow-lg ring-0 transition-transform', showPoweredBy ? 'translate-x-5' : 'translate-x-0')} />
+              className={cn('relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors', showPoweredBy ? 'bg-primary' : 'bg-muted-foreground/20')}>
+              <span className={cn('pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform', showPoweredBy ? 'translate-x-4' : 'translate-x-0.5')} />
             </button>
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="placeholderText" className="text-xs font-medium">Placeholder</Label>
+            <Label htmlFor="placeholderText" className="text-xs font-medium text-foreground">Input placeholder</Label>
             <Input id="placeholderText" value={placeholderText} onChange={(e) => onPlaceholderTextChange(e.target.value)} placeholder="Enter your message..." className="h-9 text-sm" />
           </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label className="text-xs font-medium">Quick replies</Label>
-            <div className="flex flex-wrap gap-2">
+          <div className="space-y-2.5 sm:col-span-2">
+            <span className="text-xs font-medium text-foreground">Quick replies</span>
+            <div className="flex flex-wrap gap-1.5">
               {quickReplies.map((reply, i) => (
-                <div key={i} className="flex items-center gap-1 rounded-full border border-border bg-muted/30 px-3 py-1">
-                  <span className="text-xs">{reply}</span>
-                  <button type="button" onClick={() => onQuickRepliesChange(quickReplies.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive transition-colors"><X className="size-3" /></button>
+                <div key={i} className="flex items-center gap-1 rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1">
+                  <span className="text-xs text-foreground">{reply}</span>
+                  <button type="button" onClick={() => onQuickRepliesChange(quickReplies.filter((_, j) => j !== i))} className="text-muted-foreground/40 hover:text-destructive transition-colors">
+                    <X className="size-3" />
+                  </button>
                 </div>
               ))}
               {quickReplies.length < 4 && <QuickReplyInput onAdd={(val) => onQuickRepliesChange([...quickReplies, val])} />}
@@ -467,31 +489,31 @@ export function AppearanceTab({
       <SectionCard
         icon={<PaintBucket className="size-3.5" />}
         title="Widget elements"
-        description="Customize borders, input area, and send button"
       >
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2">
           <ColorField
-            label="Border color"
-            description="Color of widget borders and dividers"
+            label="Border"
             value={borderColor}
             onChange={onBorderColorChange}
             presets={borderColorPresets}
           />
-
           <ColorField
-            label="Input background"
-            description="Background color of the message input area"
+            label="Input bg"
             value={inputBgColor}
             onChange={onInputBgColorChange}
             presets={inputBgPresets}
           />
-
           <ColorField
             label="Send button"
-            description="Color of the send message button"
             value={sendBtnColor}
             onChange={onSendBtnColorChange}
             presets={sendBtnPresets}
+          />
+          <ColorField
+            label="Footer bg"
+            value={footerBgColor}
+            onChange={onFooterBgColorChange}
+            presets={footerBgPresets}
           />
         </div>
       </SectionCard>

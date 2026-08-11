@@ -19,10 +19,14 @@ import {
   Database,
   Plug,
   ScrollText,
+  Wand2,
+  Bell,
+  LifeBuoy,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -34,10 +38,12 @@ import { SidebarGroup, SidebarItem } from './sidebar-nav'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
+import { useUnreadCount } from '@/lib/hooks/use-notifications'
 import { cn } from '@/lib/utils'
 
 function useSettingsItems() {
-  const { org } = useOrg()
+  const { org, orgId } = useOrg()
+  const { data: unread } = useUnreadCount(orgId ?? undefined, !!orgId)
   const role = org?.role
   const isAdmin = role === 'owner' || role === 'admin'
   const isOwner = role === 'owner'
@@ -48,6 +54,7 @@ function useSettingsItems() {
     { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
     { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true, badge: 'Beta' },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
+    { icon: Bell, label: 'Notifications', href: '/settings/notifications', adminOnly: false, badge: unread?.unread ? unread.unread : undefined, badgeVariant: 'default' },
      { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
     { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs', adminOnly: true },
   ].filter((item) => !item.adminOnly || (isAdmin && (!item.ownerOnly || isOwner)))
@@ -60,7 +67,7 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
     return (
       <div className="space-y-0.5 mt-4">
         {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} />
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} badgeVariant={item.badgeVariant} />
         ))}
       </div>
     )
@@ -73,7 +80,7 @@ function SettingsGroup({ collapsed }: { collapsed: boolean }) {
       </div>
       <div className="flex flex-col gap-0.5">
         {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} />
+          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} badgeVariant={item.badgeVariant} />
         ))}
       </div>
     </div>
@@ -163,6 +170,10 @@ export function Sidebar() {
             <SidebarItem icon={Globe} label="Deployments" href="/settings/deployments" />
           </SidebarGroup>
 
+          <SidebarGroup label="Support">
+            <SidebarItem icon={LifeBuoy} label="Support Tickets" href="/support" />
+          </SidebarGroup>
+
           <SettingsGroup collapsed={collapsed} />
 
           </nav>
@@ -170,6 +181,17 @@ export function Sidebar() {
 
       {/* User section */}
       <div className="border-t border-border/50 p-2 mt-auto">
+        <div className={cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground/70', collapsed && 'justify-center px-0')}>
+          <Wand2 className="size-4 shrink-0 text-muted-foreground/60" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 truncate text-left">Ask AI</span>
+              <Badge variant="beta" className="text-[10px] px-1.5 py-0 h-4 leading-none">
+                Soon
+              </Badge>
+            </>
+          )}
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger
             className={cn(
@@ -277,7 +299,15 @@ export function Sidebar() {
                 </ScrollArea>
 
                 <div className="border-t p-4 shrink-0">
-                  <DropdownMenu>
+                  <div className="flex items-center gap-3 rounded-lg p-1 text-sm text-muted-foreground/70">
+                    <Wand2 className="size-4 shrink-0 text-muted-foreground/60" />
+                    <span className="flex-1 truncate">Ask AI</span>
+                    <Badge variant="beta" className="text-[10px] px-1.5 py-0 h-4 leading-none">
+                      Soon
+                    </Badge>
+                  </div>
+                  <div className="mt-2">
+                    <DropdownMenu>
                     <DropdownMenuTrigger
                       onClick={() => setMobileOpen(false)}
                       className="flex w-full items-center gap-3 rounded-lg p-1 -m-1 transition-colors hover:bg-muted outline-none"
@@ -313,6 +343,7 @@ export function Sidebar() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </div>
                 </div>
               </aside>
             </div>
@@ -359,6 +390,12 @@ function getMobileNavGroups(role?: string) {
         { icon: MessageSquare, label: 'Conversations', href: '/conversations' },
         { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
         { icon: Globe, label: 'Deployments', href: '/settings/deployments' },
+      ],
+    },
+    {
+      label: 'Support',
+      items: [
+        { icon: LifeBuoy, label: 'Support Tickets', href: '/support' },
       ],
     },
     {

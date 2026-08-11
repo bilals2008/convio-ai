@@ -209,7 +209,7 @@ export default function BillingPage() {
   const handleUpgrade = () => {
     if (!plan.data) return
     if (plan.data.name === 'enterprise') {
-      window.open('https://convio.ai/contact', '_blank', 'noopener,noreferrer')
+      window.open('https://convio-blush.vercel.app/contact', '_blank', 'noopener,noreferrer')
       return
     }
     if (plan.data.name === 'free') {

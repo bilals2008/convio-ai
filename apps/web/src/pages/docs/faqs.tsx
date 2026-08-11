@@ -62,7 +62,7 @@ export default function FAQsPage() {
       </p>
 
       <DocCallout variant="tip" icon={HelpCircle} title="Need more help?">
-        Can't find your question here? Reach out via the in-app chat or email <a href="mailto:support@convio.ai">support@convio.ai</a> and we'll get back to you within 24 hours.
+        Can't find your question here? Reach out via the in-app chat or email <a href="mailto:teambilaldev@gmail.com">teambilaldev@gmail.com</a> and we'll get back to you within 24 hours.
       </DocCallout>
 
       <h2 id="next-steps">Next Steps</h2>

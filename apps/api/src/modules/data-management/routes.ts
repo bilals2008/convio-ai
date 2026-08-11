@@ -65,10 +65,9 @@ async function getDocumentIds(kbIds: string[]): Promise<string[]> {
 export default async function dataManagementRoutes(fastify: FastifyInstance) {
   // GET /api/organizations/:orgId/data-summary — Count of all data categories
   fastify.get('/organizations/:orgId/data-summary', {
-    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    await fastify.getMembership(request.userId!, orgId)
 
     const agentIds = await getAgentIds(orgId)
     const kbIds = await getKnowledgeBaseIds(orgId)
@@ -150,11 +149,10 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // GET /api/organizations/:orgId/data/:category — List items in a category
   fastify.get('/organizations/:orgId/data/:category', {
-    preHandler: [fastify.authenticate, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }), query: listCategoryQuerySchema })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }), query: listCategoryQuerySchema })],
   }, async (request) => {
     const { orgId, category } = request.params as { orgId: string; category: string }
     const { search, status, limit, offset } = request.query as z.infer<typeof listCategoryQuerySchema>
-    await fastify.getMembership(request.userId!, orgId)
 
     const agentIds = await getAgentIds(orgId)
     const kbIds = await getKnowledgeBaseIds(orgId)
@@ -240,10 +238,9 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // GET /api/organizations/:orgId/data/:category/cascade — What will be deleted
   fastify.get('/organizations/:orgId/data/:category/cascade', {
-    preHandler: [fastify.authenticate, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }) })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }) })],
   }, async (request) => {
     const { orgId, category } = request.params as { orgId: string; category: string }
-    await fastify.getMembership(request.userId!, orgId)
 
     const agentIds = await getAgentIds(orgId)
     const kbIds = await getKnowledgeBaseIds(orgId)
@@ -319,10 +316,9 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/organizations/:orgId/data/:category — Delete all data in a category
   fastify.delete('/organizations/:orgId/data/:category', {
-    preHandler: [fastify.authenticate, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }) })],
+    preHandler: [fastify.authenticate, fastify.requireAdmin, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }) })],
   }, async (request) => {
     const { orgId, category } = request.params as { orgId: string; category: string }
-    await fastify.ensureAdmin(request.userId!, orgId)
 
     const agentIds = await getAgentIds(orgId)
     const kbIds = await getKnowledgeBaseIds(orgId)
@@ -413,10 +409,9 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/organizations/:orgId/data/wipe — Delete ALL org data
   fastify.delete('/organizations/:orgId/data/wipe', {
-    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema })],
+    preHandler: [fastify.authenticate, fastify.requireOwner, validate({ params: orgParamsSchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    await fastify.ensureOwner(request.userId!, orgId)
 
     const agentIds = await getAgentIds(orgId)
     const kbIds = await getKnowledgeBaseIds(orgId)
@@ -496,11 +491,10 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // GET /api/organizations/:orgId/export — Export data as CSV/JSON
   fastify.get('/organizations/:orgId/export', {
-    preHandler: [fastify.authenticate, validate({ params: orgParamsSchema, query: z.object({ format: z.enum(['csv', 'json']).default('csv'), scope: z.enum(['agents', 'conversations', 'analytics', 'knowledge-bases', 'deployments', 'all']).default('all') }) })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema, query: z.object({ format: z.enum(['csv', 'json']).default('csv'), scope: z.enum(['agents', 'conversations', 'analytics', 'knowledge-bases', 'deployments', 'all']).default('all') }) })],
   }, async (request, reply) => {
     const { orgId } = request.params as { orgId: string }
     const { format, scope } = request.query as { format: 'csv' | 'json'; scope: 'agents' | 'conversations' | 'analytics' | 'knowledge-bases' | 'deployments' | 'all' }
-    await fastify.getMembership(request.userId!, orgId)
 
     const { content, filename } = await exportOrgData(orgId, format, scope)
     const contentType = format === 'csv' ? 'text/csv' : 'application/json'

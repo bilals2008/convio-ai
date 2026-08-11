@@ -63,7 +63,7 @@ export default function TechnicalFAQsPage() {
       </p>
 
       <DocCallout variant="info" icon={HelpCircle} title="Enterprise requirements">
-        If you have specific compliance or infrastructure requirements, contact us at <a href="mailto:enterprise@convio.ai">enterprise@convio.ai</a>. We work with teams that need custom deployments, dedicated infrastructure, or specific data residency.
+        If you have specific compliance or infrastructure requirements, contact us at <a href="mailto:teambilaldev@gmail.com">teambilaldev@gmail.com</a>. We work with teams that need custom deployments, dedicated infrastructure, or specific data residency.
       </DocCallout>
 
       <h2 id="next-steps">Next Steps</h2>

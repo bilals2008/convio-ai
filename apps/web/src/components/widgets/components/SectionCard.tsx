@@ -1,32 +1,29 @@
 import type { ReactNode } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { cn } from '@/lib/utils'
 
 interface SectionCardProps {
   icon?: ReactNode
   title: string
-  description: string
+  description?: string
   children: ReactNode
-  className?: string
 }
 
-export function SectionCard({ icon, title, description, children, className }: SectionCardProps) {
+export function SectionCard({ icon, title, description, children }: SectionCardProps) {
   return (
-    <Card className="overflow-hidden">
-      <CardContent className={cn('p-0', className)}>
-        <div className="flex items-start gap-3 border-b px-5 py-4">
-          {icon && (
-            <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/50 text-muted-foreground">
-              {icon}
-            </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        {icon && (
+          <span className="flex size-6 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+            {icon}
+          </span>
+        )}
+        <div className="min-w-0">
+          <h3 className="text-sm font-medium text-foreground">{title}</h3>
+          {description && (
+            <p className="mt-0.5 text-xs text-muted-foreground/80">{description}</p>
           )}
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold">{title}</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-          </div>
         </div>
-        <div className="px-5 py-5">{children}</div>
-      </CardContent>
-    </Card>
+      </div>
+      {children}
+    </div>
   )
 }

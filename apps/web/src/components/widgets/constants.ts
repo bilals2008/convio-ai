@@ -49,6 +49,12 @@ export const sendBtnPresets = [
   { label: 'White', color: '#ffffff' },
 ] as const
 
+export const footerBgPresets = [
+  { label: 'Auto', color: '' },
+  { label: 'Dark', color: '#0a0a0a' },
+  { label: 'Light', color: '#ffffff' },
+] as const
+
 export const STATUS_BADGE: Record<
   WidgetDetail['status'],
   { label: string; variant: 'active' | 'draft' | 'archived' }
@@ -94,58 +100,3 @@ export const BORDER_RADIUS_OPTIONS = [
   { value: 'default', label: 'Rounded', radius: 16 },
   { value: 'full', label: 'Full', radius: 24 },
 ] as const
-
-export const LAUNCHER_ICON_OPTIONS = [
-  { value: 'chat', label: 'Chat' },
-  { value: 'sparkle', label: 'Sparkle' },
-  { value: 'message', label: 'Message' },
-  { value: 'headphones', label: 'Headphones' },
-  { value: 'bot', label: 'Bot' },
-  { value: 'help', label: 'Help' },
-] as const
-
-export type LauncherIcon = (typeof LAUNCHER_ICON_OPTIONS)[number]['value']
-
-export interface LauncherTemplate {
-  id: string
-  name: string
-  description: string
-  dark?: boolean
-  config: {
-    primaryColor?: string
-    backgroundColor?: string
-    textColor?: string
-    promptBgColor?: string
-    headerGradientStart?: string
-    headerGradientEnd?: string
-    borderColor?: string
-    inputBgColor?: string
-    sendBtnColor?: string
-    position?: 'bottom-right' | 'bottom-left'
-    widgetHeight?: number
-    widgetWidth?: 'narrow' | 'default' | 'wide'
-    launcherSize?: 'small' | 'default' | 'large'
-    borderRadius?: 'none' | 'default' | 'full'
-  }
-}
-
-export const LAUNCHER_TEMPLATES: LauncherTemplate[] = [
-  {
-    id: 'convio-dark',
-    name: 'Convio Dark',
-    description: 'Default Convio dark theme',
-    config: {
-      primaryColor: '#1cca4a',
-      backgroundColor: '#040a0c',
-      textColor: '#eef0f1',
-      promptBgColor: '#101618',
-      headerGradientStart: '#1cca4a',
-      headerGradientEnd: '#1cca4a',
-      borderColor: '',
-      inputBgColor: '',
-      sendBtnColor: '',
-      position: 'bottom-right',
-      widgetHeight: 540,
-    },
-  },
-]

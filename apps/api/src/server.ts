@@ -12,6 +12,7 @@ import corsPlugin from './plugins/cors.js'
 import authPlugin from './plugins/auth.js'
 import validationPlugin from './plugins/validate.js'
 import membershipPlugin from './plugins/membership.js'
+import adminPlugin from './plugins/admin.js'
 import billingLimitsPlugin from './plugins/billing-limits.js'
 import auditLoggerPlugin from './plugins/audit-logger.js'
 import swaggerPlugin from './plugins/swagger.js'
@@ -40,7 +41,15 @@ import contactRoutes from './modules/contact/routes.js'
 import avatarPresetsRoutes from './modules/avatar-presets/routes.js'
 import statusRoutes from './modules/status/routes.js'
 import auditLogsRoutes from './modules/audit-logs/routes.js'
+import docsRoutes from './modules/docs/routes.js'
+import plansRoutes from './modules/plans/routes.js'
+import adminRoutes from './modules/admin/routes.js'
+import adminAssistantRoutes from './modules/admin-assistant/routes.js'
+import ticketsRoutes from './modules/tickets/routes.js'
+import adminTicketsRoutes from './modules/tickets/admin-routes.js'
 import emailPlugin from './services/email.jsx'
+import notificationsPlugin from './services/notifications/index.js'
+import notificationsRoutes from './modules/notifications/routes.js'
 import { initDiscordGateway, shutdownDiscordGateway } from './services/discord-gateway.js'
 
 
@@ -56,12 +65,14 @@ async function buildServer() {
   await app.register(corsPlugin)
   await app.register(authPlugin)
   await app.register(membershipPlugin)
+  await app.register(adminPlugin)
   await app.register(billingLimitsPlugin)
   await app.register(auditLoggerPlugin)
   await app.register(validationPlugin)
   await app.register(swaggerPlugin)
   await app.register(rateLimitPlugin)
   await app.register(emailPlugin)
+  await app.register(notificationsPlugin)
   await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024 } })
   await app.register(formbody)
 
@@ -90,6 +101,13 @@ async function buildServer() {
   await app.register(avatarPresetsRoutes, { prefix: '/api' })
   await app.register(statusRoutes, { prefix: '/api' })
   await app.register(auditLogsRoutes, { prefix: '/api' })
+  await app.register(docsRoutes, { prefix: '/api' })
+  await app.register(plansRoutes, { prefix: '/api' })
+  await app.register(adminRoutes, { prefix: '/api' })
+  await app.register(adminAssistantRoutes, { prefix: '/api' })
+  await app.register(notificationsRoutes, { prefix: '/api' })
+  await app.register(ticketsRoutes, { prefix: '/api' })
+  await app.register(adminTicketsRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {

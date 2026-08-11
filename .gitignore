@@ -47,3 +47,9 @@ coverage/
 .commandcode/
 
 .vercel
+
+graphify-out/
+
+# AI agent tooling.claude/
+.opencode/
+

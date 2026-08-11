@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, Check, Headphones, Briefcase, GraduationCap, Zap, SlidersHorizontal, Wrench, Search } from 'lucide-react'
+import { Loader2, Check, Headphones, Briefcase, GraduationCap, Zap, SlidersHorizontal, Wrench, Search, Upload } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
@@ -51,18 +53,54 @@ const categoryIcons: Record<string, typeof Headphones> = {
   custom: SlidersHorizontal,
 }
 
-const toolLabels: Record<string, string> = {
-  'knowledge-search': 'Knowledge Search',
-  'generate-leads': 'Generate Leads',
-  'url-fetcher': 'URL Fetcher',
-  'code-interpreter': 'Code Interpreter',
-  'date-time': 'Date & Time',
+const templateCategories: AgentTemplate['category'][] = ['support', 'business', 'education', 'productivity', 'custom']
+
+function normalizeImportedTemplate(data: Record<string, unknown>): AgentTemplate | null {
+  const name = (data.name || data.templateName) as string | undefined
+  const systemPrompt = (data.systemPrompt || data.prompt) as string | undefined
+  if (!name?.trim() || !systemPrompt) return null
+
+  const category = templateCategories.includes(data.category as AgentTemplate['category'])
+    ? (data.category as AgentTemplate['category'])
+    : 'custom'
+
+  return {
+    id: (data.id as string) || 'custom',
+    name: name.trim().slice(0, 50),
+    description: String(data.description || data.name || 'Imported template').slice(0, 200),
+    systemPrompt,
+    suggestedModel: data.suggestedModel || (data.model as string) || '',
+    suggestedTemperature: typeof data.suggestedTemperature === 'number' ? data.suggestedTemperature : 0.7,
+    category,
+    suggestedTools: Array.isArray(data.suggestedTools) ? (data.suggestedTools as string[]) : [],
+  }
 }
 
 export function AgentTemplateModal({ open, onOpenChange, activeTemplateId, onSelect, disabled }: AgentTemplateModalProps) {
   const { orgId } = useOrg()
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [search, setSearch] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text) as Record<string, unknown>
+      const template = normalizeImportedTemplate(data)
+      if (!template) {
+        toast.error('Import failed: JSON must include "name" and "systemPrompt"')
+        return
+      }
+      onSelect(template)
+      onOpenChange(false)
+      toast.success('Template imported')
+    } catch {
+      toast.error('Import failed: not a valid JSON file')
+    }
+  }
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['agent-templates', orgId],
@@ -98,14 +136,34 @@ export function AgentTemplateModal({ open, onOpenChange, activeTemplateId, onSel
         </DialogHeader>
 
         <div className="flex flex-col gap-4 px-6 pt-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search templates..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9"
+          {/* Search + import */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search templates..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={() => fileInputRef.current?.click()}
+              className="shrink-0 h-9"
+            >
+              <Upload className="size-3.5" />
+              Import JSON
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={handleImport}
             />
           </div>
 

@@ -1,12 +1,14 @@
 import type { FastifyInstance } from 'fastify'
 import crypto from 'crypto'
 import { prisma } from '@convio/database'
-import { PLANS, CREEM_TEST_MODE, APP_URL } from '@convio/config'
+import { CREEM_TEST_MODE, APP_URL } from '@convio/config'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { checkoutBodySchema, billingUsageQuerySchema } from '@convio/validation'
 import { z } from 'zod'
 import { getOrgPlan, getOrgUsage, getActiveSubscription, getBillingInvoices } from '../../services/billing.js'
+import { getPlanFromProductId, getPlanDef } from '../../services/plans.js'
+import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 
 const CREEM_API = CREEM_TEST_MODE ? 'https://test-api.creem.io' : 'https://api.creem.io'
 
@@ -39,13 +41,12 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/billing/usage', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema, query: billingUsageQuerySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { month, year } = request.query as { month?: number; year?: number }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const usage = await getOrgUsage(orgId, month, year)
 
@@ -65,12 +66,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/billing/plan', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const plan = await getOrgPlan(orgId)
 
@@ -81,12 +81,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/billing/subscription', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const subscription = await getActiveSubscription(orgId)
 
@@ -97,12 +96,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/billing/invoices', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.getMembership(request.userId!, orgId)
 
     const invoices = await getBillingInvoices(orgId)
 
@@ -113,12 +111,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/billing/start-trial', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.ensureAdmin(request.userId!, orgId)
 
     const org = await prisma.organization.findUnique({ where: { id: orgId } })
     if (!org) throw new AppError(404, 'Organization not found', 'NOT_FOUND')
@@ -179,27 +176,26 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/billing/checkout', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: checkoutBodySchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { plan: planKey, billingPeriod } = request.body as { plan: string; billingPeriod?: string }
 
-    await fastify.ensureAdmin(request.userId!, orgId)
-
     const paidPlans = ['pro', 'business', 'enterprise']
     if (paidPlans.includes(planKey)) {
       throw new AppError(400, 'Paid plans are coming soon! Only the Free plan is available right now.', 'COMING_SOON')
     }
 
-    const planDef = PLANS[planKey]
+    const planDef = await getPlanDef(planKey)
     if (!planDef) {
       throw new AppError(400, `Checkout not available for this plan`, 'CHECKOUT_UNAVAILABLE')
     }
 
     const productId = billingPeriod === 'yearly'
-      ? (planDef as any).providerYearlyProductId
-      : (planDef as any).providerMonthlyProductId
+      ? planDef.providerYearlyProductId
+      : planDef.providerMonthlyProductId
 
     if (!productId) {
       throw new AppError(400, `Checkout not available for this plan/period`, 'CHECKOUT_UNAVAILABLE')
@@ -239,12 +235,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   fastify.post('/organizations/:orgId/billing/portal', {
     preHandler: [
       fastify.authenticate,
+      fastify.requireAdmin,
       validate({ params: orgParamsSchema }),
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-
-    await fastify.ensureAdmin(request.userId!, orgId)
 
     const customer = await prisma.billingCustomer.findUnique({
       where: { organizationId: orgId },
@@ -367,7 +362,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
           const productId = String(eventObject.product?.id || eventObject.product)
           const creemCustomerId = String(eventObject.customer?.id || eventObject.customer)
           const status = eventType === 'subscription.trialing' ? 'on_trial' : 'active'
-          const plan = getPlanFromProductId(productId)
+          const plan = await getPlanFromProductId(productId)
           const orgId = eventObject.metadata?.orgId as string | undefined
 
           const bc = await prisma.billingCustomer.findUnique({
@@ -391,6 +386,13 @@ export default async function billingRoutes(fastify: FastifyInstance) {
                   endsAt: eventObject.ends_at ? new Date(eventObject.ends_at) : null,
                 },
               })
+
+              if (eventType === 'subscription.paid' || eventType === 'subscription.active') {
+                emitDomainEvent(NOTIFICATION_EVENTS.SUBSCRIPTION_RENEWED, {
+                  organizationId: bc.organizationId,
+                  entityName: plan,
+                })
+              }
             } else {
               await prisma.subscription.create({
                 data: {
@@ -448,10 +450,23 @@ export default async function billingRoutes(fastify: FastifyInstance) {
         case 'subscription.past_due': {
           const subscriptionId = String(eventObject.id)
 
+          const sub = await prisma.subscription.findUnique({
+            where: { providerSubscriptionId: subscriptionId },
+            include: { customer: true },
+          })
+
           await prisma.subscription.updateMany({
             where: { providerSubscriptionId: subscriptionId },
             data: { status: 'past_due' },
           })
+
+          if (sub) {
+            emitDomainEvent(NOTIFICATION_EVENTS.PAYMENT_FAILED, {
+              organizationId: sub.customer.organizationId,
+              entityName: sub.plan,
+              metadata: { error: 'Your latest payment could not be processed. Update your payment method to avoid service interruption.' },
+            })
+          }
 
           break
         }
@@ -501,6 +516,14 @@ export default async function billingRoutes(fastify: FastifyInstance) {
               where: { id: sub.customer.organizationId },
               data: { plan: 'free' },
             })
+
+            const now = new Date()
+            if (sub.trialEndsAt && sub.trialEndsAt <= now) {
+              emitDomainEvent(NOTIFICATION_EVENTS.TRIAL_EXPIRED, {
+                organizationId: sub.customer.organizationId,
+                entityName: sub.plan,
+              })
+            }
           }
 
           break
@@ -524,7 +547,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
             : eventObject.product
               ? String(eventObject.product)
               : undefined
-          const plan = productId ? getPlanFromProductId(productId) : undefined
+          const plan = productId ? await getPlanFromProductId(productId) : undefined
 
           const updateData: Record<string, unknown> = {
             status: eventObject.status || 'active',
@@ -593,10 +616,3 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   })
 }
 
-function getPlanFromProductId(productId: string): string {
-  for (const [key, plan] of Object.entries(PLANS)) {
-    const p = plan as any
-    if (p.providerMonthlyProductId === productId || p.providerYearlyProductId === productId) return key
-  }
-  return 'free'
-}

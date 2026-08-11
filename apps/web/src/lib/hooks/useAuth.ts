@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
@@ -13,6 +14,7 @@ export interface User {
 
 export interface Session {
   user: User
+  isPlatformAdmin: boolean
 }
 
 function getErrorMessage(error: unknown): string {
@@ -24,15 +26,21 @@ export function useSession() {
   return useQuery<Session | null>({
     queryKey: ['auth', 'session'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return null
+      // getUser() refreshes an expired access token before we hit /auth/me
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return null
 
       try {
         const res = await apiRaw.get('/auth/me')
-        return { user: res.data.user }
-      } catch {
-        await supabase.auth.signOut()
-        toast.error('No account found. Please create a new account.')
+        return {
+          user: res.data.user,
+          isPlatformAdmin: !!res.data.isPlatformAdmin,
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          await supabase.auth.signOut()
+          toast.error('No account found. Please create a new account.')
+        }
         return null
       }
     },

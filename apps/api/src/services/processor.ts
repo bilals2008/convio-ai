@@ -3,6 +3,7 @@ import { prisma } from '@convio/database'
 import { getProviderById } from '@convio/ai/providers'
 import { downloadFile } from '../lib/storage.js'
 import { rerank } from './reranker.js'
+import { emitDomainEvent, NOTIFICATION_EVENTS } from './notifications/events.js'
 import { mkdtemp, rm, writeFile, readFile, readdir } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
@@ -233,7 +234,10 @@ export async function processDocument(
   documentId: string,
   options?: { pdfPath?: string },
 ): Promise<void> {
-  const doc = await prisma.document.findUnique({ where: { id: documentId } })
+  const doc = await prisma.document.findUnique({
+    where: { id: documentId },
+    include: { knowledgeBase: { select: { organizationId: true } } },
+  })
   if (!doc) throw new Error('Document not found')
 
   await prisma.document.update({
@@ -266,17 +270,34 @@ export async function processDocument(
       )
     }
 
-    await prisma.document.update({
-      where: { id: documentId },
-      data: {
-        content: text.slice(0, 200_000),
-        status: 'ready',
-      },
-    })
+  await prisma.document.update({
+    where: { id: documentId },
+    data: {
+      content: text.slice(0, 200_000),
+      status: 'ready',
+    },
+  })
+
+  emitDomainEvent(NOTIFICATION_EVENTS.DOCUMENT_PROCESSED, {
+    organizationId: doc.knowledgeBase.organizationId,
+    entityId: doc.id,
+    entityName: doc.name,
+  })
+  emitDomainEvent(NOTIFICATION_EVENTS.DOCUMENT_EMBEDDED, {
+    organizationId: doc.knowledgeBase.organizationId,
+    entityId: doc.id,
+    entityName: doc.name,
+  })
   } catch (err) {
     await prisma.document.update({
       where: { id: documentId },
       data: { status: 'error' },
+    })
+    emitDomainEvent(NOTIFICATION_EVENTS.DOCUMENT_FAILED, {
+      organizationId: doc.knowledgeBase.organizationId,
+      entityId: doc.id,
+      entityName: doc.name,
+      metadata: { error: err instanceof Error ? err.message : 'Document processing failed' },
     })
     throw err instanceof Error ? err : new Error('Document processing failed')
   }

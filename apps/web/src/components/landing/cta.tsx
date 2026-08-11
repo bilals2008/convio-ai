@@ -1,43 +1,45 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ScrollReveal } from './scroll-reveal'
-import { GlowCard } from './glow-card'
-import { FloatingOrbs } from './floating-orbs'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 
 export function CTA() {
   return (
-    <section className="relative overflow-hidden">
-      <FloatingOrbs />
+    <section className="border-b border-border bg-background">
+      <div className="mx-auto max-w-[1160px] px-5 md:px-10 py-24 md:py-36">
+        <ScrollReveal>
+          <div className="flex flex-col items-center text-center">
+            <h2 className="max-w-[18ch] font-heading text-[clamp(34px,5vw,64px)] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground">
+              Ship your first agent{' '}
+              <span className="text-primary">today.</span>
+            </h2>
+            <p className="mt-5 max-w-[520px] text-[15px] leading-[1.7] text-muted-foreground">
+              Connect a channel, add your knowledge, and go live in minutes — free forever plan, no credit card required.
+            </p>
 
-      <div className="max-w-[1160px] mx-auto px-5 md:px-10 pt-10 md:pt-14 pb-20 md:pb-28">
-        <ScrollReveal variant="scaleIn">
-          <GlowCard>
-            <div className="py-14 md:py-20 px-6 md:px-14 flex flex-col md:flex-row items-start md:items-center gap-10 md:gap-16">
-              <div className="flex-1 min-w-0">
-                <h2 className="font-heading text-[clamp(24px,3.2vw,40px)] text-foreground leading-[1.12] tracking-[-0.02em] mb-3">
-                  Ship your first agent today.
-                </h2>
-                <p className="text-[15px] text-muted-foreground leading-[1.65] max-w-[420px]">
-                  Connect a channel, add your knowledge, and go live in minutes — free forever plan, no credit card required.
-                </p>
-              </div>
-
-              <div className="flex flex-col items-stretch gap-3 w-full md:w-auto md:min-w-[200px] shrink-0">
-                <Link to="/signup">
-                  <Button size="lg" className="w-full justify-center glow-primary-sm">
-                    Start Free
-                    <ArrowRight className="size-4" />
-                  </Button>
-                </Link>
-                <Link to="/pricing">
-                  <Button size="lg" variant="outline" className="w-full justify-center bg-card/60">
-                    See Pricing
-                  </Button>
-                </Link>
-              </div>
+            <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
+              <Link to="/signup">
+                <Button size="lg" className="glow-primary-sm">
+                  Start Free
+                  <ArrowRight className="size-4" />
+                </Button>
+              </Link>
+              <Link to="/pricing">
+                <Button size="lg" variant="ghost">
+                  See Pricing
+                </Button>
+              </Link>
             </div>
-          </GlowCard>
+
+            <div className="mt-5 flex items-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <Check className="size-3.5 text-primary" /> Free forever plan
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Check className="size-3.5 text-primary" /> No credit card
+              </span>
+            </div>
+          </div>
         </ScrollReveal>
       </div>
     </section>

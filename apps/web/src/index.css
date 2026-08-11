@@ -158,6 +158,15 @@
   .glow-primary-sm {
     box-shadow: 0 0 12px -2px hsl(var(--primary) / 0.25);
   }
+
+  .bg-glow-green {
+    background-image: radial-gradient(closest-side, hsl(var(--primary) / 0.4), transparent 100%);
+  }
+
+  .shadow-soft-lg {
+    box-shadow: 0 16px 40px -16px hsl(var(--foreground) / 0.14),
+                0 4px 12px -4px hsl(var(--foreground) / 0.06);
+  }
 }
 
 @keyframes typing-dot {

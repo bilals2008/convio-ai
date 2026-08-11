@@ -396,6 +396,22 @@ export const billingUsageQuerySchema = z.object({
   year: z.coerce.number().min(2020).max(2100).optional(),
 })
 
+// Onboarding schemas
+export const onboardingStatusSchema = z.enum(['not_started', 'in_progress', 'completed', 'skipped'])
+
+export const onboardingGoalSchema = z.enum([
+  'create_agent',
+  'create_chatbot',
+  'connect_whatsapp',
+  'upload_kb',
+  'explore',
+]).optional()
+
+export const updateOnboardingSchema = z.object({
+  status: onboardingStatusSchema.optional(),
+  goal: onboardingGoalSchema.nullable().optional(),
+})
+
 // Types inferred from schemas
 export type User = z.infer<typeof userSchema>
 export type Organization = z.infer<typeof organizationSchema>
