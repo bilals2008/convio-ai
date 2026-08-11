@@ -1,4 +1,5 @@
 import api from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 
 export interface AdminStats {
   totalUsers: number
@@ -388,6 +389,57 @@ export interface AdminKnowledgeDocumentDetail {
   queries: Array<{ id: string; success: boolean; createdAt: string }>
 }
 
+export interface AdminConversation {
+  id: string
+  title: string
+  createdAt: string
+  updatedAt: string
+  messageCount: number
+}
+
+export interface AdminAssistantMessage {
+  id: string
+  conversationId: string
+  role: 'user' | 'assistant'
+  content: string
+  toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> | null
+  usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | null
+  error: string | null
+  createdAt: string
+}
+
+export interface AdminChartSpec {
+  type: 'bar' | 'pie'
+  title: string
+  labels?: string[]
+  series?: Array<{ name: string; values: number[] }>
+  items?: Array<{ name: string; value: number }>
+}
+
+export interface AdminAssistantStreamChunk {
+  type: 'text' | 'reasoning' | 'tool_call' | 'tool_result' | 'chart' | 'done' | 'error'
+  content?: string
+  conversationId?: string
+  chart?: AdminChartSpec
+  toolCall?: {
+    id: string
+    name: string
+    arguments: Record<string, unknown>
+    result?: unknown
+  }
+  usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number }
+}
+
+export interface AdminAssistantLog {
+  id: string
+  action: string
+  query: string | null
+  success: boolean
+  latencyMs: number | null
+  metadata: Record<string, unknown> | null
+  createdAt: string
+}
+
 export const adminApi = {
   stats: () => api.get<{ data: AdminStats }>('/admin/stats'),
 
@@ -495,6 +547,28 @@ export const adminApi = {
     api.post<{ data: AdminGrant }>('/admin/grants', data),
 
   deleteAdminGrant: (id: string) => api.delete(`/admin/grants/${id}`),
+
+  assistant: {
+    conversations: () => api.get<{ data: AdminConversation[] }>('/admin/assistant/conversations'),
+    createConversation: () => api.post<{ data: AdminConversation }>('/admin/assistant/conversations'),
+    messages: (id: string) =>
+      api.get<{ data: AdminAssistantMessage[] }>(`/admin/assistant/conversations/${id}/messages`),
+    deleteConversation: (id: string) => api.delete(`/admin/assistant/conversations/${id}`),
+    logs: () => api.get<{ data: AdminAssistantLog[] }>('/admin/assistant/logs'),
+    stream: async (body: { content: string; conversationId?: string }, signal?: AbortSignal) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+      return fetch(`${baseURL}/admin/assistant/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify(body),
+        signal,
+      })
+    },
+  },
 }
 
 export interface AdminGrant {

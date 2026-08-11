@@ -25,6 +25,9 @@ model Profile {
   adminGrants   AdminGrant[]
   notifications Notification[]
   notificationPreferences NotificationPreference[]
+  adminConversations AdminConversation[]
+  supportTickets     SupportTicket[]     @relation("TicketReporter")
+  supportMessages    SupportTicketMessage[]
 
   @@index([email])
   @@index([status])
@@ -57,6 +60,7 @@ model Organization {
   docFeedback      DocFeedback[]
   notifications    Notification[]
   notificationPreferences NotificationPreference[]
+  supportTickets   SupportTicket[]
 
 
   @@index([slug])
@@ -612,6 +616,48 @@ model AdminGrant {
   @@map("admin_grants")
 }
 
+model AdminConversation {
+  id        String          @id @default(uuid())
+  adminId   String
+  title     String          @default("New conversation")
+  createdAt DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime        @updatedAt @db.Timestamptz(6)
+  messages  AdminMessage[]
+  admin     Profile         @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, updatedAt(sort: Desc)])
+  @@map("admin_conversations")
+}
+
+model AdminMessage {
+  id             String             @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  toolCalls      Json?
+  usage          Json?
+  error          String?
+  createdAt      DateTime           @default(now()) @db.Timestamptz(6)
+  conversation   AdminConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("admin_messages")
+}
+
+model AdminAssistantLog {
+  id        String   @id @default(uuid())
+  actorId   String
+  action    String
+  query     String?
+  success   Boolean  @default(true)
+  latencyMs Int?
+  metadata  Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@map("admin_assistant_logs")
+}
+
 enum NotificationCategory {
   system
   organization
@@ -726,4 +772,40 @@ model NotificationDelivery {
   @@index([status, retryCount])
   @@index([status, createdAt])
   @@map("notification_deliveries")
+}
+
+model SupportTicket {
+  id             String               @id @default(uuid())
+  organizationId String
+  reporterId     String
+  title          String
+  description    String
+  category       String               @default("general")
+  priority       String               @default("normal")
+  status         String               @default("open")
+  createdAt      DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @db.Timestamptz(6)
+  resolvedAt     DateTime?            @db.Timestamptz(6)
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reporter       Profile              @relation("TicketReporter", fields: [reporterId], references: [id])
+  messages       SupportTicketMessage[]
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, status, updatedAt(sort: Desc)])
+  @@index([reporterId])
+  @@index([status])
+  @@map("support_tickets")
+}
+
+model SupportTicketMessage {
+  id        String        @id @default(uuid())
+  ticketId  String
+  authorId  String
+  content   String
+  createdAt DateTime      @default(now()) @db.Timestamptz(6)
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    Profile       @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("support_ticket_messages")
 }
