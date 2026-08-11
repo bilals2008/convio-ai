@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { getCorsHeaders } from '../../plugins/cors.js'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -77,6 +78,7 @@ export default fp(async function notificationsRealtimePlugin(fastify: FastifyIns
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
     })
     raw.write(': connected\n\n')
 

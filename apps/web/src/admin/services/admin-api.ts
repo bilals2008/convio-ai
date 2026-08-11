@@ -548,6 +548,19 @@ export const adminApi = {
 
   deleteAdminGrant: (id: string) => api.delete(`/admin/grants/${id}`),
 
+  tickets: (params?: { status?: string; search?: string; cursor?: string; limit?: number }) =>
+    api.get<PaginatedResponse<AdminTicket>>('/admin/tickets', { params }),
+
+  ticketStats: () => api.get<{ data: { total: number; open: number; inProgress: number } }>('/admin/tickets/stats'),
+
+  ticket: (id: string) => api.get<{ data: AdminTicketDetail }>(`/admin/tickets/${id}`),
+
+  updateTicketStatus: (id: string, status: string) =>
+    api.patch<{ data: { id: string; status: string } }>(`/admin/tickets/${id}`, { status }),
+
+  replyToTicket: (id: string, content: string) =>
+    api.post<{ data: { id: string; content: string; createdAt: string } }>(`/admin/tickets/${id}/messages`, { content }),
+
   assistant: {
     conversations: () => api.get<{ data: AdminConversation[] }>('/admin/assistant/conversations'),
     createConversation: () => api.post<{ data: AdminConversation }>('/admin/assistant/conversations'),
@@ -578,4 +591,40 @@ export interface AdminGrant {
   grantedById: string | null
   createdAt: string
   grantedBy: { id: string; name: string | null; email: string } | null
+}
+
+export interface AdminTicket {
+  id: string
+  title: string
+  category: string
+  priority: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  resolvedAt: string | null
+  reporter: { id: string; name: string | null; email: string; avatar: string | null }
+  organization: { id: string; name: string; slug: string }
+  messageCount: number
+}
+
+export interface AdminTicketMessage {
+  id: string
+  content: string
+  createdAt: string
+  author: { id: string; name: string | null; email: string; avatar: string | null }
+}
+
+export interface AdminTicketDetail {
+  id: string
+  title: string
+  description: string
+  category: string
+  priority: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  resolvedAt: string | null
+  reporter: { id: string; name: string | null; email: string; avatar: string | null }
+  organization: { id: string; name: string; slug: string; plan: string | null }
+  messages: AdminTicketMessage[]
 }

@@ -64,6 +64,10 @@ export const NOTIFICATION_EVENTS = {
   ONBOARDING_STEP: 'user.onboarding_step',
   PROFILE_INCOMPLETE: 'user.profile_incomplete',
   FEATURE_SUGGESTION: 'user.feature_suggestion',
+  // Support tickets
+  TICKET_CREATED: 'ticket.created',
+  TICKET_REPLIED: 'ticket.replied',
+  TICKET_STATUS_CHANGED: 'ticket.status_changed',
 } as const
 
 export type NotificationEventType = (typeof NOTIFICATION_EVENTS)[keyof typeof NOTIFICATION_EVENTS]

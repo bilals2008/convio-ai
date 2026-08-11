@@ -7,12 +7,46 @@ import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useNotificationPreferences, showNotificationError } from '@/lib/hooks/use-notifications'
 import { CATEGORIES, CATEGORY_META } from '@/components/notifications/notification-styles'
 import { toast } from '@/lib/toast'
 import { LoadingPage } from '@/components/shared/loading'
+
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
+
+function TimePicker({
+  value,
+  onChange,
+  id,
+}: {
+  value: string
+  onChange: (value: string) => void
+  id?: string
+}) {
+  const [hour, minute] = value ? value.split(':') : ['', '']
+  const set = (h: string, m: string) => onChange(h && m ? `${h}:${m}` : '')
+
+  return (
+    <div className="flex items-center gap-1">
+      <NativeSelect size="sm" id={id} aria-label="Hour" className="w-16" value={hour} onChange={(e) => set(e.target.value, minute)}>
+        <NativeSelectOption value="">–</NativeSelectOption>
+        {HOURS.map((h) => (
+          <NativeSelectOption key={h} value={h}>{h}</NativeSelectOption>
+        ))}
+      </NativeSelect>
+      <span className="text-muted-foreground">:</span>
+      <NativeSelect size="sm" aria-label="Minute" className="w-16" value={minute} onChange={(e) => set(hour, e.target.value)}>
+        <NativeSelectOption value="">–</NativeSelectOption>
+        {MINUTES.map((m) => (
+          <NativeSelectOption key={m} value={m}>{m}</NativeSelectOption>
+        ))}
+      </NativeSelect>
+    </div>
+  )
+}
 
 const quietHoursSchema = z
   .object({
@@ -84,12 +118,20 @@ export default function NotificationPreferencesPage() {
           <form onSubmit={handleQuietHours} className="flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="qh-start">Start</Label>
-              <Input id="qh-start" type="time" className="w-32" {...quietHoursForm.register('start')} />
+              <TimePicker
+                id="qh-start"
+                value={quietHoursForm.watch('start')}
+                onChange={(v) => quietHoursForm.setValue('start', v, { shouldValidate: true })}
+              />
               <p className="text-xs text-destructive">{quietHoursForm.formState.errors.start?.message}</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="qh-end">End</Label>
-              <Input id="qh-end" type="time" className="w-32" {...quietHoursForm.register('end')} />
+              <TimePicker
+                id="qh-end"
+                value={quietHoursForm.watch('end')}
+                onChange={(v) => quietHoursForm.setValue('end', v, { shouldValidate: true })}
+              />
               <p className="text-xs text-destructive">{quietHoursForm.formState.errors.end?.message}</p>
             </div>
             <Button type="submit" size="sm" disabled={savingQuiet}>

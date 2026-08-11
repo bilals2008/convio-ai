@@ -16,6 +16,7 @@ import {
   KeyRound,
   Bell,
   Bot,
+  LifeBuoy,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -33,6 +34,7 @@ export type NavPermission =
   | 'admin.docs-feedback.read'
   | 'admin.knowledge.read'
   | 'admin.assistant.read'
+  | 'admin.tickets.read'
   | 'admin.access.manage'
 
 export interface NavItem {
@@ -67,6 +69,7 @@ export const adminNavGroups: NavGroup[] = [
       { icon: Activity, label: 'System Health', href: '/admin/system', permission: 'admin.system.read' },
       { icon: Bot, label: 'AI Assistant', href: '/admin/assistant', permission: 'admin.assistant.read' },
       { icon: BookOpen, label: 'Knowledge Bases', href: '/admin/knowledge-bases', permission: 'admin.knowledge.read' },
+      { icon: LifeBuoy, label: 'Support Tickets', href: '/admin/tickets', permission: 'admin.tickets.read' },
       { icon: Flag, label: 'Moderation', href: '/admin/moderation', permission: 'admin.moderation.read' },
       { icon: ThumbsUp, label: 'Docs Feedback', href: '/admin/docs-feedback', permission: 'admin.docs-feedback.read' },
     ],
@@ -98,5 +101,6 @@ export const fullAdminPermissions: NavPermission[] = [
   'admin.docs-feedback.read',
   'admin.knowledge.read',
   'admin.assistant.read',
+  'admin.tickets.read',
   'admin.access.manage',
 ]

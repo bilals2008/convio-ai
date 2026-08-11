@@ -290,6 +290,27 @@ export const auditLogs = {
   }) => api.get(`/organizations/${orgId}/audit-logs`, { params }),
 }
 
+export const tickets = {
+  list: (orgId: string, params?: { status?: string; cursor?: string; limit?: number }) =>
+    api.get(`/organizations/${orgId}/tickets`, { params }),
+  get: (orgId: string, ticketId: string) =>
+    api.get(`/organizations/${orgId}/tickets/${ticketId}`),
+  create: (orgId: string, data: { title: string; description: string; category: string; priority: string }) =>
+    api.post(`/organizations/${orgId}/tickets`, data),
+  reply: (orgId: string, ticketId: string, content: string) =>
+    api.post(`/organizations/${orgId}/tickets/${ticketId}/messages`, { content }),
+  updateStatus: (orgId: string, ticketId: string, status: string) =>
+    api.patch(`/organizations/${orgId}/tickets/${ticketId}`, { status }),
+}
+
+export const adminTickets = {
+  list: (params?: { status?: string; search?: string; cursor?: string; limit?: number }) =>
+    api.get('/admin/tickets', { params }),
+  get: (ticketId: string) => api.get(`/admin/tickets/${ticketId}`),
+  updateStatus: (ticketId: string, status: string) =>
+    api.patch(`/admin/tickets/${ticketId}`, { status }),
+}
+
 export const publicApi = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
   headers: { 'Content-Type': 'application/json' },

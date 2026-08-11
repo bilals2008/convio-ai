@@ -15,6 +15,7 @@ const defaultPermissions: NavPermission[] = [
   'admin.docs-feedback.read',
   'admin.knowledge.read',
   'admin.assistant.read',
+  'admin.tickets.read',
   'admin.access.manage',
 ]
 

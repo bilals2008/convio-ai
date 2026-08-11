@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminRevenue, type RevenuePeriod, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant } from '@/admin/services/admin-api'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminRevenue, type RevenuePeriod, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant, type AdminTicketDetail } from '@/admin/services/admin-api'
 
 export function invalidateAdminUsers(queryClient: ReturnType<typeof useQueryClient>) {
   return queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -301,6 +301,56 @@ export function useAdminGrantActions(onSuccess?: () => void) {
       action === 'create' ? adminApi.createAdminGrant(data!) : adminApi.deleteAdminGrant(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'grants'] })
+      onSuccess?.()
+    },
+  })
+}
+
+export function useAdminTickets(params?: { status?: string; search?: string; cursor?: string; limit?: number }) {
+  return useInfiniteQuery({
+    queryKey: ['admin', 'tickets', params],
+    queryFn: async ({ pageParam }) => {
+      const res = await adminApi.tickets({ ...params, cursor: pageParam ?? undefined, limit: 25 })
+      return res.data
+    },
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    initialPageParam: undefined as string | undefined,
+  })
+}
+
+export function useAdminTicketStats() {
+  const queryClient = useQueryClient()
+  const query = useQuery<{ total: number; open: number; inProgress: number }>({
+    queryKey: ['admin', 'tickets', 'stats'],
+    queryFn: async () => {
+      const res = await adminApi.ticketStats()
+      return res.data.data
+    },
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  })
+
+  const refetch = () => queryClient.invalidateQueries({ queryKey: ['admin', 'tickets', 'stats'] })
+  return { ...query, refetch }
+}
+
+export function useAdminTicket(id: string | undefined) {
+  return useQuery<AdminTicketDetail>({
+    queryKey: ['admin', 'tickets', id],
+    queryFn: async () => {
+      const res = await adminApi.ticket(id!)
+      return res.data.data
+    },
+    enabled: !!id,
+  })
+}
+
+export function useAdminUpdateTicketStatus(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => adminApi.updateTicketStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets'] })
       onSuccess?.()
     },
   })

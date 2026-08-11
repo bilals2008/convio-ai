@@ -22,12 +22,14 @@ import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import { useAdminNav } from './navigation/use-admin-nav'
+import { useAdminTicketStats } from './hooks/use-admin'
 
 export function AdminSidebar() {
   const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const navGroups = useAdminNav()
+  const { data: ticketStats } = useAdminTicketStats()
 
   const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -96,9 +98,14 @@ export function AdminSidebar() {
         <nav className="flex flex-col px-2 py-2">
           {navGroups.map((group) => (
             <SidebarGroup key={group.group} label={group.group}>
-              {group.items.map((item) => (
-                <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} exact={item.exact} badge={item.badge} />
-              ))}
+              {group.items.map((item) => {
+                const openCount = item.href === '/admin/tickets' && ticketStats && ticketStats.open > 0
+                  ? ticketStats.open
+                  : undefined
+                return (
+                  <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} exact={item.exact} badge={openCount ?? item.badge} />
+                )
+              })}
             </SidebarGroup>
           ))}
         </nav>
@@ -174,17 +181,25 @@ export function AdminSidebar() {
                           {group.group}
                         </h4>
                         <div className="flex flex-col gap-0.5">
-                          {group.items.map((item) => (
-                            <Link
-                              key={item.href}
-                              to={item.href}
-                              onClick={() => setMobileOpen(false)}
-                              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                            >
-                              <item.icon className="size-4 shrink-0" />
-                              <span className="flex-1 truncate">{item.label}</span>
-                            </Link>
-                          ))}
+                          {group.items.map((item) => {
+                    const openCount = item.href === '/admin/tickets' ? ticketStats?.open ?? 0 : undefined
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        <item.icon className="size-4 shrink-0" />
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {openCount != null && openCount > 0 && (
+                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-medium text-primary-foreground">
+                            {openCount}
+                          </span>
+                        )}
+                      </Link>
+                    )
+                  })}
                         </div>
                       </div>
                     ))}

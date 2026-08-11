@@ -32,6 +32,8 @@ import AdminKnowledgeBaseDetailPage from '@/admin/pages/knowledge-base-detail-pa
 import AdminKnowledgeDocumentDetailPage from '@/admin/pages/knowledge-document-detail-page'
 import AdminAccessPage from '@/admin/pages/admin-access-page'
 import AdminAssistantPage from '@/admin/pages/assistant-page'
+import AdminTicketsPage from '@/admin/pages/tickets-page'
+import AdminTicketDetailPage from '@/admin/pages/ticket-detail-page'
 
 import Landing from '@/pages/landing'
 import PricingPage from '@/pages/pricing-page'
@@ -66,6 +68,8 @@ import DataManagementPage from '@/pages/settings/data-management-page'
 import McpServersPage from '@/pages/settings/mcp-servers-page'
 import SettingsAuditLogsPage from '@/pages/settings/audit-logs-page'
 import NotificationPreferencesPage from '@/pages/settings/notification-preferences-page'
+import SupportTicketsPage from '@/pages/support/support-tickets-page'
+import SupportTicketDetailPage from '@/pages/support/support-ticket-detail-page'
 import NotificationsPage from '@/pages/notifications-page'
 import { HelpLayout } from '@/components/help/help-layout'
 import HelpIndexPage from '@/pages/docs/help-index'
@@ -566,6 +570,8 @@ export function App() {
                  <Route path="notifications" element={<NotificationPreferencesPage />} />
                 </Route>
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/support" element={<SupportTicketsPage />} />
+              <Route path="/support/:ticketId" element={<SupportTicketDetailPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
             <Route element={<AdminGuard />}>
@@ -592,6 +598,8 @@ export function App() {
                 <Route path="/admin/knowledge-bases/:id" element={<AdminKnowledgeBaseDetailPage />} />
                 <Route path="/admin/knowledge-bases/:kbId/documents/:documentId" element={<AdminKnowledgeDocumentDetailPage />} />
                 <Route path="/admin/assistant" element={<AdminAssistantPage />} />
+                <Route path="/admin/tickets" element={<AdminTicketsPage />} />
+                <Route path="/admin/tickets/:ticketId" element={<AdminTicketDetailPage />} />
               </Route>
             </Route>
           </Routes>

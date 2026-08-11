@@ -45,6 +45,8 @@ import docsRoutes from './modules/docs/routes.js'
 import plansRoutes from './modules/plans/routes.js'
 import adminRoutes from './modules/admin/routes.js'
 import adminAssistantRoutes from './modules/admin-assistant/routes.js'
+import ticketsRoutes from './modules/tickets/routes.js'
+import adminTicketsRoutes from './modules/tickets/admin-routes.js'
 import emailPlugin from './services/email.jsx'
 import notificationsPlugin from './services/notifications/index.js'
 import notificationsRoutes from './modules/notifications/routes.js'
@@ -104,6 +106,8 @@ async function buildServer() {
   await app.register(adminRoutes, { prefix: '/api' })
   await app.register(adminAssistantRoutes, { prefix: '/api' })
   await app.register(notificationsRoutes, { prefix: '/api' })
+  await app.register(ticketsRoutes, { prefix: '/api' })
+  await app.register(adminTicketsRoutes, { prefix: '/api' })
 
   // 404
   app.setNotFoundHandler(async (request, reply) => {

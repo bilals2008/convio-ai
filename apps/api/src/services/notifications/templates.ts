@@ -308,6 +308,24 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     title: (p) => String(p.metadata?.title ?? 'A feature you might like'),
     actionUrl: (p) => String(p.metadata?.url ?? '/dashboard'),
   },
+  // Support tickets
+  [NOTIFICATION_EVENTS.TICKET_CREATED]: {
+    category: 'organization', priority: 'medium', recipients: ['org_admins'],
+    title: (p) => `New support ticket: ${p.entityName ?? ''}`,
+    message: () => 'A user reported a problem and is waiting for a response.',
+    actionUrl: (p) => `/support/${p.entityId ?? ''}`,
+  },
+  [NOTIFICATION_EVENTS.TICKET_REPLIED]: {
+    category: 'organization', priority: 'low', recipients: ['org_admins', 'target'],
+    title: (p) => `New reply on ticket: ${p.entityName ?? ''}`,
+    actionUrl: (p) => `/support/${p.entityId ?? ''}`,
+  },
+  [NOTIFICATION_EVENTS.TICKET_STATUS_CHANGED]: {
+    category: 'organization', priority: 'low', recipients: ['target'],
+    title: (p) => `Ticket status changed to ${String(p.metadata?.status ?? '')}`,
+    message: (p) => `"${p.entityName ?? ''}" is now ${String(p.metadata?.status ?? '')}.`,
+    actionUrl: (p) => `/support/${p.entityId ?? ''}`,
+  },
 }
 
 export function getTemplate(event: NotificationEventType): NotificationTemplate | undefined {
