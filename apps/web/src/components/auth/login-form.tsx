@@ -13,7 +13,6 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const { login } = useAuth()
 
@@ -96,19 +95,6 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          id="remember"
-          type="checkbox"
-          checked={remember}
-          onChange={(e) => setRemember(e.target.checked)}
-          className="size-4 rounded border-input cursor-pointer accent-primary"
-        />
-        <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
-          Remember me
-        </Label>
       </div>
 
       <Button
