@@ -197,10 +197,10 @@ function AgentCard({
           {formatDate(agent.updatedAt || agent.createdAt)}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
-            <ArrowUpRight className="size-3" />
-            Open
-          </span>
+          <span className="inline-flex items-center gap-0.5 rounded-md bg-muted/30 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+          <ArrowUpRight className="size-3" />
+          Open
+        </span>
           <DropdownMenu>
           <DropdownMenuTrigger
             onClick={(e) => e.stopPropagation()}
