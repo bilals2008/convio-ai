@@ -14,8 +14,10 @@ import { CATEGORIES, CATEGORY_META } from '@/components/notifications/notificati
 import { toast } from '@/lib/toast'
 import { LoadingPage } from '@/components/shared/loading'
 
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
-const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
+const TIMES = Array.from({ length: 48 }, (_, i) => {
+  const m = i * 30
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+})
 
 function TimePicker({
   value,
@@ -26,25 +28,13 @@ function TimePicker({
   onChange: (value: string) => void
   id?: string
 }) {
-  const [hour, minute] = value ? value.split(':') : ['', '']
-  const set = (h: string, m: string) => onChange(h && m ? `${h}:${m}` : '')
-
   return (
-    <div className="flex items-center gap-1">
-      <NativeSelect size="sm" id={id} aria-label="Hour" className="w-16" value={hour} onChange={(e) => set(e.target.value, minute)}>
-        <NativeSelectOption value="">–</NativeSelectOption>
-        {HOURS.map((h) => (
-          <NativeSelectOption key={h} value={h}>{h}</NativeSelectOption>
-        ))}
-      </NativeSelect>
-      <span className="text-muted-foreground">:</span>
-      <NativeSelect size="sm" aria-label="Minute" className="w-16" value={minute} onChange={(e) => set(hour, e.target.value)}>
-        <NativeSelectOption value="">–</NativeSelectOption>
-        {MINUTES.map((m) => (
-          <NativeSelectOption key={m} value={m}>{m}</NativeSelectOption>
-        ))}
-      </NativeSelect>
-    </div>
+    <NativeSelect size="sm" id={id} aria-label="Time" className="w-24" value={value} onChange={(e) => onChange(e.target.value)}>
+      <NativeSelectOption value="">–</NativeSelectOption>
+      {TIMES.map((t) => (
+        <NativeSelectOption key={t} value={t}>{t}</NativeSelectOption>
+      ))}
+    </NativeSelect>
   )
 }
 
