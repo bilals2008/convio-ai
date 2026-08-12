@@ -1,18 +1,33 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Outlet, useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { MessageSquare, Plus, Search, Brain, Check, ArrowUp, ArrowDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { MessageSquare, Plus, Search, Brain, Check, ArrowUp, ArrowDown, Trash2, Loader2, CheckSquare } from 'lucide-react'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { ChannelBadge } from '@/components/shared/channel-badge'
 import { SearchInput } from '@/components/shared/search-input'
 import { Skeleton } from '@/components/shared/loading'
+import { BulkActionBar } from '@/components/shared/bulk-action-bar'
 import { ConversationStatusBadge } from './conversation-status-badge'
 import type { ConvStatus } from './conversation-status-badge'
 import { ProviderLogo } from '@/components/agents/provider-logos'
 import { conversations as conversationsApi, agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
+import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
+import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 
 type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
@@ -172,6 +187,28 @@ export function ConversationsLayout() {
     ? agents.filter((a) => a.name.toLowerCase().includes(agentSearch.toLowerCase()))
     : agents
 
+  const bulk = useBulkSelection(filteredConvs)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
+  const queryClient = useQueryClient()
+
+  const deleteMany = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((cid) => conversationsApi.delete(cid)))
+    },
+    onSuccess: (_, ids) => {
+      toast.success(`${ids.length} conversation${ids.length !== 1 ? 's' : ''} deleted`)
+      queryClient.invalidateQueries({ queryKey: ['conversations', orgId, statusFilter] })
+      setBulkDeleteOpen(false)
+      setDeleteAllOpen(false)
+      bulk.exitSelectionMode()
+      if (id && ids.includes(id)) navigate('/conversations')
+    },
+    onError: () => {
+      toast.error('Failed to delete conversations')
+    },
+  })
+
   const handleAgentKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
@@ -235,28 +272,83 @@ export function ConversationsLayout() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3">
           <h2 className="text-base font-semibold">Chats</h2>
-          <Button
-            size="sm"
-            onClick={() => setShowAgentPicker(true)}
-            disabled={agentsLoading || agents.length === 0}
-          >
-            {agentsLoading ? <Skeleton className="size-3.5 rounded-full" /> : <Plus className="size-3.5" />}
-            New
-          </Button>
+          {bulk.selectionMode ? (
+            <BulkActionBar
+              onExitSelectionMode={bulk.exitSelectionMode}
+              action={
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={bulk.selectedCount === 0 || deleteMany.isPending}
+                  onClick={() => setBulkDeleteOpen(true)}
+                >
+                  {deleteMany.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                  Delete ({bulk.selectedCount})
+                </Button>
+              }
+            />
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => setShowAgentPicker(true)}
+              disabled={agentsLoading || agents.length === 0}
+            >
+              {agentsLoading ? <Skeleton className="size-3.5 rounded-full" /> : <Plus className="size-3.5" />}
+              New
+            </Button>
+          )}
         </div>
 
         {/* Search */}
-        <div className="px-4 pb-3">
+        <TooltipProvider>
+        <div className="flex items-center gap-1.5 px-4 pb-3">
           <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="Search chats..."
-            className="h-9 text-sm"
+            className="h-9 flex-1 text-sm"
           />
+          <div className="flex shrink-0 items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger
+              aria-label="Delete all conversations"
+              disabled={conversations.length === 0 || isLoading || deleteMany.isPending}
+              onClick={() => setDeleteAllOpen(true)}
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-9 shrink-0 text-muted-foreground')}
+            >
+              {deleteMany.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            </TooltipTrigger>
+            <TooltipContent>Delete all conversations</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              aria-label="Select conversations"
+              disabled={filteredConvs.length === 0}
+              onClick={bulk.enterSelectionMode}
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-9 shrink-0 text-muted-foreground')}
+            >
+              <CheckSquare className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>Select conversations</TooltipContent>
+          </Tooltip>
+          </div>
         </div>
+        </TooltipProvider>
 
         {/* Filter Tabs */}
-        <div className="flex px-4 pb-3 gap-1.5">
+        {bulk.selectionMode ? (
+          <div className="flex items-center justify-between px-4 pb-3">
+            <div
+              className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+              onClick={bulk.toggleSelectAll}
+            >
+              <Checkbox checked={bulk.isAllSelected} onCheckedChange={bulk.toggleSelectAll} className="size-4" />
+              {bulk.isAllSelected ? 'Deselect all' : 'Select all'}
+            </div>
+            <span className="text-xs text-muted-foreground">{bulk.selectedCount} selected</span>
+          </div>
+        ) : (
+          <div className="flex px-4 pb-3 gap-1.5">
           {[
             { value: 'all', label: 'All' },
             { value: 'active', label: 'Active' },
@@ -277,6 +369,7 @@ export function ConversationsLayout() {
             </button>
           ))}
         </div>
+        )}
 
         {/* Conversation List */}
         <div className="flex-1 overflow-y-auto scrollbar-none">
@@ -304,18 +397,36 @@ export function ConversationsLayout() {
           )}
 
           {!isLoading && filteredConvs.map((conv) => (
-            <button
+            <div
               key={conv.id}
-              onClick={() => handleSelect(conv.id)}
+              role="button"
+              tabIndex={0}
               aria-label={`Conversation with ${conv.userName || 'Anonymous'}`}
               aria-current={selectedId === conv.id ? 'page' : undefined}
+              onClick={() => (bulk.selectionMode ? bulk.toggleSelect(conv.id) : handleSelect(conv.id))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  bulk.selectionMode ? bulk.toggleSelect(conv.id) : handleSelect(conv.id)
+                }
+              }}
               className={cn(
-                'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
-                selectedId === conv.id
+                'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer',
+                bulk.selectionMode && bulk.isSelected(conv.id)
                   ? 'bg-primary/10'
-                  : 'hover:bg-muted/50'
+                  : selectedId === conv.id
+                    ? 'bg-primary/10'
+                    : 'hover:bg-muted/50'
               )}
             >
+              {bulk.selectionMode && (
+                <Checkbox
+                  checked={bulk.isSelected(conv.id)}
+                  onCheckedChange={() => bulk.toggleSelect(conv.id)}
+                  aria-label={`Select ${conv.userName || 'Anonymous'}`}
+                  className="size-4 shrink-0"
+                />
+              )}
               <Avatar size="lg" className="shrink-0">
                 <AvatarFallback className={cn(
                   'text-xs font-semibold',
@@ -345,7 +456,7 @@ export function ConversationsLayout() {
                   <ConversationStatusBadge status={conv.status} />
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </div>
@@ -517,6 +628,50 @@ export function ConversationsLayout() {
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Delete {bulk.selectedCount} conversation{bulk.selectedCount !== 1 ? 's' : ''}?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete {bulk.selectedCount} conversation{bulk.selectedCount !== 1 ? 's' : ''} and all their messages. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleteMany.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={deleteMany.isPending}
+            onClick={() => deleteMany.mutate(Array.from(bulk.selectedIds))}
+          >
+            {deleteMany.isPending ? 'Deleting...' : `Delete ${bulk.selectedCount} conversation${bulk.selectedCount !== 1 ? 's' : ''}`}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete all conversations?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete all {conversations.length} conversation{conversations.length !== 1 ? 's' : ''} and their messages. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleteMany.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={deleteMany.isPending}
+            onClick={() => deleteMany.mutate(conversations.map((c) => c.id))}
+          >
+            {deleteMany.isPending ? 'Deleting...' : `Delete all ${conversations.length} conversation${conversations.length !== 1 ? 's' : ''}`}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   )
 }
