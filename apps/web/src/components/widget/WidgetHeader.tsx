@@ -32,30 +32,30 @@ export function WidgetHeader() {
               <img
                 src={agentAvatar}
                 alt={agentName}
-                className="size-11 rounded-full object-cover ring-2 ring-white/20"
+                className="size-9 rounded-full object-cover ring-2 ring-white/20 sm:size-11"
               />
             ) : (
-              <div className="size-11 rounded-full bg-white/15 flex items-center justify-center ring-2 ring-white/20">
-                <span className="text-sm font-bold text-white tracking-wide">
+              <div className="size-9 rounded-full bg-white/15 flex items-center justify-center ring-2 ring-white/20 sm:size-11">
+                <span className="text-xs font-bold text-white tracking-wide sm:text-sm">
                   {initials}
                 </span>
               </div>
             )}
             {showOnline && (
-              <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-400 border-2 border-[hsl(var(--widget-header-start))]" />
+              <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-400 border-2 border-[hsl(var(--widget-header-start))] sm:size-3.5" />
             )}
           </div>
           <div className="min-w-0">
             {headerTitle && (
-              <p className="text-[11px] text-white/60 font-medium leading-tight">
+              <p className="text-[10px] text-white/60 font-medium leading-tight sm:text-[11px]">
                 {headerTitle}
               </p>
             )}
-            <p className="truncate text-[14px] font-semibold text-white tracking-tight leading-tight">
+            <p className="truncate text-[13px] font-semibold text-white tracking-tight leading-tight sm:text-[14px]">
               {displayTitle}
             </p>
             {showOnline && (
-              <p className="text-[10px] text-emerald-300/80 font-medium flex items-center gap-1">
+              <p className="text-[9px] text-emerald-300/80 font-medium flex items-center gap-1 sm:text-[10px]">
                 <span className="size-1.5 rounded-full bg-emerald-400 inline-block" />
                 {displaySubtitle}
               </p>

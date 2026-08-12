@@ -5,7 +5,11 @@ import { WidgetWelcome } from './WidgetWelcome'
 import { WidgetMessages } from './WidgetMessages'
 import { WidgetInput } from './WidgetInput'
 
-const WIDTH_MAP = { narrow: 'sm:w-[320px]', default: 'sm:w-[380px]', wide: 'sm:w-[440px]' }
+const WIDTH_MAP = {
+  narrow: 'w-[260px] sm:w-[320px]',
+  default: 'w-[320px] sm:w-[380px]',
+  wide: 'w-[360px] sm:w-[440px]',
+}
 const RADIUS_MAP = { none: 'rounded-none', default: 'rounded-2xl', full: 'rounded-3xl' }
 const DEFAULT_HEIGHT = 540
 
@@ -21,12 +25,11 @@ export function WidgetWindow() {
         isEmbed
           ? 'inset-0 w-full h-full rounded-none animate-widget-enter'
           : cn(
-              'max-sm:inset-0 max-sm:w-screen max-sm:h-screen max-sm:rounded-none max-sm:animate-widget-enter',
-              'sm:bottom-20',
+              'bottom-20 h-[min(540px,calc(100dvh-90px))] max-w-[calc(100vw-24px)]',
               WIDTH_MAP[widgetWidth],
-              position === 'bottom-left' ? 'sm:left-5' : 'sm:right-5'
+              position === 'bottom-left' ? 'left-3 sm:left-5' : 'right-3 sm:right-5',
             ),
-        isMinimized && !isEmbed && 'sm:!h-auto',
+        isMinimized && !isEmbed && '!h-auto',
         entering && 'animate-widget-enter',
         exiting && 'animate-widget-exit',
         !exiting && !isEmbed && cn('shadow-[0_8px_40px_rgba(0,0,0,0.18)] ring-1 ring-black/[0.04]', RADIUS_MAP[borderRadius])

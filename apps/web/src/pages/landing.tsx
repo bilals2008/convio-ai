@@ -39,10 +39,26 @@ export default function Landing() {
           agentName={config.agentName || widgetConfig?.agent?.name || 'Convio Assistant'}
           agentAvatar={config.agentAvatar || widgetConfig?.agent?.avatar}
           quickReplies={config.quickReplies}
+          themeMode={config.themeMode || 'auto'}
+          headerGradient={config.headerGradient !== false}
+          headerTitle={config.headerTitle || undefined}
+          headerSubtitle={config.headerSubtitle || undefined}
+          showOnlineIndicator={config.showOnlineIndicator}
+          launcherLabel={config.launcherLabel || undefined}
+          placeholderText={config.placeholderText || undefined}
+          showPoweredBy={config.showPoweredBy}
           theme={{
             primaryColor: config.primaryColor || '#fb923c',
             backgroundColor: config.backgroundColor || '#1c1c1c',
             textColor: config.textColor || '#f3f4f6',
+            promptBgColor: config.promptBgColor || '#2a2a2a',
+            headerGradientStart: config.headerGradientStart || '#fb923c',
+            headerGradientEnd: config.headerGradientEnd || '#c2410c',
+            headerGradientDirection: `${config.headerGradientDirection ?? 135}deg`,
+            borderColor: config.borderColor || '',
+            inputBgColor: config.inputBgColor || '',
+            sendBtnColor: config.sendBtnColor || '',
+            footerBgColor: config.footerBgColor || '',
           }}
         />
       )}

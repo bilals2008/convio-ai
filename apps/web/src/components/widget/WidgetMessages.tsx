@@ -65,7 +65,7 @@ export function WidgetMessages() {
   return (
     <div
       ref={scrollRef}
-      className="convio-messages flex-1 overflow-y-auto px-3 py-2"
+      className="convio-messages flex-1 overflow-y-auto px-3 py-2 mt-3"
       style={{
         scrollbarWidth: 'thin',
         scrollbarColor: 'hsl(var(--widget-muted)) transparent',
@@ -73,11 +73,6 @@ export function WidgetMessages() {
     >
       {groups.map((group) => (
         <div key={group.date}>
-          <div className="flex items-center justify-center my-4">
-            <span className="text-[10px] font-medium text-[hsl(var(--widget-muted-foreground))]/60 tracking-wide bg-[hsl(var(--widget-muted))] px-3 py-1 rounded-full">
-              {group.date}
-            </span>
-          </div>
           {group.messages.map((msg, i) => (
             <WidgetMessage
               key={msg.id}
