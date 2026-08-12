@@ -239,7 +239,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const providerKeyPromise = agent.providerKeyId
       ? prisma.providerKey.findFirst({
           where: { id: agent.providerKeyId, organizationId: agent.organizationId },
-          select: { apiKey: true },
+          select: { apiKey: true, provider: true },
         })
       : Promise.resolve(null)
     const toolsPromise = loadAgentToolHandlers(agent.id, prisma)
@@ -266,14 +266,14 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       parameters: h.schema.parameters,
     }))
 
+    const apiKey = providerKey?.apiKey
+
     let provider
     try {
-      provider = getProviderForModel(agent.model)
+      provider = getProviderForModel(agent.model, providerKey?.provider)
     } catch {
       throw new AppError(400, `No provider configured for model: ${agent.model}`)
     }
-
-    const apiKey = providerKey?.apiKey
 
     reply.hijack()
 
@@ -553,13 +553,6 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       return { data: { response: 'I am not configured to respond yet.' } }
     }
 
-    let provider
-    try {
-      provider = getProviderForModel(agent.model)
-    } catch {
-      return { data: { response: 'AI provider is not available.' } }
-    }
-
     const historyPromise = prisma.message.findMany({
       where: { conversationId: id },
       orderBy: { createdAt: 'desc' },
@@ -572,7 +565,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const providerKeyPromise = agent.providerKeyId
       ? prisma.providerKey.findFirst({
           where: { id: agent.providerKeyId, organizationId: agent.organizationId },
-          select: { apiKey: true },
+          select: { apiKey: true, provider: true },
         })
       : Promise.resolve(null)
     const [historyDesc, context, providerKey] = await Promise.all([
@@ -582,6 +575,14 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     ])
     const history = historyDesc.reverse()
     const apiKey = providerKey?.apiKey
+
+    let provider
+    try {
+      provider = getProviderForModel(agent.model, providerKey?.provider)
+    } catch {
+      return { data: { response: 'AI provider is not available.' } }
+    }
+
     const systemContext = context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
       : agent.systemPrompt
@@ -677,13 +678,6 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       return { data: { response: 'I am not configured to respond yet.' } }
     }
 
-    let provider
-    try {
-      provider = getProviderForModel(agent.model)
-    } catch {
-      return { data: { response: 'AI provider is not available.' } }
-    }
-
     const historyPromise = prisma.message.findMany({
       where: { conversationId: id },
       orderBy: { createdAt: 'desc' },
@@ -696,7 +690,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const providerKeyPromise = agent.providerKeyId
       ? prisma.providerKey.findFirst({
           where: { id: agent.providerKeyId, organizationId: agent.organizationId },
-          select: { apiKey: true },
+          select: { apiKey: true, provider: true },
         })
       : Promise.resolve(null)
     const toolsPromise = loadAgentToolHandlers(agent.id, prisma)
@@ -709,6 +703,14 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     ])
     const history = historyDesc.reverse()
     const apiKey = providerKey?.apiKey
+
+    let provider
+    try {
+      provider = getProviderForModel(agent.model, providerKey?.provider)
+    } catch {
+      return { data: { response: 'AI provider is not available.' } }
+    }
+
     const systemContext = context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
       : agent.systemPrompt

@@ -424,18 +424,20 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.getMembership(request.userId!, agent.organizationId)
 
     let apiKey: string | undefined
+    let providerId: string | undefined
     if (agent.providerKeyId) {
       const providerKey = await prisma.providerKey.findUnique({
         where: { id: agent.providerKeyId },
       })
       if (providerKey && providerKey.organizationId === agent.organizationId) {
         apiKey = providerKey.apiKey
+        providerId = providerKey.provider
       }
     }
 
     let provider
     try {
-      provider = getProviderForModel(agent.model)
+      provider = getProviderForModel(agent.model, providerId)
     } catch {
       throw new AppError(400, `No provider configured for model: ${agent.model}`)
     }
@@ -488,7 +490,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
             id: providerKeyId,
             organization: { memberships: { some: { userId: request.userId! } } },
           },
-          select: { apiKey: true },
+          select: { apiKey: true, provider: true },
         })
       : null
     const apiKey = providerKey?.apiKey
@@ -535,7 +537,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     let provider
     try {
-      provider = getProviderForModel(model)
+      provider = getProviderForModel(model, providerKey?.provider)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown provider error'
       reply.raw.writeHead(400, {

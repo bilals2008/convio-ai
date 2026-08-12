@@ -66,8 +66,9 @@ export function ModelPicker({
     if (!q) return grouped
     const result: Record<string, ModelOption[]> = {}
     for (const provider of sortedProviders) {
+      const label = providerLabel(provider).toLowerCase()
       const matches = grouped[provider].filter((m) =>
-        `${m.name} ${m.id} ${m.provider ?? ""}`.toLowerCase().includes(q)
+        `${m.name} ${m.id} ${m.provider ?? ""} ${label}`.toLowerCase().includes(q)
       )
       if (matches.length) result[provider] = matches
     }
@@ -99,6 +100,7 @@ export function ModelPicker({
     setOpen(next)
     if (next) {
       setQuery("")
+      setCollapsed(new Set())
       setActiveId(value || models[0]?.id || null)
       requestAnimationFrame(() => searchRef.current?.focus())
     }
@@ -228,13 +230,23 @@ export function ModelPicker({
               </p>
             </div>
           ) : visibleItems.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-              <Box className="size-6 text-muted-foreground" />
-              <p className="text-sm font-medium">No models found</p>
-              <p className="max-w-[220px] text-xs text-muted-foreground">
-                Try a different search term or configure more providers in Settings.
-              </p>
-            </div>
+            Object.keys(filtered).length === 0 ? (
+              <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+                <Box className="size-6 text-muted-foreground" />
+                <p className="text-sm font-medium">No models found</p>
+                <p className="max-w-[220px] text-xs text-muted-foreground">
+                  Try a different search term or configure more providers in Settings.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+                <Box className="size-6 text-muted-foreground" />
+                <p className="text-sm font-medium">All providers are collapsed</p>
+                <p className="max-w-xs text-xs text-muted-foreground">
+                  Click a provider name above to expand its models.
+                </p>
+              </div>
+            )
           ) : (
             visibleProviders.map((provider) => {
               const isCollapsed = !isSearching && collapsed.has(provider)

@@ -21,7 +21,7 @@ export async function chatWithAgent(
 
   let provider: AIProvider
   try {
-    provider = getProviderForModel(agent.model)
+    provider = getProviderForModel(agent.model, agent.providerKey?.provider)
   } catch {
     throw new Error(`No provider configured for model: ${agent.model}`)
   }
@@ -150,7 +150,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
 
     let provider
     try {
-      provider = getProviderForModel(agent.model)
+      provider = getProviderForModel(agent.model, agent.providerKey?.provider)
     } catch {
       return reply.code(400).send({ error: `No provider configured for model: ${agent.model}` })
     }
@@ -229,7 +229,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
     const models = await Promise.all(
       allProviders
         .filter((p) => {
-          if (p.id === 'local' || p.id === 'opencode') return true
+          if (p.id === 'opencode') return true
           return userKeyMap.has(p.id)
         })
         .map(async (p) => {
