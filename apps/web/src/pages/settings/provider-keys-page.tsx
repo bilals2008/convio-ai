@@ -142,6 +142,16 @@ export default function ProviderKeysPage() {
     [keys],
   )
 
+  const visibleKeys = useMemo(() => {
+    if (!keys) return []
+    const seen = new Set<string>()
+    return keys.filter((k) => {
+      if (seen.has(k.provider)) return false
+      seen.add(k.provider)
+      return true
+    })
+  }, [keys])
+
   const availableProviders = useMemo(
     () => PROVIDER_ORDER.filter((id) => !configuredProviders.has(id)),
     [configuredProviders],
@@ -315,9 +325,9 @@ export default function ProviderKeysPage() {
             <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
                 Your Provider Keys
-                {keys && keys.length > 0 && (
+                {visibleKeys.length > 0 && (
                   <Badge variant="secondary" className="text-[10px]">
-                    {keys.length}
+                    {visibleKeys.length}
                   </Badge>
                 )}
               </CardTitle>
@@ -356,7 +366,7 @@ export default function ProviderKeysPage() {
                 Try again
               </Button>
             </div>
-          ) : !keys || keys.length === 0 ? (
+          ) : visibleKeys.length === 0 ? (
             <EmptyState
               icon={KeyRound}
               title="No provider keys"
@@ -368,7 +378,7 @@ export default function ProviderKeysPage() {
             />
           ) : (
             <div className="space-y-2.5">
-              {keys.map((key) => {
+              {visibleKeys.map((key) => {
                 const meta = getProviderMeta(key.provider)
                 return (
                   <div

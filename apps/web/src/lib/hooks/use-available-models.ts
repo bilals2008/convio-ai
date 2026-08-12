@@ -12,8 +12,10 @@ export function useAvailableModels() {
     queryKey: ['models'],
     queryFn: async () => {
       const response = await chatApi.models()
-      return (response.data.data ?? []) as AvailableModel[]
+      const items = (response.data.data ?? []) as AvailableModel[]
+      return [...new Map(items.map((m) => [m.id, m])).values()]
     },
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   })
 }

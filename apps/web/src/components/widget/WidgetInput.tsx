@@ -136,7 +136,15 @@ export function WidgetInput() {
       </div>
       {showPoweredBy !== false && (
         <p className="text-center text-[10px] text-[hsl(var(--widget-muted-foreground))]/40 pb-2.5 font-medium">
-          Powered by Convio
+          Powered by{' '}
+          <a
+            href="https://convio-blush.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            Convio
+          </a>
         </p>
       )}
     </div>

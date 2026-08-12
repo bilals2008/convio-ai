@@ -2,6 +2,7 @@ import { generateText, streamText, jsonSchema } from 'ai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 import { toProviderError } from './errors.js'
+import { fetchOpenAICompatibleModels, getCachedModels, modelCacheKey } from './model-cache.js'
 
 export class OpenRouterProvider implements AIProvider {
   id = 'openrouter'
@@ -100,8 +101,8 @@ export class OpenRouterProvider implements AIProvider {
     return { flagged: false, categories: {} }
   }
 
-  async listModels(): Promise<Model[]> {
-    return [
+  async listModels(apiKey?: string): Promise<Model[]> {
+    const fallback: Model[] = [
       { id: 'openai/gpt-4o', name: 'OpenAI GPT-4o', provider: 'openrouter', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
       { id: 'openai/gpt-4o-mini', name: 'OpenAI GPT-4o Mini', provider: 'openrouter', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
       { id: 'openai/o3-mini', name: 'OpenAI o3-mini', provider: 'openrouter', maxTokens: 200000, supportsTools: true, supportsStreaming: true },
@@ -117,5 +118,12 @@ export class OpenRouterProvider implements AIProvider {
       { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3', provider: 'openrouter', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
       { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', provider: 'openrouter', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
     ]
+    try {
+      return await getCachedModels(modelCacheKey(this.id, apiKey), 10 * 60 * 1000, () =>
+        fetchOpenAICompatibleModels('https://openrouter.ai/api/v1', this.id, apiKey || process.env.OPENROUTER_API_KEY),
+      )
+    } catch {
+      return fallback
+    }
   }
 }

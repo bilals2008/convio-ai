@@ -2,6 +2,7 @@ import { generateText, streamText, jsonSchema } from 'ai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 import { toProviderError } from './errors.js'
+import { fetchOpenAICompatibleModels, getCachedModels, modelCacheKey } from './model-cache.js'
 
 export class GroqProvider implements AIProvider {
   id = 'groq'
@@ -96,24 +97,17 @@ export class GroqProvider implements AIProvider {
     return { flagged: false, categories: {} }
   }
 
-  async listModels(): Promise<Model[]> {
-    return [
-      {
-        id: 'llama-3.1-70b-versatile',
-        name: 'Llama 3.1 70B',
-        provider: 'groq',
-        maxTokens: 128000,
-        supportsTools: true,
-        supportsStreaming: true,
-      },
-      {
-        id: 'mixtral-8x7b-32768',
-        name: 'Mixtral 8x7B',
-        provider: 'groq',
-        maxTokens: 32768,
-        supportsTools: false,
-        supportsStreaming: true,
-      },
+  async listModels(apiKey?: string): Promise<Model[]> {
+    const fallback: Model[] = [
+      { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', provider: 'groq', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
+      { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', provider: 'groq', maxTokens: 32768, supportsTools: false, supportsStreaming: true },
     ]
+    try {
+      return await getCachedModels(modelCacheKey(this.id, apiKey), 10 * 60 * 1000, () =>
+        fetchOpenAICompatibleModels('https://api.groq.com/openai/v1', this.id, apiKey || process.env.GROQ_API_KEY),
+      )
+    } catch {
+      return fallback
+    }
   }
 }

@@ -9,21 +9,6 @@ import type { AIProvider, Message } from '@convio/ai'
 
 const isDev = process.env.NODE_ENV !== 'production'
 
-const keyMap: Record<string, string> = {
-  openai: 'OPENAI_API_KEY',
-  anthropic: 'ANTHROPIC_API_KEY',
-  google: 'GOOGLE_API_KEY',
-  groq: 'GROQ_API_KEY',
-  kie: 'KIE_API_KEY',
-  openrouter: 'OPENROUTER_API_KEY',
-  mistral: 'MISTRAL_API_KEY',
-  together: 'TOGETHER_API_KEY',
-  deepseek: 'DEEPSEEK_API_KEY',
-  perplexity: 'PERPLEXITY_API_KEY',
-  opencode: 'OPENCODE_API_KEY',
-  local: 'LOCAL_API_URL',
-}
-
 export async function chatWithAgent(
   agentId: string,
   messages: { role: string; content: string }[],
@@ -245,11 +230,11 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       allProviders
         .filter((p) => {
           if (p.id === 'local' || p.id === 'opencode') return true
-          return !!process.env[keyMap[p.id]] || userKeyMap.has(p.id)
+          return userKeyMap.has(p.id)
         })
         .map(async (p) => {
           try {
-            return await p.listModels()
+            return await p.listModels(userKeyMap.get(p.id))
           } catch {
             return []
           }

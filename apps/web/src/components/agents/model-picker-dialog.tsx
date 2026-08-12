@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, type KeyboardEvent } from "react"
-import { Check, ChevronsUpDown, Loader2, Search, AlertCircle, Box } from "lucide-react"
+import { Check, ChevronsUpDown, Loader2, Search, AlertCircle, Box, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -22,6 +22,8 @@ interface ModelPickerProps {
   loading?: boolean
   error?: boolean
   errorMessage?: string
+  onRefresh?: () => void
+  refreshing?: boolean
 }
 
 export function ModelPicker({
@@ -32,6 +34,8 @@ export function ModelPicker({
   loading = false,
   error = false,
   errorMessage,
+  onRefresh,
+  refreshing = false,
 }: ModelPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -186,8 +190,18 @@ export function ModelPicker({
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search models…"
-              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
             />
+            {onRefresh && (
+              <button
+                type="button"
+                onClick={onRefresh}
+                title="Refresh models"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+              </button>
+            )}
           </div>
         </div>
 

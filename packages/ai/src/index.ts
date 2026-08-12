@@ -6,7 +6,7 @@ export interface AIProvider {
   stream(params: GenerateParams): AsyncIterable<StreamChunk>
   embed(text: string): Promise<number[]>
   moderate(text: string): Promise<ModerationResult>
-  listModels(): Promise<Model[]>
+  listModels(apiKey?: string): Promise<Model[]>
 }
 
 // Types

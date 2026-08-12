@@ -17,13 +17,15 @@ interface AgentModelPickerProps {
 const EMPTY_MODELS: Model[] = []
 
 export function AgentModelPicker({ value, onChange, disabled }: AgentModelPickerProps) {
-  const { data, isLoading, isError, error } = useQuery<Model[]>({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["models"],
     queryFn: async () => {
       const res = await chatApi.models()
-      return (res.data.data || []) as Model[]
+      const items = (res.data.data || []) as Model[]
+      return [...new Map(items.map((m) => [m.id, m])).values()]
     },
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   })
 
   const models = data ?? EMPTY_MODELS
@@ -37,6 +39,8 @@ export function AgentModelPicker({ value, onChange, disabled }: AgentModelPicker
       loading={isLoading}
       error={isError}
       errorMessage={error instanceof Error ? error.message : undefined}
+      onRefresh={refetch}
+      refreshing={isFetching}
     />
   )
 }

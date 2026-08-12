@@ -23,6 +23,7 @@ import {
   SquarePen,
   PanelLeftOpen,
   X,
+  AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -177,6 +178,47 @@ function formatModelLabel(id: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function toFriendlyStreamError(raw: string): string {
+  const msg = raw || ''
+  const lower = msg.toLowerCase()
+
+  if (lower.includes('api key') || lower.includes('apikey') || lower.includes('authentication')
+    || lower.includes('unauthorized') || lower.includes('401')) {
+    return 'No valid API key for this provider. Add your key in Settings → Provider Keys and try again.'
+  }
+  if (lower.includes('no provider configured') || lower.includes('model') && lower.includes('not found')) {
+    return 'This model is not available for the configured provider. Pick a different model.'
+  }
+  if (lower.includes('rate limit') || lower.includes('429') || lower.includes('quota') || lower.includes('insufficient')) {
+    return 'The provider is rate-limiting requests. Wait a moment and try again.'
+  }
+  if (lower.includes('upstream') || lower.includes('503') || lower.includes('overloaded') || lower.includes('unavailable')) {
+    return 'The provider is temporarily overloaded. Try again in a few seconds.'
+  }
+  if (lower.includes('knowledge base') || lower.includes('not found')) {
+    return 'The connected knowledge base could not be loaded. Check it in Settings.'
+  }
+  return raw || 'Something went wrong while generating a response. Please try again.'
+}
+
+async function readStreamError(response: Response): Promise<string> {
+  const text = await response.text().catch(() => '')
+  const match = text.match(/data:\s*(\{.*\})/)
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[1])
+      if (parsed.error) return String(parsed.error)
+      if (parsed.message) return String(parsed.message)
+    } catch { /* not JSON */ }
+  }
+  try {
+    const parsed = JSON.parse(text)
+    if (parsed.message) return String(parsed.message)
+    if (parsed.error) return String(parsed.error)
+  } catch { /* not JSON */ }
+  return `Request failed (${response.status})`
+}
+
 function renderToolResultPreview(tool: string, result: unknown): string {
   if (!result) return ''
   const r = result as Record<string, unknown>
@@ -262,7 +304,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       const res = await conversationsApi.get(activeConvId!)
       return res.data.data as Record<string, unknown>
     },
-    enabled: !!activeConvId,
+    enabled: !!activeConvId && !activeConvId.startsWith('temp-'),
   })
 
   const createConv = useMutation({
@@ -452,8 +494,8 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       })
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}))
-        throw new Error(errData.message || `Request failed (${response.status})`)
+        const rawErr = await readStreamError(response)
+        throw new Error(toFriendlyStreamError(rawErr))
       }
 
       const reader = response.body?.getReader()
@@ -498,7 +540,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                 finalUsage = parsed.usage
               }
               if (parsed.error) {
-                throw new Error(parsed.error)
+                throw new Error(toFriendlyStreamError(parsed.error))
               }
             } catch (e) {
               if (e instanceof Error && e.message !== 'No response body') throw e
@@ -1147,8 +1189,12 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                   </div>
                 )}
                 {error && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
-                    {error}
+                  <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium">Couldn't generate a response</p>
+                      <p className="mt-0.5 text-xs text-destructive/80 leading-relaxed">{error}</p>
+                    </div>
                   </div>
                 )}
                 <div ref={messagesEndRef} />

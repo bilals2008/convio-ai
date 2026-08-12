@@ -2,6 +2,7 @@ import { generateText, streamText, embed, jsonSchema } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 import { toProviderError } from './errors.js'
+import { fetchOpenAICompatibleModels, getCachedModels, modelCacheKey } from './model-cache.js'
 
 export class OpenAIProvider implements AIProvider {
   id = 'openai'
@@ -117,24 +118,17 @@ export class OpenAIProvider implements AIProvider {
     }
   }
 
-  async listModels(): Promise<Model[]> {
-    return [
-      {
-        id: 'gpt-4o',
-        name: 'GPT-4o',
-        provider: 'openai',
-        maxTokens: 128000,
-        supportsTools: true,
-        supportsStreaming: true,
-      },
-      {
-        id: 'gpt-4o-mini',
-        name: 'GPT-4o Mini',
-        provider: 'openai',
-        maxTokens: 128000,
-        supportsTools: true,
-        supportsStreaming: true,
-      },
+  async listModels(apiKey?: string): Promise<Model[]> {
+    const fallback: Model[] = [
+      { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', maxTokens: 128000, supportsTools: true, supportsStreaming: true },
     ]
+    try {
+      return await getCachedModels(modelCacheKey(this.id, apiKey), 10 * 60 * 1000, () =>
+        fetchOpenAICompatibleModels('https://api.openai.com/v1', this.id, apiKey || process.env.OPENAI_API_KEY),
+      )
+    } catch {
+      return fallback
+    }
   }
 }
