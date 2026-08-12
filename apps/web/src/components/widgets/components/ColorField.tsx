@@ -112,14 +112,14 @@ export function ColorField({ label, description, value, onChange, presets }: Col
           <PopoverContent className="w-[200px] p-2.5" align="start">
             <div className="space-y-2.5">
               <HexColorPicker
-                color={value}
+                color={value || '#000000'}
                 onChange={onChange}
                 style={{ width: '100%', height: 130 }}
               />
               <div className="flex items-center gap-2">
                 <div
                   className="size-7 shrink-0 rounded-md ring-1 ring-border/40"
-                  style={{ backgroundColor: value }}
+                  style={{ backgroundColor: value || 'transparent' }}
                 />
                 <Input
                   value={hexInput}

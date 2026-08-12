@@ -24,12 +24,12 @@ export function useWidgetForm(widgetId: string) {
   const [domains, setDomains] = useState<string[]>([])
   const [domainInput, setDomainInput] = useState('')
   const [position, setPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
-  const [primaryColor, setPrimaryColor] = useState('#fb923c')
+  const [primaryColor, setPrimaryColor] = useState('#1cca4a')
   const [backgroundColor, setBackgroundColor] = useState('#1c1c1c')
   const [textColor, setTextColor] = useState('#f3f4f6')
   const [promptBgColor, setPromptBgColor] = useState('#2a2a2a')
-  const [headerGradientStart, setHeaderGradientStart] = useState('#fb923c')
-  const [headerGradientEnd, setHeaderGradientEnd] = useState('#c2410c')
+const [headerGradientStart, setHeaderGradientStart] = useState('#1cca4a')
+const [headerGradientEnd, setHeaderGradientEnd] = useState('#0d7a34')
   const [headerGradientDirection, setHeaderGradientDirection] = useState(135)
   const [headerGradient, setHeaderGradient] = useState(true)
   const [borderColor, setBorderColor] = useState('')
@@ -62,12 +62,12 @@ export function useWidgetForm(widgetId: string) {
     setName(widget.name)
     setDomains(widget.allowedDomains ?? [])
     setPosition(widget.config.position ?? 'bottom-right')
-    setPrimaryColor(widget.config.primaryColor ?? '#fb923c')
+    setPrimaryColor(widget.config.primaryColor ?? '#1cca4a')
     setBackgroundColor(widget.config.backgroundColor ?? '#1c1c1c')
     setTextColor(widget.config.textColor ?? '#f3f4f6')
     setPromptBgColor(widget.config.promptBgColor ?? '#2a2a2a')
-    setHeaderGradientStart(widget.config.headerGradientStart ?? '#fb923c')
-    setHeaderGradientEnd(widget.config.headerGradientEnd ?? '#c2410c')
+    setHeaderGradientStart(widget.config.headerGradientStart ?? '#1cca4a')
+    setHeaderGradientEnd(widget.config.headerGradientEnd ?? '#0d7a34')
     setHeaderGradientDirection(widget.config.headerGradientDirection ?? 135)
     setHeaderGradient(widget.config.headerGradient ?? true)
     setBorderColor(widget.config.borderColor ?? '')
@@ -96,12 +96,12 @@ export function useWidgetForm(widgetId: string) {
         name: widget.name,
         domains: (widget.allowedDomains ?? []).join(','),
         position: widget.config.position ?? 'bottom-right',
-        primaryColor: widget.config.primaryColor ?? '#fb923c',
+        primaryColor: widget.config.primaryColor ?? '#1cca4a',
         backgroundColor: widget.config.backgroundColor ?? '#1c1c1c',
         textColor: widget.config.textColor ?? '#f3f4f6',
         promptBgColor: widget.config.promptBgColor ?? '#2a2a2a',
-        headerGradientStart: widget.config.headerGradientStart ?? '#fb923c',
-        headerGradientEnd: widget.config.headerGradientEnd ?? '#c2410c',
+        headerGradientStart: widget.config.headerGradientStart ?? '#1cca4a',
+        headerGradientEnd: widget.config.headerGradientEnd ?? '#0d7a34',
         headerGradientDirection: widget.config.headerGradientDirection ?? 135,
         headerGradient: widget.config.headerGradient ?? true,
         borderColor: widget.config.borderColor ?? '',

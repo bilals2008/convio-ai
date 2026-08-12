@@ -75,7 +75,7 @@ function getEmbedIframe(agentId: string, position?: string, primaryColor?: strin
 }
 
 const presets: { label: string; color: string }[] = [
-  { label: 'Orange', color: '#fb923c' },
+  { label: 'Convio', color: '#1cca4a' },
   { label: 'Blue', color: '#3b82f6' },
   { label: 'Emerald', color: '#10b981' },
   { label: 'Violet', color: '#8b5cf6' },
@@ -137,7 +137,7 @@ function WidgetEmbedPage() {
   if (widgetKey && widgetConfig) {
     const config = widgetConfig.config || {}
     const position = (config.position as Position) || 'bottom-right'
-    const primaryColor = config.primaryColor || '#fb923c'
+    const primaryColor = config.primaryColor || '#1cca4a'
     const backgroundColor = config.backgroundColor || '#1c1c1c'
     const greeting = config.greeting || "Hi there! How can I help you today?"
     const agentName = config.agentName || widgetConfig.agent?.name || 'Assistant'
@@ -170,8 +170,8 @@ function WidgetEmbedPage() {
         backgroundColor,
         textColor: config.textColor || (isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6'),
         promptBgColor: config.promptBgColor || '#2a2a2a',
-        headerGradientStart: config.headerGradientStart || '#fb923c',
-        headerGradientEnd: config.headerGradientEnd || '#c2410c',
+        headerGradientStart: config.headerGradientStart || '#1cca4a',
+        headerGradientEnd: config.headerGradientEnd || '#0d7a34',
         headerGradientDirection: `${config.headerGradientDirection ?? 135}deg`,
         borderColor: config.borderColor || '',
         inputBgColor: config.inputBgColor || '',
@@ -183,7 +183,7 @@ function WidgetEmbedPage() {
 
   if (agentId) {
     const position = (params.get('position') as Position) || 'bottom-right'
-    const primaryColor = params.get('primaryColor') || '#fb923c'
+    const primaryColor = params.get('primaryColor') || '#1cca4a'
     const backgroundColor = params.get('backgroundColor') || '#1c1c1c'
     const greeting = params.get('greeting') || "Hi there! I'm an AI assistant. How can I help you today?"
     const agentName = params.get('agentName') || 'Convio Demo'
@@ -205,7 +205,7 @@ function WidgetDemoEditor() {
   const [config, setConfig] = useState<DemoConfig>({
     agentId: '',
     position: 'bottom-right',
-    primaryColor: '#fb923c',
+    primaryColor: '#1cca4a',
     backgroundColor: '#1c1c1c',
     greeting: "Hi there! I'm a Convio agent. How can I help you today?",
     agentName: 'Convio Demo',

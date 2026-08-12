@@ -48,12 +48,12 @@ export default function Landing() {
           placeholderText={config.placeholderText || undefined}
           showPoweredBy={config.showPoweredBy}
           theme={{
-            primaryColor: config.primaryColor || '#fb923c',
+            primaryColor: config.primaryColor || '#1cca4a',
             backgroundColor: config.backgroundColor || '#1c1c1c',
             textColor: config.textColor || '#f3f4f6',
             promptBgColor: config.promptBgColor || '#2a2a2a',
-            headerGradientStart: config.headerGradientStart || '#fb923c',
-            headerGradientEnd: config.headerGradientEnd || '#c2410c',
+            headerGradientStart: config.headerGradientStart || '#1cca4a',
+            headerGradientEnd: config.headerGradientEnd || '#0d7a34',
             headerGradientDirection: `${config.headerGradientDirection ?? 135}deg`,
             borderColor: config.borderColor || '',
             inputBgColor: config.inputBgColor || '',

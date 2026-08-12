@@ -32,12 +32,12 @@ export interface ChatWidgetProps {
 }
 
 const defaultTheme: WidgetTheme = {
-  primaryColor: '#fb923c',
+  primaryColor: '#1cca4a',
   backgroundColor: '#1c1c1c',
   textColor: '#f3f4f6',
   promptBgColor: '#2a2a2a',
-  headerGradientStart: '#fb923c',
-  headerGradientEnd: '#c2410c',
+  headerGradientStart: '#1cca4a',
+  headerGradientEnd: '#0d7a34',
   headerGradientDirection: '135deg',
   borderColor: '',
   inputBgColor: '',

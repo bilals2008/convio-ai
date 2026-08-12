@@ -25,11 +25,13 @@ export const promptBgPresets = [
 ] as const
 
 export const headerStartPresets = [
+  { label: 'Convio', color: '#1cca4a' },
   { label: 'Blue', color: '#3b82f6' },
   { label: 'Orange', color: '#fb923c' },
 ] as const
 
 export const headerEndPresets = [
+  { label: 'Convio dark', color: '#0d7a34' },
   { label: 'Indigo', color: '#4338ca' },
   { label: 'Deep Orange', color: '#c2410c' },
 ] as const
