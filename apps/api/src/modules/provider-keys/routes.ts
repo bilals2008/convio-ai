@@ -6,6 +6,50 @@ import { z } from 'zod'
 
 const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'kie', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'opencode']
 
+// Models-list endpoints used to validate a stored key. 404 = endpoint unknown (e.g. KIE),
+// reported as "cannot verify" instead of a hard failure. ponytail: single fetch per provider,
+// expand the map if a provider's models endpoint moves.
+const TEST_ENDPOINTS: Record<string, string> = {
+  openai: 'https://api.openai.com/v1/models',
+  anthropic: 'https://api.anthropic.com/v1/models',
+  google: 'https://generativelanguage.googleapis.com/v1beta/models',
+  groq: 'https://api.groq.com/openai/v1/models',
+  kie: 'https://api.kie.ai/v1/models',
+  openrouter: 'https://openrouter.ai/api/v1/models',
+  mistral: 'https://api.mistral.ai/v1/models',
+  together: 'https://api.together.xyz/v1/models',
+  deepseek: 'https://api.deepseek.com/v1/models',
+  perplexity: 'https://api.perplexity.ai/models',
+  opencode: 'https://opencode.ai/zen/v1/models',
+}
+
+// Validates a stored key against the provider's models-list endpoint (no cost, no generation).
+// Handles the three auth styles used across providers. Returns a result object, never throws,
+// so a down provider is reported gracefully instead of bubbling up a 500.
+async function testProviderKey(provider: string, apiKey: string) {
+  const url = TEST_ENDPOINTS[provider]
+  if (!url) return { ok: false, message: `No automatic test available for ${provider}` }
+
+  let headers: Record<string, string> = {}
+  let target = url
+  if (provider === 'google') {
+    target = `${url}?key=${encodeURIComponent(apiKey)}`
+  } else if (provider === 'anthropic') {
+    headers = { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
+  } else {
+    headers = { Authorization: `Bearer ${apiKey}` }
+  }
+
+  try {
+    const res = await fetch(target, { headers, signal: AbortSignal.timeout(10000) })
+    if (res.ok) return { ok: true, message: 'Key is valid' }
+    if (res.status === 404) return { ok: false, message: 'Cannot verify automatically for this provider' }
+    return { ok: false, message: `Provider rejected the key (HTTP ${res.status})` }
+  } catch {
+    return { ok: false, message: 'Provider unreachable. Try again.' }
+  }
+}
+
 const createKeySchema = z.object({
   provider: z.enum(SUPPORTED_PROVIDERS as [string, ...string[]]),
   apiKey: z.string().min(1),
@@ -100,6 +144,20 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
     })
 
     return { data: updated }
+  })
+
+  // Test button in Settings → Provider Keys: verifies the stored key is accepted.
+  fastify.post('/organizations/:orgId/provider-keys/:keyId/test', {
+    preHandler: [fastify.authenticate, fastify.requireAdmin],
+  }, async (request) => {
+    const { orgId, keyId } = request.params as { orgId: string; keyId: string }
+
+    const existing = await prisma.providerKey.findFirst({
+      where: { id: keyId, organizationId: orgId },
+    })
+    if (!existing) throw new AppError(404, 'Provider key not found')
+
+    return { data: await testProviderKey(existing.provider, existing.apiKey) }
   })
 
   fastify.delete('/organizations/:orgId/provider-keys/:keyId', {

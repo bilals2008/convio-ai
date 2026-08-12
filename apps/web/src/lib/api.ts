@@ -225,6 +225,8 @@ export const providerKeys = {
   update: (orgId: string, keyId: string, data: { apiKey?: string; label?: string }) =>
     api.patch(`/organizations/${orgId}/provider-keys/${keyId}`, data),
   delete: (orgId: string, keyId: string) => api.delete(`/organizations/${orgId}/provider-keys/${keyId}`),
+  // Validates the stored key against the provider (used by the Test button on the settings page)
+  test: (orgId: string, keyId: string) => api.post(`/organizations/${orgId}/provider-keys/${keyId}/test`),
 }
 
 export const billing = {

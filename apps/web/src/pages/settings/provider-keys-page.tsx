@@ -8,12 +8,16 @@ import {
   AlertCircle,
   KeyRound,
   RefreshCw,
+  PlugZap,
+  Lightbulb,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
+import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
+import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -49,6 +53,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { providerKeys as keysApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { toast } from '@/lib/toast'
@@ -108,6 +117,17 @@ function getProviderMeta(id: string): ProviderMeta {
   return PROVIDER_META[id] ?? { ...FALLBACK_META, name: id, initial: id.charAt(0).toUpperCase() }
 }
 
+function ProviderIcon({ meta, className }: { meta: ProviderMeta; className?: string }) {
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${meta.color} ${className ?? ''}`}
+    >
+      {meta.initial}
+    </div>
+  )
+}
+
+
 export default function ProviderKeysPage() {
   const { orgId, isLoading: orgLoading } = useOrg()
   const queryClient = useQueryClient()
@@ -125,6 +145,12 @@ export default function ProviderKeysPage() {
     },
     enabled: !!orgId,
   })
+
+  // Toolbar: text search + per-provider filter
+  const [search, setSearch] = useState('')
+  const [providerFilter, setProviderFilter] = useState('all')
+  // Tracks which row is running a key test so its button can show a spinner
+  const [testingId, setTestingId] = useState<string | null>(null)
 
   const [open, setOpen] = useState(false)
   const [provider, setProvider] = useState('')
@@ -151,6 +177,17 @@ export default function ProviderKeysPage() {
       return true
     })
   }, [keys])
+
+  const displayKeys = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return visibleKeys.filter((k) => {
+      if (providerFilter !== 'all' && k.provider !== providerFilter) return false
+      if (!q) return true
+      const meta = getProviderMeta(k.provider)
+      const hay = `${meta.name} ${k.label ?? ''} ${k.keyPreview}`.toLowerCase()
+      return hay.includes(q)
+    })
+  }, [visibleKeys, search, providerFilter])
 
   const availableProviders = useMemo(
     () => PROVIDER_ORDER.filter((id) => !configuredProviders.has(id)),
@@ -194,6 +231,21 @@ export default function ProviderKeysPage() {
     onError: (err: Error) => toast.error(err.message || 'Failed to delete provider key'),
   })
 
+  async function handleTest(keyId: string) {
+    if (!orgId) return
+    setTestingId(keyId)
+    try {
+      const res = await keysApi.test(orgId, keyId)
+      const r = res.data?.data as { ok: boolean; message: string } | undefined
+      if (r?.ok) toast.success(r.message || 'Key is valid')
+      else toast.error(r?.message || 'Test failed')
+    } catch {
+      toast.error('Could not test this key')
+    } finally {
+      setTestingId(null)
+    }
+  }
+
   function resetForm() {
     setProvider('')
     setApiKey('')
@@ -208,8 +260,106 @@ export default function ProviderKeysPage() {
 
   const pageLoading = orgLoading || isLoading
 
+  const hasActiveSearch = !!search.trim()
+
+  function renderRowActions(key: ProviderKey) {
+    const meta = getProviderMeta(key.provider)
+    const isTesting = testingId === key.id
+    return (
+      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={`Test ${meta.name} key`}
+                  onClick={() => handleTest(key.id)}
+                  disabled={testingId !== null}
+                >
+                  {isTesting ? (
+                    <RefreshCw className="size-3.5 animate-spin text-primary" />
+                  ) : (
+                    <PlugZap className="size-3.5 text-muted-foreground" />
+                  )}
+                </Button>
+              }
+            />
+            <TooltipContent side="top" className="text-xs">
+              Test connection
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={`Edit ${meta.name} key`}
+                  onClick={() => openEdit(key)}
+                >
+                  <Pencil className="size-3.5 text-muted-foreground" />
+                </Button>
+              }
+            />
+            <TooltipContent side="top" className="text-xs">
+              Edit
+            </TooltipContent>
+          </Tooltip>
+          <AlertDialog
+            open={deleteId === key.id}
+            onOpenChange={(o) => setDeleteId(o ? key.id : null)}
+          >
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <AlertDialogTrigger
+                    render={
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={`Delete ${meta.name} key`}
+                      />
+                    }
+                  >
+                    <Trash2 className="size-3.5 text-destructive" />
+                  </AlertDialogTrigger>
+                }
+              />
+              <TooltipContent side="top" className="text-xs">
+                Delete
+              </TooltipContent>
+            </Tooltip>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete provider key?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove your{' '}
+                  <span className="font-medium capitalize">{meta.name}</span> key
+                  {key.label ? ` (${key.label})` : ''}. Agents will fall back to the default
+                  system key. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => deleteMutation.mutate(key.id)}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </TooltipProvider>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <PageHeader
         className="flex-row items-center justify-between gap-3"
         title="Provider API Keys"
@@ -310,34 +460,63 @@ export default function ProviderKeysPage() {
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-success/10">
           <ShieldCheck className="size-4 text-success" />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Your keys are encrypted</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Keys are stored encrypted and only decrypted when running agents. They are never
             exposed in logs, responses, or the dashboard.
           </p>
         </div>
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button size="icon-sm" variant="ghost" aria-label="Show tips">
+                <Lightbulb className="size-4 text-primary" />
+              </Button>
+            }
+          />
+          <PopoverContent align="end" side="top" className="w-72">
+            <p className="text-sm font-medium">Tips</p>
+            <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
+              <li>Use the Test button to verify a key before running agents.</li>
+              <li>Without a key for a provider, agents fall back to the default system key.</li>
+              <li>Add a label to tell keys apart, e.g. "Production" or "Staging".</li>
+              <li>Only org admins can add, edit, or delete keys.</li>
+            </ul>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex-1">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search providers, labels, or key previews..."
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={providerFilter} onValueChange={setProviderFilter}>
+            <SelectTrigger className="h-9 w-[160px]">
+              <SelectValue placeholder="Provider" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All providers</SelectItem>
+              {visibleKeys.map((k) => {
+                const meta = getProviderMeta(k.provider)
+                return (
+                  <SelectItem key={k.provider} value={k.provider}>
+                    {meta.name}
+                  </SelectItem>
+                )
+              })}
+            </SelectContent>
+          </Select>
+      </div>
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <CardTitle className="flex items-center gap-2">
-                Your Provider Keys
-                {visibleKeys.length > 0 && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {visibleKeys.length}
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription className="mt-1">
-                Keys are used when running agents. If no key is configured for a provider, the
-                default system key is used.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
         <CardContent>
           {pageLoading ? (
             <div className="space-y-3">
@@ -376,114 +555,63 @@ export default function ProviderKeysPage() {
                 onClick: () => setOpen(true),
               }}
             />
+          ) : displayKeys.length === 0 ? (
+            <EmptyState
+              icon={KeyRound}
+              title="No keys match your search"
+              description="Try a different search term or clear the search."
+              action={{ label: 'Clear search', onClick: () => setSearch('') }}
+            />
           ) : (
-            <div className="space-y-2.5">
-              {visibleKeys.map((key) => {
-                const meta = getProviderMeta(key.provider)
-                return (
-                  <div
-                    key={key.id}
-                    className="group flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div
-                        className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${meta.color}`}
-                      >
-                        {meta.initial}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{meta.name}</span>
-                          {key.label && (
-                            <Badge variant="outline" className="text-[10px] font-normal">
-                              {key.label}
-                            </Badge>
-                          )}
+            <>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {displayKeys.length} key{displayKeys.length !== 1 ? 's' : ''}
+                  {hasActiveSearch ? ' found' : ''}
+                </p>
+                {hasActiveSearch && (
+                  <Button variant="ghost" size="sm" onClick={() => setSearch('')}>
+                    Clear search
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-2.5">
+                {displayKeys.map((key) => {
+                  const meta = getProviderMeta(key.provider)
+                  return (
+                    <div
+                      key={key.id}
+                      className="group flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ProviderIcon meta={meta} className="size-9" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{meta.name}</span>
+                            {key.label && (
+                              <Badge variant="outline" className="text-[10px] font-normal">
+                                {key.label}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2">
+                            <code className="truncate text-xs text-muted-foreground">
+                              {key.keyPreview}
+                            </code>
+                            <span className="text-muted-foreground/40">·</span>
+                            <span className="shrink-0 text-[11px] text-muted-foreground">
+                              {formatRelativeTime(key.createdAt)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2">
-                          <code className="truncate text-xs text-muted-foreground">
-                            {key.keyPreview}
-                          </code>
-                          <span className="text-muted-foreground/40">·</span>
-                          <span className="shrink-0 text-[11px] text-muted-foreground">
-                            {formatRelativeTime(key.createdAt)}
-                          </span>
-                        </div>
                       </div>
+                      {renderRowActions(key)}
                     </div>
-                    <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label={`Edit ${meta.name} key`}
-                                onClick={() => openEdit(key)}
-                              >
-                                <Pencil className="size-3.5 text-muted-foreground" />
-                              </Button>
-                            }
-                          />
-                          <TooltipContent side="top" className="text-xs">
-                            Edit
-                          </TooltipContent>
-                        </Tooltip>
-                        <AlertDialog
-                          open={deleteId === key.id}
-                          onOpenChange={(o) => {
-                            if (!o) setDeleteId(null)
-                          }}
-                        >
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <AlertDialogTrigger
-                                  render={
-                                    <Button
-                                      size="icon-sm"
-                                      variant="ghost"
-                                      aria-label={`Delete ${meta.name} key`}
-                                    />
-                                  }
-                                >
-                                  <Trash2 className="size-3.5 text-destructive" />
-                                </AlertDialogTrigger>
-                              }
-                            />
-                            <TooltipContent side="top" className="text-xs">
-                              Delete
-                            </TooltipContent>
-                          </Tooltip>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete provider key?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently remove your{' '}
-                                <span className="font-medium capitalize">{meta.name}</span> key
-                                {key.label ? ` (${key.label})` : ''}. Agents will fall back to the
-                                default system key. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                variant="destructive"
-                                onClick={() => deleteMutation.mutate(key.id)}
-                                disabled={deleteMutation.isPending}
-                              >
-                                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </TooltipProvider>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -548,6 +676,6 @@ export default function ProviderKeysPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }
