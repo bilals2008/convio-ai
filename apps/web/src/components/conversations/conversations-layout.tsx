@@ -407,7 +407,11 @@ export function ConversationsLayout() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  bulk.selectionMode ? bulk.toggleSelect(conv.id) : handleSelect(conv.id)
+                  if (bulk.selectionMode) {
+                    bulk.toggleSelect(conv.id)
+                  } else {
+                    handleSelect(conv.id)
+                  }
                 }
               }}
               className={cn(

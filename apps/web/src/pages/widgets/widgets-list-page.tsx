@@ -11,7 +11,7 @@ import {
   type SortingState,
 } from '@/lib/table'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import {
   LayoutDashboard,
   Plus,
@@ -123,6 +123,9 @@ export default function WidgetsListPage() {
     resolver: zodResolver(createWidgetSchema),
     defaultValues: { name: '', agentId: '' },
   })
+
+  // useWatch instead of form.watch() in JSX — avoids react-hooks/incompatible-library
+  const createFormAgentId = useWatch({ control: form.control, name: 'agentId' })
 
   const { data: agents = [] } = useQuery({
     queryKey: ['agents-for-widgets', orgId],
@@ -697,7 +700,7 @@ export default function WidgetsListPage() {
               <div className="space-y-2">
                 <Label>Agent</Label>
                 <Select
-                  value={form.watch('agentId')}
+                  value={createFormAgentId}
                   onValueChange={(value) => form.setValue('agentId', value ?? '', { shouldValidate: true })}
                 >
                   <SelectTrigger>
