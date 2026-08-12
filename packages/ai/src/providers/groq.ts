@@ -56,6 +56,7 @@ export class GroqProvider implements AIProvider {
       })
 
       for await (const chunk of result.fullStream) {
+        if (chunk.type === 'error') throw chunk.error
         if (chunk.type === 'text-delta' && chunk.text) {
           yield { type: 'text', content: chunk.text }
         }

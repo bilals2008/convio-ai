@@ -186,7 +186,7 @@ function toFriendlyStreamError(raw: string): string {
     || lower.includes('unauthorized') || lower.includes('401')) {
     return 'No valid API key for this provider. Add your key in Settings → Provider Keys and try again.'
   }
-  if (lower.includes('no provider configured') || lower.includes('model') && lower.includes('not found')) {
+  if (lower.includes('no provider configured') || lower.includes('model') && (lower.includes('not found') || lower.includes('does not exist'))) {
     return 'This model is not available for the configured provider. Pick a different model.'
   }
   if (lower.includes('rate limit') || lower.includes('429') || lower.includes('quota') || lower.includes('insufficient')) {
