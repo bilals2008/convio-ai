@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Moon } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { BellRing, Moon } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -97,6 +98,12 @@ export default function NotificationPreferencesPage() {
       <PageHeader
         title="Notification Preferences"
         description="Choose which notifications you receive and how they reach you."
+        action={
+          <Button variant="outline" size="sm" render={<Link to="/notifications" />}>
+            <BellRing className="size-4" />
+            View notifications
+          </Button>
+        }
       />
 
       <Card>
