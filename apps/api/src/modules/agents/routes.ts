@@ -613,7 +613,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     // Load MCP tools by server ID
     const mcpToolHandlers: Record<string, { schema: { name: string; description: string; parameters: Record<string, unknown> }; execute: (args: Record<string, unknown>) => Promise<unknown> }> = {}
     if (mcpServerIds.length > 0) {
-      const { McpClient } = await import('../../services/mcp/index.js')
+      const { clientFromServer } = await import('../../services/mcp/factory.js')
       const servers = await prisma.mcpServer.findMany({
         where: {
           id: { in: mcpServerIds },
@@ -623,15 +623,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       })
       for (const server of servers) {
         try {
-          const client = new McpClient({
-            id: server.id,
-            name: server.name,
-            type: server.type,
-            command: server.command,
-            args: server.args as string[],
-            url: server.url,
-            apiKey: server.apiKey,
-          })
+          const client = clientFromServer(server)
           const mcpTools = await client.listTools()
           for (const tool of mcpTools) {
             const namespacedName = `${server.name}:${tool.name}`
@@ -644,11 +636,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
               schema: { name: namespacedName, description: tool.description || '', parameters: (tool.inputSchema as Record<string, unknown>) || { type: 'object', properties: {} } },
               async execute(args: Record<string, unknown>) {
                 try {
-                  const execClient = new McpClient({
-                    id: server.id, name: server.name, type: server.type,
-                    command: server.command, args: server.args as string[],
-                    url: server.url, apiKey: server.apiKey,
-                  })
+                  const execClient = clientFromServer(server)
                   const result = await execClient.callTool(tool.name, args)
                   await execClient.disconnect().catch(() => {})
                   return result
