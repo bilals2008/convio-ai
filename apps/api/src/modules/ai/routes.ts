@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { getProviderForModel, allProviders } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
+import { resolveProviderKey } from '../../services/provider-key.js'
 import { retrieveContext } from '../../services/processor.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { z } from 'zod'
@@ -155,7 +156,15 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       return reply.code(400).send({ error: `No provider configured for model: ${agent.model}` })
     }
 
-    const apiKey = agent.providerKey?.apiKey
+  let apiKey = agent.providerKey?.apiKey
+  if (!apiKey) {
+    const resolved = await resolveProviderKey({
+      organizationId: agent.organizationId,
+      model: agent.model,
+      providerKeyId: agent.providerKeyId,
+    })
+    apiKey = resolved.apiKey
+  }
 
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',

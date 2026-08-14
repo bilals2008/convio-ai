@@ -6,6 +6,7 @@ import { AppError } from '../../plugins/error.js'
 import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
+import { resolveProviderKey } from '../../services/provider-key.js'
 import { getTemplate, listTemplates } from './templates.js'
 import { AGENT_GENERATION_PROMPT, resolveGenerationProvider, parseAgentDraft } from './agent-generator.js'
 import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
@@ -434,6 +435,15 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         providerId = providerKey.provider
       }
     }
+    if (!apiKey) {
+      const resolved = await resolveProviderKey({
+        organizationId: agent.organizationId,
+        model: agent.model,
+        providerKeyId: null,
+      })
+      apiKey = resolved.apiKey
+      providerId = resolved.provider
+    }
 
     let provider
     try {
@@ -493,7 +503,27 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
           select: { apiKey: true, provider: true },
         })
       : null
-    const apiKey = providerKey?.apiKey
+    let apiKey = providerKey?.apiKey
+
+    // Fall back to the org's configured key for this model's provider when the
+    // caller didn't pick an explicit key (BYOK from Settings → Provider Keys).
+    if (!providerKey && !apiKey) {
+      const org = await prisma.membership.findFirst({
+        where: { userId: request.userId! },
+        orderBy: { createdAt: 'asc' },
+        select: { organizationId: true },
+      })
+      if (org) {
+        const resolved = await resolveProviderKey({
+          organizationId: org.organizationId,
+          model,
+          providerKeyId: null,
+        })
+        if (resolved.apiKey) {
+          apiKey = resolved.apiKey
+        }
+      }
+    }
 
     // Plan-gate server-billed tools (e.g. web search). Resolve the caller's org
     // via the provider key's org, falling back to their first membership.
