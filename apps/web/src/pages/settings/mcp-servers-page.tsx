@@ -1,55 +1,34 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  flexRender,
-  type SortingState,
-  type ColumnDef,
-  type Column,
-} from '@/lib/table'
 import {
   Plus,
   Plug,
   Pencil,
   Trash2,
   Wifi,
-  WifiOff,
   Loader2,
-  ArrowUpDown,
-  ArrowDown,
-  ArrowUp,
   CheckCircle2,
   XCircle,
-  Search,
-  X,
   AlertTriangle,
   Link2,
   Unlink,
   ShieldCheck,
   ChevronDown,
-  RefreshCw,
   LayoutTemplate,
+  Search,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
+import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
+import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -88,7 +67,7 @@ import { McpHelpButton, McpHelpModal } from '@/components/mcp/mcp-help-modal'
 import { useOrg } from '@/lib/org-context'
 import { useOAuthStatuses } from '@/lib/hooks/use-mcp-oauth'
 import { toast } from '@/lib/toast'
-import { cn } from '@/lib/utils'
+import { cn, formatRelativeTime } from '@/lib/utils'
 
 interface McpServer {
   id: string
@@ -131,38 +110,20 @@ const AUTH_TYPES = [
   { id: 'oauth', name: 'OAuth 2.0' },
 ]
 
-function DataTableColumnHeader<TData, TValue>({
-  column,
-  title,
-  className,
-}: {
-  column: Column<TData, TValue>
-  title: string
-  className?: string
-}) {
-  if (!column.getCanSort()) {
-    return <div className={cn(className)}>{title}</div>
-  }
+const MCP_ICON = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/mcp-model-context-protocol/default.svg'
+const ICON_CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
 
-  return (
-    <div className={cn('flex items-center gap-1', className)}>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 px-1.5 -ml-1.5 font-medium text-muted-foreground hover:text-foreground"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        <span>{title}</span>
-        {column.getIsSorted() === 'desc' ? (
-          <ArrowDown className="ml-1 size-3.5" />
-        ) : column.getIsSorted() === 'asc' ? (
-          <ArrowUp className="ml-1 size-3.5" />
-        ) : (
-          <ArrowUpDown className="ml-1 size-3.5 text-muted-foreground/50" />
-        )}
-      </Button>
-    </div>
+// ponytail: naive name/url match against known templates; add a provider field on McpServer if matching gets wrong
+function providerFor(server: McpServer): string | null {
+  const name = server.name.toLowerCase()
+  const endpoint = (server.url ?? server.command ?? '').toLowerCase()
+  const hit = mcpServerTemplates.find(
+    (t) =>
+      name.includes(t.name.toLowerCase()) ||
+      endpoint.includes(t.name.toLowerCase()) ||
+      endpoint.includes(t.provider)
   )
+  return hit ? hit.provider : null
 }
 
 export default function McpServersPage() {
@@ -170,7 +131,7 @@ export default function McpServersPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [, setSearchParams] = useSearchParams()
 
   const { data: servers, isLoading } = useQuery({
     queryKey: ['mcp-servers', orgId],
@@ -186,11 +147,10 @@ export default function McpServersPage() {
     .map((s) => s.id)
   const { data: oauthStatuses } = useOAuthStatuses(oauthServerIds)
   const isOauthAuthorized = (server: McpServer) => oauthStatuses?.get(server.id)?.authorized ?? false
-  const oauthError = (server: McpServer) => oauthStatuses?.get(server.id)?.lastError ?? null
-  const oauthExpiry = (server: McpServer) => oauthStatuses?.get(server.id)?.tokenExpiresAt ?? null
 
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -341,11 +301,11 @@ export default function McpServersPage() {
     onError: (err) => toast.error(`Failed: ${(err as Error).message}`),
   })
 
-  const clearTestMutation = useMutation({
-    mutationFn: (id: string) => mcpApi.clearTest(id),
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      mcpApi.update(id, { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mcp-servers', orgId] })
-      toast.success('Test result cleared')
     },
     onError: (err) => toast.error(`Failed: ${(err as Error).message}`),
   })
@@ -407,276 +367,57 @@ export default function McpServersPage() {
     setApiKey(server.apiKey || '')
   }
 
-  const columns: ColumnDef<McpServer, unknown>[] = [
-    {
-      accessorKey: 'name',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
-      cell: ({ row }) => {
-        const lastTest = row.original.lastTestResult
-        return (
-          <div className="flex items-center gap-3">
-            <div className="relative flex size-9 items-center justify-center rounded-lg bg-primary/[0.04] shrink-0">
-              <img
-                src="https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/mcp-model-context-protocol/default.svg"
-                alt="MCP"
-                className="size-4 dark:invert dark:brightness-200"
-              />
-              {lastTest && (
-                <span
-                  className={cn(
-                    'absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-card',
-                    lastTest.connected ? 'bg-success' : 'bg-destructive'
-                  )}
-                />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{row.original.name}</p>
-              <p className="truncate text-xs text-muted-foreground font-mono">
-                {row.original.type === 'stdio' ? row.original.command : row.original.url}
-              </p>
-            </div>
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: 'type',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
-      cell: ({ row }) => (
-        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-          {row.original.type === 'stdio' ? 'Stdio' : 'HTTP'}
-        </Badge>
-      ),
-    },
-    {
-      id: 'status',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-      enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1.5">
-          <Badge
-            variant={row.original.enabled ? 'active' : 'inactive'}
-            className="text-[10px] px-1.5 py-0"
-          >
-            {row.original.enabled ? 'Enabled' : 'Disabled'}
-          </Badge>
-          {row.original.authType === 'oauth' && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Badge variant={isOauthAuthorized(row.original) ? 'active' : 'inactive'} className="text-[10px] px-1.5 py-0">
-                      {isOauthAuthorized(row.original) ? 'OAuth connected' : 'OAuth pending'}
-                    </Badge>
-                  }
-                />
-                <TooltipContent side="top" className="text-xs max-w-64">
-                  {oauthError(row.original)
-                    ? `Last error: ${oauthError(row.original)}`
-                    : oauthExpiry(row.original)
-                      ? `Token expires ${new Date(oauthExpiry(row.original)!).toLocaleString()}`
-                      : 'Authorized'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-        </div>
-      ),
-    },
-    {
-      id: 'actions',
-      header: 'Actions',
-      enableSorting: false,
-      enableHiding: false,
-      size: 120,
-      cell: ({ row }) => {
-        const server = row.original
-        return (
-          <TooltipProvider>
-            <div className="flex items-center gap-0.5">
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-muted-foreground hover:text-foreground"
-                      onClick={() => handleTest(server)}
-                    >
-                      <Wifi className="size-3.5" />
-                    </Button>
-                  }
-                />
-                <TooltipContent side="top" className="text-xs">Test connection</TooltipContent>
-              </Tooltip>
-              {server.lastTestResult?.connected && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => clearTestMutation.mutate(server.id)}
-                      >
-                        <WifiOff className="size-3.5" />
-                      </Button>
-                    }
-                  />
-                  <TooltipContent side="top" className="text-xs">Disconnect</TooltipContent>
-                </Tooltip>
-              )}
-              {server.authType === 'oauth' && (
-                isOauthAuthorized(server) ? (
-                  <>
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                            onClick={() => handleAuthorize(server, true)}
-                            disabled={authorizingId === server.id}
-                          >
-                            {authorizingId === server.id
-                              ? <Loader2 className="size-3.5 animate-spin" />
-                              : <RefreshCw className="size-3.5" />}
-                          </Button>
-                        }
-                      />
-                      <TooltipContent side="top" className="text-xs">Reconnect (force re-auth)</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => disconnectMutation.mutate(server.id)}
-                            disabled={disconnectMutation.isPending}
-                          >
-                            <Unlink className="size-3.5" />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent side="top" className="text-xs">Revoke OAuth access</TooltipContent>
-                    </Tooltip>
-                  </>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 text-primary hover:text-primary hover:bg-primary/10"
-                          onClick={() => handleAuthorize(server)}
-                          disabled={authorizingId === server.id}
-                        >
-                          {authorizingId === server.id
-                            ? <Loader2 className="size-3.5 animate-spin" />
-                            : <ShieldCheck className="size-3.5" />}
-                        </Button>
-                      }
-                    />
-                    <TooltipContent side="top" className="text-xs">Connect with OAuth</TooltipContent>
-                  </Tooltip>
-                )
-              )}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-muted-foreground hover:text-foreground"
-                      onClick={() => openEdit(server)}
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                  }
-                />
-                <TooltipContent side="top" className="text-xs">Edit</TooltipContent>
-              </Tooltip>
-              <AlertDialog>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <AlertDialogTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        }
-                      />
-                    }
-                  />
-                  <TooltipContent side="top" className="text-xs">Delete</TooltipContent>
-                </Tooltip>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete MCP server?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently remove{' '}
-                      <span className="font-medium">{server.name}</span> and unlink it from all
-                      agents.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      onClick={() => deleteMutation.mutate(server.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </TooltipProvider>
-        )
-      },
-    },
-  ]
+  const filtered = useMemo(() => {
+    let list = servers ?? []
+    const q = search.trim().toLowerCase()
+    if (q) {
+      list = list.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          (s.url ?? '').toLowerCase().includes(q) ||
+          (s.command ?? '').toLowerCase().includes(q)
+      )
+    }
+    if (typeFilter !== 'all') list = list.filter((s) => s.type === typeFilter)
+    if (statusFilter !== 'all') {
+      list = list.filter((s) => {
+        if (statusFilter === 'enabled') return s.enabled
+        if (statusFilter === 'disabled') return !s.enabled
+        if (statusFilter === 'connected') return !!s.lastTestResult?.connected
+        if (statusFilter === 'failed') return !!s.lastTestResult && !s.lastTestResult.connected
+        return true
+      })
+    }
+    return list
+  }, [servers, search, typeFilter, statusFilter])
 
-  const table = useReactTable({
-    data: servers || [],
-    columns,
-    state: { sorting, globalFilter },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: 'includesString',
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-  })
+  const pageLoading = orgLoading || isLoading
 
-  if (orgLoading || isLoading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="MCP Servers" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    )
+  function statusInfo(server: McpServer) {
+    if (server.lastTestResult?.connected)
+      return { text: `Connected · ${server.lastTestResult.tools?.length ?? 0} tools`, className: 'text-success' }
+    if (server.lastTestResult)
+      return { text: 'Last test failed', className: 'text-destructive' }
+    if (server.authType === 'oauth') {
+      return isOauthAuthorized(server)
+        ? { text: 'OAuth connected', className: 'text-success' }
+        : { text: 'OAuth pending', className: 'text-warning' }
+    }
+    return { text: server.lastTestedAt ? `Tested ${formatRelativeTime(server.lastTestedAt)}` : 'Not tested', className: 'text-muted-foreground' }
+  }
+
+  function endpointOf(server: McpServer) {
+    return server.type === 'stdio' ? server.command || 'stdio' : server.url || ''
   }
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <PageHeader
-        className="flex-row items-center justify-between gap-3"
+        className="sm:flex-row sm:items-center sm:justify-between gap-3"
         title="MCP Servers"
-        description="Connect agents to external tools via Model Context Protocol."
+        description="Connect your agents to external tools through the Model Context Protocol."
         action={
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <McpHelpButton onClick={() => setHelpOpen(true)} />
             <Button variant="outline" onClick={() => navigate('/mcp-servers/templates')}>
               <LayoutTemplate className="size-4 shrink-0" />
@@ -761,7 +502,7 @@ export default function McpServersPage() {
                       )}
                     </>
                   )}
-                </div>
+                  </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => { setOpen(false); resetForm() }}>Cancel</Button>
                   <Button onClick={() => createMutation.mutate()} disabled={!name || createMutation.isPending}>
@@ -774,89 +515,272 @@ export default function McpServersPage() {
         }
       />
 
-      <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
+      <div className="flex items-start gap-3 rounded-xl border border-warning/25 bg-warning/5 px-4 py-3 text-sm text-warning">
         <AlertTriangle className="size-4 mt-0.5 shrink-0" />
-        <p>MCP Servers is currently in <strong>Beta</strong>. Features may change or break without notice. Use in production at your own risk.</p>
+        <p className="text-sm text-foreground/80">
+          MCP Servers is in <strong>Beta</strong>. Features may change or break without notice.
+        </p>
       </div>
 
-      <div className="space-y-3">
-        {!servers || servers.length === 0 ? (
-          <EmptyState icon={Plug} title="No MCP servers" description="Add an MCP server to get started." />
-        ) : (
-          <div className="space-y-3">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search servers..."
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                className="pl-8 pr-8"
+      {pageLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-44 w-full" />
+          ))}
+        </div>
+      ) : !servers || servers.length === 0 ? (
+        <Card className="rounded-xl border-dashed">
+          <CardContent>
+            <EmptyState
+              icon={Plug}
+              title="No MCP servers yet"
+              description="Connect your agents to external tools like Notion, GitHub, and Linear. Add one from a template or configure a custom server."
+              action={{
+                label: 'Browse templates',
+                onClick: () => navigate('/mcp-servers/templates'),
+              }}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex-1">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Search servers, URLs, or commands..."
               />
-              {globalFilter && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 size-6 -translate-y-1/2"
-                  onClick={() => setGlobalFilter('')}
-                >
-                  <X className="size-3" />
-                </Button>
-              )}
             </div>
-            <Card className="rounded-xl border-border/60">
-              <CardContent className="p-0">
-                <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow
-                      key={headerGroup.id}
-                      className="hover:bg-transparent border-b border-border"
-                    >
-                      {headerGroup.headers.map((header) => (
-                        <TableHead
-                          key={header.id}
-                          className={cn(
-                            'text-muted-foreground font-medium h-11 px-4 text-sm',
-                            header.column.getCanSort() && 'cursor-pointer select-none'
-                          )}
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id} className="px-4 py-3">
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                        {globalFilter ? `No servers matching "${globalFilter}"` : 'No servers found.'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="h-9 w-[140px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="stdio">Stdio</SelectItem>
+                  <SelectItem value="streamable-http">HTTP</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="enabled">Enabled</SelectItem>
+                  <SelectItem value="disabled">Disabled</SelectItem>
+                  <SelectItem value="connected">Connected</SelectItem>
+                  <SelectItem value="failed">Test failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        )}
-      </div>
+
+          {filtered.length === 0 ? (
+            <Card className="rounded-xl border-dashed">
+              <CardContent>
+                <EmptyState
+                  icon={Search}
+                  title="No servers match your filters"
+                  description="Try a different search term or clear the filters."
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((server) => {
+                const status = statusInfo(server)
+                const oauthAuthed = isOauthAuthorized(server)
+                const toggling = toggleMutation.isPending
+                const provider = providerFor(server)
+                return (
+                  <div
+                    key={server.id}
+                    className="group relative flex flex-col rounded-xl border border-border/60 bg-card p-4 transition-all hover:border-primary/30 hover:shadow-soft-lg"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted/50">
+                        <img
+                          src={provider ? `${ICON_CDN}/${provider}/default.svg` : MCP_ICON}
+                          alt={provider ?? 'MCP'}
+                          className={cn('size-5', (!provider || provider === 'github') && 'dark:invert dark:brightness-200')}
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-sm font-semibold">{server.name}</h3>
+                        <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
+                          {endpointOf(server)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        {server.type === 'stdio' ? 'Stdio' : 'HTTP'}
+                      </Badge>
+                      {server.authType !== 'none' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {server.authType === 'oauth' ? (
+                            <span className="flex items-center gap-1">
+                              <ShieldCheck className="size-3" />
+                              OAuth
+                            </span>
+                          ) : (
+                            'API Key'
+                          )}
+                        </Badge>
+                      )}
+                      {server.authType === 'oauth' && (
+                        oauthAuthed ? (
+                          <Badge variant="active" className="text-[10px] px-1.5 py-0">
+                            Connected
+                          </Badge>
+                        ) : (
+                          <Badge variant="inactive" className="text-[10px] px-1.5 py-0">
+                            Pending
+                          </Badge>
+                        )
+                      )}
+                    </div>
+
+                    <p className={cn('mt-3 text-xs', status.className)}>{status.text}</p>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3">
+                      <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                        <Switch
+                          size="sm"
+                          checked={server.enabled}
+                          disabled={toggling}
+                          onCheckedChange={(c) => toggleMutation.mutate({ id: server.id, enabled: c })}
+                        />
+                        Enabled
+                      </label>
+                      <div className="flex items-center gap-0.5">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-7 text-muted-foreground hover:text-foreground"
+                                  onClick={() => handleTest(server)}
+                                >
+                                  <Wifi className="size-3.5" />
+                                </Button>
+                              }
+                            />
+                            <TooltipContent side="top" className="text-xs">Test connection</TooltipContent>
+                          </Tooltip>
+                          {server.authType === 'oauth' && (
+                            oauthAuthed ? (
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => disconnectMutation.mutate(server.id)}
+                                      disabled={disconnectMutation.isPending}
+                                    >
+                                      {disconnectMutation.isPending
+                                        ? <Loader2 className="size-3.5 animate-spin" />
+                                        : <Unlink className="size-3.5" />}
+                                    </Button>
+                                  }
+                                />
+                                <TooltipContent side="top" className="text-xs">Disconnect OAuth</TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-7 text-warning hover:text-warning hover:bg-warning/10"
+                                      onClick={() => handleAuthorize(server)}
+                                      disabled={authorizingId === server.id}
+                                    >
+                                      {authorizingId === server.id
+                                        ? <Loader2 className="size-3.5 animate-spin" />
+                                        : <ShieldCheck className="size-3.5" />}
+                                    </Button>
+                                  }
+                                />
+                                <TooltipContent side="top" className="text-xs">Connect with OAuth</TooltipContent>
+                              </Tooltip>
+                            )
+                          )}
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-7 text-muted-foreground hover:text-foreground"
+                                  onClick={() => openEdit(server)}
+                                >
+                                  <Pencil className="size-3.5" />
+                                </Button>
+                              }
+                            />
+                            <TooltipContent side="top" className="text-xs">Edit</TooltipContent>
+                          </Tooltip>
+                          <AlertDialog>
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <AlertDialogTrigger
+                                    render={
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                      >
+                                        <Trash2 className="size-3.5" />
+                                      </Button>
+                                    }
+                                  />
+                                }
+                              />
+                              <TooltipContent side="top" className="text-xs">Delete</TooltipContent>
+                            </Tooltip>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete MCP server?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently remove{' '}
+                                  <span className="font-medium">{server.name}</span> and unlink it from all
+                                  agents.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  variant="destructive"
+                                  onClick={() => deleteMutation.mutate(server.id)}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={!!editServer} onOpenChange={(o) => { if (!o) { setEditServer(null); resetForm() } }}>
@@ -1024,7 +948,7 @@ export default function McpServersPage() {
       </Dialog>
 
       <McpHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
-    </div>
+    </PageContainer>
   )
 }
 
