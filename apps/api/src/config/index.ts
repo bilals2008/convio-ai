@@ -37,6 +37,7 @@ const schema = Type.Object({
   TWILIO_AUTH_TOKEN: Type.Optional(Type.String()),
   TWILIO_NUMBER: Type.Optional(Type.String()),
   PLATFORM_ADMIN_EMAILS: Type.Optional(Type.String()),
+  MCP_OAUTH_ENCRYPTION_KEY: Type.Optional(Type.String()),
 });
 
 export type Config = Static<typeof schema>;

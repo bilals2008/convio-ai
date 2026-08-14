@@ -1,6 +1,6 @@
 import { Pool } from "pg"
 import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "./generated/client.js"
+import { PrismaClient, Prisma } from "./generated/client.js"
 import {
   MembershipRole,
   NotificationCategory,
@@ -10,7 +10,9 @@ import {
   NotificationDeliveryStatus,
 } from "./generated/enums.js"
 
-export type { Prisma } from "./generated/client.js"
+export type { Prisma as PrismaTypes } from "./generated/client.js"
+export type { McpServer, AgentMcpServer } from "./generated/client.js"
+export { Prisma, PrismaClient }
 export {
   MembershipRole,
   NotificationCategory,

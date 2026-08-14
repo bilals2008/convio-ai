@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify'
-import { prisma } from '@convio/database'
+import { prisma, Prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { createMcpServerSchema, updateMcpServerSchema } from '@convio/validation'
 import { AppError } from '../../plugins/error.js'
-import { McpClient } from '../../services/mcp/index.js'
+import { clientFromServer } from '../../services/mcp/factory.js'
 import { z } from 'zod'
 
 const orgParamsSchema = z.object({ orgId: z.string().uuid() })
@@ -20,6 +20,7 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
       data: {
         ...body,
         args: body.args as any,
+        headers: (body.headers ?? {}) as any,
         organizationId: orgId,
       },
     })
@@ -63,6 +64,8 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
       data: {
         ...body,
         args: body.args !== undefined ? (body.args as any) : undefined,
+        headers: body.headers !== undefined ? (body.headers as any) : undefined,
+        oauthState: body.authType !== 'oauth' ? Prisma.DbNull : undefined,
       },
     })
     return { data: server }
@@ -90,24 +93,19 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
     if (!existing) throw new AppError(404, 'MCP server not found')
     await fastify.getMembership(request.userId!, existing.organizationId)
 
-    const client = new McpClient({
-      id: existing.id,
-      name: existing.name,
-      type: existing.type,
-      command: existing.command,
-      args: existing.args as string[],
-      url: existing.url,
-      apiKey: existing.apiKey,
-    })
+    const client = clientFromServer(existing, fastify.config.PUBLIC_URL)
 
     let testResult
     try {
       const tools = await client.listTools()
       await client.disconnect()
-      testResult = { connected: true, tools: tools.map((t) => ({ name: t.name, description: t.description })) }
+      testResult = { connected: true, tools: tools.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })) }
     } catch (err) {
       await client.disconnect().catch(() => {})
-      testResult = { connected: false, error: (err as Error).message }
+      const url = client.authorizationUrl
+      testResult = url
+        ? { connected: false, needsAuth: true, redirectUrl: url, error: (err as Error).message }
+        : { connected: false, error: (err as Error).message }
     }
 
     await prisma.mcpServer.update({

@@ -301,7 +301,10 @@ model McpServer {
   command        String?
   args           Json         @default("[]")
   url            String?
+  authType       String       @default("none") // none | header | oauth
+  headers        Json         @default("{}")   // custom headers for http transports
   apiKey         String?
+  oauthState     Json?        // persisted OAuth provider state (tokens, client info, pkce)
   enabled        Boolean      @default(true)
   lastTestResult Json?
   lastTestedAt   DateTime?

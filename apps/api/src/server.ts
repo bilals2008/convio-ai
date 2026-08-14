@@ -37,6 +37,7 @@ import widgetsRoutes from './modules/widgets/routes.js'
 import providerKeysRoutes from './modules/provider-keys/routes.js'
 import dataManagementRoutes from './modules/data-management/routes.js'
 import mcpRoutes from './modules/mcp/routes.js'
+import mcpOauthRoutes from './modules/mcp/oauth-routes.js'
 import contactRoutes from './modules/contact/routes.js'
 import avatarPresetsRoutes from './modules/avatar-presets/routes.js'
 import statusRoutes from './modules/status/routes.js'
@@ -97,6 +98,7 @@ async function buildServer() {
   await app.register(providerKeysRoutes, { prefix: '/api' })
   await app.register(dataManagementRoutes, { prefix: '/api' })
   await app.register(mcpRoutes, { prefix: '/api' })
+  await app.register(mcpOauthRoutes, { prefix: '/api' })
   await app.register(contactRoutes, { prefix: '/api' })
   await app.register(avatarPresetsRoutes, { prefix: '/api' })
   await app.register(statusRoutes, { prefix: '/api' })
