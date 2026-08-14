@@ -36,7 +36,7 @@ export function OverviewChart({ data, loading }: OverviewChartProps) {
         <div className="grid flex-1 gap-1">
           <CardTitle className="text-base">Conversation Analytics</CardTitle>
         </div>
-        <div className="text-sm text-muted-foreground">Messages vs Conversations</div>
+        <div className="text-sm text-muted-foreground hidden sm:block">Messages vs Conversations</div>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (

@@ -39,7 +39,7 @@ export function TokenCostTrend({ data, totalCost, loading }: TokenCostTrendProps
         <div className="grid flex-1 gap-1">
           <CardTitle className="text-base">Token Usage &amp; Cost Trend</CardTitle>
         </div>
-        <div className="flex items-center gap-4 text-sm">
+        <div className="hidden items-center gap-4 text-sm sm:flex">
           <span className="text-muted-foreground">Total cost: <span className="font-medium text-foreground">${totalCost.toFixed(2)}</span></span>
         </div>
       </CardHeader>

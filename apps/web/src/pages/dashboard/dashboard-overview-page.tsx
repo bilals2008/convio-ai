@@ -180,7 +180,7 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* ── KPI Cards ──────────────────────────────────────────────────── */}
-      <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {kpiMetrics.map((m) => (
           <div
             key={m.label}
@@ -218,7 +218,7 @@ export default function DashboardOverviewPage() {
       {/* ── Quick Actions ─────────────────────────────────────────────── */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">Quick Actions</h2>
-        <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Link to="/agents/create">
             <Button variant="outline" className="w-full justify-start gap-2 h-auto py-2.5 sm:py-3">
               <div className="flex size-7 sm:size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">

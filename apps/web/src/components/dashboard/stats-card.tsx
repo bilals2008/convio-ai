@@ -26,27 +26,27 @@ export function StatsCard({
   descriptionClassName,
 }: StatsCardProps) {
   return (
-    <div className={cn(cardBase, 'group flex items-center justify-between gap-4 px-5 py-4')}>
-      <div className="flex min-w-0 flex-col gap-2">
-        <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+    <div className={cn(cardBase, 'group flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4')}>
+      <div className="flex min-w-0 flex-col gap-1.5 sm:gap-2">
+        <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <span className="text-2xl font-semibold leading-none tracking-tight text-foreground">
+        <span className="text-xl sm:text-2xl font-semibold leading-none tracking-tight text-foreground truncate">
           {value}
         </span>
         {description && (
-          <span className={cn('mt-0.5 text-xs text-muted-foreground', descriptionClassName)}>
+          <span className={cn('mt-0.5 hidden text-xs text-muted-foreground sm:block', descriptionClassName)}>
             {description}
           </span>
         )}
       </div>
       <div
         className={cn(
-          'flex size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105',
+          'flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105',
           iconClassName
         )}
       >
-        <Icon className="size-5" />
+        <Icon className="size-4 sm:size-5" />
       </div>
     </div>
   )
