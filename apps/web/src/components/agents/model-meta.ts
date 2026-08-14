@@ -39,7 +39,6 @@ const LOGO_LABELS: Record<string, string> = {
   anthropic: "Anthropic",
   google: "Google AI",
   groq: "Groq",
-  kie: "KIE AI",
   openrouter: "OpenRouter",
   opencode: "OpenCode Zen",
   mistral: "Mistral",

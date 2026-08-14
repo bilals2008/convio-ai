@@ -2,6 +2,7 @@ import { generateText, streamText, embed, jsonSchema } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
 import { toProviderError } from './errors.js'
+import { getCachedModels, modelCacheKey } from './model-cache.js'
 
 export class GoogleProvider implements AIProvider {
   id = 'google'
@@ -101,24 +102,46 @@ export class GoogleProvider implements AIProvider {
     return { flagged: false, categories: {} }
   }
 
-  async listModels(): Promise<Model[]> {
-    return [
-      {
-        id: 'gemini-1.5-pro',
-        name: 'Gemini 1.5 Pro',
-        provider: 'google',
-        maxTokens: 1000000,
-        supportsTools: true,
-        supportsStreaming: true,
-      },
-      {
-        id: 'gemini-1.5-flash',
-        name: 'Gemini 1.5 Flash',
-        provider: 'google',
-        maxTokens: 1000000,
-        supportsTools: true,
-        supportsStreaming: true,
-      },
+  async listModels(apiKey?: string): Promise<Model[]> {
+    const fallback: Model[] = [
+      { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', provider: 'google', maxTokens: 65536, supportsTools: true, supportsStreaming: true },
+      { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', provider: 'google', maxTokens: 65536, supportsTools: true, supportsStreaming: true },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite', provider: 'google', maxTokens: 65536, supportsTools: true, supportsStreaming: true },
+      { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', provider: 'google', maxTokens: 65536, supportsTools: true, supportsStreaming: true },
+      { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (Preview)', provider: 'google', maxTokens: 65536, supportsTools: true, supportsStreaming: true },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', maxTokens: 65536, supportsTools: true, supportsStreaming: true },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', maxTokens: 65536, supportsTools: true, supportsStreaming: true },
     ]
+    try {
+      return await getCachedModels(modelCacheKey(this.id, apiKey), 10 * 60 * 1000, async () => {
+        const key = apiKey || process.env.GOOGLE_API_KEY
+        if (!key) return fallback
+        const res = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key),
+          { signal: AbortSignal.timeout(10000) },
+        )
+        if (!res.ok) throw new Error(`Models API returned ${res.status}`)
+        const body = await res.json() as { models: Array<{
+          name: string
+          displayName?: string
+          outputTokenLimit?: number
+          inputTokenLimit?: number
+          supportedGenerationMethods?: string[]
+        }> }
+        if (!body?.models?.length) throw new Error('No models in response')
+        return body.models
+          .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
+          .map((m) => ({
+            id: m.name.replace('models/', ''),
+            name: m.displayName || m.name.replace('models/', ''),
+            provider: 'google' as const,
+            maxTokens: m.outputTokenLimit || m.inputTokenLimit || 65536,
+            supportsTools: true,
+            supportsStreaming: true,
+          }))
+      })
+    } catch {
+      return fallback
+    }
   }
 }

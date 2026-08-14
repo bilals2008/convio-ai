@@ -4,9 +4,9 @@ import { AppError } from '../../plugins/error.js'
 import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 
-const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'kie', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'opencode']
+const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'opencode']
 
-// Models-list endpoints used to validate a stored key. 404 = endpoint unknown (e.g. KIE),
+// Models-list endpoints used to validate a stored key. 404 = endpoint unknown,
 // reported as "cannot verify" instead of a hard failure. ponytail: single fetch per provider,
 // expand the map if a provider's models endpoint moves.
 const TEST_ENDPOINTS: Record<string, string> = {
@@ -14,7 +14,6 @@ const TEST_ENDPOINTS: Record<string, string> = {
   anthropic: 'https://api.anthropic.com/v1/models',
   google: 'https://generativelanguage.googleapis.com/v1beta/models',
   groq: 'https://api.groq.com/openai/v1/models',
-  kie: 'https://api.kie.ai/v1/models',
   openrouter: 'https://openrouter.ai/api/v1/models',
   mistral: 'https://api.mistral.ai/v1/models',
   together: 'https://api.together.xyz/v1/models',

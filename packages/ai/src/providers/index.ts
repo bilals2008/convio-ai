@@ -3,7 +3,6 @@ import { OpenAIProvider } from './openai.js'
 import { AnthropicProvider } from './anthropic.js'
 import { GoogleProvider } from './google.js'
 import { GroqProvider } from './groq.js'
-import { KIEProvider } from './kie.js'
 import { LocalProvider } from './local.js'
 import { OpenCodeProvider } from './opencode.js'
 import { OpenRouterProvider } from './openrouter.js'
@@ -13,7 +12,6 @@ export const openaiProvider = new OpenAIProvider()
 export const anthropicProvider = new AnthropicProvider()
 export const googleProvider = new GoogleProvider()
 export const groqProvider = new GroqProvider()
-export const kieProvider = new KIEProvider()
 export const localProvider = new LocalProvider()
 export const opencodeProvider = new OpenCodeProvider()
 export const openrouterProvider = new OpenRouterProvider()
@@ -27,7 +25,6 @@ export const allProviders: AIProvider[] = [
   anthropicProvider,
   googleProvider,
   groqProvider,
-  kieProvider,
   localProvider,
   opencodeProvider,
   openrouterProvider,
@@ -47,7 +44,6 @@ const OFFICIAL_MODELS = new Set([
   'gemini-1.5-pro', 'gemini-1.5-flash',
 ])
 
-const KIE_MODEL_PREFIXES = ['gpt-5-', 'gpt-codex', 'claude-opus-4-', 'claude-sonnet-4-', 'claude-sonnet-5', 'claude-haiku-4-', 'claude-fable-5', 'gemini-2-5-', 'gemini-3-']
 const OPENCODE_MODEL_PREFIXES = ['opencode/']
 const LOCAL_MODEL_PREFIXES = ['auto/', 'ddgw/', 'aug/', 'tllm/', 'pepper/', 'mcode/', 'veo-free/', 'veoaifree-web/', 'no-think/']
 
@@ -64,7 +60,7 @@ export function getProviderForModel(model: string, providerHint?: string): AIPro
     if (model.startsWith('claude-')) return anthropicProvider
     if (model.startsWith('gemini-')) return googleProvider
   }
-  if (KIE_MODEL_PREFIXES.some(p => model.startsWith(p))) return kieProvider
+  if (model.startsWith('gemini-')) return googleProvider
   if (model.startsWith('llama-') || model.startsWith('mixtral-')) return groqProvider
   if (OPENCODE_MODEL_PREFIXES.some(p => model.startsWith(p))) return opencodeProvider
   if (LOCAL_MODEL_PREFIXES.some(p => model.startsWith(p))) return localProvider
