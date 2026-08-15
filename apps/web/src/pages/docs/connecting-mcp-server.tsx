@@ -18,7 +18,9 @@ export default function ConnectingMcpServerPage() {
       <p>
         MCP servers live on the dedicated <strong>MCP Servers</strong> page — open it from the sidebar (AI group). You
         can also start from pre-built templates at <Link to="/mcp-servers/templates" className="text-primary hover:underline">MCP Templates</Link>{' '}
-        (Notion, GitHub, Linear, Slack, Filesystem) which pre-fill the server config for you.
+        (Notion, GitHub, Linear, Slack) which pre-fill the server config for you. More templates (Stripe, Google
+        Workspace, Cloudflare, and more) are listed but marked <strong>Coming soon</strong> until they're fully
+        supported.
       </p>
 
       <h2 id="configuration-fields">Configuration Fields</h2>

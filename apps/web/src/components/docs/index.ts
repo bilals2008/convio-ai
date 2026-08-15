@@ -1,5 +1,6 @@
 export { DocContent } from './doc-content'
 export { DocCallout } from './doc-callout'
 export { DocFeatureCard, DocNextStepCard, DocCardGrid } from './doc-cards'
-export { DocBreadcrumb, DocFeedback, DocPageHeader } from './doc-header'
+export { DocBreadcrumb, DocPageHeader } from './doc-header'
+export { DocFeedback } from './doc-feedback'
 export { DocHeading } from './doc-heading'

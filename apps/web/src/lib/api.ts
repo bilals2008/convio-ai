@@ -242,7 +242,8 @@ export const billing = {
 }
 
 export const mcpServers = {
-  list: (orgId: string) => api.get(`/organizations/${orgId}/mcp-servers`),
+  list: (orgId: string, params?: { page?: number; pageSize?: number; search?: string; type?: string; status?: string }) =>
+    api.get(`/organizations/${orgId}/mcp-servers`, { params }),
   get: (id: string) => api.get(`/mcp-servers/${id}`),
   create: (orgId: string, data: Record<string, unknown>) =>
     api.post(`/organizations/${orgId}/mcp-servers`, data),

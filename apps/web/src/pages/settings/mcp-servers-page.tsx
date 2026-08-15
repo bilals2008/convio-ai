@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -8,13 +8,9 @@ import {
   Trash2,
   Wifi,
   Loader2,
-  CheckCircle2,
-  XCircle,
   AlertTriangle,
-  Link2,
   Unlink,
   ShieldCheck,
-  ChevronDown,
   LayoutTemplate,
   Search,
 } from 'lucide-react'
@@ -23,8 +19,21 @@ import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
+import { SelectionCheckbox } from '@/components/shared/selection-checkbox'
+import { BulkActionBar } from '@/components/shared/bulk-action-bar'
+import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -133,24 +142,63 @@ export default function McpServersPage() {
 
   const [, setSearchParams] = useSearchParams()
 
-  const { data: servers, isLoading } = useQuery({
-    queryKey: ['mcp-servers', orgId],
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [page, setPage] = useState(1)
+
+  useEffect(() => { setPage(1) }, [search, typeFilter, statusFilter])
+
+  const { data: pageData, isLoading, isFetching } = useQuery({
+    queryKey: ['mcp-servers', orgId, page, search, typeFilter, statusFilter],
     queryFn: async () => {
-      const res = await mcpApi.list(orgId!)
-      return (res.data.data || []) as McpServer[]
+      const res = await mcpApi.list(orgId!, {
+        page,
+        pageSize: 12,
+        search: search.trim() || undefined,
+        type: typeFilter === 'all' ? undefined : typeFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+      })
+      const body = (res.data ?? {}) as { data?: unknown }
+      const data = body.data ?? body
+      if (Array.isArray(data)) {
+        return { items: data as McpServer[], total: data.length, page, pageSize: 12, totalPages: 1 }
+      }
+      const p = data as { items?: McpServer[]; total?: number; totalPages?: number } | null
+      return {
+        items: Array.isArray(p?.items) ? p!.items : [],
+        total: p?.total ?? 0,
+        page,
+        pageSize: 12,
+        totalPages: p?.totalPages ?? 1,
+      }
     },
     enabled: !!orgId,
   })
 
-  const oauthServerIds = (servers ?? [])
+  const servers = pageData?.items ?? []
+  const total = pageData?.total ?? 0
+  const totalPages = pageData?.totalPages ?? 1
+  const pageStart = (page - 1) * 12 + 1
+  const pageEnd = Math.min(page * 12, total)
+
+  const bulk = useBulkSelection(servers)
+  const exitSelectionMode = bulk.exitSelectionMode
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+
+  useEffect(() => { exitSelectionMode() }, [page, search, typeFilter, statusFilter, exitSelectionMode])
+
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) setPage(totalPages)
+  }, [page, totalPages])
+
+  const filtersActive = search.trim() !== '' || typeFilter !== 'all' || statusFilter !== 'all'
+
+  const oauthServerIds = servers
     .filter((s) => s.authType === 'oauth')
     .map((s) => s.id)
   const { data: oauthStatuses } = useOAuthStatuses(oauthServerIds)
   const isOauthAuthorized = (server: McpServer) => oauthStatuses?.get(server.id)?.authorized ?? false
-
-  const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
 
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -165,13 +213,8 @@ export default function McpServersPage() {
   const [editServer, setEditServer] = useState<McpServer | null>(null)
   const [authorizingId, setAuthorizingId] = useState<string | null>(null)
 
-  const [testModal, setTestModal] = useState<{ open: boolean; server: McpServer | null }>({
-    open: false,
-    server: null,
-  })
   const [helpOpen, setHelpOpen] = useState(false)
-  const [testResult, setTestResult] = useState<TestResult | null>(null)
-  const [testing, setTesting] = useState(false)
+  const [testingId, setTestingId] = useState<string | null>(null)
 
   function resetForm() {
     setName('')
@@ -261,7 +304,7 @@ export default function McpServersPage() {
       resetForm()
       toast.success('MCP server created')
     },
-    onError: (err) => toast.error(`Failed: ${(err as Error).message}`),
+    onError: (err) => toast.error(`Failed: ${(err as { friendlyMessage?: string }).friendlyMessage ?? (err as Error).message}`),
   })
 
   const updateMutation = useMutation({
@@ -289,7 +332,7 @@ export default function McpServersPage() {
       resetForm()
       toast.success('MCP server updated')
     },
-    onError: (err) => toast.error(`Failed: ${(err as Error).message}`),
+    onError: (err) => toast.error(`Failed: ${(err as { friendlyMessage?: string }).friendlyMessage ?? (err as Error).message}`),
   })
 
   const deleteMutation = useMutation({
@@ -298,7 +341,24 @@ export default function McpServersPage() {
       queryClient.invalidateQueries({ queryKey: ['mcp-servers', orgId] })
       toast.success('MCP server deleted')
     },
-    onError: (err) => toast.error(`Failed: ${(err as Error).message}`),
+    onError: (err) => toast.error(`Failed: ${(err as { friendlyMessage?: string }).friendlyMessage ?? (err as Error).message}`),
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => mcpApi.delete(id)))
+    },
+    onSuccess: (_data, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['mcp-servers', orgId] })
+      toast.success(`${ids.length} MCP server${ids.length !== 1 ? 's' : ''} deleted`)
+      bulk.exitSelectionMode()
+      setBulkDeleteOpen(false)
+    },
+    onError: () => {
+      toast.error('Failed to delete some servers')
+      bulk.exitSelectionMode()
+      setBulkDeleteOpen(false)
+    },
   })
 
   const toggleMutation = useMutation({
@@ -307,7 +367,7 @@ export default function McpServersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mcp-servers', orgId] })
     },
-    onError: (err) => toast.error(`Failed: ${(err as Error).message}`),
+    onError: (err) => toast.error(`Failed: ${(err as { friendlyMessage?: string }).friendlyMessage ?? (err as Error).message}`),
   })
 
   const disconnectMutation = useMutation({
@@ -317,7 +377,7 @@ export default function McpServersPage() {
       queryClient.invalidateQueries({ queryKey: ['mcp-oauth-statuses'] })
       toast.success('OAuth disconnected')
     },
-    onError: (err) => toast.error(`Failed: ${(err as Error).message}`),
+    onError: (err) => toast.error(`Failed: ${(err as { friendlyMessage?: string }).friendlyMessage ?? (err as Error).message}`),
   })
 
   async function handleAuthorize(server: McpServer, force = false) {
@@ -333,25 +393,31 @@ export default function McpServersPage() {
       queryClient.invalidateQueries({ queryKey: ['mcp-oauth-statuses'] })
       toast.success('Already authorized')
     } catch (err) {
-      toast.error(`Failed: ${(err as Error).message}`)
+      toast.error(`Failed: ${(err as { friendlyMessage?: string }).friendlyMessage ?? (err as Error).message}`)
     } finally {
       setAuthorizingId(null)
     }
   }
 
   async function handleTest(server: McpServer) {
-    setTestModal({ open: true, server })
-    setTestResult(null)
-    setTesting(true)
+    setTestingId(server.id)
     try {
       const res = await mcpApi.test(server.id)
-      setTestResult(res.data.data as TestResult)
-      queryClient.invalidateQueries({ queryKey: ['mcp-servers', orgId] })
-    } catch {
-      setTestResult({ connected: false, error: 'Connection failed' })
-      queryClient.invalidateQueries({ queryKey: ['mcp-servers', orgId] })
+      const result = res.data.data as TestResult
+      if (result.connected) {
+        toast.success(
+          `Connected to ${server.name}${result.tools?.length ? ` (${result.tools.length} tools)` : ''}`
+        )
+      } else if (result.needsAuth) {
+        toast.error(`OAuth required for ${server.name}. Use the Connect button to authorize.`)
+      } else {
+        toast.error(`Connection failed: ${result.error || 'Unknown error'}`)
+      }
+    } catch (err) {
+      toast.error(`Failed: ${(err as { friendlyMessage?: string }).friendlyMessage ?? (err as Error).message}`)
     } finally {
-      setTesting(false)
+      queryClient.invalidateQueries({ queryKey: ['mcp-servers', orgId] })
+      setTestingId(null)
     }
   }
 
@@ -367,31 +433,11 @@ export default function McpServersPage() {
     setApiKey(server.apiKey || '')
   }
 
-  const filtered = useMemo(() => {
-    let list = servers ?? []
-    const q = search.trim().toLowerCase()
-    if (q) {
-      list = list.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          (s.url ?? '').toLowerCase().includes(q) ||
-          (s.command ?? '').toLowerCase().includes(q)
-      )
-    }
-    if (typeFilter !== 'all') list = list.filter((s) => s.type === typeFilter)
-    if (statusFilter !== 'all') {
-      list = list.filter((s) => {
-        if (statusFilter === 'enabled') return s.enabled
-        if (statusFilter === 'disabled') return !s.enabled
-        if (statusFilter === 'connected') return !!s.lastTestResult?.connected
-        if (statusFilter === 'failed') return !!s.lastTestResult && !s.lastTestResult.connected
-        return true
-      })
-    }
-    return list
-  }, [servers, search, typeFilter, statusFilter])
+  const headerHint = mcpServerTemplates.find(
+  (t) => t.headerHint && (t.url === url || t.name === name)
+)?.headerHint
 
-  const pageLoading = orgLoading || isLoading
+const pageLoading = orgLoading || isLoading
 
   function statusInfo(server: McpServer) {
     if (server.lastTestResult?.connected)
@@ -492,6 +538,9 @@ export default function McpServersPage() {
                           <div className="space-y-2">
                             <Label>Custom headers (one per line, Name: value)</Label>
                             <Input value={headersText} onChange={(e) => setHeadersText(e.target.value)} placeholder={"X-Api-Key: abc123\nAuthorization: Bearer xyz"} className="font-mono" />
+                            {headerHint && (
+                              <p className="text-xs text-amber-500">{headerHint}</p>
+                            )}
                           </div>
                         </>
                       )}
@@ -523,23 +572,31 @@ export default function McpServersPage() {
       </div>
 
       {pageLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 w-full" />
+            <Skeleton key={i} className="h-48 w-full" />
           ))}
         </div>
-      ) : !servers || servers.length === 0 ? (
+      ) : total === 0 ? (
         <Card className="rounded-xl border-dashed">
           <CardContent>
-            <EmptyState
-              icon={Plug}
-              title="No MCP servers yet"
-              description="Connect your agents to external tools like Notion, GitHub, and Linear. Add one from a template or configure a custom server."
-              action={{
-                label: 'Browse templates',
-                onClick: () => navigate('/mcp-servers/templates'),
-              }}
-            />
+            {filtersActive ? (
+              <EmptyState
+                icon={Search}
+                title="No servers match your filters"
+                description="Try a different search term or clear the filters."
+              />
+            ) : (
+              <EmptyState
+                icon={Plug}
+                title="No MCP servers yet"
+                description="Connect your agents to external tools like Notion, GitHub, and Linear. Add one from a template or configure a custom server."
+                action={{
+                  label: 'Browse templates',
+                  onClick: () => navigate('/mcp-servers/templates'),
+                }}
+              />
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -578,7 +635,7 @@ export default function McpServersPage() {
             </div>
           </div>
 
-          {filtered.length === 0 ? (
+          {total === 0 ? (
             <Card className="rounded-xl border-dashed">
               <CardContent>
                 <EmptyState
@@ -589,8 +646,30 @@ export default function McpServersPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((server) => {
+            <>
+            {bulk.selectedCount > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={bulk.toggleSelectAll}
+                  className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Checkbox checked={bulk.isAllSelected} className="size-4" />
+                  {bulk.isAllSelected ? 'Deselect all' : `Select all ${servers.length}`}
+                </button>
+                <BulkActionBar
+                  onExitSelectionMode={bulk.exitSelectionMode}
+                  action={
+                    <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+                      <Trash2 className="size-4" />
+                      Delete ({bulk.selectedCount})
+                    </Button>
+                  }
+                />
+              </div>
+            )}
+            <div className={cn('grid gap-4 sm:grid-cols-2 xl:grid-cols-3', isFetching && 'opacity-60 transition-opacity')}>
+              {servers.map((server) => {
                 const status = statusInfo(server)
                 const oauthAuthed = isOauthAuthorized(server)
                 const toggling = toggleMutation.isPending
@@ -598,26 +677,32 @@ export default function McpServersPage() {
                 return (
                   <div
                     key={server.id}
-                    className="group relative flex flex-col rounded-xl border border-border/60 bg-card p-4 transition-all hover:border-primary/30 hover:shadow-soft-lg"
+                    className="group relative flex flex-col rounded-xl border border-border/60 bg-card p-5 transition-all hover:border-primary/30 hover:shadow-soft-lg"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted/50">
-                        <img
-                          src={provider ? `${ICON_CDN}/${provider}/default.svg` : MCP_ICON}
-                          alt={provider ?? 'MCP'}
-                          className={cn('size-5', (!provider || provider === 'github') && 'dark:invert dark:brightness-200')}
-                          loading="lazy"
-                        />
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted/50">
+                          <img
+                            src={provider ? `${ICON_CDN}/${provider}/default.svg` : MCP_ICON}
+                            alt={provider ?? 'MCP'}
+                            className={cn('size-5', (!provider || provider === 'github') && 'dark:invert dark:brightness-200')}
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate text-[15px] font-semibold">{server.name}</h3>
+                          <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                            {endpointOf(server)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-semibold">{server.name}</h3>
-                        <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
-                          {endpointOf(server)}
-                        </p>
-                      </div>
+                      <SelectionCheckbox
+                        isSelected={bulk.isSelected(server.id)}
+                        onToggle={() => bulk.toggleSelect(server.id)}
+                      />
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <div className="mt-4 flex flex-wrap items-center gap-1.5">
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                         {server.type === 'stdio' ? 'Stdio' : 'HTTP'}
                       </Badge>
@@ -646,9 +731,9 @@ export default function McpServersPage() {
                       )}
                     </div>
 
-                    <p className={cn('mt-3 text-xs', status.className)}>{status.text}</p>
+                    <p className={cn('mt-4 text-xs', status.className)}>{status.text}</p>
 
-                    <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3">
+                    <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-3">
                       <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
                         <Switch
                           size="sm"
@@ -668,8 +753,13 @@ export default function McpServersPage() {
                                   size="icon"
                                   className="size-7 text-muted-foreground hover:text-foreground"
                                   onClick={() => handleTest(server)}
+                                  disabled={testingId !== null}
                                 >
-                                  <Wifi className="size-3.5" />
+                                  {testingId === server.id ? (
+                                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                                  ) : (
+                                    <Wifi className="size-3.5" />
+                                  )}
                                 </Button>
                               }
                             />
@@ -778,6 +868,74 @@ export default function McpServersPage() {
                 )
               })}
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Showing {pageStart === pageEnd ? pageStart : `${pageStart}–${pageEnd}`} of {total}
+                </p>
+                <Pagination className="justify-center sm:justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        className={cn(page === 1 && 'pointer-events-none opacity-50')}
+                      />
+                    </PaginationItem>
+                    {page > 3 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((n) => Math.abs(n - page) <= 2)
+                      .map((n) => (
+                        <PaginationItem key={n}>
+                          <PaginationLink isActive={n === page} onClick={() => setPage(n)}>
+                            {n}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                    {page < totalPages - 2 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        className={cn(page === totalPages && 'pointer-events-none opacity-50')}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+
+            <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Delete {bulk.selectedCount} MCP server{bulk.selectedCount !== 1 ? 's' : ''}?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently remove the selected servers and unlink them from all agents. This
+                    action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={bulkDeleteMutation.isPending}
+                    onClick={() => bulkDeleteMutation.mutate(Array.from(bulk.selectedIds))}
+                  >
+                    {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete ${bulk.selectedCount}`}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            </>
           )}
         </>
       )}
@@ -838,6 +996,9 @@ export default function McpServersPage() {
                     <div className="space-y-2">
                       <Label>Custom headers (one per line, Name: value)</Label>
                       <Input value={headersText} onChange={(e) => setHeadersText(e.target.value)} className="font-mono" />
+                      {headerHint && (
+                        <p className="text-xs text-amber-500">{headerHint}</p>
+                      )}
                     </div>
                   </>
                 )}
@@ -858,149 +1019,8 @@ export default function McpServersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Test Connection Modal */}
-      <Dialog open={testModal.open} onOpenChange={(o) => setTestModal((prev) => ({ ...prev, open: o }))}>
-        <DialogContent className="sm:max-w-[70vw] sm:max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Test Connection</DialogTitle>
-            <DialogDescription>
-              Testing connection to <span className="font-medium">{testModal.server?.name}</span>
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2 flex-1">
-            {testing ? (
-              <div className="flex flex-col items-center gap-3 py-6">
-                <Loader2 className="size-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Connecting to server...</p>
-              </div>
-            ) : testResult ? (
-              <>
-                <div className={cn(
-                  'flex items-center gap-3 rounded-lg border p-4',
-                  testResult.connected
-                    ? 'border-success/30 bg-success/5'
-                    : testResult.needsAuth
-                      ? 'border-amber-500/30 bg-amber-500/5'
-                      : 'border-destructive/30 bg-destructive/5'
-                )}>
-                  {testResult.connected ? (
-                    <CheckCircle2 className="size-5 text-success shrink-0" />
-                  ) : (
-                    <XCircle className={cn('size-5 shrink-0', testResult.needsAuth ? 'text-amber-500' : 'text-destructive')} />
-                  )}
-                  <div className="min-w-0">
-                    <p className={cn(
-                      'text-sm font-medium',
-                      testResult.connected ? 'text-success' : testResult.needsAuth ? 'text-amber-500' : 'text-destructive'
-                    )}>
-                      {testResult.connected ? 'Connected Successfully' : testResult.needsAuth ? 'OAuth Required' : 'Connection Failed'}
-                    </p>
-                    {testResult.error && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{testResult.error}</p>
-                    )}
-                    {testResult.needsAuth && testResult.redirectUrl && (
-                      <Button
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => { window.location.href = testResult.redirectUrl! }}
-                      >
-                        <Link2 className="size-3.5 mr-1.5" />
-                        Connect with OAuth
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {testResult.connected && testResult.tools && testResult.tools.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Available Tools
-                      </p>
-                      <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs font-medium">
-                        {testResult.tools.length}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
-                      {testResult.tools.map((tool) => (
-                        <ToolDocCard key={tool.name} tool={tool} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {testResult.connected && testResult.tools && testResult.tools.length === 0 && (
-                  <div className="rounded-lg border border-border p-4 text-center">
-                    <p className="text-sm text-muted-foreground">Connected but no tools exposed.</p>
-                  </div>
-                )}
-              </>
-            ) : null}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTestModal({ open: false, server: null })}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <McpHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
     </PageContainer>
-  )
-}
-
-function ToolDocCard({ tool }: { tool: NonNullable<TestResult['tools']>[number] }) {
-  const [open, setOpen] = useState(false)
-  const schema = tool.inputSchema as { properties?: Record<string, { type?: string; description?: string }>; required?: string[] } | undefined
-  const props = schema?.properties ?? {}
-  const required = schema?.required ?? []
-  const entries = Object.entries(props)
-
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden hover:border-primary/40 transition-colors">
-      <div className="p-3.5">
-        <div className="flex items-center gap-2.5 mb-2">
-          <div className="rounded-md bg-primary/10 p-1.5 shrink-0">
-            <Plug className="size-4 text-primary" />
-          </div>
-          <code className="text-sm font-semibold break-all leading-snug">{tool.name}</code>
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed text-pretty">
-          {tool.description || 'No description provided.'}
-        </p>
-      </div>
-      {entries.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="w-full flex items-center justify-between gap-2 border-t border-border px-3.5 py-2 text-left text-xs font-medium text-muted-foreground hover:bg-muted/30 transition-colors"
-        >
-          <span className="flex items-center gap-1.5">
-            <ChevronDown className={cn('size-3.5 transition-transform', open && 'rotate-180')} />
-            Parameters
-          </span>
-          <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px]">{entries.length}</span>
-        </button>
-      )}
-      {open && entries.length > 0 && (
-        <div className="divide-y divide-border border-t border-border">
-          {entries.map(([key, prop]) => (
-            <div key={key} className="px-3.5 py-2 flex items-start gap-2">
-              <code className="text-xs font-medium text-primary whitespace-nowrap shrink-0">{key}</code>
-              {required.includes(key) && (
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">required</Badge>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {prop.type ? <span className="text-muted-foreground/60">({prop.type}) </span> : null}
-                {prop.description || '—'}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   )
 }

@@ -8,6 +8,13 @@ import { z } from 'zod'
 
 const orgParamsSchema = z.object({ orgId: z.string().uuid() })
 const mcpParamsSchema = z.object({ id: z.string().uuid() })
+const listQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(50).optional(),
+  search: z.string().max(100).optional(),
+  type: z.enum(['stdio', 'streamable-http']).optional(),
+  status: z.enum(['enabled', 'disabled', 'connected', 'failed']).optional(),
+})
 
 export default async function mcpRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/mcp-servers — Create MCP server
@@ -16,26 +23,59 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const body = request.body as z.infer<typeof createMcpServerSchema>
-    const server = await prisma.mcpServer.create({
-      data: {
-        ...body,
-        args: body.args as any,
-        headers: (body.headers ?? {}) as any,
-        organizationId: orgId,
-      },
-    })
-    return { data: server }
+    try {
+      const server = await prisma.mcpServer.create({
+        data: {
+          ...body,
+          args: body.args as any,
+          headers: (body.headers ?? {}) as any,
+          organizationId: orgId,
+        },
+      })
+      return { data: server }
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new AppError(409, 'An MCP server with this name already exists in this organization')
+      }
+      throw err
+    }
   })
 
   // GET /api/organizations/:orgId/mcp-servers — List MCP servers
+  // Pass `page` to get a paginated envelope { items, total, page, pageSize, totalPages };
+  // without it, returns a plain array (agent pickers etc.).
   fastify.get('/organizations/:orgId/mcp-servers', {
-    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema })],
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema, query: listQuerySchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    const servers = await prisma.mcpServer.findMany({
-      where: { organizationId: orgId },
-      orderBy: { createdAt: 'desc' },
-    })
+    const { page, pageSize, search, type, status } = request.query as z.infer<typeof listQuerySchema>
+
+    const where: Prisma.McpServerWhereInput = { organizationId: orgId }
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { url: { contains: search, mode: 'insensitive' } },
+        { command: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+    if (type) where.type = type
+    if (status === 'enabled') where.enabled = true
+    else if (status === 'disabled') where.enabled = false
+    else if (status === 'connected') where.lastTestResult = { path: ['connected'], equals: true }
+    else if (status === 'failed') where.lastTestResult = { path: ['connected'], equals: false }
+
+    const orderBy = { createdAt: 'desc' as const }
+
+    if (page) {
+      const size = pageSize ?? 12
+      const [items, total] = await prisma.$transaction([
+        prisma.mcpServer.findMany({ where, orderBy, skip: (page - 1) * size, take: size }),
+        prisma.mcpServer.count({ where }),
+      ])
+      return { data: { items, total, page, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) } }
+    }
+
+    const servers = await prisma.mcpServer.findMany({ where, orderBy })
     return { data: servers }
   })
 
@@ -59,16 +99,23 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
     if (!existing) throw new AppError(404, 'MCP server not found')
     await fastify.ensureAdmin(request.userId!, existing.organizationId)
     const body = request.body as z.infer<typeof updateMcpServerSchema>
-    const server = await prisma.mcpServer.update({
-      where: { id },
-      data: {
-        ...body,
-        args: body.args !== undefined ? (body.args as any) : undefined,
-        headers: body.headers !== undefined ? (body.headers as any) : undefined,
-        oauthState: body.authType !== 'oauth' ? Prisma.DbNull : undefined,
-      },
-    })
-    return { data: server }
+    try {
+      const server = await prisma.mcpServer.update({
+        where: { id },
+        data: {
+          ...body,
+          args: body.args !== undefined ? (body.args as any) : undefined,
+          headers: body.headers !== undefined ? (body.headers as any) : undefined,
+          oauthState: body.authType !== 'oauth' ? Prisma.DbNull : undefined,
+        },
+      })
+      return { data: server }
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new AppError(409, 'An MCP server with this name already exists in this organization')
+      }
+      throw err
+    }
   })
 
   // DELETE /api/mcp-servers/:id — Delete MCP server

@@ -21,6 +21,20 @@ MCP (Model Context Protocol) connects AI agents to external tools and data sourc
 - **`header`** — static bearer token sent as `Authorization: Bearer <apiKey>` (plus custom headers)
 - **`oauth`** — full OAuth 2.1 authorization-code flow with PKCE + dynamic client registration
 
+### Header-auth provider header names
+
+Some providers don't accept a Bearer token — they require a specific header name. Use the **Custom headers** field for these (the API Key field only sends Bearer):
+
+| Template | Header to use |
+|----------|---------------|
+| Brave Search | `X-Subscription-Token: YOUR_KEY` |
+| Exa | `x-api-key: YOUR_KEY` |
+| Tavily | `tavily-api-key: YOUR_KEY` |
+| Firecrawl | `Authorization: Bearer YOUR_KEY` (API Key field works) |
+| Supabase | `Authorization: Bearer YOUR_KEY` (API Key field works) |
+
+The add/edit form shows this hint automatically when the matching template is selected.
+
 ---
 
 ## Configuration

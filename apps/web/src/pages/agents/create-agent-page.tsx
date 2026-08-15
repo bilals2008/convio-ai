@@ -91,19 +91,6 @@ export default function CreateAgentPage() {
 
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!templateParam || !orgId || !models.length) return
-    let cancelled = false
-    agentsApi.templates(orgId).then((res) => {
-      if (cancelled) return
-      const all = (res.data.data || []) as AgentTemplate[]
-      const found = all.find((t) => t.id === templateParam)
-      if (found) applyTemplate(found)
-    }).catch(() => {})
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateParam, orgId, models.length])
-
   const applyTemplate = (template: AgentTemplate) => {
     setActiveTemplate(template.id)
     // Prefill the form with the template's suggested settings. The user can
@@ -127,6 +114,19 @@ export default function CreateAgentPage() {
       )
     }
   }
+
+  useEffect(() => {
+    if (!templateParam || !orgId || !models.length) return
+    let cancelled = false
+    agentsApi.templates(orgId).then((res) => {
+      if (cancelled) return
+      const all = (res.data.data || []) as AgentTemplate[]
+      const found = all.find((t) => t.id === templateParam)
+      if (found) applyTemplate(found)
+    }).catch(() => {})
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateParam, orgId, models.length])
 
   const applyAiDraft = (draft: AgentDraft) => {
     form.setValue('name', draft.name, { shouldValidate: true })

@@ -40,7 +40,13 @@ function ProviderIcon({ provider }: { provider: string }) {
   const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
   return (
     <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', categoryColors[provider] || 'bg-muted text-muted-foreground')}>
-      <img src={`${CDN}/${provider}/default.svg`} alt={provider} className="size-5" loading="lazy" />
+      <img
+        src={`${CDN}/${provider}/default.svg`}
+        alt={provider}
+        className="size-5"
+        loading="lazy"
+        onError={(e) => { e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/mcp-model-context-protocol/default.svg'; e.currentTarget.onerror = null }}
+      />
     </span>
   )
 }
@@ -52,7 +58,7 @@ export default function McpTemplatesPage() {
   const [helpOpen, setHelpOpen] = useState(false)
 
   const filtered = useMemo(() => {
-    let result = mcpServerTemplates
+    let result = mcpServerTemplates.filter((t) => !t.comingSoon)
     if (activeCategory !== 'all') {
       result = result.filter((t) => t.category === activeCategory)
     }
@@ -162,17 +168,28 @@ export default function McpTemplatesPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
-                <Badge variant="outline" className="text-[10px]">
+                <Badge className={cn('text-[10px]', template.type === 'stdio'
+                  ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                  : 'bg-violet-500/10 text-violet-500 border-violet-500/20'
+                )}>
                   {template.type === 'stdio' ? 'Stdio' : 'Streamable HTTP'}
                 </Badge>
-                <Badge variant="outline" className="text-[10px]">
+                <Badge className={cn('text-[10px]', template.authType === 'oauth'
+                  ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                  : template.authType === 'header'
+                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                    : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                )}>
                   {template.authType === 'oauth' ? (
                     <span className="flex items-center gap-1"><ShieldCheck className="size-3" /> OAuth</span>
                   ) : template.authType === 'header' ? (
                     <span className="flex items-center gap-1"><KeyRound className="size-3" /> API Key</span>
                   ) : (
-                    'No auth'
+                    'Open'
                   )}
+                </Badge>
+                <Badge className={cn('text-[10px]', categoryColors[template.category])}>
+                  {categories.find((c) => c.id === template.category)?.label}
                 </Badge>
               </div>
 
@@ -189,6 +206,23 @@ export default function McpTemplatesPage() {
           ))}
         </div>
       )}
+
+      {/* Coming soon note */}
+      {(() => {
+        const count = mcpServerTemplates.filter((t) => t.comingSoon).length
+        if (count === 0) return null
+        return (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-card px-6 py-8 text-center">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+              <LayoutTemplate className="size-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium">More templates on the way</p>
+            <p className="text-xs text-muted-foreground">
+              {count} more are being prepared — Stripe, Shopify, Sentry, Supabase and more.
+            </p>
+          </div>
+        )
+      })()}
 
       <McpHelpModal open={helpOpen} onOpenChange={setHelpOpen} />
     </PageContainer>
