@@ -35,8 +35,8 @@ export function PasswordChangeCard() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault()
 
     if (!validate()) return
 
@@ -67,7 +67,14 @@ export function PasswordChangeCard() {
         <CardDescription>Update your password to keep your account secure.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit}>
+        <div
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              handleSubmit()
+            }
+          }}
+        >
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="current-password">Current Password</FieldLabel>
@@ -107,13 +114,13 @@ export function PasswordChangeCard() {
             </Field>
 
             <div>
-              <Button type="submit" disabled={updatePassword.isPending}>
+              <Button type="button" onClick={() => handleSubmit()} disabled={updatePassword.isPending}>
                 {updatePassword.isPending && <Loader2 className="size-3.5 animate-spin" />}
                 Update Password
               </Button>
             </div>
           </FieldGroup>
-        </form>
+        </div>
       </CardContent>
     </Card>
   )

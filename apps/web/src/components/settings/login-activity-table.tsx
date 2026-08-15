@@ -3,12 +3,13 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   flexRender,
   type SortingState,
   type ColumnDef,
   type Column,
 } from '@/lib/table'
-import { ArrowUpDown, ArrowDown, ArrowUp, Monitor, Smartphone, Tablet, Globe } from 'lucide-react'
+import { ArrowUpDown, ArrowDown, ArrowUp, Monitor, Smartphone, Tablet, Globe, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -69,6 +70,7 @@ function DataTableColumnHeader<TData, TValue>({
   return (
     <div className={cn('flex items-center gap-1', className)}>
       <Button
+        type="button"
         variant="ghost"
         size="sm"
         className="h-8 px-1.5 -ml-1.5 font-medium text-muted-foreground hover:text-foreground"
@@ -90,12 +92,14 @@ function DataTableColumnHeader<TData, TValue>({
 const statusVariantMap: Record<string, 'active' | 'failed' | 'secondary'> = {
   success: 'active',
   failed: 'failed',
-  suspicious: 'pending',
+  suspicious: 'secondary',
 }
 
 export function LoginActivityTable() {
   const [sorting, setSorting] = useState<SortingState>([])
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
   const { data: activities = [], isError } = useLoginActivity()
+  const showPagination = activities.length > 10
 
   const columns = useMemo<ColumnDef<LoginActivityItem, unknown>[]>(() => [
     {
@@ -151,10 +155,12 @@ export function LoginActivityTable() {
   const table = useReactTable({
     data: activities,
     columns,
-    state: { sorting },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   })
 
   return (
@@ -218,9 +224,46 @@ export function LoginActivityTable() {
                 </TableBody>
               </Table>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Showing {table.getRowModel().rows.length} session{table.getRowModel().rows.length !== 1 ? 's' : ''}
-            </p>
+            {showPagination && (
+              <div className="flex items-center justify-between border-t border-border px-4 py-3">
+                <p className="text-xs text-muted-foreground">
+                  Showing {table.getRowModel().rows.length} of {activities.length} sessions
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                    className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-transparent text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  {table.getPageOptions().map((page) => (
+                    <button
+                      type="button"
+                      key={page}
+                      onClick={() => table.setPageIndex(page)}
+                      className={cn(
+                        'inline-flex size-8 items-center justify-center rounded-md border border-border bg-transparent text-sm font-medium transition-colors hover:bg-muted',
+                        table.getState().pagination.pageIndex === page
+                          ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      {page + 1}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                    className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-transparent text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </CardContent>

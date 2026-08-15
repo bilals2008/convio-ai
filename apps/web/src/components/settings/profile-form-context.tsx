@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect } from 'react'
 import { useForm, type UseFormReturn } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -38,15 +38,26 @@ export function useCreateProfileForm() {
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
-    values: {
+    defaultValues: {
+      name: '',
+      displayName: '',
+      avatar: '',
+      username: '',
+      timezone: 'Asia/Karachi',
+      language: 'English',
+    },
+  })
+
+  useEffect(() => {
+    form.reset({
       name: profile?.name ?? user?.name ?? '',
       displayName: profile?.name ?? user?.name ?? '',
       avatar: profile?.avatar ?? user?.avatar ?? '',
       username: profile?.name?.toLowerCase().replace(/\s+/g, '_') ?? user?.email?.split('@')[0] ?? '',
       timezone: 'Asia/Karachi',
       language: 'English',
-    },
-  })
+    })
+  }, [profile, user, form])
 
   const onSubmit = (data: ProfileFormValues) => {
     updateProfile.mutate(
