@@ -6,6 +6,8 @@ import { Header } from './header'
 import { SidebarContext } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
+import { useOnboarding } from '@/lib/hooks/use-onboarding'
+import { WelcomeModal } from '@/components/onboarding/welcome-modal'
 import { ProClaimModal } from '@/components/landing/pro-claim-modal'
 import { NetworkStatusBanner } from '@/components/shared/network-status-banner'
 import { Button } from '@/components/ui/button'
@@ -13,6 +15,7 @@ import { Button } from '@/components/ui/button'
 export function DashboardLayout() {
   const { isAuthenticated, isLoading } = useAuth()
   const { isCreating, createError, retryCreate } = useOrg()
+  const { data: onboarding, isLoading: onboardingLoading } = useOnboarding()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -78,6 +81,10 @@ export function DashboardLayout() {
           </main>
         </div>
         <ProClaimModal />
+        <WelcomeModal
+          open={!isCreating && !!onboarding && onboarding.status === 'not_started'}
+          loading={onboardingLoading}
+        />
       </div>
     </SidebarContext.Provider>
   )
