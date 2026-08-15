@@ -41,11 +41,12 @@ async function ensureRoleAtLeast(userId: string, orgId: string, minimumRole: Mem
 }
 
 // preHandler guards resolve the org from `:orgId` params or `orgId` query.
+// Some org-scoped routes (organizations module) name the param `:id` — fall back to it.
 // Entity-scoped routes (e.g. /agents/:id -> org) keep inline getMembership/ensure* calls.
 function resolveOrgId(request: FastifyRequest): string {
-  const params = request.params as { orgId?: string }
+  const params = request.params as { orgId?: string; id?: string }
   const query = request.query as { orgId?: string }
-  const orgId = params.orgId ?? query.orgId
+  const orgId = params.orgId ?? query.orgId ?? params.id
   if (!orgId) throw new AppError(400, 'Missing orgId parameter', 'BAD_REQUEST')
   return orgId
 }
