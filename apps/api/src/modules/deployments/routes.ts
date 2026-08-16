@@ -1061,11 +1061,6 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
   // Discord's Interactions Endpoint URL points here once. This endpoint looks up
   // the deployment by guild_id so users don't have to configure per-deployment URLs.
   fastify.post('/discord/interactions', async (request, reply) => {
-    const publicKey = fastify.config.DISCORD_PUBLIC_KEY
-    if (!publicKey) {
-      return reply.code(503).send({ error: 'Discord integration not configured' })
-    }
-
     const signature = request.headers['x-signature-ed25519'] as string | undefined
     const timestamp = request.headers['x-signature-timestamp'] as string | undefined
     const rawBody = (request as unknown as { rawBody?: string }).rawBody ?? ''
@@ -1074,15 +1069,35 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       return reply.code(401).send({ error: 'Missing signature headers' })
     }
 
-    if (!verifyDiscordSignature(publicKey, signature, timestamp, rawBody)) {
-      return reply.code(401).send({ error: 'Invalid request signature' })
-    }
-
     const interaction = request.body as DiscordInteraction
 
     // PING — always respond with PONG
     if (interaction.type === 1) {
       return reply.code(200).send({ type: 1 })
+    }
+
+    // Resolve the public key for THIS bot. Prefer the deployment's own key
+    // (BYOK — user's own Discord app), fall back to the platform one-click key.
+    const deployment = await prisma.deployment.findFirst({
+      where: {
+        channel: 'discord',
+        OR: [
+          { config: { path: ['applicationId'], equals: interaction.application_id } },
+          { config: { path: ['guildId'], equals: interaction.guild_id } },
+        ],
+      },
+      select: { config: true },
+    })
+    const publicKey =
+      ((deployment?.config as Record<string, unknown>)?.publicKey as string) ||
+      fastify.config.DISCORD_PUBLIC_KEY
+
+    if (!publicKey) {
+      return reply.code(503).send({ error: 'Discord integration not configured' })
+    }
+
+    if (!verifyDiscordSignature(publicKey, signature, timestamp, rawBody)) {
+      return reply.code(401).send({ error: 'Invalid request signature' })
     }
 
     // ACK immediately (deferred) to avoid Discord's 3-second timeout.
@@ -1093,13 +1108,21 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
 
   async function processInteractionAsync(interaction: DiscordInteraction) {
     try {
-      const guildId = interaction.guild_id
-      if (!guildId) return
+      let deployment = null
 
-      const deployment = await prisma.deployment.findFirst({
-        where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
-        include: { agent: true },
-      })
+      if (interaction.guild_id) {
+        deployment = await prisma.deployment.findFirst({
+          where: { channel: 'discord', config: { path: ['guildId'], equals: interaction.guild_id } },
+          include: { agent: true },
+        })
+      }
+
+      if (!deployment && interaction.application_id) {
+        deployment = await prisma.deployment.findFirst({
+          where: { channel: 'discord', config: { path: ['applicationId'], equals: interaction.application_id } },
+          include: { agent: true },
+        })
+      }
 
       if (!deployment) return
 

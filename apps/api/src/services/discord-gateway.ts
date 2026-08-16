@@ -244,7 +244,7 @@ function startGateway(botToken: string) {
 
   gateway.on('close', (code, reason) => {
     console.log(`[Discord Gateway] Closed (${code}): ${reason}`)
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) reconnect(botToken)
+    reconnect(botToken)
   })
 
   gateway.on('error', (err) => {
@@ -276,10 +276,7 @@ function stopGateway() {
 function reconnect(botToken: string) {
   stopGateway()
   reconnectAttempts++
-  if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
-    console.log(`[Discord Gateway] Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`)
-    return
-  }
+  if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) reconnectAttempts = 0
   const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempts - 1), RECONNECT_MAX_DELAY)
   console.log(`[Discord Gateway] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`)
   reconnectTimer = setTimeout(() => startGateway(botToken), delay)
