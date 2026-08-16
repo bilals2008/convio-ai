@@ -26,6 +26,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpRight,
+  LayoutTemplate,
 } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -550,10 +551,16 @@ export default function AgentsListPage() {
               }
             />
           ) : (
-            <Button onClick={() => navigate('/agents/new')} className="shrink-0">
-              <Plus className="size-4" />
-              Create Agent
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => navigate('/agents/templates')} className="shrink-0">
+                <LayoutTemplate className="size-4" />
+                Templates
+              </Button>
+              <Button onClick={() => navigate('/agents/new')} className="shrink-0">
+                <Plus className="size-4" />
+                Create Agent
+              </Button>
+            </>
           )}
         </div>
       </div>

@@ -52,7 +52,6 @@ function useSettingsItems() {
     { icon: Building2, label: 'Organization', href: '/settings/organization', adminOnly: false },
     { icon: User, label: 'Profile', href: '/settings/profile', adminOnly: false },
     { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
-    { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', adminOnly: true, badge: 'Beta' },
     { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
     { icon: Bell, label: 'Notifications', href: '/settings/notifications', adminOnly: false, badge: unread?.unread ? unread.unread : undefined, badgeVariant: 'default' },
      { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
@@ -162,6 +161,7 @@ export function Sidebar() {
           <SidebarGroup label="AI">
             <SidebarItem icon={Brain} label="Agents" href="/agents" />
             <SidebarItem icon={BookOpen} label="Knowledge Base" href="/knowledge" />
+            <SidebarItem icon={Plug} label="MCP Servers" href="/mcp-servers" badge="Beta" />
           </SidebarGroup>
 
           <SidebarGroup label="Channels">
@@ -362,7 +362,6 @@ function getMobileNavGroups(role?: string) {
     { icon: User, label: 'Profile', href: '/settings/profile' },
     ...(isAdmin ? [
       { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
-      { icon: Plug, label: 'MCP Servers', href: '/settings/mcp-servers', badge: 'Beta' },
        { icon: Database, label: 'Data', href: '/settings/data' },
        { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
      ] : []),
@@ -382,6 +381,7 @@ function getMobileNavGroups(role?: string) {
       items: [
         { icon: Brain, label: 'Agents', href: '/agents' },
         { icon: BookOpen, label: 'Knowledge Base', href: '/knowledge' },
+        { icon: Plug, label: 'MCP Servers', href: '/mcp-servers', badge: 'Beta' },
       ],
     },
     {

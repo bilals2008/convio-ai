@@ -156,11 +156,6 @@ export default function SupportedProvidersPage() {
         <li><strong>Pricing:</strong> Pass-through pricing — you pay the provider's rate plus a small fee.</li>
       </ul>
 
-      <h2 id="kie">KIE (Custom Provider)</h2>
-      <p>
-        KIE is Convio's custom provider integration. Use it to connect any OpenAI-compatible API endpoint — including proprietary or internal model servers. Configure the base URL and API key, and Convio routes requests to your endpoint.
-      </p>
-
       <h2 id="local">Local / Self-hosted</h2>
       <p>
         Run models on your own infrastructure for full data control. Convio supports any OpenAI-compatible endpoint, including Ollama, vLLM, and llama.cpp servers.

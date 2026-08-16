@@ -3,7 +3,8 @@ import { calculate } from './calculator.js'
 import { fetchUrl, type UrlFetchResult } from './url-fetcher.js'
 import { getCurrentTime } from './current-time.js'
 import { createDbToolHandler } from './db-tool-executor.js'
-import { McpClient } from '../mcp/index.js'
+import type { JsonValue } from '@prisma/client/runtime/client'
+import { clientFromServer } from '../mcp/factory.js'
 
 export interface ToolHandler<T = unknown> {
   execute(args: Record<string, unknown>): Promise<T> | T
@@ -120,7 +121,18 @@ export function listTools(): ToolHandler['schema'][] {
 interface AgentWithTools {
   widgetConfig: unknown
   tools: Array<{ tool: { id: string; name: string; description: string; type: string; config: unknown; organizationId: string } }>
-  mcpServers?: Array<{ mcpServer: { id: string; name: string; type: string; command: string | null; args: unknown; url: string | null; apiKey: string | null } }>
+  mcpServers?: Array<{ mcpServer: {
+    id: string
+    name: string
+    type: string
+    command: string | null
+    args: JsonValue
+    url: string | null
+    authType: string | null
+    headers: JsonValue
+    apiKey: string | null
+    enabled: boolean
+  } }>
 }
 
 export async function loadAgentToolHandlers(
@@ -179,16 +191,9 @@ export async function loadAgentToolHandlers(
   if (agent.mcpServers) {
     for (const link of agent.mcpServers) {
       const server = link.mcpServer
+      if (!server.enabled) continue
       try {
-        const client = new McpClient({
-          id: server.id,
-          name: server.name,
-          type: server.type,
-          command: server.command,
-          args: server.args as string[],
-          url: server.url,
-          apiKey: server.apiKey,
-        })
+        const client = clientFromServer(server)
         const mcpTools = await client.listTools()
         for (const tool of mcpTools) {
           handlers.push({
@@ -200,15 +205,7 @@ export async function loadAgentToolHandlers(
             async execute(args) {
               try {
                 // Create a fresh client for execution (the connection may have been closed)
-                const execClient = new McpClient({
-                  id: server.id,
-                  name: server.name,
-                  type: server.type,
-                  command: server.command,
-                  args: server.args as string[],
-                  url: server.url,
-                  apiKey: server.apiKey,
-                })
+                const execClient = clientFromServer(server)
                 const result = await execClient.callTool(tool.name, args)
                 await execClient.disconnect().catch(() => {})
                 return result

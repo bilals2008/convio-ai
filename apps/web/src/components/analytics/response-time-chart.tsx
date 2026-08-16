@@ -31,7 +31,7 @@ export function ResponseTimeChart({ data, loading }: ResponseTimeChartProps) {
         <div className="grid flex-1 gap-1">
           <CardTitle className="text-base">Response Time Trend</CardTitle>
         </div>
-        <div className="text-sm text-muted-foreground">Avg seconds per response</div>
+        <div className="text-sm text-muted-foreground hidden sm:block">Avg seconds per response</div>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (

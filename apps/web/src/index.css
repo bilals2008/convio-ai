@@ -180,6 +180,15 @@
   }
 }
 
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
 @keyframes widget-enter {
   from {
     opacity: 0;

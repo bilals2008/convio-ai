@@ -18,7 +18,9 @@ export function getFriendlyErrorMessage(error: unknown): string {
   const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string; code?: string }
 
   if (err.response?.status) {
-    return STATUS_MESSAGES[err.response.status] || err.response.data?.message || DEFAULT_ERROR
+    const status = err.response.status
+    if (status !== 401 && err.response.data?.message) return err.response.data.message
+    return STATUS_MESSAGES[status] || err.response.data?.message || DEFAULT_ERROR
   }
 
   if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {

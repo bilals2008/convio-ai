@@ -41,7 +41,7 @@ export function ChannelChart({ data, loading }: ChannelChartProps) {
             <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 mb-3">
               <MessageSquare className="size-5 text-primary" />
             </div>
-            <p className="text-sm font-medium text-foreground">No conversations yet</p>
+            <p className="text-sm font-medium text-foreground">No data found</p>
             <p className="text-xs text-muted-foreground mt-1">Data will appear here once your agents start receiving conversations.</p>
           </div>
         ) : (

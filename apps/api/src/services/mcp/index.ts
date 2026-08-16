@@ -1,6 +1,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
+import type { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js'
 
 export interface McpServerConfig {
   id: string
@@ -9,7 +11,10 @@ export interface McpServerConfig {
   command?: string | null
   args?: string[] | unknown
   url?: string | null
+  authType?: string | null
+  headers?: Record<string, string> | unknown
   apiKey?: string | null
+  authProvider?: OAuthClientProvider
 }
 
 interface McpTool {
@@ -18,11 +23,29 @@ interface McpTool {
   inputSchema?: Record<string, unknown>
 }
 
+const BLOCKED_HEADERS = ['authorization', 'mcp-session-id', 'content-type', 'host', 'content-length', 'connection']
+
+function buildHttpHeaders(config: McpServerConfig): Record<string, string> {
+  const headers: Record<string, string> = {}
+  if (config.headers && typeof config.headers === 'object') {
+    for (const [k, v] of Object.entries(config.headers as Record<string, string>)) {
+      if (!k || !v) continue
+      if (BLOCKED_HEADERS.includes(k.toLowerCase())) continue
+      headers[k] = v
+    }
+  }
+  if (config.authType === 'header' && config.apiKey) {
+    headers['Authorization'] = `Bearer ${config.apiKey}`
+  }
+  return headers
+}
+
 export class McpClient {
   private client: Client
   private config: McpServerConfig
   private transport: ReturnType<McpClient['createTransport']> | null = null
   private connected = false
+  private pendingAuthUrl?: string
 
   constructor(config: McpServerConfig) {
     this.config = config
@@ -32,7 +55,7 @@ export class McpClient {
     )
   }
 
-  private createTransport() {
+  createTransport() {
     if (this.config.type === 'stdio' && this.config.command) {
       const args = Array.isArray(this.config.args)
         ? this.config.args.map(String)
@@ -44,17 +67,51 @@ export class McpClient {
     }
 
     if ((this.config.type === 'sse' || this.config.type === 'streamable-http') && this.config.url) {
-      return new StreamableHTTPClientTransport(new URL(this.config.url))
+      const headers = buildHttpHeaders(this.config)
+      return new StreamableHTTPClientTransport(new URL(this.config.url), {
+        authProvider: this.config.authProvider,
+        requestInit: Object.keys(headers).length ? { headers } : undefined,
+      })
     }
 
     throw new Error(`Unsupported MCP server type: ${this.config.type}`)
   }
 
+  /**
+   * The authorization URL from the last OAuth redirect, when connect() threw
+   * `UnauthorizedError` because the user must authorize.
+   */
+  get authorizationUrl(): string | undefined {
+    return this.pendingAuthUrl
+  }
+
   async connect(): Promise<void> {
     if (this.connected) return
     this.transport = this.createTransport()
-    await this.client.connect(this.transport)
+    try {
+      await this.client.connect(this.transport)
+    } catch (err) {
+      if (err instanceof UnauthorizedError && this.config.authProvider) {
+        this.pendingAuthUrl = (this.config.authProvider as { pendingAuthUrl?: string }).pendingAuthUrl
+        await this.disconnect().catch(() => {})
+        throw err
+      }
+      throw err
+    }
     this.connected = true
+  }
+
+  /**
+   * Complete an OAuth authorization-code exchange on the active transport.
+   * Call after the user returns from the provider's authorize page.
+   */
+  async finishAuth(authorizationCode: string): Promise<void> {
+    if (!this.transport) this.transport = this.createTransport()
+    const transport = this.transport as unknown as { finishAuth?: (code: string) => Promise<void> }
+    if (!transport?.finishAuth) {
+      throw new Error('OAuth is only supported on streamable HTTP transports')
+    }
+    await transport.finishAuth(authorizationCode)
   }
 
   async disconnect(): Promise<void> {

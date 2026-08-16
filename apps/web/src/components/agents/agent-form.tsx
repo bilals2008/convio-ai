@@ -181,7 +181,7 @@ export function AgentForm({ data, onChange, errors, disabled }: AgentFormProps) 
           <Label>MCP Servers (optional)</Label>
           <p className="text-xs text-muted-foreground mt-0.5">
             Link MCP servers to give this agent access to external tools. Configure servers in{' '}
-            <a href="/settings/mcp-servers" className="underline underline-offset-2 hover:text-foreground transition-colors">
+            <a href="/mcp-servers" className="underline underline-offset-2 hover:text-foreground transition-colors">
               MCP Servers
             </a>
             .

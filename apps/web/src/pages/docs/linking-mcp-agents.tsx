@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Link2, Eye, Shield, TestTube } from 'lucide-react'
+import { Link2, Shield, TestTube, Server } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout } from '@/components/docs'
 
 export default function LinkingMcpAgentsPage() {
@@ -11,27 +11,28 @@ export default function LinkingMcpAgentsPage() {
           { label: 'Linking MCP Servers to Agents' },
         ]}
         title="Linking MCP Servers to Agents"
-        description="Make MCP server tools available to your agents and control which tools each agent can access."
+        description="Attach a connected MCP server to your agents so their tools are available in conversations."
       />
 
-      <h2 id="making-tools-available">Making MCP Tools Available</h2>
+      <h2 id="making-tools-available">Attaching a Server to an Agent</h2>
       <p>
-        After connecting an MCP server, its tools appear in your agent's tool selection. Linking is straightforward:
+        Linking is done at the <strong>server level</strong> — once a server is connected (see{' '}
+        <Link to="/docs/connecting-mcp-server" className="text-primary hover:underline">Connecting an MCP Server</Link>),
+        attach it to the agents that should use its tools:
       </p>
       <ol>
-        <li>Open your agent's settings</li>
-        <li>In the <strong>Tools</strong> section, find the MCP tools area</li>
-        <li>Select the MCP server connection</li>
-        <li>Toggle on the specific tools you want this agent to use</li>
+        <li>Open the agent you want to configure</li>
+        <li>In the <strong>MCP Servers</strong> section of the agent form, toggle on the connected servers</li>
         <li>Save the agent</li>
       </ol>
       <p>
-        You don't have to expose all tools from a server. Pick only the ones relevant to each agent's role.
+        All tools from an attached server become available to that agent. There is no per-tool selection — the server's
+        full tool set is exposed.
       </p>
 
       <h2 id="tool-discovery">Tool Discovery</h2>
       <p>
-        Convio discovers tools from the MCP server automatically:
+        Convio discovers tools from the MCP server automatically and merges them into the agent's tool router:
       </p>
       <ul>
         <li><strong>Names:</strong> The tool's identifier as exposed by the server</li>
@@ -39,50 +40,47 @@ export default function LinkingMcpAgentsPage() {
         <li><strong>Parameters:</strong> The input schema the tool accepts</li>
       </ul>
       <p>
-        Tool names from MCP servers are namespaced to avoid conflicts with built-in or custom tools. A tool called <code>search</code> from a GitHub MCP server appears as <code>github.search</code> in Convio.
+        Tool names from MCP servers are namespaced to avoid conflicts with built-in or custom tools. A tool called{' '}
+        <code>search</code> from a GitHub MCP server appears as <code>github.search</code>.
       </p>
 
       <h2 id="permission-management">Permission Management</h2>
-      <p>
-        Each agent has independent permissions for MCP tools:
-      </p>
       <ul>
-        <li><strong>Per-agent control:</strong> Enable or disable specific MCP tools per agent</li>
-        <li><strong>Per-server control:</strong> Disconnect an MCP server to revoke all its tools from every agent</li>
-        <li><strong>No cross-agent leakage:</strong> An agent can only use tools you've explicitly enabled for it</li>
+        <li><strong>Per-agent control:</strong> Attach or detach a server per agent</li>
+        <li><strong>Per-server control:</strong> Disconnect or disable a server to remove its tools from every agent</li>
+        <li><strong>No cross-agent leakage:</strong> An agent can only use tools from servers you've attached to it</li>
       </ul>
 
       <DocCallout variant="tip" icon={Shield} title="Least privilege">
-        Only enable the MCP tools each agent actually needs. A support agent doesn't need database write access. A sales agent doesn't need file system tools. Grant the minimum required.
+        Only attach the servers each agent actually needs. A support agent doesn't need database write tools. A sales
+        agent doesn't need file system tools.
       </DocCallout>
 
       <h2 id="testing">Testing MCP Tool Integration</h2>
       <ol>
-        <li><strong>Verify discovery:</strong> After linking, check that the expected tools appear in the agent's tool list</li>
-        <li><strong>Playground test:</strong> Ask questions that should trigger each MCP tool</li>
-        <li><strong>Check tool calls:</strong> In the Playground trace, confirm the correct tool was called with valid parameters</li>
+        <li><strong>Verify discovery:</strong> After linking, confirm the server's tools are reachable via the Test Chat / agent chat</li>
+        <li><strong>Test chat:</strong> Ask a question that should trigger an MCP tool</li>
+        <li><strong>Check tool calls:</strong> In the trace, confirm the correct tool was called with valid parameters</li>
         <li><strong>Verify responses:</strong> Ensure the agent incorporates MCP tool results naturally</li>
         <li><strong>Error scenarios:</strong> Test what happens when the MCP server is unreachable mid-conversation</li>
       </ol>
 
       <DocCallout variant="warning" icon={TestTube} title="Monitor MCP usage">
-        MCP tools may call external services that have their own rate limits or costs. Monitor your MCP server logs alongside Convio's usage dashboard to track consumption.
+        MCP tools may call external services that have their own rate limits or costs. Monitor your MCP server logs
+        alongside Convio's usage dashboard.
       </DocCallout>
 
       <h2 id="updating">Updating MCP Links</h2>
-      <p>
-        Changes to MCP tool links take effect immediately:
-      </p>
       <ul>
-        <li>Enable a new tool — available on the next conversation turn</li>
-        <li>Disable a tool — immediately removed from the agent's capabilities</li>
-        <li>Disconnect an MCP server — all its tools are revoked across all agents</li>
+        <li>Attach a server — its tools are available on the next conversation</li>
+        <li>Detach a server — its tools are immediately removed from the agent</li>
+        <li>Disconnect a server — its tools are revoked across all agents</li>
       </ul>
 
       <h2 id="next-steps">Next Steps</h2>
       <ul>
         <li><Link to="/docs/mcp-security" className="text-primary hover:underline">MCP Security Best Practices</Link></li>
-        <li><Link to="/docs/connecting-mcp-server" className="text-primary hover:underline">Connecting an MCP Server</Link></li>
+        <li><Link to="/docs/mcp-server-types" className="text-primary hover:underline">MCP Server Types</Link></li>
       </ul>
     </DocContent>
   )

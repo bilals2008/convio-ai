@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -61,6 +61,8 @@ const DEFAULT_FORM_VALUES: CreateAgentValues = {
 
 export default function CreateAgentPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const templateParam = searchParams.get('template')
   const queryClient = useQueryClient()
   const { orgId } = useOrg()
   const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
@@ -112,6 +114,19 @@ export default function CreateAgentPage() {
       )
     }
   }
+
+  useEffect(() => {
+    if (!templateParam || !orgId || !models.length) return
+    let cancelled = false
+    agentsApi.templates(orgId).then((res) => {
+      if (cancelled) return
+      const all = (res.data.data || []) as AgentTemplate[]
+      const found = all.find((t) => t.id === templateParam)
+      if (found) applyTemplate(found)
+    }).catch(() => {})
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateParam, orgId, models.length])
 
   const applyAiDraft = (draft: AgentDraft) => {
     form.setValue('name', draft.name, { shouldValidate: true })
@@ -381,7 +396,7 @@ export default function CreateAgentPage() {
                   {!mcpServers || mcpServers.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
                       No MCP servers configured.{' '}
-                      <a href="/settings/mcp-servers" className="underline underline-offset-2 hover:text-foreground">Add one</a>.
+                      <a href="/mcp-servers" className="underline underline-offset-2 hover:text-foreground">Add one</a>.
                     </p>
                   ) : (
                     <div className="space-y-1">

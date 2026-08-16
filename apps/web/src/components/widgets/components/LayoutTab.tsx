@@ -60,7 +60,7 @@ export function LayoutTab({
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-2.5">
           <p className="text-xs font-medium text-foreground">Position</p>
-          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+          <div className="flex flex-wrap rounded-lg bg-muted/30 p-0.5" role="radiogroup">
             {(['bottom-right', 'bottom-left'] as const).map((pos) => (
               <button
                 key={pos}
@@ -83,7 +83,7 @@ export function LayoutTab({
 
         <div className="space-y-2.5">
           <p className="text-xs font-medium text-foreground">Height</p>
-          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+          <div className="flex flex-wrap rounded-lg bg-muted/30 p-0.5" role="radiogroup">
             {HEIGHT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -106,7 +106,7 @@ export function LayoutTab({
 
         <div className="space-y-2.5">
           <p className="text-xs font-medium text-foreground">Width</p>
-          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+          <div className="flex flex-wrap rounded-lg bg-muted/30 p-0.5" role="radiogroup">
             {WIDTH_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -129,7 +129,7 @@ export function LayoutTab({
 
         <div className="space-y-2.5">
           <p className="text-xs font-medium text-foreground">Launcher size</p>
-          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+          <div className="flex flex-wrap rounded-lg bg-muted/30 p-0.5" role="radiogroup">
             {LAUNCHER_SIZE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -152,7 +152,7 @@ export function LayoutTab({
 
         <div className="space-y-2.5">
           <p className="text-xs font-medium text-foreground">Corner radius</p>
-          <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+          <div className="flex flex-wrap rounded-lg bg-muted/30 p-0.5" role="radiogroup">
             {BORDER_RADIUS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}

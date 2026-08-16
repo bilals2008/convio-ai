@@ -45,6 +45,7 @@ import SignupPage from '@/pages/auth/signup-page'
 import ForgotPasswordPage from '@/pages/auth/forgot-password-page'
 import DashboardOverviewPage from '@/pages/dashboard/dashboard-overview-page'
 import AgentsListPage from '@/pages/agents/agents-list-page'
+import AgentTemplatesPage from '@/pages/agents/agent-templates-page'
 import CreateAgentPage from '@/pages/agents/create-agent-page'
 import AgentDetailPage from '@/pages/agents/agent-detail-page'
 import ConversationsListPage from '@/pages/conversations/conversations-list-page'
@@ -66,6 +67,8 @@ import ProfilePage from '@/pages/settings/profile-page'
 import BillingPage from '@/pages/settings/billing-page'
 import DataManagementPage from '@/pages/settings/data-management-page'
 import McpServersPage from '@/pages/settings/mcp-servers-page'
+import McpTemplatesPage from '@/pages/settings/mcp-templates-page'
+import { PageContainer } from '@/components/shared/page-container'
 import SettingsAuditLogsPage from '@/pages/settings/audit-logs-page'
 import NotificationPreferencesPage from '@/pages/settings/notification-preferences-page'
 import SupportTicketsPage from '@/pages/support/support-tickets-page'
@@ -547,8 +550,11 @@ export function App() {
             <Route path="/dashboard" element={<DashboardOverviewPage />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="/agents" element={<AgentsListPage />} />
+              <Route path="/agents/templates" element={<AgentTemplatesPage />} />
               <Route path="/agents/new" element={<CreateAgentPage />} />
               <Route path="/agents/:id/edit" element={<AgentDetailPage />} />
+              <Route path="/mcp-servers" element={<PageContainer><McpServersPage /></PageContainer>} />
+              <Route path="/mcp-servers/templates" element={<McpTemplatesPage />} />
               <Route path="/knowledge" element={<KnowledgeListPage />} />
               <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
               <Route path="/widgets" element={<WidgetsListPage />} />

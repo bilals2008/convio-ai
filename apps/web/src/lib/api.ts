@@ -242,7 +242,8 @@ export const billing = {
 }
 
 export const mcpServers = {
-  list: (orgId: string) => api.get(`/organizations/${orgId}/mcp-servers`),
+  list: (orgId: string, params?: { page?: number; pageSize?: number; search?: string; type?: string; status?: string }) =>
+    api.get(`/organizations/${orgId}/mcp-servers`, { params }),
   get: (id: string) => api.get(`/mcp-servers/${id}`),
   create: (orgId: string, data: Record<string, unknown>) =>
     api.post(`/organizations/${orgId}/mcp-servers`, data),
@@ -250,6 +251,9 @@ export const mcpServers = {
   delete: (id: string) => api.delete(`/mcp-servers/${id}`),
   test: (id: string) => api.post(`/mcp-servers/${id}/test`),
   clearTest: (id: string) => api.post(`/mcp-servers/${id}/clear-test`),
+  authorize: (id: string, force?: boolean) => api.post(`/mcp-servers/${id}/authorize`, force ? { force: true } : undefined),
+  disconnect: (id: string) => api.post(`/mcp-servers/${id}/disconnect`),
+  oauthStatus: (id: string) => api.get(`/mcp-servers/${id}/oauth-status`),
   listByAgent: (agentId: string) => api.get(`/agents/${agentId}/mcp-servers`),
   linkToAgent: (agentId: string, serverId: string) =>
     api.post(`/agents/${agentId}/mcp-servers/${serverId}`),

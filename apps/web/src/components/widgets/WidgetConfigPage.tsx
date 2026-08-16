@@ -181,7 +181,7 @@ export default function WidgetConfigPage() {
         <div className="flex-1 min-w-0">
           {/* Tabs */}
           <div className="mb-5">
-            <nav className="inline-flex items-center gap-0.5 rounded-xl bg-muted/30 p-1">
+            <nav className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl bg-muted/30 p-1">
               {TAB_ITEMS.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}

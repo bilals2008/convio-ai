@@ -41,7 +41,7 @@ export function ActivityChart({ data, loading }: ActivityChartProps) {
             <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/10 mb-3">
               <MessageSquare className="size-5 text-emerald-500" />
             </div>
-            <p className="text-sm font-medium text-foreground">No messages yet</p>
+            <p className="text-sm font-medium text-foreground">No data found</p>
             <p className="text-xs text-muted-foreground mt-1">Message volume will show here once your agents start chatting.</p>
           </div>
         ) : (

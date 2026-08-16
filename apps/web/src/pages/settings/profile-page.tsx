@@ -15,7 +15,6 @@ import {
 import { useProfile } from '@/lib/hooks/use-profile'
 import { useAuth } from '@/lib/auth-context'
 
-
 export default function ProfilePage() {
   const { user } = useAuth()
   const { data: profile, isLoading } = useProfile()
@@ -63,11 +62,9 @@ export default function ProfilePage() {
         <AccountOverviewCard />
         <PasswordChangeCard />
         <LoginActivityTable />
-        <ConnectedAccountsCard />
+        {/* <ConnectedAccountsCard /> */}
         <DangerZoneCard />
       </form>
     </ProfileFormProvider>
   )
 }
-
-

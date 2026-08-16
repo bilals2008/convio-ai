@@ -56,6 +56,7 @@ export function DangerZoneCard() {
         </CardHeader>
         <CardContent>
           <Button
+            type="button"
             variant="destructive"
             onClick={() => setDeleteOpen(true)}
             disabled={deleteAccount.isPending}

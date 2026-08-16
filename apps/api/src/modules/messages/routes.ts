@@ -7,6 +7,7 @@ import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext, markDocumentQueriesSuccess } from '../../services/processor.js'
 import { moderateForOrg, type ModerationFlag } from '../../services/moderation.js'
 import { checkMessageLimit } from '../../services/billing.js'
+import { resolveProviderKey } from '../../services/provider-key.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { computeCost } from '@convio/ai/pricing'
 import { z } from 'zod'
@@ -236,12 +237,11 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           return null
         })
       : Promise.resolve(null)
-    const providerKeyPromise = agent.providerKeyId
-      ? prisma.providerKey.findFirst({
-          where: { id: agent.providerKeyId, organizationId: agent.organizationId },
-          select: { apiKey: true, provider: true },
-        })
-      : Promise.resolve(null)
+    const providerKeyPromise = resolveProviderKey({
+      organizationId: agent.organizationId,
+      model: agent.model,
+      providerKeyId: agent.providerKeyId,
+    })
     const toolsPromise = loadAgentToolHandlers(agent.id, prisma)
 
     const [historyDesc, context, providerKey, toolHandlers] = await Promise.all([

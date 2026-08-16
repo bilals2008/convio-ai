@@ -357,6 +357,7 @@ export const bulkInviteSchema = z.object({
 
 // MCP Server schemas
 export const mcpServerTypeSchema = z.enum(['stdio', 'sse', 'streamable-http'])
+export const mcpServerAuthTypeSchema = z.enum(['none', 'header', 'oauth'])
 
 export const mcpServerSchema = z.object({
   id: z.string().uuid(),
@@ -366,6 +367,8 @@ export const mcpServerSchema = z.object({
   command: z.string().optional(),
   args: z.array(z.string()).default([]),
   url: z.string().optional(),
+  authType: mcpServerAuthTypeSchema.default('none'),
+  headers: z.record(z.string()).default({}),
   apiKey: z.string().optional(),
   enabled: z.boolean().default(true),
   createdAt: z.date(),

@@ -42,6 +42,7 @@ Rules for AI agents working on this codebase.
 - Shared components in `components/shared/`
 - Hooks in `lib/hooks/`
 - API functions in `lib/api/`
+- Keep files and folders organized: feature modules in `modules/<feature>/`, services in `services/<feature>/`, one concern per file, no dumping everything in a single file
 
 ## Auth
 

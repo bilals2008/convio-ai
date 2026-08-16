@@ -27,7 +27,6 @@ const LOGO_MAP: Record<string, LogoConfig> = {
 
 const CHIP_COLORS: Record<string, { bg: string; fg: string }> = {
   opencode: { bg: "#fafafa", fg: "#09090b" },
-  kie: { bg: "#fb923c", fg: "#09090b" },
   together: { bg: "#00814d", fg: "#ffffff" },
   local: { bg: "#71717a", fg: "#ffffff" },
 }

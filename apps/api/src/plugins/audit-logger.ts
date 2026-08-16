@@ -11,6 +11,8 @@ export type AuditAction =
   | 'provider_key.created' | 'provider_key.updated' | 'provider_key.deleted'
   | 'sso.configured' | 'sso.disabled'
   | 'moderation.updated' | 'moderation.violation'
+  | 'mcp_server.created' | 'mcp_server.updated' | 'mcp_server.deleted'
+  | 'mcp_oauth.connected' | 'mcp_oauth.disconnected' | 'mcp_oauth.failed'
 
 declare module 'fastify' {
   interface FastifyInstance {

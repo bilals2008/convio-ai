@@ -198,6 +198,25 @@ export function AgentPerformanceTable() {
     )
   }
 
+  if (agents.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="border-b py-4">
+          <CardTitle className="text-base">Agent Performance</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 mb-3">
+              <Bot className="size-5 text-primary" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No data found</p>
+            <p className="text-xs text-muted-foreground mt-1">Agent performance will appear once you create and use agents.</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader className="flex items-center gap-2 space-y-0 border-b py-4">
@@ -206,6 +225,7 @@ export function AgentPerformanceTable() {
         </div>
       </CardHeader>
       <CardContent className="p-0">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -230,37 +250,24 @@ export function AgentPerformanceTable() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row, index) => (
-                <TableRow
-                  key={row.id}
-                  className={cn(
-                    'border-b border-border last:border-0 hover:bg-muted/30 transition-colors',
-                    index % 2 === 1 && 'bg-muted/20'
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="px-4 py-3">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-violet-500/10 mb-2">
-                      <Bot className="size-5 text-violet-500" />
-                    </div>
-                    <p className="text-sm font-medium text-foreground">No agents yet</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Agent performance will appear once you create and use agents.</p>
-                  </div>
-                </TableCell>
+            {table.getRowModel().rows.map((row, index) => (
+              <TableRow
+                key={row.id}
+                className={cn(
+                  'border-b border-border last:border-0 hover:bg-muted/30 transition-colors',
+                  index % 2 === 1 && 'bg-muted/20'
+                )}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id} className="px-4 py-3">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   )

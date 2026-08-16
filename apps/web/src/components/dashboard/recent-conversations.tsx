@@ -94,7 +94,7 @@ export function RecentConversations() {
             <div className="flex size-10 items-center justify-center rounded-full bg-info/10 mb-3">
               <MessageSquare className="size-5 text-info" />
             </div>
-            <p className="text-sm font-medium text-foreground">No conversations yet</p>
+            <p className="text-sm font-medium text-foreground">No data found</p>
             <p className="text-xs text-muted-foreground mt-1">Conversations will appear here once users start chatting with your agents.</p>
           </div>
         ) : (

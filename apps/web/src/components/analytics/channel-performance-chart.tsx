@@ -41,7 +41,7 @@ export function ChannelPerformanceChart({ data, loading }: ChannelPerformanceCha
         <div className="grid flex-1 gap-1">
           <CardTitle className="text-base">Channel Performance</CardTitle>
         </div>
-        <div className="text-sm text-muted-foreground">Conversations by channel</div>
+        <div className="text-sm text-muted-foreground hidden sm:block">Conversations by channel</div>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (
@@ -55,7 +55,7 @@ export function ChannelPerformanceChart({ data, loading }: ChannelPerformanceCha
             <p className="text-xs text-muted-foreground mt-1">Channel performance will appear once conversations come in.</p>
           </div>
         ) : (
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-4 sm:flex-row">
             <div className="h-[200px] w-[200px] shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
