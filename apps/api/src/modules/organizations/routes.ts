@@ -527,7 +527,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
         })
 
         if (fastify.email) {
-          const inviteUrl = `${fastify.config.PUBLIC_URL}/invite?token=${token}`
+          const inviteUrl = `${fastify.config.WEB_URL ?? fastify.config.PUBLIC_URL}/invite?token=${token}`
           fastify.email.sendInvite({
             to: member.email,
             inviterName,

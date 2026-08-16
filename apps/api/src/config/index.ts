@@ -21,6 +21,7 @@ const schema = Type.Object({
   ], { default: 'info' }),
   CORS_ORIGIN: Type.String({ default: 'http://localhost:5173' }),
   PUBLIC_URL: Type.String({ default: 'http://localhost:3000' }),
+  WEB_URL: Type.Optional(Type.String()),
   KAPSO_API_BASE_URL: Type.Optional(Type.String()),
   KAPSO_ORG_API_KEY: Type.Optional(Type.String()),
   GITHUB_PAT: Type.Optional(Type.String()),
