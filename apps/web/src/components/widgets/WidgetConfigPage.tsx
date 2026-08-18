@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Code2, Layout, Palette, Wand2 } from 'lucide-react'
+import { Code2, Layout, Monitor, Palette, Smartphone, Wand2 } from 'lucide-react'
 import { ChatWidget } from '@/components/widget'
 import { PageContainer } from '@/components/shared/page-container'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -36,6 +36,7 @@ export default function WidgetConfigPage() {
   const navigate = useNavigate()
   const [showPreview, setShowPreview] = useState(true)
   const [previewThemeMode, setPreviewThemeMode] = useState<'auto' | 'light' | 'dark'>('auto')
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop')
 
   const {
     widget,
@@ -289,37 +290,71 @@ export default function WidgetConfigPage() {
         {/* Preview panel */}
         {showPreview && (
           <div className="hidden xl:block w-[340px] shrink-0">
-            <div className="sticky top-6 rounded-2xl border border-border/40 bg-card/30 overflow-hidden shadow-sm">
+            <div className="sticky top-6 space-y-2">
+              <div className="flex items-center justify-between px-0.5">
+                <span className="text-[11px] font-medium text-muted-foreground">Preview</span>
+                <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDevice('desktop')}
+                    className={cn(
+                      'inline-flex size-6 items-center justify-center rounded-md transition-colors',
+                      previewDevice === 'desktop' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                    aria-label="Desktop preview"
+                  >
+                    <Monitor className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDevice('mobile')}
+                    className={cn(
+                      'inline-flex size-6 items-center justify-center rounded-md transition-colors',
+                      previewDevice === 'mobile' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                    aria-label="Mobile preview"
+                  >
+                    <Smartphone className="size-3.5" />
+                  </button>
+                </div>
+              </div>
               <div
-                data-widget-preview
                 className={cn(
-                  'relative h-[520px]',
-                  (previewThemeMode === 'auto' ? themeMode : previewThemeMode) === 'dark' ? 'bg-muted/30' : 'bg-background',
+                  'rounded-2xl border border-border/40 bg-card/30 overflow-hidden shadow-sm transition-all',
+                  previewDevice === 'mobile' && 'max-w-[280px] mx-auto',
                 )}
               >
-                <WidgetPreviewPanel
-                  primaryColor={primaryColor}
-                  backgroundColor={backgroundColor}
-                  textColor={previewTextColor}
-                  promptBgColor={promptBgColor}
-                  headerGradientStart={headerGradientStart}
-                  headerGradientEnd={headerGradientEnd}
-                  headerGradientDirection={headerGradientDirection}
-                  borderColor={borderColor}
-                  inputBgColor={inputBgColor}
-                  sendBtnColor={sendBtnColor}
-                  footerBgColor={footerBgColor}
-                  agentName={agentName || widget.agent.name}
-                  agentAvatar={agentAvatar || undefined}
-                  headerTitle={headerTitle || undefined}
-                  headerSubtitle={headerSubtitle || undefined}
-                  showOnlineIndicator={showOnlineIndicator}
-                  placeholderText={placeholderText || undefined}
-                  showPoweredBy={showPoweredBy}
-                  quickReplies={quickReplies.length > 0 ? quickReplies : undefined}
-                  headerGradient={headerGradient}
-                  previewThemeMode={previewThemeMode === 'auto' ? themeMode : previewThemeMode}
-                />
+                <div
+                  data-widget-preview
+                  className={cn(
+                    'relative h-[520px]',
+                    (previewThemeMode === 'auto' ? themeMode : previewThemeMode) === 'dark' ? 'bg-muted/30' : 'bg-background',
+                  )}
+                >
+                  <WidgetPreviewPanel
+                    primaryColor={primaryColor}
+                    backgroundColor={backgroundColor}
+                    textColor={previewTextColor}
+                    promptBgColor={promptBgColor}
+                    headerGradientStart={headerGradientStart}
+                    headerGradientEnd={headerGradientEnd}
+                    headerGradientDirection={headerGradientDirection}
+                    borderColor={borderColor}
+                    inputBgColor={inputBgColor}
+                    sendBtnColor={sendBtnColor}
+                    footerBgColor={footerBgColor}
+                    agentName={agentName || widget.agent.name}
+                    agentAvatar={agentAvatar || undefined}
+                    headerTitle={headerTitle || undefined}
+                    headerSubtitle={headerSubtitle || undefined}
+                    showOnlineIndicator={showOnlineIndicator}
+                    placeholderText={placeholderText || undefined}
+                    showPoweredBy={showPoweredBy}
+                    quickReplies={quickReplies.length > 0 ? quickReplies : undefined}
+                    headerGradient={headerGradient}
+                    previewThemeMode={previewThemeMode === 'auto' ? themeMode : previewThemeMode}
+                  />
+                </div>
               </div>
             </div>
           </div>

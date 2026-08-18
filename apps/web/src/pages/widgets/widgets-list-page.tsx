@@ -25,6 +25,8 @@ import {
   Check,
   Bot,
   ChevronLeft,
+  Pause,
+  Play,
   ChevronRight,
   ArrowUpDown,
   ArrowUp,
@@ -155,6 +157,16 @@ export default function WidgetsListPage() {
     onError: (error: Error) => toast.error(error.message || 'Could not delete widget'),
   })
 
+  const toggleStatus = useMutation({
+    mutationFn: (widget: WidgetSummary) =>
+      widgetsApi.update(widget.id, { status: widget.status === 'active' ? 'paused' : 'active' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['widgets', orgId] })
+      toast.success('Widget updated')
+    },
+    onError: (error: Error) => toast.error(error.message || 'Could not update widget'),
+  })
+
   const copyEmbed = async (widget: WidgetSummary) => {
     const response = await widgetsApi.getEmbed(widget.id)
     await navigator.clipboard.writeText(response.data.data.snippet)
@@ -279,10 +291,15 @@ export default function WidgetsListPage() {
         header: 'Domains',
         cell: ({ getValue }) => {
           const count = getValue().length
-          return (
+          return count > 0 ? (
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
               <Globe2 className="size-3.5" />
-              {count > 0 ? count : <span className="text-muted-foreground/50">—</span>}
+              {count}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning">
+              <AlertCircle className="size-3.5" />
+              Not installed
             </span>
           )
         },
@@ -323,6 +340,29 @@ export default function WidgetsListPage() {
                   Preview
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                {w.status === 'active' ? (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleStatus.mutate(w)
+                    }}
+                  >
+                    <Pause className="size-4" />
+                    Pause
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    disabled={w.allowedDomains.length === 0}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleStatus.mutate(w)
+                    }}
+                  >
+                    <Play className="size-4" />
+                    Publish
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
                   onClick={(e) => { e.stopPropagation(); setDeleteTarget(w) }}
@@ -336,7 +376,7 @@ export default function WidgetsListPage() {
         },
       }),
     ],
-    [bulk.isAllSelected, bulk.isSelected, bulk.toggleSelect, bulk.toggleSelectAll, navigate, copiedId],
+    [bulk.isAllSelected, bulk.isSelected, bulk.toggleSelect, bulk.toggleSelectAll, navigate, copiedId, toggleStatus],
   )
 
   const PAGE_SIZE = 15
@@ -520,6 +560,7 @@ export default function WidgetsListPage() {
                   widget={widget}
                   onCopyEmbed={copyEmbed}
                   onDelete={setDeleteTarget}
+                  onToggleStatus={() => toggleStatus.mutate(widget)}
                   isSelected={bulk.isSelected(widget.id)}
                   onToggleSelect={() => bulk.toggleSelect(widget.id)}
                   showCheckbox={bulk.selectedCount > 0}

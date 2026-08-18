@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bot, Check, Clock, Copy, Eye, Globe2, MoreVertical, Trash2 } from 'lucide-react'
+import { Bot, Check, Clock, Copy, Eye, Globe2, MoreVertical, Pause, Play, Trash2 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -13,6 +13,7 @@ interface WidgetCardProps {
   widget: WidgetSummary
   onCopyEmbed: (widget: WidgetSummary) => void
   onDelete: (widget: WidgetSummary) => void
+  onToggleStatus?: (widget: WidgetSummary) => void
   isSelected?: boolean
   onToggleSelect?: () => void
   showCheckbox?: boolean
@@ -46,7 +47,7 @@ function timeAgo(date: string) {
   return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-export function WidgetCard({ widget, onCopyEmbed, onDelete, isSelected, onToggleSelect, showCheckbox }: WidgetCardProps) {
+export function WidgetCard({ widget, onCopyEmbed, onDelete, onToggleStatus, isSelected, onToggleSelect, showCheckbox }: WidgetCardProps) {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
 
@@ -115,10 +116,14 @@ export function WidgetCard({ widget, onCopyEmbed, onDelete, isSelected, onToggle
             <Bot className="size-3.5" />
             <span className="max-w-[180px] truncate">{widget.agent.name}</span>
           </span>
-          {domainCount > 0 && (
+          {domainCount > 0 ? (
             <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
               <Globe2 className="size-3" />
               {domainCount}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning">
+              Not installed
             </span>
           )}
         </div>
@@ -149,6 +154,29 @@ export function WidgetCard({ widget, onCopyEmbed, onDelete, isSelected, onToggle
                 <Eye className="size-4" />
                 Preview
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {widget.status === 'active' ? (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleStatus?.(widget)
+                  }}
+                >
+                  <Pause className="size-4" />
+                  Pause
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  disabled={widget.allowedDomains.length === 0}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleStatus?.(widget)
+                  }}
+                >
+                  <Play className="size-4" />
+                  Publish
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
