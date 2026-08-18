@@ -7,6 +7,8 @@ import { emitDomainEvent, NOTIFICATION_EVENTS } from './notifications/events.js'
 import { mkdtemp, rm, writeFile, readFile, readdir } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
+import { lookup } from 'node:dns/promises'
+import { isIP } from 'node:net'
 
 const CHUNK_SIZE = 1000
 const CHUNK_OVERLAP_WORDS = 40
@@ -125,39 +127,106 @@ async function extractPdfMarkdown(filePath: string): Promise<string> {
   }
 }
 
+// Blocks internal/private targets that could be used for SSRF (cloud metadata,
+// internal services, link-local, etc). ponytail: single-pass IP check; add a
+// DNS-rebinding resolver loop if you harden further.
+export function isBlockedAddress(address: string): boolean {
+  if (isIP(address) === 0) return false
+  if (address.includes(':')) {
+    // IPv6: block loopback, link-local, and ULA
+    const lower = address.toLowerCase()
+    return (
+      lower === '::1' ||
+      lower === '::' ||
+      lower.startsWith('fe80:') ||
+      lower.startsWith('fc00:') ||
+      lower.startsWith('fd00:') ||
+      lower.startsWith('ff00:') ||
+      lower.startsWith('::ffff:10.') ||
+      lower.startsWith('::ffff:127.') ||
+      lower.startsWith('::ffff:169.254')
+    )
+  }
+  const parts = address.split('.').map(Number)
+  const [a, b] = parts
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) || // CGNAT
+    (a === 169 && b === 254) || // link-local
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224 // multicast + reserved
+  )
+}
+
+export async function assertSafeUrl(rawUrl: string): Promise<void> {
+  let url: URL
+  try {
+    url = new URL(rawUrl)
+  } catch {
+    throw new Error('Invalid URL')
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('Only http(s) URLs are supported')
+  }
+  const { address } = await lookup(url.hostname)
+  if (isBlockedAddress(address)) {
+    throw new Error('URL points to a blocked/internal address')
+  }
+}
+
 async function fetchUrlContent(url: string): Promise<string> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 20_000)
 
   try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Convio-RAG/1.0 (+https://convio.app)',
-        Accept: 'text/html,application/xhtml+xml,text/plain,application/json;q=0.9,*/*;q=0.8',
-      },
-    })
+    // SSRF guard: re-check every hop since fetch follows redirects by default.
+    // ponytail: cap at 5 redirects; fetch's own redirect cap is 20.
+    let currentUrl = url
+    for (let i = 0; i < 5; i++) {
+      await assertSafeUrl(currentUrl)
+      const res = await fetch(currentUrl, {
+        signal: controller.signal,
+        redirect: 'manual',
+        headers: {
+          'User-Agent': 'Convio-RAG/1.0 (+https://convio.app)',
+          Accept: 'text/html,application/xhtml+xml,text/plain,application/json;q=0.9,*/*;q=0.8',
+        },
+      })
 
-    if (!res.ok) {
-      throw new Error(`Failed to fetch URL (${res.status})`)
-    }
-
-    const contentType = res.headers.get('content-type') || ''
-    const raw = await res.text()
-
-    if (contentType.includes('application/json') || url.endsWith('.json')) {
-      try {
-        return JSON.stringify(JSON.parse(raw), null, 2)
-      } catch {
-        return raw
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get('location')
+        if (!location) throw new Error(`Redirect without Location header (${res.status})`)
+        currentUrl = new URL(location, currentUrl).toString()
+        res.body?.cancel()
+        continue
       }
-    }
 
-    if (contentType.includes('text/html') || raw.includes('<html') || raw.includes('<!DOCTYPE')) {
-      return htmlToText(raw)
-    }
+      if (!res.ok) {
+        throw new Error(`Failed to fetch URL (${res.status})`)
+      }
 
-    return raw
+      const contentType = res.headers.get('content-type') || ''
+      const raw = await res.text()
+
+      if (contentType.includes('application/json') || currentUrl.endsWith('.json')) {
+        try {
+          return JSON.stringify(JSON.parse(raw), null, 2)
+        } catch {
+          return raw
+        }
+      }
+
+      if (contentType.includes('text/html') || raw.includes('<html') || raw.includes('<!DOCTYPE')) {
+        return htmlToText(raw)
+      }
+
+      return raw
+    }
+    throw new Error('Too many redirects')
   } finally {
     clearTimeout(timeout)
   }
