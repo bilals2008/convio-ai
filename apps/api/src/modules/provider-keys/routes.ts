@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { AppError } from '../../plugins/error.js'
 import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
+import { encryptSecret, decryptSecret, getEncryptionKey } from '../../services/encryption.js'
 import { z } from 'zod'
 
 const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'opencode']
@@ -103,7 +104,7 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
       data: {
         organizationId: orgId,
         provider,
-        apiKey,
+        apiKey: encryptSecret(apiKey, getEncryptionKey()),
         keyPreview: maskKey(apiKey),
         label,
       },
@@ -131,7 +132,7 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
 
     const data: Record<string, string> = {}
     if (apiKey) {
-      data.apiKey = apiKey
+      data.apiKey = encryptSecret(apiKey, getEncryptionKey())
       data.keyPreview = maskKey(apiKey)
     }
     if (label) data.label = label
@@ -156,7 +157,7 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
     })
     if (!existing) throw new AppError(404, 'Provider key not found')
 
-    return { data: await testProviderKey(existing.provider, existing.apiKey) }
+    return { data: await testProviderKey(existing.provider, decryptSecret(existing.apiKey, getEncryptionKey())) }
   })
 
   fastify.delete('/organizations/:orgId/provider-keys/:keyId', {

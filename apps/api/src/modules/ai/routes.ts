@@ -3,6 +3,7 @@ import { prisma } from '@convio/database'
 import { getProviderForModel, allProviders } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { resolveProviderKey } from '../../services/provider-key.js'
+import { decryptSecret, getEncryptionKey } from '../../services/encryption.js'
 import { retrieveContext } from '../../services/processor.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { z } from 'zod'
@@ -27,7 +28,7 @@ export async function chatWithAgent(
     throw new Error(`No provider configured for model: ${agent.model}`)
   }
 
-  const apiKey = agent.providerKey?.apiKey
+  const apiKey = agent.providerKey ? decryptSecret(agent.providerKey.apiKey, getEncryptionKey()) : undefined
 
   let systemContext = agent.systemPrompt
 
@@ -47,9 +48,13 @@ export async function chatWithAgent(
     }
   }
 
+  const sanitizedMessages: Message[] = messages
+    .filter((m): m is { role: 'user' | 'assistant'; content: string } => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({ role: m.role, content: m.content }))
+
   const systemMessages: Message[] = [
     { role: 'system', content: systemContext },
-    ...messages.map((m) => ({ role: m.role as Message['role'], content: m.content })),
+    ...sanitizedMessages,
   ]
 
   const toolHandlers = await loadAgentToolHandlers(agentId, prisma)
@@ -156,7 +161,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       return reply.code(400).send({ error: `No provider configured for model: ${agent.model}` })
     }
 
-  let apiKey = agent.providerKey?.apiKey
+  let apiKey = agent.providerKey ? decryptSecret(agent.providerKey.apiKey, getEncryptionKey()) : undefined
   if (!apiKey) {
     const resolved = await resolveProviderKey({
       organizationId: agent.organizationId,
@@ -194,9 +199,11 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       }
     }
 
+    const sanitizedMessages = messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+
     const systemMessages = [
       { role: 'system' as const, content: systemContext },
-      ...messages,
+      ...sanitizedMessages,
     ]
 
     try {
@@ -233,7 +240,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
     })
 
     const userKeys = membership?.organization?.providerKeys || []
-    const userKeyMap = new Map(userKeys.map(k => [k.provider, k.apiKey]))
+    const userKeyMap = new Map(userKeys.map(k => [k.provider, decryptSecret(k.apiKey, getEncryptionKey())]))
 
     const models = await Promise.all(
       allProviders
