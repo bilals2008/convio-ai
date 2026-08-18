@@ -40,7 +40,7 @@ export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<string>('30d')
   const { from, to } = getDateRange(dateRange)
 
-  const { data: overview, isLoading, isError, error } = useOrgAnalytics(orgId, from, to)
+  const { data: overview, isLoading, isFetching, isError, error } = useOrgAnalytics(orgId, from, to)
 
   if (orgLoading) return <OverviewSkeleton />
   if (!orgId) {
@@ -116,6 +116,7 @@ export default function AnalyticsPage() {
           value={`$${overview.totalCost.toFixed(2)}`}
           description={`${overview.conversationsChange >= 0 ? '+' : ''}${overview.conversationsChange}% from prev`}
           iconClassName="bg-violet-500/10 text-violet-500 dark:text-violet-400"
+          loading={isFetching}
         />
         <StatsCard
           icon={CheckCircle}
@@ -124,6 +125,7 @@ export default function AnalyticsPage() {
           description={`${overview.successRate >= 80 ? 'Excellent' : overview.successRate >= 60 ? 'Good' : 'Needs improvement'}`}
           descriptionClassName={overview.successRate >= 80 ? 'text-emerald-500' : overview.successRate >= 60 ? 'text-amber-500' : 'text-red-500'}
           iconClassName="bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
+          loading={isFetching}
         />
         <StatsCard
           icon={Cpu}
@@ -131,6 +133,7 @@ export default function AnalyticsPage() {
           value={(overview.totalInputTokens + overview.totalOutputTokens).toLocaleString()}
           description={`${overview.totalInputTokens.toLocaleString()} in · ${overview.totalOutputTokens.toLocaleString()} out`}
           iconClassName="bg-blue-500/10 text-blue-500 dark:text-blue-400"
+          loading={isFetching}
         />
         <StatsCard
           icon={Users}
@@ -138,17 +141,18 @@ export default function AnalyticsPage() {
           value={overview.uniqueUsers.toLocaleString()}
           description={`${overview.usersChange >= 0 ? '+' : ''}${overview.usersChange}% from prev`}
           iconClassName="bg-amber-500/10 text-amber-500 dark:text-amber-400"
+          loading={isFetching}
         />
       </div>
 
-      <OverviewChart data={chartData} loading={isLoading} />
+      <OverviewChart data={chartData} loading={isFetching} />
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <ResponseTimeChart data={responseTimeData} loading={isLoading} />
-        <ChannelPerformanceChart data={overview.channelBreakdown} loading={isLoading} />
+        <ResponseTimeChart data={responseTimeData} loading={isFetching} />
+        <ChannelPerformanceChart data={overview.channelBreakdown} loading={isFetching} />
       </div>
 
-      <TokenCostTrend data={overview.dailyBreakdown} totalCost={overview.totalCost} loading={isLoading} />
+      <TokenCostTrend data={overview.dailyBreakdown} totalCost={overview.totalCost} loading={isFetching} />
 
       <AgentPerformanceTable />
       <TopDocumentsTable orgId={orgId} />

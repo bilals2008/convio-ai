@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 // ─── Shared base styles ────────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ interface StatsCardProps {
   iconClassName?: string
   description?: string
   descriptionClassName?: string
+  loading?: boolean
 }
 
 export function StatsCard({
@@ -24,6 +26,7 @@ export function StatsCard({
   iconClassName,
   description,
   descriptionClassName,
+  loading,
 }: StatsCardProps) {
   return (
     <div className={cn(cardBase, 'group flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4')}>
@@ -31,9 +34,13 @@ export function StatsCard({
         <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <span className="text-xl sm:text-2xl font-semibold leading-none tracking-tight text-foreground truncate">
-          {value}
-        </span>
+        {loading ? (
+          <Skeleton className="h-6 w-16" />
+        ) : (
+          <span className="text-xl sm:text-2xl font-semibold leading-none tracking-tight text-foreground truncate">
+            {value}
+          </span>
+        )}
         {description && (
           <span className={cn('mt-0.5 hidden text-xs text-muted-foreground sm:block', descriptionClassName)}>
             {description}

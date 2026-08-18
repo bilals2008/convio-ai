@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { MessageSquare, Users, Timer, BarChart3, Coins, Radio, DollarSign, Layers } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -109,7 +109,7 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
   const fromDate = new Date()
   fromDate.setDate(fromDate.getDate() - Number(range))
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: ['agent-analytics', agentId, range],
     queryFn: async () => {
       const from = fromDate.toISOString().slice(0, 10)
@@ -118,9 +118,10 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
       return res.data.data as AnalyticsData
     },
     enabled: !!agentId,
+    placeholderData: keepPreviousData,
   })
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -271,7 +272,11 @@ export function AgentAnalytics({ agentId }: { agentId: string }) {
           >
             <div className="flex min-w-0 flex-col gap-1">
               <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{m.label}</span>
-              <span className="text-xl font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
+              {isFetching ? (
+                <Skeleton className="h-6 w-16" />
+              ) : (
+                <span className="text-xl font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
+              )}
               <span className="mt-0.5 flex items-center gap-1.5 text-xs">
                 <span
                   className={cn(

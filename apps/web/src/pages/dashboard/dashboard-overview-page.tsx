@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { Building2, MessageSquare, Bot, Zap, Star, Plus, BookOpen, MessageCircle, BarChart3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatResponseTime } from '@/lib/analytics'
 
 const dateRanges = [
@@ -59,7 +60,7 @@ export default function DashboardOverviewPage() {
   const [dateRange, setDateRange] = useState<string>('30d')
   const { from, to } = getDateRange(dateRange)
 
-  const { data: overview, isLoading, isError, error } = useQuery({
+  const { data: overview, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['dashboard', orgId, dateRange],
     queryFn: async () => {
       const res = await analyticsApi.overview(orgId!, { from, to })
@@ -67,6 +68,7 @@ export default function DashboardOverviewPage() {
     },
     enabled: !!orgId,
     retry: false,
+    placeholderData: keepPreviousData,
   })
 
   if (orgLoading) return <OverviewSkeleton />
@@ -141,11 +143,11 @@ export default function DashboardOverviewPage() {
     },
     {
       icon: Star,
-      label: 'Satisfaction',
-      value: '4.8/5',
-      change: '+0.2',
+      label: 'Resolution Rate',
+      value: `${overview?.resolutionRate ?? 0}%`,
+      change: `${overview?.resolutionRate ? '+' : ''}${overview?.resolutionRate ?? 0}%`,
       trend: 'up' as const,
-      period: 'avg rating',
+      period: 'resolved rate',
       color: 'bg-warning/10 text-warning' as const,
     },
   ]
@@ -188,7 +190,11 @@ export default function DashboardOverviewPage() {
           >
             <div className="flex min-w-0 flex-col gap-0.5 sm:gap-1">
               <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-widest text-muted-foreground truncate">{m.label}</span>
-              <span className="text-lg sm:text-xl font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
+              {isFetching ? (
+                <Skeleton className="h-6 w-16" />
+              ) : (
+                <span className="text-lg sm:text-xl font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
+              )}
               <span className="mt-0.5 flex items-center gap-1 text-[11px] sm:text-xs">
                 <span
                   className={cn(
@@ -268,8 +274,8 @@ export default function DashboardOverviewPage() {
 
       {/* ── Chart ─────────────────────────────────────────────────────── */}
       <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
-        <ChannelChart data={chartData} loading={isLoading} />
-        <ActivityChart data={chartData} loading={isLoading} />
+        <ChannelChart data={chartData} loading={isFetching} />
+        <ActivityChart data={chartData} loading={isFetching} />
       </div>
 
       {/* ── Top Agents ────────────────────────────────────────────────── */}
