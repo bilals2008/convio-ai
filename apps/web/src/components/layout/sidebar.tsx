@@ -130,17 +130,17 @@ export function Sidebar() {
       aria-label="Main navigation"
     >
       {/* Logo area */}
-      <Link to="/" className="flex items-center py-4 px-3 border-b border-border/50 gap-2 hover:opacity-80 transition-opacity">
+      <div className={cn('flex items-center py-4 px-3 border-b border-border/50 gap-2', collapsed && 'justify-center')}>
         {!collapsed && (
-          <img src="/logo.png" alt="Convio" className="h-7 w-auto shrink-0" />
+          <Link to="/" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="Convio" className="h-7 w-auto shrink-0" />
+            <span className="text-[15px] font-semibold tracking-tight truncate block">Convio</span>
+          </Link>
         )}
-        <div className={cn('flex-1 min-w-0', collapsed && 'hidden')}>
-          <span className="text-[15px] font-semibold tracking-tight truncate block">Convio</span>
-        </div>
         <Button
           variant="ghost"
           size="icon"
-          className={cn('size-7 shrink-0 text-muted-foreground hover:text-foreground', collapsed && 'mx-auto')}
+          className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
@@ -149,7 +149,7 @@ export function Sidebar() {
             className={cn('size-4 transition-transform duration-200', collapsed && 'rotate-180')}
           />
         </Button>
-      </Link>
+      </div>
 
       <ScrollArea className="flex-1 min-h-0">
         <nav className="flex flex-col px-2 py-2">
