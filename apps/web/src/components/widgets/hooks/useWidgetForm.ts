@@ -216,9 +216,9 @@ const [headerGradientEnd, setHeaderGradientEnd] = useState('#0d7a34')
           action: { label: 'Upgrade', onClick: () => navigate('/settings/billing') },
           duration: 8000,
         })
-      } else if (status === 400 && error?.response?.data?.details) {
-        const msgs = error.response.data.details.map((d) => d.message).join('. ')
-        toast.error(msgs || 'Please check your inputs and try again.')
+      } else if (status === 400) {
+        const msg = error?.response?.data?.message
+        toast.error(msg || 'Please check your inputs and try again.')
       } else {
         toast.error(error.message || 'Something went wrong. Please try again.')
       }

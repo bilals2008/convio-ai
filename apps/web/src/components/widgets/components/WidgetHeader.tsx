@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { ArrowLeft, Check, Code2, Copy, ExternalLink, Eye, EyeOff, MoreVertical, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, Code2, Copy, ExternalLink, Eye, EyeOff, MoreVertical, Pause, Rocket, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -140,6 +140,17 @@ export function WidgetHeader({
             <Save className="size-3.5" />
             {savePending ? 'Saving...' : 'Save'}
           </Button>
+          {!isLive && (
+            <Button
+              size="sm"
+              onClick={() => onSave('active')}
+              disabled={savePending}
+              className="h-8 text-xs gap-1.5 bg-success text-primary-foreground hover:bg-success/80"
+            >
+              <Rocket className="size-3.5" />
+              {savePending ? 'Publishing...' : 'Publish'}
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted/50 hover:text-foreground transition-colors">
               <MoreVertical className="size-4" />
@@ -160,6 +171,17 @@ export function WidgetHeader({
                 <ExternalLink className="size-3.5" />
                 Live preview
               </DropdownMenuItem>
+              {isLive ? (
+                <DropdownMenuItem onClick={() => onSave('paused')}>
+                  <Pause className="size-3.5" />
+                  Pause widget
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => onSave('active')}>
+                  <Rocket className="size-3.5" />
+                  Publish widget
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={onDeleteOpen}>
                 <Trash2 className="size-3.5" />
