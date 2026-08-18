@@ -10,6 +10,7 @@ import { checkMessageLimit } from '../../services/billing.js'
 import { resolveProviderKey } from '../../services/provider-key.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { computeCost } from '@convio/ai/pricing'
+import { getAgentWidgetDomains, assertPublicAccess } from '../widgets/access.js'
 import { z } from 'zod'
 
 // User-facing message shown when a message is blocked by moderation.
@@ -516,6 +517,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       select: {
         agent: {
           select: {
+            id: true,
             organizationId: true,
             status: true,
             model: true,
@@ -532,6 +534,12 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     if (!conversation || conversation.agent.status === 'archived') {
       throw new AppError(404, 'Conversation not found or agent is unavailable')
     }
+
+    const widgetDomains = await getAgentWidgetDomains(conversation.agent.id)
+    if (widgetDomains === null) {
+      throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
+    }
+    assertPublicAccess(request, widgetDomains)
 
     // Moderate the inbound message before storing it or calling the AI.
     const widgetModeration = await moderateMessage(conversation.agent.organizationId, content)
@@ -658,6 +666,12 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     if (!conversation || conversation.agent.status === 'archived') {
       throw new AppError(404, 'Conversation not found or agent is unavailable')
     }
+
+    const widgetDomains = await getAgentWidgetDomains(conversation.agent.id)
+    if (widgetDomains === null) {
+      throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
+    }
+    assertPublicAccess(request, widgetDomains)
 
     const widgetModeration = await moderateMessage(conversation.agent.organizationId, content)
     if (!widgetModeration.allowed) {

@@ -1,8 +1,8 @@
 import { useWidgetState } from './WidgetState'
-import { ChevronDown, X } from 'lucide-react'
+import { ChevronDown, MessageSquarePlus, X } from 'lucide-react'
 
 export function WidgetHeader() {
-  const { agentName, agentAvatar, isEmbed, headerGradient, headerTitle, headerSubtitle, showOnlineIndicator, onMinimize, onClose } = useWidgetState()
+  const { agentName, agentAvatar, isEmbed, headerGradient, headerTitle, headerSubtitle, showOnlineIndicator, messages, isTyping, onMinimize, onClose, onClearChat } = useWidgetState()
 
   const initials = agentName
     ? agentName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -63,6 +63,18 @@ export function WidgetHeader() {
           </div>
         </div>
         <div className="relative z-10 flex items-center gap-0.5">
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={onClearChat}
+              disabled={isTyping}
+              className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white/60"
+              aria-label="Start new chat"
+              title="Start new chat"
+            >
+              <MessageSquarePlus className="size-4" />
+            </button>
+          )}
           {!isEmbed && (
             <button
               type="button"

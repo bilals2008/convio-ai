@@ -122,6 +122,7 @@ export function ChatWidget({
     onToggle: widget.toggleWidget,
     onClose: widget.closeWidget,
     onMinimize: () => widget.setIsMinimized((prev) => !prev),
+    onClearChat: widget.clearChat,
     dismissError: () => widget.setError(null),
   }
 

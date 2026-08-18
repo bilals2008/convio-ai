@@ -125,11 +125,17 @@ function WidgetEmbedPage() {
 
   const { data: widgetConfig, isLoading: configLoading } = useQuery({
     queryKey: ['widget-config', widgetKey, host],
-    queryFn: async () => (
-      await publicApi.get(`/public/widgets/${widgetKey}${preview ? '?preview=true' : ''}`, {
-        headers: host ? { 'X-Widget-Host': host } : undefined,
-      })
-    ).data.data,
+    queryFn: async () => {
+      const headers: Record<string, string> = host ? { 'X-Widget-Host': host } : {}
+      if (preview) {
+        const { supabase } = await import('@/lib/supabase')
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`
+        }
+      }
+      return (await publicApi.get(`/public/widgets/${widgetKey}${preview ? '?preview=true' : ''}`, { headers })).data.data
+    },
     enabled: !!widgetKey,
   })
 

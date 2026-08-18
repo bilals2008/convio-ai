@@ -3,6 +3,7 @@ import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
+import { getAgentWidgetDomains, assertPublicAccess } from '../widgets/access.js'
 import { z } from 'zod'
 
 const conversationStatuses = ['active', 'waiting', 'resolved', 'closed', 'archived'] as const
@@ -307,6 +308,14 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
     if (!agent || agent.status === 'archived') {
       throw new AppError(404, 'Agent not found or is unavailable')
     }
+
+    // Same domain enforcement as the publicKey endpoints: the agent must have a
+    // widget, and the requesting domain must be allowed by one of them.
+    const domains = await getAgentWidgetDomains(agentId)
+    if (domains === null) {
+      throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
+    }
+    assertPublicAccess(request, domains)
 
     const conversation = await prisma.conversation.create({
       data: {

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { publicApi as api } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 
 export interface WidgetMessage {
   id: string
@@ -73,11 +74,18 @@ export function useWidget(config: WidgetConfig) {
 
   const theme = { ...defaultTheme, ...config.theme }
 
+  const authHeaders = useCallback(async (): Promise<Record<string, string> | undefined> => {
+    if (!config.preview) return undefined
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
+  }, [config.preview])
+
   const createConversation = useCallback(async () => {
     setIsCreatingConversation(true)
     try {
       const query = config.preview ? '?preview=true' : ''
-      const headers = config.host ? { 'X-Widget-Host': config.host } : undefined
+      const extraHeaders = await authHeaders()
+      const headers = { ...(config.host ? { 'X-Widget-Host': config.host } : {}), ...(extraHeaders ?? {}) }
       const { data } = config.publicKey
         ? await api.post(`/public/widgets/${config.publicKey}/conversations${query}`, {}, { headers })
         : await api.post(`/widget/agents/${config.agentId}/conversations`, { channel: 'web' }, { headers })
@@ -90,7 +98,7 @@ export function useWidget(config: WidgetConfig) {
     } finally {
       setIsCreatingConversation(false)
     }
-  }, [config.agentId, config.publicKey, config.preview, config.host])
+  }, [config.agentId, config.publicKey, config.preview, config.host, authHeaders])
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -120,11 +128,13 @@ export function useWidget(config: WidgetConfig) {
 
       try {
         const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+        const extraHeaders = await authHeaders()
         const response = await fetch(`${baseURL}/widget/conversations/${activeConversationId}/messages/stream`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(config.host ? { 'X-Widget-Host': config.host } : {}),
+            ...(extraHeaders ?? {}),
           },
           body: JSON.stringify({ content: content.trim() }),
         })
@@ -251,6 +261,15 @@ export function useWidget(config: WidgetConfig) {
     setMessages((prev) => [...prev, agentMessage])
   }, [])
 
+  const clearChat = useCallback(() => {
+    setMessages([])
+    setConversationId(null)
+    setStreamingContent('')
+    setError(null)
+    setIsTyping(false)
+    setUnreadCount(0)
+  }, [])
+
   useEffect(() => {
     if (config.greeting && messages.length === 0 && !(config.quickReplies?.length)) {
       const timer = setTimeout(() => {
@@ -292,6 +311,7 @@ export function useWidget(config: WidgetConfig) {
     exiting,
     streamingContent,
     sendMessage,
+    clearChat,
     openWidget,
     closeWidget,
     toggleWidget,

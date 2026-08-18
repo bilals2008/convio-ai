@@ -34,6 +34,7 @@ export interface WidgetStateValue {
   onToggle: () => void
   onClose: () => void
   onMinimize: () => void
+  onClearChat: () => void
   dismissError: () => void
 }
 
