@@ -209,7 +209,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     const widget = await prisma.widget.findUnique({ where: { id }, select: { publicKey: true, organizationId: true } })
     if (!widget) throw new AppError(404, 'Widget not found')
     await fastify.getMembership(request.userId!, widget.organizationId)
-    const baseUrl = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',')[0].trim()
+    const baseUrl = process.env.WEB_URL || 'http://localhost:5173'
     return { data: { snippet: `<script async src="${baseUrl}/widget.js" data-widget-key="${widget.publicKey}"></script>` } }
   })
 
