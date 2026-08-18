@@ -917,10 +917,11 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       return reply.code(200).send('OK')
     }
 
-    // Verify X-Telegram-Bot-Api-Secret-Token (set only for deployments registered after this secret feature)
+    // Verify X-Telegram-Bot-Api-Secret-Token — required; the secret is
+    // auto-generated whenever a telegram webhook is registered.
     const secretToken = config.telegramWebhookSecret as string | undefined
     const receivedToken = request.headers['x-telegram-bot-api-secret-token'] as string | undefined
-    if (secretToken && (!receivedToken || receivedToken !== secretToken)) {
+    if (!secretToken || !receivedToken || receivedToken !== secretToken) {
       request.log.warn({ deploymentId: id }, 'Telegram webhook: invalid secret token')
       return reply.code(401).send('Unauthorized')
     }
