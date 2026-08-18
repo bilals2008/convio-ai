@@ -28,28 +28,23 @@ export function getCorsHeaders(
 }
 
 export function getWidgetCorsHeaders(
-  allowedDomains: string[],
+  _allowedDomains: string[],
   request?: FastifyRequest,
 ): Record<string, string> {
-  const origin = request?.headers?.origin;
+  const origin = request?.headers?.origin
   if (!origin) return {}
 
-  const host = new URL(origin).host.toLowerCase()
-  if (allowedDomains.includes(host)) {
-    return {
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Credentials': 'true',
-    }
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Credentials': 'true',
   }
-
-  return {}
 }
 
 export default fp(async function corsPlugin(fastify: FastifyInstance) {
   await fastify.register(cors, {
     origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Widget-Host'],
     credentials: true,
   });
 }, {

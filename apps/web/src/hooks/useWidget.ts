@@ -25,6 +25,7 @@ export interface WidgetTheme {
 export interface WidgetConfig {
   agentId: string
   publicKey?: string
+  host?: string
   preview?: boolean
   position: 'bottom-right' | 'bottom-left'
   theme: WidgetTheme
@@ -76,9 +77,10 @@ export function useWidget(config: WidgetConfig) {
     setIsCreatingConversation(true)
     try {
       const query = config.preview ? '?preview=true' : ''
+      const headers = config.host ? { 'X-Widget-Host': config.host } : undefined
       const { data } = config.publicKey
-        ? await api.post(`/public/widgets/${config.publicKey}/conversations${query}`, {})
-        : await api.post(`/widget/agents/${config.agentId}/conversations`, { channel: 'web' })
+        ? await api.post(`/public/widgets/${config.publicKey}/conversations${query}`, {}, { headers })
+        : await api.post(`/widget/agents/${config.agentId}/conversations`, { channel: 'web' }, { headers })
       const conversation = data.data || data
       setConversationId(conversation.id)
       return conversation.id
@@ -88,7 +90,7 @@ export function useWidget(config: WidgetConfig) {
     } finally {
       setIsCreatingConversation(false)
     }
-  }, [config.agentId, config.publicKey, config.preview])
+  }, [config.agentId, config.publicKey, config.preview, config.host])
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -120,7 +122,10 @@ export function useWidget(config: WidgetConfig) {
         const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
         const response = await fetch(`${baseURL}/widget/conversations/${activeConversationId}/messages/stream`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(config.host ? { 'X-Widget-Host': config.host } : {}),
+          },
           body: JSON.stringify({ content: content.trim() }),
         })
 
@@ -190,7 +195,7 @@ export function useWidget(config: WidgetConfig) {
         setError('Failed to send message')
       }
     },
-    [conversationId, createConversation]
+    [conversationId, createConversation, config.host]
   )
 
   const isEmbed = useRef(typeof window !== 'undefined' && window.parent !== window)

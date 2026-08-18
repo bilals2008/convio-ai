@@ -102,6 +102,7 @@ function WidgetEmbedPage() {
   const params = new URLSearchParams(window.location.search)
   const widgetKey = params.get('widgetKey')
   const agentId = params.get('agentId')
+  const host = params.get('host') || undefined
 
   const preview = params.get('preview') === 'true'
 
@@ -123,8 +124,12 @@ function WidgetEmbedPage() {
   }, [])
 
   const { data: widgetConfig, isLoading: configLoading } = useQuery({
-    queryKey: ['widget-config', widgetKey],
-    queryFn: async () => (await publicApi.get(`/public/widgets/${widgetKey}${preview ? '?preview=true' : ''}`)).data.data,
+    queryKey: ['widget-config', widgetKey, host],
+    queryFn: async () => (
+      await publicApi.get(`/public/widgets/${widgetKey}${preview ? '?preview=true' : ''}`, {
+        headers: host ? { 'X-Widget-Host': host } : undefined,
+      })
+    ).data.data,
     enabled: !!widgetKey,
   })
 
@@ -147,6 +152,7 @@ function WidgetEmbedPage() {
     return <ChatWidget
       agentId={widgetConfig.agent.id}
       publicKey={widgetKey}
+      host={host}
       preview={preview}
       position={position}
       greeting={greeting}

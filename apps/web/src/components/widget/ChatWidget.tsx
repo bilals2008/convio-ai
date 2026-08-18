@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 export interface ChatWidgetProps {
   agentId: string
   publicKey?: string
+  host?: string
   preview?: boolean
   position?: 'bottom-right' | 'bottom-left'
   theme?: Partial<WidgetTheme>
@@ -63,6 +64,7 @@ function WidgetBackdrop({ show, onClose }: { show: boolean; onClose: () => void 
 export function ChatWidget({
   agentId,
   publicKey,
+  host,
   preview,
   position = 'bottom-right',
   theme: themeOverride,
@@ -85,7 +87,7 @@ export function ChatWidget({
   widgetHeight,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight })
+  const widget = useWidget({ agentId, publicKey, host, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight })
 
   const stateValue = {
     isOpen: widget.isOpen,

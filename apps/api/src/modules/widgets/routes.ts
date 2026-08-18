@@ -72,6 +72,9 @@ function normalizeDomains(domains: string[]) {
 }
 
 function getRequestDomain(request: FastifyRequest) {
+  const host = request.headers['x-widget-host']
+  if (typeof host === 'string' && host.trim()) return host.trim().toLowerCase()
+
   const origin = request.headers.origin
   if (!origin) return null
   try {
@@ -81,7 +84,8 @@ function getRequestDomain(request: FastifyRequest) {
   }
 }
 
-function assertPublicAccess(request: FastifyRequest, allowedDomains: string[]) {
+function assertPublicAccess(request: FastifyRequest, allowedDomains: string[], preview = false) {
+  if (preview) return
   const domain = getRequestDomain(request)
   if (allowedDomains.length === 0 || !domain || allowedDomains.includes(domain)) return
   throw new AppError(403, 'This widget is not allowed on this domain')
@@ -217,7 +221,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
       select: { publicKey: true, name: true, config: true, allowedDomains: true, agent: { select: { id: true, name: true, avatar: true } } },
     })
     if (!widget) throw new AppError(404, 'Widget not found')
-    assertPublicAccess(request, widget.allowedDomains)
+    assertPublicAccess(request, widget.allowedDomains, preview)
     reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
     reply.header('Cache-Control', 'no-store')
     return { data: widget }
@@ -232,7 +236,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     const { preview } = request.query as z.infer<typeof publicWidgetQuerySchema>
     const widget = await prisma.widget.findFirst({ where: { publicKey, ...(preview ? {} : { status: 'active' }) }, select: { id: true, agentId: true, allowedDomains: true } })
     if (!widget) throw new AppError(404, 'Widget not found')
-    assertPublicAccess(request, widget.allowedDomains)
+    assertPublicAccess(request, widget.allowedDomains, preview)
     const conversation = await prisma.conversation.create({
       data: {
         agentId: widget.agentId,

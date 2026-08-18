@@ -10,7 +10,15 @@
   container.style.cssText = 'all:initial;position:fixed;bottom:0;right:0;z-index:2147483647;width:0;height:0;'
 
   var iframe = document.createElement('iframe')
-  iframe.src = baseUrl + '/widget/demo?embed=true&widgetKey=' + encodeURIComponent(widgetKey)
+  var params = 'embed=true&widgetKey=' + encodeURIComponent(widgetKey)
+  try {
+    if (window.top && window.top.location && window.top.location.host) {
+      params += '&host=' + encodeURIComponent(window.top.location.host)
+    }
+  } catch (e) {
+    /* cross-origin parent access blocked — host param omitted, falls back to origin check */
+  }
+  iframe.src = baseUrl + '/widget/demo?' + params
   iframe.style.cssText =
     'position:fixed;bottom:20px;right:20px;width:0;height:0;border:none;z-index:2147483647;max-width:calc(100vw - 40px);max-height:calc(100vh - 40px);border-radius:12px;overflow:hidden;background:transparent;'
   iframe.title = 'Chat Widget'
