@@ -71,8 +71,8 @@ export function LayoutTab({
                   'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                   position === pos
-                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
-                    : 'text-muted-foreground/70 hover:text-foreground',
+                    ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                 )}
               >
                 {pos === 'bottom-right' ? 'Bottom right' : 'Bottom left'}
@@ -94,8 +94,8 @@ export function LayoutTab({
                   'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                   widgetHeight === opt.value
-                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
-                    : 'text-muted-foreground/70 hover:text-foreground',
+                    ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                 )}
               >
                 {opt.label}
@@ -117,8 +117,8 @@ export function LayoutTab({
                   'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                   widgetWidth === opt.value
-                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
-                    : 'text-muted-foreground/70 hover:text-foreground',
+                    ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                 )}
               >
                 {opt.label}
@@ -140,8 +140,8 @@ export function LayoutTab({
                   'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                   launcherSize === opt.value
-                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
-                    : 'text-muted-foreground/70 hover:text-foreground',
+                    ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                 )}
               >
                 {opt.label}
@@ -163,8 +163,8 @@ export function LayoutTab({
                   'rounded-md px-4 py-1.5 text-xs font-medium transition-all',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                   borderRadius === opt.value
-                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border/30'
-                    : 'text-muted-foreground/70 hover:text-foreground',
+                    ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                 )}
               >
                 {opt.label}
