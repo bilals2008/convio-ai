@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
@@ -18,8 +18,12 @@ import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
+import { SelectionCheckbox } from '@/components/shared/selection-checkbox'
+import { BulkActionBar } from '@/components/shared/bulk-action-bar'
+import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { ProviderLogo } from '@/components/agents/provider-logos'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -181,6 +185,14 @@ export default function ProviderKeysPage() {
     })
   }, [visibleKeys, search, providerFilter])
 
+  const bulk = useBulkSelection(displayKeys)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const exitSelectionMode = bulk.exitSelectionMode
+
+  useEffect(() => {
+    exitSelectionMode()
+  }, [search, providerFilter, view, exitSelectionMode])
+
   const availableProviders = useMemo(
     () => PROVIDER_ORDER.filter((id) => !configuredProviders.has(id)),
     [configuredProviders],
@@ -221,6 +233,24 @@ export default function ProviderKeysPage() {
       toast.success('Provider key deleted')
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to delete provider key'),
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!orgId) throw new Error('No organization selected')
+      await Promise.all(ids.map((id) => keysApi.delete(orgId, id)))
+    },
+    onSuccess: (_data, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['provider-keys', orgId] })
+      toast.success(`${ids.length} provider key${ids.length !== 1 ? 's' : ''} deleted`)
+      bulk.exitSelectionMode()
+      setBulkDeleteOpen(false)
+    },
+    onError: () => {
+      toast.error('Failed to delete some keys')
+      bulk.exitSelectionMode()
+      setBulkDeleteOpen(false)
+    },
   })
 
   async function handleTest(keyId: string) {
@@ -379,7 +409,13 @@ export default function ProviderKeysPage() {
             </div>
           </div>
         </div>
-        {renderRowActions(key)}
+        <div className="flex shrink-0 items-center gap-2">
+          <SelectionCheckbox
+            isSelected={bulk.isSelected(key.id)}
+            onToggle={() => bulk.toggleSelect(key.id)}
+          />
+          {renderRowActions(key)}
+        </div>
       </div>
     )
   }
@@ -391,21 +427,27 @@ export default function ProviderKeysPage() {
         key={key.id}
         className="group relative flex flex-col rounded-xl border border-border/60 bg-card p-5 transition-all hover:border-primary/30 hover:shadow-soft-lg"
       >
-        <div className="flex items-start gap-3 min-w-0">
-          <ProviderLogo provider={key.provider} className="size-9 rounded-lg" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate text-[15px] font-semibold">{meta.name}</h3>
-              {key.label && (
-                <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
-                  {key.label}
-                </Badge>
-              )}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <ProviderLogo provider={key.provider} className="size-9 rounded-lg" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="truncate text-[15px] font-semibold">{meta.name}</h3>
+                {key.label && (
+                  <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
+                    {key.label}
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                {key.keyPreview}
+              </p>
             </div>
-            <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-              {key.keyPreview}
-            </p>
           </div>
+          <SelectionCheckbox
+            isSelected={bulk.isSelected(key.id)}
+            onToggle={() => bulk.toggleSelect(key.id)}
+          />
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-1.5">
           <Badge variant="outline" className="text-[10px] px-1.5 py-0">
@@ -679,6 +721,28 @@ export default function ProviderKeysPage() {
                 )}
               </div>
 
+              {bulk.selectedCount > 0 && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={bulk.toggleSelectAll}
+                    className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Checkbox checked={bulk.isAllSelected} className="size-4" />
+                    {bulk.isAllSelected ? 'Deselect all' : `Select all ${displayKeys.length}`}
+                  </button>
+                  <BulkActionBar
+                    onExitSelectionMode={bulk.exitSelectionMode}
+                    action={
+                      <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+                        <Trash2 className="size-4" />
+                        Delete ({bulk.selectedCount})
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
+
               {view === 'card' ? (
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {displayKeys.map(renderCard)}
@@ -691,6 +755,30 @@ export default function ProviderKeysPage() {
             </>
           )}
         </div>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {bulk.selectedCount} provider key{bulk.selectedCount !== 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the selected keys. Agents will fall back to the
+              default system key for those providers. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={bulkDeleteMutation.isPending}
+              onClick={() => bulkDeleteMutation.mutate(Array.from(bulk.selectedIds))}
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete ${bulk.selectedCount}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit Dialog */}
       <Dialog
