@@ -80,6 +80,15 @@ const widgetMessageBodySchema = z.object({
   content: z.string().min(1).max(10000),
 })
 
+// Instructs the model to emit Markdown so widget responses render as proper
+// lists, clickable links, headings, and emphasis instead of plain paragraphs.
+const WIDGET_FORMAT_GUIDE = `\n\n## Response formatting guidelines
+- Structure your answer with Markdown so it renders cleanly in the chat.
+- Use bullet lists (- item) whenever you list 2 or more items; use numbered lists (1. item) for steps or rankings.
+- Write URLs as clickable Markdown links with a descriptive label, e.g. [GitHub](https://github.com/example). Never output a bare URL.
+- Use **bold** for key terms, and headings (## / ###) to break up long answers.
+- Keep paragraphs short and scannable.`
+
 async function getConversationOrgId(conversationId: string): Promise<string> {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
@@ -594,9 +603,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       return { data: { response: 'AI provider is not available.' } }
     }
 
-    const systemContext = context
+    const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt
+      : agent.systemPrompt) + WIDGET_FORMAT_GUIDE
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
@@ -795,9 +804,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       return
     }
 
-    const systemContext = context
+    const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt ?? ''
+      : agent.systemPrompt ?? '') + WIDGET_FORMAT_GUIDE
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
