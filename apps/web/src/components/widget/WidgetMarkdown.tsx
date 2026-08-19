@@ -8,6 +8,10 @@ import { cn } from '@/lib/utils'
 // end-user-facing UI.
 const ICON_BASE = 'https://thesvg.org/icons'
 
+// Slugs without a mono variant — render these as plain images (they ship
+// brand-colored, visible on any background).
+const ICON_NO_MONO = new Set(['linkedin'])
+
 const PLATFORMS: { match: RegExp; slug: string; name: string }[] = [
   { match: /(^|\.)github\.com$/i, slug: 'github', name: 'GitHub' },
   { match: /(^|\.)linkedin\.com$/i, slug: 'linkedin', name: 'LinkedIn' },
@@ -61,6 +65,34 @@ function prettyUrl(url: string): string {
   }
 }
 
+// mono is a single-color mark; rendered via CSS mask so it inherits the link
+// color instead of defaulting to black (invisible on dark bubbles).
+function BrandIcon({ slug }: { slug: string }) {
+  if (ICON_NO_MONO.has(slug)) {
+    return (
+      <img
+        src={`${ICON_BASE}/${slug}/default.svg`}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        className="inline-block size-4 shrink-0"
+      />
+    )
+  }
+  const icon = `${ICON_BASE}/${slug}/mono.svg`
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block size-4 shrink-0"
+      style={{
+        backgroundColor: 'currentColor',
+        WebkitMask: `url(${icon}) center / contain no-repeat`,
+        mask: `url(${icon}) center / contain no-repeat`,
+      }}
+    />
+  )
+}
+
 function WidgetLink({ href, children }: { href?: string; children?: ReactNode }) {
   if (!href) return <a>{children}</a>
   const platform = getPlatform(href)
@@ -78,15 +110,9 @@ function WidgetLink({ href, children }: { href?: string; children?: ReactNode })
       className="inline-flex items-center gap-1 align-baseline break-words font-medium text-[hsl(var(--widget-primary))] underline underline-offset-4 hover:opacity-80"
     >
       {platform ? (
-        <img
-          src={`${ICON_BASE}/${platform.slug}/default.svg`}
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          className="inline-block size-3.5 shrink-0 rounded-[2px]"
-        />
+        <BrandIcon slug={platform.slug} />
       ) : (
-        <Globe className="size-3.5 shrink-0 opacity-80" />
+        <Globe className="size-4 shrink-0 opacity-80" />
       )}
       <span className="break-words">{isBareUrl ? prettyUrl(href) : children}</span>
     </a>
