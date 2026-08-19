@@ -25,8 +25,10 @@ export interface WidgetTheme {
 
 export interface WidgetConfig {
   agentId: string
-  publicKey?: string
+  publicKey: string
   host?: string
+  visitorId?: string
+  widgetToken?: string
   preview?: boolean
   position: 'bottom-right' | 'bottom-left'
   theme: WidgetTheme
@@ -74,23 +76,32 @@ export function useWidget(config: WidgetConfig) {
 
   const theme = { ...defaultTheme, ...config.theme }
 
+  const CONV_KEY = `convio:conv:${config.publicKey}`
+
   const authHeaders = useCallback(async (): Promise<Record<string, string> | undefined> => {
     if (!config.preview) return undefined
     const { data: { session } } = await supabase.auth.getSession()
     return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
   }, [config.preview])
 
+  const publicHeaders = useCallback((): Record<string, string> => ({
+    ...(config.host ? { 'X-Widget-Host': config.host } : {}),
+    ...(config.widgetToken ? { 'X-Widget-Token': config.widgetToken } : {}),
+  }), [config.host, config.widgetToken])
+
   const createConversation = useCallback(async () => {
     setIsCreatingConversation(true)
     try {
       const query = config.preview ? '?preview=true' : ''
       const extraHeaders = await authHeaders()
-      const headers = { ...(config.host ? { 'X-Widget-Host': config.host } : {}), ...(extraHeaders ?? {}) }
-      const { data } = config.publicKey
-        ? await api.post(`/public/widgets/${config.publicKey}/conversations${query}`, {}, { headers })
-        : await api.post(`/widget/agents/${config.agentId}/conversations`, { channel: 'web' }, { headers })
+      const headers = { ...publicHeaders(), ...(extraHeaders ?? {}) }
+      const body = config.visitorId ? { visitorId: config.visitorId } : {}
+      const { data } = await api.post(`/public/widgets/${config.publicKey}/conversations${query}`, body, { headers })
       const conversation = data.data || data
       setConversationId(conversation.id)
+      if (!config.preview) {
+        try { localStorage.setItem(CONV_KEY, conversation.id) } catch { /* storage unavailable */ }
+      }
       return conversation.id
     } catch {
       setError('Failed to start conversation')
@@ -98,7 +109,7 @@ export function useWidget(config: WidgetConfig) {
     } finally {
       setIsCreatingConversation(false)
     }
-  }, [config.agentId, config.publicKey, config.preview, config.host, authHeaders])
+  }, [config.publicKey, config.preview, config.visitorId, authHeaders, publicHeaders, CONV_KEY])
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -133,7 +144,7 @@ export function useWidget(config: WidgetConfig) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(config.host ? { 'X-Widget-Host': config.host } : {}),
+            ...publicHeaders(),
             ...(extraHeaders ?? {}),
           },
           body: JSON.stringify({ content: content.trim() }),
@@ -148,8 +159,9 @@ export function useWidget(config: WidgetConfig) {
         let buffer = ''
         let fullContent = ''
         let streamError: string | null = null
+        let streamDone = false
 
-        while (true) {
+        while (!streamDone) {
           const { done, value } = await reader.read()
           if (done) break
 
@@ -160,7 +172,10 @@ export function useWidget(config: WidgetConfig) {
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const data = line.slice(6)
-              if (data === '[DONE]') break
+              if (data === '[DONE]') {
+                streamDone = true
+                break
+              }
               try {
                 const parsed = JSON.parse(data)
                 if (parsed.error) {
@@ -205,20 +220,21 @@ export function useWidget(config: WidgetConfig) {
         setError('Failed to send message')
       }
     },
-    [conversationId, createConversation, config.host]
+    [conversationId, createConversation, publicHeaders, authHeaders]
   )
 
   const isEmbed = useRef(typeof window !== 'undefined' && window.parent !== window)
   // Closed iframe size: must fit the 56px bubble + its inset + shadow so it
   // isn't clipped by the iframe's overflow:hidden.
   const BTN_SIZE = 80
-  const OPEN_WIDTH = 400
-  const OPEN_HEIGHT = 620
+  const OPEN_WIDTH_MAP: Record<string, number> = { narrow: 320, default: 400, wide: 480 }
+  const OPEN_WIDTH = OPEN_WIDTH_MAP[config.widgetWidth || 'default'] || 400
+  const OPEN_HEIGHT = Math.min(Math.max(config.widgetHeight || 620, 300), 900)
 
   const sendResize = useCallback((w: number, h: number, open: boolean) => {
     if (!isEmbed.current) return
-    window.parent.postMessage({ type: 'convio-resize', width: w, height: h, open }, '*')
-  }, [])
+    window.parent.postMessage({ type: 'convio-resize', width: w, height: h, open, position: config.position }, '*')
+  }, [config.position])
 
   const openWidget = useCallback(() => {
     setError(null)
@@ -268,16 +284,57 @@ export function useWidget(config: WidgetConfig) {
     setError(null)
     setIsTyping(false)
     setUnreadCount(0)
-  }, [])
+    if (!config.preview) {
+      try { localStorage.removeItem(CONV_KEY) } catch { /* storage unavailable */ }
+    }
+  }, [config.preview, CONV_KEY])
+
+  const [historyLoaded, setHistoryLoaded] = useState(() => !!config.preview)
+
+  // Resume a returning visitor's conversation. The conversation id is stored
+  // per widget, so the embedded widget reloads history on return visits.
+  useEffect(() => {
+    if (config.preview) return
+    let cancelled = false
+    async function resume() {
+      try {
+        const storedId = localStorage.getItem(CONV_KEY)
+        if (!storedId) return
+        const extraHeaders = await authHeaders()
+        const response = await api.get(`/widget/conversations/${storedId}/messages?limit=50`, {
+          headers: { ...publicHeaders(), ...(extraHeaders ?? {}) },
+        })
+        const history = response.data.data || []
+        if (cancelled) return
+        if (Array.isArray(history) && history.length > 0) {
+          setConversationId(storedId)
+          setMessages(history.map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            timestamp: new Date(m.createdAt),
+          })))
+        } else {
+          localStorage.removeItem(CONV_KEY)
+        }
+      } catch {
+        try { localStorage.removeItem(CONV_KEY) } catch { /* ignore */ }
+      } finally {
+        if (!cancelled) setHistoryLoaded(true)
+      }
+    }
+    resume()
+    return () => { cancelled = true }
+  }, [config.preview, CONV_KEY, authHeaders, publicHeaders])
 
   useEffect(() => {
-    if (config.greeting && messages.length === 0 && !(config.quickReplies?.length)) {
+    if (historyLoaded && config.greeting && messages.length === 0 && !(config.quickReplies?.length)) {
       const timer = setTimeout(() => {
         addAgentMessage(config.greeting)
       }, 600)
       return () => clearTimeout(timer)
     }
-  }, [config.greeting, messages.length, addAgentMessage, config.quickReplies])
+  }, [config.greeting, messages.length, addAgentMessage, config.quickReplies, historyLoaded])
 
   useEffect(() => {
     if (isEmbed.current) {

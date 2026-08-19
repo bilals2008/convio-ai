@@ -1,11 +1,11 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { getWidgetCorsHeaders } from '../../plugins/cors.js'
 import { resolveGenerationProvider } from '../agents/agent-generator.js'
 import { WIDGET_GENERATION_PROMPT, parseWidgetDraft } from './generator.js'
-import { getRequestDomain, assertPublicAccess, requirePreviewAuth } from './access.js'
+import { assertPublicAccess, getRequestOriginHost, issueWidgetToken, requirePreviewAuth } from './access.js'
 import { z } from 'zod'
 
 const widgetStatuses = ['draft', 'active', 'paused', 'archived'] as const
@@ -207,11 +207,33 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     if (preview) {
       await requirePreviewAuth(fastify, request, widget.organizationId)
     } else {
-      assertPublicAccess(request, widget.allowedDomains)
+      assertPublicAccess(request, widget.allowedDomains, widget.publicKey)
     }
     reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
     reply.header('Cache-Control', 'no-store')
     return { data: widget }
+  })
+
+  // Issues a short-lived signed token proving the embedding page's host. Called
+  // by widget.js from the customer's page, so the browser-set Origin header is
+  // the unspoofable proof of the embedding domain.
+  fastify.get('/public/widgets/:publicKey/token', {
+    preHandler: [validate({ params: publicWidgetParamsSchema, query: z.object({ host: domainSchema }) })],
+  }, async (request, reply) => {
+    const { publicKey } = request.params as { publicKey: string }
+    const { host } = request.query as { host: string }
+    const widget = await prisma.widget.findFirst({
+      where: { publicKey, status: 'active' },
+      select: { allowedDomains: true },
+    })
+    if (!widget) throw new AppError(404, 'Widget not found')
+    const originHost = getRequestOriginHost(request)
+    if (!originHost || widget.allowedDomains.length === 0 || !widget.allowedDomains.includes(host) || originHost !== host) {
+      throw new AppError(403, 'This widget is not allowed on this domain')
+    }
+    reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
+    reply.header('Cache-Control', 'no-store')
+    return { data: { token: issueWidgetToken(publicKey, host) } }
   })
 
   fastify.post('/public/widgets/:publicKey/conversations', {
@@ -226,7 +248,7 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
     if (preview) {
       await requirePreviewAuth(fastify, request, widget.organizationId)
     } else {
-      assertPublicAccess(request, widget.allowedDomains)
+      assertPublicAccess(request, widget.allowedDomains, publicKey)
     }
     const conversation = await prisma.conversation.create({
       data: {

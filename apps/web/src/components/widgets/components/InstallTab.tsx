@@ -13,6 +13,7 @@ interface InstallTabProps {
   onCopyEmbed: () => void
   copied: boolean
   position: string
+  snippet: string
 }
 
 export function InstallTab({
@@ -25,6 +26,7 @@ export function InstallTab({
   onCopyEmbed,
   copied,
   position,
+  snippet,
 }: InstallTabProps) {
   return (
     <div className="space-y-6 [&>*+*]:border-t [&>*+*]:border-border/40 [&>*+*]:pt-6">
@@ -49,14 +51,7 @@ export function InstallTab({
             </button>
             <pre className="overflow-x-auto px-4 py-3.5">
               <code className="block font-mono text-[12px] leading-relaxed text-foreground/80">
-                <span className="text-muted-foreground/50">{'<!-- Convio widget -->'}</span>{'\n'}
-                <span className="text-foreground/60">{'<script'}</span>{' '}
-                <span className="text-foreground/50">src</span>
-                <span className="text-foreground/70">={`"${window.location.origin}/widget.js"`}</span>{'\n'}
-                {'  '}
-                <span className="text-foreground/50">data-widget-key</span>
-                <span className="text-foreground/70">={`"${publicKey}"`}</span>
-                <span className="text-foreground/60">{'></script>'}</span>
+                {snippet || <span className="text-muted-foreground/50">{'Loading embed code...'}</span>}
               </code>
             </pre>
           </div>

@@ -20,6 +20,12 @@ export function useWidgetForm(widgetId: string) {
     enabled: Boolean(widgetId),
   })
 
+  const { data: embedSnippet } = useQuery({
+    queryKey: ['widget-embed', widgetId],
+    queryFn: async () => (await widgetsApi.getEmbed(widgetId)).data.data.snippet as string,
+    enabled: Boolean(widgetId),
+  })
+
   const [name, setName] = useState('')
   const [domains, setDomains] = useState<string[]>([])
   const [domainInput, setDomainInput] = useState('')
@@ -291,6 +297,7 @@ const [headerGradientEnd, setHeaderGradientEnd] = useState('#0d7a34')
   return {
     widget,
     isLoading,
+    embedSnippet,
     name,
     setName,
     domainInput,

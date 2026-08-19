@@ -808,24 +808,4 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
     return { data: agent }
   })
-
-  // GET /api/agents/:id/embed — Get embed snippet (member only)
-  fastify.get('/agents/:id/embed', {
-    preHandler: [
-      fastify.authenticate,
-      validate({ params: agentParamsSchema }),
-    ],
-  }, async (request) => {
-    const { id } = request.params as { id: string }
-
-    const existing = await prisma.agent.findUnique({ where: { id } })
-    if (!existing) throw new AppError(404, 'Agent not found')
-
-    await fastify.getMembership(request.userId!, existing.organizationId)
-
-    const baseUrl = process.env.WEB_URL || 'http://localhost:5173'
-    const snippet = `<script src="${baseUrl}/widget.js" data-agent-id="${id}"></script>`
-
-    return { data: { snippet } }
-  })
 }

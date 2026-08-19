@@ -111,6 +111,7 @@ export default function WidgetConfigPage() {
     copyEmbed,
     addDomain,
     removeDomain,
+    embedSnippet,
   } = useWidgetForm(id!)
 
   const handleBack = useCallback(() => navigate('/widgets'), [navigate])
@@ -283,6 +284,7 @@ export default function WidgetConfigPage() {
               onCopyEmbed={copyEmbed}
               copied={copied}
               position={position}
+              snippet={embedSnippet ?? ''}
             />
           )}
         </div>
@@ -388,6 +390,7 @@ export default function WidgetConfigPage() {
         <ChatWidget
           key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${headerTitle}-${headerSubtitle}-${launcherLabel}-${footerBgColor}-${quickReplies.join(',')}`}
           agentId={widget.agent.id}
+          publicKey={widget.publicKey}
           position={position}
           greeting={widget.config.greeting || 'Hi'}
           agentName={agentName || widget.agent.name}
