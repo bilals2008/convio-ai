@@ -281,8 +281,6 @@ export default function WidgetConfigPage() {
               onAddDomain={addDomain}
               onRemoveDomain={removeDomain}
               publicKey={widget.publicKey}
-              onCopyEmbed={copyEmbed}
-              copied={copied}
               position={position}
               snippet={embedSnippet ?? ''}
             />
