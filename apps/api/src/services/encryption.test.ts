@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { encryptSecret, decryptSecret } from './encryption.js'
+import { encryptSecret, decryptSecret, getEncryptionKey } from './encryption.js'
 
-const key = Buffer.from('test-key-derived-via-sha256-of-a-test-value', 'utf8')
+process.env.ENCRYPTION_KEY = 'test-key-derived-via-sha256-of-a-test-value'
+const key = getEncryptionKey()!
 
 describe('encryption', () => {
   it('round-trips a secret and never stores it in plaintext', () => {

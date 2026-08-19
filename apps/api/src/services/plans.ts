@@ -19,7 +19,7 @@ export interface PlanDef {
   providerYearlyProductId?: string
 }
 
-function toPlanDef(row: Prisma.PlanGetPayload<{}>): PlanDef {
+function toPlanDef(row: Prisma.PlanGetPayload<object>): PlanDef {
   const rawLimits = (row.limits ?? {}) as Partial<Record<keyof PlanLimits, number | null>>
   const limits: PlanLimits = {
     agents: rawLimits.agents ?? Infinity,
