@@ -510,6 +510,7 @@ model Broadcast {
   organizationId String
   agentId       String
   name          String
+  message       String?
   templateName  String
   templateLanguage String @default("en_US")
   templateParams Json     @default("[]")

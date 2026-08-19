@@ -1215,6 +1215,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       organizationId: string
       agentId: string
       name: string
+      message?: string
       templateName: string
       templateLanguage?: string
       templateParams?: Record<string, string>[]
