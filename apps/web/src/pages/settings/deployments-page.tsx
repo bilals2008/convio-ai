@@ -14,21 +14,45 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Plus, Trash2, Loader2, Copy, Check, Globe, Calendar } from 'lucide-react'
+import { Plus, Trash2, Loader2, Copy, Check, Globe, Calendar, Braces, RefreshCw, Phone, type LucideIcon } from 'lucide-react'
 import { DeploymentForm } from '@/components/settings/deployment-form'
 import { DeploymentDetail } from '@/components/settings/deployment-detail'
 import { SearchFilterBar } from '@/components/shared/search-filter-bar'
 import { toast } from 'sonner'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
 
-const channelLogos: Record<string, { logo: string | null; fallback: string }> = {
-  web: { logo: null, fallback: 'W' },
+const channelLogos: Record<string, { logo: string | null; icon?: LucideIcon; fallback: string }> = {
+  web: { logo: null, icon: Globe, fallback: 'W' },
   whatsapp: { logo: `${CDN}/whatsapp/default.svg`, fallback: 'WA' },
   slack: { logo: `${CDN}/slack/default.svg`, fallback: 'S' },
   discord: { logo: `${CDN}/discord/default.svg`, fallback: 'D' },
   telegram: { logo: `${CDN}/telegram/default.svg`, fallback: 'T' },
-  api: { logo: null, fallback: 'A' },
+  api: { logo: null, icon: Braces, fallback: 'A' },
+}
+
+const channelFilters = [
+  { value: 'all', label: 'All channels' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'slack', label: 'Slack' },
+  { value: 'discord', label: 'Discord' },
+  { value: 'telegram', label: 'Telegram' },
+  { value: 'api', label: 'API' },
+  { value: 'web', label: 'Web' },
+]
+
+function channelDetail(channel: string, config: Record<string, unknown>): string | null {
+  if (channel === 'whatsapp') {
+    return (config.kapsoDisplayPhone || config.phoneNumber || null) as string | null
+  }
+  return null
 }
 
 interface DeploymentItem {
@@ -48,6 +72,7 @@ export default function DeploymentsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [channelFilter, setChannelFilter] = useState('all')
   const [selectedDeployment, setSelectedDeployment] = useState<DeploymentItem | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -88,21 +113,9 @@ export default function DeploymentsPage() {
   const allDeploymentsQuery = useQuery({
     queryKey: ['all-deployments', orgId],
     queryFn: async () => {
-      const agentsRes = await agentsApi.list(orgId!)
-      const agents = agentsRes.data.data || agentsRes.data
-      const agentsList = Array.isArray(agents) ? agents : []
-      const deploymentPromises = agentsList.map(async (agent: { id: string; name: string }) => {
-        try {
-          const res = await deploymentsApi.list(agent.id)
-          const items = res.data.data || res.data
-          const list = Array.isArray(items) ? items : []
-          return list.map((d: DeploymentItem) => ({ ...d, agentName: agent.name }))
-        } catch {
-          return []
-        }
-      })
-      const nested = await Promise.all(deploymentPromises)
-      return nested.flat()
+      const res = await deploymentsApi.listByOrg(orgId!)
+      const items = res.data.data || res.data
+      return Array.isArray(items) ? items : []
     },
     enabled: !!orgId,
   })
@@ -127,6 +140,23 @@ export default function DeploymentsPage() {
     },
   })
 
+  const retryMutation = useMutation({
+    mutationFn: async (deployment: DeploymentItem) => {
+      const res = await deploymentsApi.test(deployment.id)
+      const result = res.data.data as { success?: boolean; message?: string }
+      if (!result?.success) throw new Error(result?.message || 'Connection check failed')
+      await deploymentsApi.update(deployment.id, { status: 'active' })
+      return result.message
+    },
+    onSuccess: (msg) => {
+      queryClient.invalidateQueries({ queryKey: ['all-deployments'] })
+      toast.success(msg || 'Deployment is configured and active')
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Retry failed')
+    },
+  })
+
   const deployments = allDeploymentsQuery.data || []
 
   const filteredDeployments = useMemo(() => {
@@ -141,9 +171,12 @@ export default function DeploymentsPage() {
       const matchesStatus =
         statusFilter === 'all' || deployment.status === statusFilter
 
-      return matchesSearch && matchesStatus
+      const matchesChannel =
+        channelFilter === 'all' || deployment.channel === channelFilter
+
+      return matchesSearch && matchesStatus && matchesChannel
     })
-  }, [deployments, search, statusFilter])
+  }, [deployments, search, statusFilter, channelFilter])
 
   if (orgLoading || allDeploymentsQuery.isLoading) {
     return (
@@ -178,6 +211,20 @@ export default function DeploymentsPage() {
         activeFilter={statusFilter}
         onFilterChange={setStatusFilter}
         filterLabel="Status"
+        trailing={
+          <Select value={channelFilter} onValueChange={setChannelFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All channels" />
+            </SelectTrigger>
+            <SelectContent>
+              {channelFilters.map((f) => (
+                <SelectItem key={f.value} value={f.value}>
+                  {f.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
       />
 
       {editing && (
@@ -215,6 +262,10 @@ export default function DeploymentsPage() {
           <p className="text-xs text-muted-foreground mt-1">
             Create your first deployment to connect an agent to a channel.
           </p>
+          <Button size="sm" className="mt-4" onClick={() => setEditing({})}>
+            <Plus className="size-4" />
+            Connect a channel
+          </Button>
         </div>
       )}
 
@@ -235,6 +286,7 @@ export default function DeploymentsPage() {
           const ch = channelLogos[deployment.channel] || channelLogos.web
           const config = deployment.config || {}
           const subtitle = (config.guildName || config.workspaceName || config.projectName || deployment.agentName || deployment.agentId) as string
+          const detail = channelDetail(deployment.channel, config)
           return (
             <div
               key={deployment.id}
@@ -245,6 +297,8 @@ export default function DeploymentsPage() {
                 <div className="flex size-8 sm:size-9 items-center justify-center rounded-lg bg-muted shrink-0 transition-transform duration-200 group-hover:scale-105">
                   {ch.logo ? (
                     <img src={ch.logo} alt={deployment.channel} className="size-4" />
+                  ) : ch.icon ? (
+                    <ch.icon className="size-4 text-muted-foreground" />
                   ) : (
                     <span className="text-[10px] sm:text-xs font-bold text-muted-foreground">{ch.fallback}</span>
                   )}
@@ -267,6 +321,31 @@ export default function DeploymentsPage() {
                 </div>
 
                 <div className="flex items-center gap-0.5 shrink-0">
+                  {(deployment.status === 'error' || deployment.status === 'pending') && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <button
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              retryMutation.mutate(deployment)
+                            }}
+                          >
+                            {retryMutation.isPending && retryMutation.variables?.id === deployment.id ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="size-3.5" />
+                            )}
+                          </button>
+                        }
+                      />
+                      <TooltipContent side="top" className="text-xs">
+                        Retry connection
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -318,8 +397,17 @@ export default function DeploymentsPage() {
               </div>
 
               <div className="flex items-center gap-1.5 border-t border-border/40 px-3 py-1.5 sm:px-4 sm:py-2 bg-muted/20">
-                <Calendar className="size-3 text-muted-foreground" />
-                <span className="text-[10px] sm:text-[11px] text-muted-foreground">Created {new Date(deployment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                {detail ? (
+                  <>
+                    <Phone className="size-3 text-muted-foreground" />
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground truncate">{detail}</span>
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="size-3 text-muted-foreground" />
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground">Created {new Date(deployment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </>
+                )}
               </div>
             </div>
           )

@@ -1,4 +1,5 @@
 import { Search, X, SlidersHorizontal, Check } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,6 +26,7 @@ interface SearchFilterBarProps {
   activeFilter?: string
   onFilterChange?: (value: string) => void
   filterLabel?: string
+  trailing?: ReactNode
   className?: string
 }
 
@@ -36,6 +38,7 @@ export function SearchFilterBar({
   activeFilter,
   onFilterChange,
   filterLabel = 'Filter',
+  trailing,
   className,
 }: SearchFilterBarProps) {
   return (
@@ -66,43 +69,47 @@ export function SearchFilterBar({
         )}
       </div>
 
-      {filters.length > 0 && onFilterChange && (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="outline" size="sm">
-                <SlidersHorizontal className="size-3.5" />
-                {filterLabel}
-                {activeFilter && activeFilter !== 'all' && (
-                  <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                    1
-                  </span>
-                )}
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>{filterLabel}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {filters.map((filter) => (
-                <DropdownMenuItem
-                  key={filter.value}
-                  onClick={() => onFilterChange(filter.value)}
-                >
-                  <Check
-                    className={cn(
-                      'size-3.5',
-                      activeFilter === filter.value ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  {filter.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      <div className="flex items-center gap-2 shrink-0">
+        {filters.length > 0 && onFilterChange && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="outline" size="sm">
+                  <SlidersHorizontal className="size-3.5" />
+                  {filterLabel}
+                  {activeFilter && activeFilter !== 'all' && (
+                    <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                      1
+                    </span>
+                  )}
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>{filterLabel}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {filters.map((filter) => (
+                  <DropdownMenuItem
+                    key={filter.value}
+                    onClick={() => onFilterChange(filter.value)}
+                  >
+                    <Check
+                      className={cn(
+                        'size-3.5',
+                        activeFilter === filter.value ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    {filter.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        {trailing}
+      </div>
     </div>
   )
 }

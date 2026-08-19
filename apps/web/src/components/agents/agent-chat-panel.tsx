@@ -78,6 +78,7 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
         tools: config.tools,
         mcpServerIds: config.mcpServerIds,
         history,
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -91,6 +92,17 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
       const decoder = new TextDecoder()
       let buffer = ''
       let assistantContent = ''
+
+      // Flush streamed text once per animation frame so AiResponse doesn't
+      // re-parse markdown on every token.
+      let flushRaf: number | null = null
+      const scheduleFlush = () => {
+        if (flushRaf !== null) return
+        flushRaf = requestAnimationFrame(() => {
+          flushRaf = null
+          setStreamingContent(assistantContent)
+        })
+      }
 
       while (true) {
         const { done, value } = await reader.read()
@@ -109,7 +121,7 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
               if (parsed.error) throw new Error(parsed.error)
               if (parsed.type === 'text' && parsed.content) {
                 assistantContent += parsed.content
-                setStreamingContent(assistantContent)
+                scheduleFlush()
               }
             } catch (e) {
               if (e instanceof Error && e.message !== 'No response body') throw e
@@ -135,6 +147,7 @@ export function AgentChatPanel({ agentConfig, className }: AgentChatPanelProps) 
       if (err instanceof DOMException && err.name === 'AbortError') return
       console.error('Agent chat error:', err)
     } finally {
+      if (flushRaf !== null) cancelAnimationFrame(flushRaf)
       setStreaming(false)
       setStreamingContent('')
       abortRef.current = null

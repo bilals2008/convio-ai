@@ -185,6 +185,7 @@ export const widgets = {
 
 export const deployments = {
   list: (agentId: string) => api.get(`/agents/${agentId}/deployments`),
+  listByOrg: (orgId: string) => api.get(`/organizations/${orgId}/deployments`),
   get: (id: string) => api.get(`/deployments/${id}`),
   create: (agentId: string, data: Record<string, unknown>) =>
     api.post(`/agents/${agentId}/deployments`, data),

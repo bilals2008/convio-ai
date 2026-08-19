@@ -20,6 +20,8 @@ export type AgentTemplateType =
   | 'project-manager'
   | 'meeting-summarizer'
   | 'social-media-manager'
+  | 'email-writer'
+  | 'it-support'
   | 'custom'
 
 export type AgentTemplateCategory = 'support' | 'business' | 'education' | 'productivity' | 'custom'
@@ -285,6 +287,36 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.4,
     category: 'business',
     suggestedTools: [],
+  },
+  'email-writer': {
+    id: 'email-writer',
+    name: 'Email Writer',
+    description: 'Drafts professional emails in the right tone for any situation.',
+    systemPrompt: [
+      'You are an email writing assistant.',
+      'Draft clear, professional emails based on the recipient, context, and desired tone.',
+      'Keep messages concise and scannable — short paragraphs, clear subject lines, and a defined call to action.',
+      'Match the tone requested (formal, friendly, or persuasive) without sounding generic.',
+    ].join(' '),
+    suggestedModel: 'gpt-4o-mini',
+    suggestedTemperature: 0.5,
+    category: 'productivity',
+    suggestedTools: [],
+  },
+  'it-support': {
+    id: 'it-support',
+    name: 'IT Support',
+    description: 'Troubleshoots technical issues and guides users step by step.',
+    systemPrompt: [
+      'You are an IT support agent.',
+      'Diagnose technical issues by asking focused questions before suggesting fixes.',
+      'Walk users through solutions step by step, one instruction at a time, and confirm before moving on.',
+      'If the issue needs admin access or a human technician, escalate clearly and explain what will happen next.',
+    ].join(' '),
+    suggestedModel: 'gpt-4o-mini',
+    suggestedTemperature: 0.3,
+    category: 'support',
+    suggestedTools: ['knowledge-search'],
   },
   custom: {
     id: 'custom',

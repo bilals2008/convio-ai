@@ -434,6 +434,31 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // GET /api/organizations/:orgId/deployments — List deployments for org (member only)
+  fastify.get('/organizations/:orgId/deployments', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: z.object({ orgId: z.string().uuid() }) }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+
+    await fastify.getMembership(request.userId!, orgId)
+
+    const deployments = await prisma.deployment.findMany({
+      where: { agent: { organizationId: orgId } },
+      orderBy: { createdAt: 'desc' },
+      include: { agent: { select: { name: true } } },
+    })
+
+    return {
+      data: deployments.map((d) => ({
+        ...(maskSensitive(d) as Record<string, unknown>),
+        agentName: d.agent.name,
+      })),
+    }
+  })
+
   // GET /api/deployments/:id — Get deployment by ID (member only, masked)
   fastify.get('/deployments/:id', {
     preHandler: [
