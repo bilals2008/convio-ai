@@ -11,6 +11,7 @@ import { resolveProviderKey } from '../../services/provider-key.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { computeCost } from '@convio/ai/pricing'
 import { getAgentWidgetDomains, assertPublicAccess } from '../widgets/access.js'
+import { runExclusive, createRequestSignal } from '../../services/concurrency.js'
 import { z } from 'zod'
 
 // User-facing message shown when a message is blocked by moderation.
@@ -303,20 +304,23 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     request.raw.once('close', () => {
       clientDisconnected = true
     })
+    const signal = createRequestSignal((cb) => request.raw.once('close', cb))
 
-    let fullResponse = ''
-    let totalInputTokens = 0
-    let totalOutputTokens = 0
+    await runExclusive(`conv:${id}`, async () => {
+      let fullResponse = ''
+      let totalInputTokens = 0
+      let totalOutputTokens = 0
 
-    try {
-      const stream = provider.stream({
-        model: agent.model,
-        messages: aiMessages,
-        temperature: agent.temperature ?? 0.7,
-        maxTokens: agent.maxTokens ?? 2048,
-        apiKey,
-        tools: toolDefs.length > 0 ? toolDefs : undefined,
-      })
+      try {
+        const stream = provider.stream({
+          model: agent.model,
+          messages: aiMessages,
+          temperature: agent.temperature ?? 0.7,
+          maxTokens: agent.maxTokens ?? 2048,
+          apiKey,
+          signal,
+          tools: toolDefs.length > 0 ? toolDefs : undefined,
+        })
 
       let firstResponseText = ''
       const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
@@ -370,6 +374,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           temperature: agent.temperature ?? 0.7,
           maxTokens: agent.maxTokens ?? 2048,
           apiKey,
+          signal,
         })
         for await (const chunk of finalStream) {
           if (clientDisconnected) break
@@ -392,7 +397,6 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         reply.raw.write('data: [DONE]\n\n')
         reply.raw.end()
       }
-      return
     }
 
     if (fullResponse) {
@@ -428,8 +432,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         })
       } catch {}
     }
+    })
 
-    if (!clientDisconnected) {
+    if (!clientDisconnected && !reply.raw.writableEnded) {
       reply.raw.write('data: [DONE]\n\n')
       reply.raw.end()
     }
@@ -553,6 +558,11 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     }
     assertPublicAccess(request, widgetDomains)
 
+    const widgetLimitCheck = await checkMessageLimit(conversation.agent.organizationId)
+    if (!widgetLimitCheck.allowed) {
+      return { data: { response: 'This conversation has reached its monthly message limit.' } }
+    }
+
     // Moderate the inbound message before storing it or calling the AI.
     const widgetModeration = await moderateMessage(conversation.agent.organizationId, content)
     if (!widgetModeration.allowed) {
@@ -612,14 +622,17 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     ]
 
+    const signal = createRequestSignal((cb) => request.raw.once('close', cb))
+
     try {
-      const response = await provider.generate({
+      const response = await runExclusive(`conv:${id}`, () => provider.generate({
         model: agent.model,
         messages: aiMessages,
         temperature: agent.temperature ?? 0.7,
         maxTokens: agent.maxTokens ?? 2048,
         apiKey,
-      })
+        signal,
+      }))
 
       const lastUserMsg = await prisma.message.findFirst({
         where: { conversationId: id, role: 'user' },
@@ -720,6 +733,11 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const agent = conversation.agent
     let earlyResponse: string | null = null
 
+    const widgetLimitCheck = await checkMessageLimit(agent.organizationId)
+    if (!widgetLimitCheck.allowed) {
+      earlyResponse = 'This conversation has reached its monthly message limit.'
+    }
+
     const widgetModeration = await moderateMessage(agent.organizationId, content)
     if (!widgetModeration.allowed) {
       await logModerationViolation(fastify, {
@@ -729,7 +747,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         flags: widgetModeration.result.flags,
       })
       earlyResponse = widgetModeration.message
-    } else {
+    } else if (!earlyResponse) {
       await prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } })
       await prisma.conversation.update({ where: { id }, data: { status: 'active' } })
     }
@@ -794,6 +812,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       reply.raw.write(`data: ${JSON.stringify(payload)}\n\n`)
     }
     const finishStream = () => {
+      if (reply.raw.writableEnded) return
       reply.raw.write('data: [DONE]\n\n')
       reply.raw.end()
     }
@@ -821,20 +840,23 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     let clientDisconnected = false
     request.raw.once('close', () => { clientDisconnected = true })
+    const signal = createRequestSignal((cb) => request.raw.once('close', cb))
 
-    let fullResponse = ''
-    let totalInputTokens = 0
-    let totalOutputTokens = 0
+    await runExclusive(`conv:${id}`, async () => {
+      let fullResponse = ''
+      let totalInputTokens = 0
+      let totalOutputTokens = 0
 
-    try {
-      const stream = provider!.stream({
-        model: agent.model!,
-        messages: aiMessages,
-        temperature: agent.temperature ?? 0.7,
-        maxTokens: agent.maxTokens ?? 2048,
-        apiKey,
-        tools: toolDefs.length > 0 ? toolDefs : undefined,
-      })
+      try {
+        const stream = provider!.stream({
+          model: agent.model!,
+          messages: aiMessages,
+          temperature: agent.temperature ?? 0.7,
+          maxTokens: agent.maxTokens ?? 2048,
+          apiKey,
+          signal,
+          tools: toolDefs.length > 0 ? toolDefs : undefined,
+        })
 
       let firstResponseText = ''
       const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
@@ -885,6 +907,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           temperature: agent.temperature ?? 0.7,
           maxTokens: agent.maxTokens ?? 2048,
           apiKey,
+          signal,
         })
         for await (const chunk of finalStream) {
           if (clientDisconnected) break
@@ -905,7 +928,6 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         writeChunk({ error: 'Sorry, something went wrong. Please try again.' })
         finishStream()
       }
-      return
     }
 
     if (fullResponse) {
@@ -929,6 +951,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         },
       })
     }
+    })
 
     if (!clientDisconnected) {
       finishStream()
