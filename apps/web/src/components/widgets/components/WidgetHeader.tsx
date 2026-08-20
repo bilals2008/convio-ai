@@ -163,7 +163,7 @@ export function WidgetHeader({
               <DropdownMenuItem
                 onClick={() =>
                   window.open(
-                    `/widget/demo?embed=true&widgetKey=${widget.publicKey}&position=${position}&preview=true`,
+                    `/widget-entry.html?embed=true&widgetKey=${widget.publicKey}&position=${position}&preview=true`,
                     '_blank',
                   )
                 }
