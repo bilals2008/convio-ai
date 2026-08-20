@@ -38,7 +38,7 @@ export function HeroSection() {
             className="group inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <span className="text-primary">New —</span>
-            AI-powered customer intelligence
+            Bring your own AI keys (BYOK)
             <ArrowUpRight className="size-3.5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </a>
 
