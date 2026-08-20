@@ -5,6 +5,7 @@ export async function createBroadcast(data: {
   organizationId: string
   agentId: string
   name: string
+  message?: string
   templateName: string
   templateLanguage?: string
   templateParams?: Record<string, string>[]
@@ -17,6 +18,7 @@ export async function createBroadcast(data: {
       organizationId: data.organizationId,
       agentId: data.agentId,
       name: data.name,
+      message: data.message || null,
       templateName: data.templateName,
       templateLanguage: data.templateLanguage || 'en_US',
       templateParams: (data.templateParams || []) as any,

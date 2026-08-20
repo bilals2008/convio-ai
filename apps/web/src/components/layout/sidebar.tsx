@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   BarChart3,
@@ -38,59 +38,12 @@ import { SidebarGroup, SidebarItem } from './sidebar-nav'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
-import { useUnreadCount } from '@/lib/hooks/use-notifications'
 import { cn } from '@/lib/utils'
-
-function useSettingsItems() {
-  const { org, orgId } = useOrg()
-  const { data: unread } = useUnreadCount(orgId ?? undefined, !!orgId)
-  const role = org?.role
-  const isAdmin = role === 'owner' || role === 'admin'
-  const isOwner = role === 'owner'
-
-  return [
-    { icon: Building2, label: 'Organization', href: '/settings/organization', adminOnly: false },
-    { icon: User, label: 'Profile', href: '/settings/profile', adminOnly: false },
-    { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys', adminOnly: true },
-    { icon: CreditCard, label: 'Billing', href: '/settings/billing', adminOnly: false },
-    { icon: Bell, label: 'Notifications', href: '/settings/notifications', adminOnly: false, badge: unread?.unread ? unread.unread : undefined, badgeVariant: 'default' },
-     { icon: Database, label: 'Data', href: '/settings/data', adminOnly: true },
-    { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs', adminOnly: true },
-  ].filter((item) => !item.adminOnly || (isAdmin && (!item.ownerOnly || isOwner)))
-}
-
-function SettingsGroup({ collapsed }: { collapsed: boolean }) {
-  const settingsGeneral = useSettingsItems()
-
-  if (collapsed) {
-    return (
-      <div className="space-y-0.5 mt-4">
-        {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} badgeVariant={item.badgeVariant} />
-        ))}
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-0.5 mt-4">
-      <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
-        Settings
-      </div>
-      <div className="flex flex-col gap-0.5">
-        {settingsGeneral.map((item) => (
-          <SidebarItem key={item.href} icon={item.icon} label={item.label} href={item.href} badge={item.badge} badgeVariant={item.badgeVariant} />
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export function Sidebar() {
   const { collapsed, setCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
-  const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, logout } = useAuth()
   const { org } = useOrg()
 
   const initials = user?.name
@@ -130,17 +83,17 @@ export function Sidebar() {
       aria-label="Main navigation"
     >
       {/* Logo area */}
-      <Link to="/" className="flex items-center py-4 px-3 border-b border-border/50 gap-2 hover:opacity-80 transition-opacity">
+      <div className={cn('flex items-center py-4 px-3 border-b border-border/50 gap-2', collapsed && 'justify-center')}>
         {!collapsed && (
-          <img src="/logo.png" alt="Convio" className="h-7 w-auto shrink-0" />
+          <Link to="/" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="Convio" className="h-7 w-auto shrink-0" />
+            <span className="text-[15px] font-semibold tracking-tight truncate block">Convio</span>
+          </Link>
         )}
-        <div className={cn('flex-1 min-w-0', collapsed && 'hidden')}>
-          <span className="text-[15px] font-semibold tracking-tight truncate block">Convio</span>
-        </div>
         <Button
           variant="ghost"
           size="icon"
-          className={cn('size-7 shrink-0 text-muted-foreground hover:text-foreground', collapsed && 'mx-auto')}
+          className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
@@ -149,7 +102,7 @@ export function Sidebar() {
             className={cn('size-4 transition-transform duration-200', collapsed && 'rotate-180')}
           />
         </Button>
-      </Link>
+      </div>
 
       <ScrollArea className="flex-1 min-h-0">
         <nav className="flex flex-col px-2 py-2">
@@ -168,13 +121,12 @@ export function Sidebar() {
             <SidebarItem icon={MessageSquare} label="Conversations" href="/conversations" />
             <SidebarItem icon={MessageCircle} label="Widgets" href="/widgets" />
             <SidebarItem icon={Globe} label="Deployments" href="/settings/deployments" />
+            <SidebarItem icon={Shield} label="Provider Keys" href="/settings/provider-keys" />
           </SidebarGroup>
 
           <SidebarGroup label="Support">
             <SidebarItem icon={LifeBuoy} label="Support Tickets" href="/support" />
           </SidebarGroup>
-
-          <SettingsGroup collapsed={collapsed} />
 
           </nav>
       </ScrollArea>
@@ -213,11 +165,55 @@ export function Sidebar() {
               </>
             )}
           </DropdownMenuTrigger>
-          <DropdownMenuContent side={collapsed ? 'right' : 'top'} align="start" sideOffset={8}>
-            <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
-              <User className="size-4" />
-              Profile
-            </DropdownMenuItem>
+          <DropdownMenuContent side={collapsed ? 'right' : 'top'} align="start" sideOffset={8} className="w-56">
+            <div className="space-y-0.5">
+              <DropdownMenuItem
+                onClick={() => navigate('/settings/profile')}
+                className="justify-between focus:bg-primary/10 focus:text-primary"
+              >
+                <span>Profile</span>
+                <User className="size-4" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigate('/settings/organization')}
+                className="justify-between focus:bg-primary/10 focus:text-primary"
+              >
+                <span>Organization</span>
+                <Building2 className="size-4" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigate('/settings/billing')}
+                className="justify-between focus:bg-primary/10 focus:text-primary"
+              >
+                <span>Billing</span>
+                <CreditCard className="size-4" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigate('/settings/notifications')}
+                className="justify-between focus:bg-primary/10 focus:text-primary"
+              >
+                <span>Notifications</span>
+                <Bell className="size-4" />
+              </DropdownMenuItem>
+              {(org?.role === 'owner' || org?.role === 'admin') && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/settings/data')}
+                    className="justify-between focus:bg-primary/10 focus:text-primary"
+                  >
+                    <span>Data</span>
+                    <Database className="size-4" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate('/settings/audit-logs')}
+                    className="justify-between focus:bg-primary/10 focus:text-primary"
+                  >
+                    <span>Audit Logs</span>
+                    <ScrollText className="size-4" />
+                  </DropdownMenuItem>
+                </>
+              )}
+            </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
@@ -226,9 +222,10 @@ export function Sidebar() {
                   onSuccess: () => navigate('/login', { replace: true }),
                 })
               }}
+              className="justify-between focus:bg-destructive/10"
             >
+              <span>Sign Out</span>
               <LogOut className="size-4" />
-              Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -309,7 +306,6 @@ export function Sidebar() {
                   <div className="mt-2">
                     <DropdownMenu>
                     <DropdownMenuTrigger
-                      onClick={() => setMobileOpen(false)}
                       className="flex w-full items-center gap-3 rounded-lg p-1 -m-1 transition-colors hover:bg-muted outline-none"
                     >
                       <Avatar className="size-8">
@@ -324,11 +320,55 @@ export function Sidebar() {
                       </div>
                 <Settings className="size-4 text-muted-foreground" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent side="top" align="start" sideOffset={8}>
-                      <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
-                        <User className="size-4" />
-                        Profile
-                      </DropdownMenuItem>
+                    <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56">
+                      <div className="space-y-0.5" onClick={() => setMobileOpen(false)}>
+                        <DropdownMenuItem
+                          onClick={() => navigate('/settings/profile')}
+                          className="justify-between focus:bg-primary/10 focus:text-primary"
+                        >
+                          <span>Profile</span>
+                          <User className="size-4" />
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate('/settings/organization')}
+                          className="justify-between focus:bg-primary/10 focus:text-primary"
+                        >
+                          <span>Organization</span>
+                          <Building2 className="size-4" />
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate('/settings/billing')}
+                          className="justify-between focus:bg-primary/10 focus:text-primary"
+                        >
+                          <span>Billing</span>
+                          <CreditCard className="size-4" />
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate('/settings/notifications')}
+                          className="justify-between focus:bg-primary/10 focus:text-primary"
+                        >
+                          <span>Notifications</span>
+                          <Bell className="size-4" />
+                        </DropdownMenuItem>
+                        {(org?.role === 'owner' || org?.role === 'admin') && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => navigate('/settings/data')}
+                              className="justify-between focus:bg-primary/10 focus:text-primary"
+                            >
+                              <span>Data</span>
+                              <Database className="size-4" />
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => navigate('/settings/audit-logs')}
+                              className="justify-between focus:bg-primary/10 focus:text-primary"
+                            >
+                              <span>Audit Logs</span>
+                              <ScrollText className="size-4" />
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </div>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         variant="destructive"
@@ -337,9 +377,10 @@ export function Sidebar() {
                             onSuccess: () => navigate('/login', { replace: true }),
                           })
                         }}
+                        className="justify-between focus:bg-destructive/10"
                       >
+                        <span>Sign Out</span>
                         <LogOut className="size-4" />
-                        Sign Out
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -355,19 +396,6 @@ export function Sidebar() {
 }
 
 function getMobileNavGroups(role?: string) {
-  const isAdmin = role === 'owner' || role === 'admin'
-  const isOwner = role === 'owner'
-  const settingsItems = [
-    { icon: Building2, label: 'Organization', href: '/settings/organization' },
-    { icon: User, label: 'Profile', href: '/settings/profile' },
-    ...(isAdmin ? [
-      { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
-       { icon: Database, label: 'Data', href: '/settings/data' },
-       { icon: ScrollText, label: 'Audit Logs', href: '/settings/audit-logs' },
-     ] : []),
-    { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
-  ]
-
   return [
     {
       label: 'Overview',
@@ -390,6 +418,7 @@ function getMobileNavGroups(role?: string) {
         { icon: MessageSquare, label: 'Conversations', href: '/conversations' },
         { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
         { icon: Globe, label: 'Deployments', href: '/settings/deployments' },
+        { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
       ],
     },
     {
@@ -397,14 +426,6 @@ function getMobileNavGroups(role?: string) {
       items: [
         { icon: LifeBuoy, label: 'Support Tickets', href: '/support' },
       ],
-    },
-    {
-      label: 'Settings',
-      items: settingsItems,
-    },
-    {
-      label: 'Feedback',
-      items: [],
     },
   ]
 }

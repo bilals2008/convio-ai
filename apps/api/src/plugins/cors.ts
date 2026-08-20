@@ -44,7 +44,7 @@ export default fp(async function corsPlugin(fastify: FastifyInstance) {
   await fastify.register(cors, {
     origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Widget-Host'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Widget-Host', 'X-Widget-Token'],
     credentials: true,
   });
 }, {

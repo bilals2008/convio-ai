@@ -1,6 +1,6 @@
 import fp from 'fastify-plugin'
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { prisma } from '@convio/database'
 
 declare module 'fastify' {
@@ -14,7 +14,7 @@ declare module 'fastify' {
     }
   }
   interface FastifyInstance {
-    supabase: any
+    supabase: SupabaseClient
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
     optionalAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
   }

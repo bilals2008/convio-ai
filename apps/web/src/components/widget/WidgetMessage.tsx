@@ -2,8 +2,7 @@ import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/utils'
 import type { WidgetMessage as WidgetMessageType } from '@/hooks/useWidget'
 import { useWidgetState } from './WidgetState'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { WidgetMarkdown } from './WidgetMarkdown'
 
 interface WidgetMessageProps {
   message: WidgetMessageType
@@ -64,9 +63,7 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
         {isUser ? (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
         ) : (
-          <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-code:bg-[hsl(var(--widget-primary)_/_0.15)] prose-code:px-1 prose-code:rounded prose-code:text-[12px] prose-pre:bg-[hsl(var(--widget-bg))] prose-pre:border prose-pre:border-[hsl(var(--widget-border))] prose-a:text-[hsl(var(--widget-primary))]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-          </div>
+          <WidgetMarkdown content={message.content} />
         )}
         <span
           className={cn(

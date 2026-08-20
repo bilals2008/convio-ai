@@ -8,6 +8,7 @@ import { LoginActivityTable } from '@/components/settings/login-activity-table'
 import { ConnectedAccountsCard } from '@/components/settings/connected-accounts-card'
 import { PasswordChangeCard } from '@/components/settings/password-change-card'
 import { DangerZoneCard } from '@/components/settings/danger-zone-card'
+import { AiGenerationModelCard } from '@/components/settings/ai-generation-model-card'
 import {
   ProfileFormProvider,
   useCreateProfileForm,
@@ -60,6 +61,7 @@ export default function ProfilePage() {
 
         <ProfileInformationCard profile={profile} user={user} />
         <AccountOverviewCard />
+        <AiGenerationModelCard />
         <PasswordChangeCard />
         <LoginActivityTable />
         {/* <ConnectedAccountsCard /> */}

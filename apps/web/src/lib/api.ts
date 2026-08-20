@@ -38,13 +38,21 @@ api.interceptors.request.use(async (config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
-      captureError(error, { action: 'session-expired' })
-      supabase.auth.signOut()
-      const currentPath = window.location.pathname + window.location.search
-      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
-      return Promise.reject(error)
+  async (error) => {
+    const { response, config } = error
+    const onLoginPage = window.location.pathname.startsWith('/login')
+    if (response?.status === 401 && !onLoginPage && !config?._retried) {
+      config._retried = true
+      const { data, error: refreshError } = await supabase.auth.refreshSession()
+      if (refreshError || !data.session) {
+        captureError(error, { action: 'session-expired' })
+        supabase.auth.signOut()
+        const currentPath = window.location.pathname + window.location.search
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
+        return Promise.reject(error)
+      }
+      config.headers.Authorization = `Bearer ${data.session.access_token}`
+      return api(config)
     }
 
     const friendly = getFriendlyErrorMessage(error)
@@ -185,6 +193,7 @@ export const widgets = {
 
 export const deployments = {
   list: (agentId: string) => api.get(`/agents/${agentId}/deployments`),
+  listByOrg: (orgId: string) => api.get(`/organizations/${orgId}/deployments`),
   get: (id: string) => api.get(`/deployments/${id}`),
   create: (agentId: string, data: Record<string, unknown>) =>
     api.post(`/agents/${agentId}/deployments`, data),

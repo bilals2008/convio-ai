@@ -31,7 +31,7 @@ const signupConfig = {
 
 export default function AdminAnalyticsPage() {
   const [days, setDays] = useState(30)
-  const { data, isLoading, isError } = useAdminAnalytics(days)
+  const { data, isLoading, isFetching, isError } = useAdminAnalytics(days)
 
   const chartData = (data?.dailyBreakdown || []).map((d) => ({
     date: d.date,
@@ -117,18 +117,18 @@ export default function AdminAnalyticsPage() {
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatsCard icon={Building2} label="Total Organizations" value={data?.totalOrgs.toLocaleString() || '0'} iconClassName="bg-violet-500/10 text-violet-500" />
-        <StatsCard icon={Bot} label="Total Agents" value={data?.totalAgents.toLocaleString() || '0'} iconClassName="bg-blue-500/10 text-blue-500" />
-        <StatsCard icon={MessageSquare} label="Conversations" value={data?.totalConversations.toLocaleString() || '0'} description={`${data?.conversationsChange ?? 0}% from prev`} iconClassName="bg-emerald-500/10 text-emerald-500" />
-        <StatsCard icon={CheckCircle} label="Success Rate" value={`${data?.successRate ?? 0}%`} descriptionClassName={data && data.successRate >= 80 ? 'text-emerald-500' : data?.successRate >= 60 ? 'text-amber-500' : 'text-red-500'} iconClassName="bg-amber-500/10 text-amber-500" />
+        <StatsCard icon={Building2} label="Total Organizations" value={data?.totalOrgs.toLocaleString() || '0'} iconClassName="bg-violet-500/10 text-violet-500" loading={isFetching} />
+        <StatsCard icon={Bot} label="Total Agents" value={data?.totalAgents.toLocaleString() || '0'} iconClassName="bg-blue-500/10 text-blue-500" loading={isFetching} />
+        <StatsCard icon={MessageSquare} label="Conversations" value={data?.totalConversations.toLocaleString() || '0'} description={`${data?.conversationsChange ?? 0}% from prev`} iconClassName="bg-emerald-500/10 text-emerald-500" loading={isFetching} />
+        <StatsCard icon={CheckCircle} label="Success Rate" value={`${data?.successRate ?? 0}%`} descriptionClassName={data && data.successRate >= 80 ? 'text-emerald-500' : data?.successRate >= 60 ? 'text-amber-500' : 'text-red-500'} iconClassName="bg-amber-500/10 text-amber-500" loading={isFetching} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <OverviewChart data={chartData} loading={isLoading} />
+          <OverviewChart data={chartData} loading={isFetching} />
         </div>
         <div>
-          <ChannelPerformanceChart data={data?.channelBreakdown} loading={isLoading} />
+          <ChannelPerformanceChart data={data?.channelBreakdown} loading={isFetching} />
         </div>
       </div>
 

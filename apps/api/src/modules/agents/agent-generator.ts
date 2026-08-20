@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { AppError } from '../../plugins/error.js'
 import { prisma } from '@convio/database'
 import { getProviderForModel } from '@convio/ai/providers'
+import { decryptSecret, getEncryptionKey } from '../../services/encryption.js'
 import type { AIProvider } from '@convio/ai'
 
 export const PROVIDER_ENV_KEYS: Record<string, string> = {
@@ -70,10 +71,10 @@ export async function resolveGenerationProvider(
     include: { organization: { include: { providerKeys: true } } },
   })
   const userKeyMap = new Map(
-    (membership?.organization?.providerKeys || []).map((k) => [k.provider, k.apiKey])
+    (membership?.organization?.providerKeys || []).map((k) => [k.provider, decryptSecret(k.apiKey, getEncryptionKey())])
   )
 
-  const genModel = model || 'opencode/deepseek-v4-flash-free'
+  const genModel = model || membership?.organization?.aiGenerationModel || 'opencode/deepseek-v4-flash-free'
   let provider
   try {
     provider = getProviderForModel(genModel)

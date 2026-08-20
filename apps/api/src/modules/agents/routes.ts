@@ -7,6 +7,7 @@ import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext } from '../../services/processor.js'
 import { resolveProviderKey } from '../../services/provider-key.js'
+import { decryptSecret, getEncryptionKey } from '../../services/encryption.js'
 import { getTemplate, listTemplates } from './templates.js'
 import { AGENT_GENERATION_PROMPT, resolveGenerationProvider, parseAgentDraft } from './agent-generator.js'
 import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
@@ -431,7 +432,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         where: { id: agent.providerKeyId },
       })
       if (providerKey && providerKey.organizationId === agent.organizationId) {
-        apiKey = providerKey.apiKey
+        apiKey = decryptSecret(providerKey.apiKey, getEncryptionKey())
         providerId = providerKey.provider
       }
     }
@@ -503,7 +504,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
           select: { apiKey: true, provider: true },
         })
       : null
-    let apiKey = providerKey?.apiKey
+    let apiKey = providerKey ? decryptSecret(providerKey.apiKey, getEncryptionKey()) : undefined
 
     // Fall back to the org's configured key for this model's provider when the
     // caller didn't pick an explicit key (BYOK from Settings → Provider Keys).
@@ -806,25 +807,5 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     }
 
     return { data: agent }
-  })
-
-  // GET /api/agents/:id/embed — Get embed snippet (member only)
-  fastify.get('/agents/:id/embed', {
-    preHandler: [
-      fastify.authenticate,
-      validate({ params: agentParamsSchema }),
-    ],
-  }, async (request) => {
-    const { id } = request.params as { id: string }
-
-    const existing = await prisma.agent.findUnique({ where: { id } })
-    if (!existing) throw new AppError(404, 'Agent not found')
-
-    await fastify.getMembership(request.userId!, existing.organizationId)
-
-    const baseUrl = process.env.WEB_URL || 'http://localhost:5173'
-    const snippet = `<script src="${baseUrl}/widget.js" data-agent-id="${id}"></script>`
-
-    return { data: { snippet } }
   })
 }

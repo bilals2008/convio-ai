@@ -588,11 +588,6 @@ export default function CreateAgentPage() {
         open={aiModalOpen}
         onOpenChange={setAiModalOpen}
         onApply={applyAiDraft}
-        defaultModel={
-          form.getValues('model') ||
-          models.find((m) => m.id.startsWith('opencode/'))?.id ||
-          models[0]?.id
-        }
         disabled={saving}
       />
     </PageContainer>

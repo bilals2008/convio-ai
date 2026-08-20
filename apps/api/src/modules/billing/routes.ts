@@ -12,6 +12,35 @@ import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notificatio
 
 const CREEM_API = CREEM_TEST_MODE ? 'https://test-api.creem.io' : 'https://api.creem.io'
 
+// Minimal shape of a Creem webhook event (the provider payload). Optional fields
+// are unioned where the provider can send either an object or a scalar id.
+interface CreemWebhookEvent {
+  eventType: string
+  object: {
+    id?: string
+    metadata?: { orgId?: string }
+    customer?: { id?: string } | string
+    product?: { id?: string } | string
+    order?: {
+      id?: string
+      amount?: number
+      currency?: string
+      created_at?: string
+      type?: string
+    }
+    status?: string
+    trial_ends_at?: string
+    current_period_end_date?: string
+    ends_at?: string
+    transaction?: { order?: string }
+  }
+}
+
+// Provider sends either `{ id }` or a bare id string for customer/product.
+function objectId(value: { id?: string } | string | undefined): string | undefined {
+  return typeof value === 'string' ? value : value?.id
+}
+
 const orgParamsSchema = z.object({
   orgId: z.string().uuid(),
 })
@@ -288,10 +317,10 @@ export default async function billingRoutes(fastify: FastifyInstance) {
       return { error: 'Invalid signature' }
     }
 
-    let eventData: any
+    let eventData: CreemWebhookEvent
 
     try {
-      eventData = JSON.parse(body)
+      eventData = JSON.parse(body) as CreemWebhookEvent
     } catch {
       reply.code(400)
       return { error: 'Invalid payload' }
@@ -319,11 +348,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
             where: { organizationId: orgId },
           })
 
-          if (!customer && customerData?.id) {
+          if (!customer && objectId(customerData)) {
             customer = await prisma.billingCustomer.create({
               data: {
                 organizationId: orgId,
-                providerCustomerId: String(customerData.id),
+                providerCustomerId: String(objectId(customerData)),
               },
             })
           }
@@ -359,8 +388,8 @@ export default async function billingRoutes(fastify: FastifyInstance) {
         case 'subscription.trialing':
         case 'subscription.paid': {
           const subscriptionId = String(eventObject.id)
-          const productId = String(eventObject.product?.id || eventObject.product)
-          const creemCustomerId = String(eventObject.customer?.id || eventObject.customer)
+          const productId = String(objectId(eventObject.product))
+          const creemCustomerId = String(objectId(eventObject.customer))
           const status = eventType === 'subscription.trialing' ? 'on_trial' : 'active'
           const plan = await getPlanFromProductId(productId)
           const orgId = eventObject.metadata?.orgId as string | undefined
@@ -542,11 +571,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
         case 'subscription.update': {
           const subscriptionId = String(eventObject.id)
-          const productId = eventObject.product?.id
-            ? String(eventObject.product.id)
-            : eventObject.product
-              ? String(eventObject.product)
-              : undefined
+          const productId = objectId(eventObject.product)
           const plan = productId ? await getPlanFromProductId(productId) : undefined
 
           const updateData: Record<string, unknown> = {

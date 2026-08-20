@@ -49,11 +49,6 @@ const updateConversationBodySchema = z.object({
   status: z.enum(conversationStatuses).optional(),
 })
 
-const widgetConversationBodySchema = z.object({
-  visitorId: z.string().min(1).max(100).optional(),
-  channel: z.enum(channels).default('web'),
-})
-
 export default async function conversationsRoutes(fastify: FastifyInstance) {
   // POST /api/agents/:agentId/conversations — Create conversation (protected, member only)
   fastify.post('/agents/:agentId/conversations', {
@@ -293,29 +288,5 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     await prisma.conversation.delete({ where: { id } })
     reply.code(204).send()
-  })
-
-  // POST /api/widget/agents/:agentId/conversations — Public widget endpoint (rate-limited)
-  fastify.post('/widget/agents/:agentId/conversations', {
-    preHandler: [validate({ params: agentParamsSchema, body: widgetConversationBodySchema })],
-    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
-  }, async (request) => {
-    const { agentId } = request.params as { agentId: string }
-    const { visitorId } = request.body as { visitorId?: string }
-
-    const agent = await prisma.agent.findUnique({ where: { id: agentId } })
-    if (!agent || agent.status === 'archived') {
-      throw new AppError(404, 'Agent not found or is unavailable')
-    }
-
-    const conversation = await prisma.conversation.create({
-      data: {
-        agentId,
-        userId: visitorId || null,
-        channel: 'web',
-      },
-    })
-
-    return { data: conversation }
   })
 }

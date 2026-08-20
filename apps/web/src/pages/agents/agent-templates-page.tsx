@@ -235,6 +235,13 @@ export default function AgentTemplatesPage() {
           })}
         </div>
       )}
+
+      {/* More templates coming soon */}
+      <div className="flex items-center justify-center pt-8">
+        <p className="text-center text-xs text-muted-foreground">
+          More templates coming soon — stay tuned.
+        </p>
+      </div>
     </PageContainer>
   )
 }

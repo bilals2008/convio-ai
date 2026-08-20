@@ -298,13 +298,18 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
   const convsData = useMemo(() => convsPages?.pages.flatMap((p) => p.data) ?? [], [convsPages])
 
+  // Conversations created or touched this session already carry their full
+  // message list locally, so they never need a detail fetch. This stops the
+  // auto-created chat from flashing a second loader ("Loading conversation…").
+  const isLocalConv = conversations.some((c) => c.id === activeConvId)
+
   const { data: convDetail, isLoading: convDetailLoading } = useQuery({
     queryKey: ['conversation', activeConvId],
     queryFn: async () => {
       const res = await conversationsApi.get(activeConvId!)
       return res.data.data as Record<string, unknown>
     },
-    enabled: !!activeConvId && !activeConvId.startsWith('temp-'),
+    enabled: !!activeConvId && !activeConvId.startsWith('temp-') && !isLocalConv,
   })
 
   const createConv = useMutation({
@@ -378,13 +383,16 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const activeConversation = allConvs.find((c) => c.id === activeConvId)
 
   const messages = useMemo(() => {
+    if (isLocalConv) {
+      return activeConversation?.messages ?? []
+    }
     if (activeConversation?.messages && activeConversation.messages.length > 0) {
       return activeConversation.messages
     }
     if (!convDetail) return []
     const msgs = ((convDetail as Record<string, unknown>)?.messages || []) as Record<string, unknown>[]
     return msgs.map(mapDbMsg)
-  }, [activeConversation?.messages?.length, activeConversation?.messages, convDetail])
+  }, [isLocalConv, activeConversation, convDetail])
 
   const filteredConversations = useMemo(
     () =>
@@ -506,6 +514,17 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       let finalUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
       const completedToolCalls: string[] = []
 
+      // Flush accumulated text to state once per animation frame instead of
+      // once per token, so AiResponse doesn't re-parse markdown every chunk.
+      let flushRaf: number | null = null
+      const scheduleFlush = () => {
+        if (flushRaf !== null) return
+        flushRaf = requestAnimationFrame(() => {
+          flushRaf = null
+          setStreamingContent(contentRef.current)
+        })
+      }
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -525,7 +544,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                 setStreamingReasoning(reasoningRef.current)
               } else if (parsed.type === 'text' && parsed.content) {
                 contentRef.current += parsed.content
-                setStreamingContent(contentRef.current)
+                scheduleFlush()
               } else if (parsed.type === 'tool_call') {
                 setToolCalls(prev => [...prev, { tool: parsed.tool, args: parsed.args, status: 'calling' }])
               } else if (parsed.type === 'tool_result') {
@@ -586,6 +605,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred'
       setError(msg)
     } finally {
+      if (flushRaf !== null) cancelAnimationFrame(flushRaf)
       setStreaming(false)
       setStreamingContent('')
       setToolCalls([])
@@ -617,20 +637,14 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       timestamp: 'Just now',
     }))
 
-    setStreaming(true)
-    setStreamingContent('')
-    setStreamingReasoning('')
-    setToolCalls([])
-    contentRef.current = ''
-    reasoningRef.current = ''
-
     scrollToBottom('auto')
     requestAnimationFrame(() => scrollToBottom('auto'))
 
+    // Persist the user message without blocking the AI stream from starting.
+    // Streaming state is turned on inside streamAssistant, exactly when the
+    // generation request begins, so the loader only ever appears once.
     if (activeConvId && !activeConvId.startsWith('temp-')) {
-      try {
-        await messagesApi.send(activeConvId, trimmed, 'user')
-      } catch { /* non-blocking */ }
+      messagesApi.send(activeConvId, trimmed, 'user').catch(() => {})
     }
 
     await streamAssistant(trimmed, history)
@@ -1180,7 +1194,18 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                           {streamingContent ? (
                             <AiResponse content={streamingContent} isStreaming showActions={false} />
                           ) : (
-                            <TypingIndicator />
+                            <div className="space-y-2">
+                              {toolCalls.some((tc) => tc.status === 'done') ? (
+                                <p className="text-xs text-muted-foreground/70">Generating final response…</p>
+                              ) : (
+                                <>
+                                  {!showReasoning && streamingReasoning && (
+                                    <p className="text-xs text-muted-foreground/60">Thinking…</p>
+                                  )}
+                                  <TypingIndicator />
+                                </>
+                              )}
+                            </div>
                           )}
                         </BubbleContent>
                       </Bubble>

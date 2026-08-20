@@ -1,7 +1,17 @@
-import { Copy, Check, ExternalLink, Plus, Globe2 } from 'lucide-react'
+import { ExternalLink, Plus, Globe2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { CodeBlock } from '@/components/shared/code-block'
 import { SectionCard } from './SectionCard'
+
+const Html5Icon = () => (
+  <svg viewBox="0 0 452 520" className="size-4 shrink-0" aria-hidden="true">
+    <path fill="#e34f26" d="M41 460L0 0h451l-41 460-185 52" />
+    <path fill="#ef652a" d="M226 472l149-41 35-394H226" />
+    <path fill="#ecedee" d="M226 208h-75l-5-58h80V94H84l15 171h127zm0 147l-64-17-4-45h-56l7 89 117 32z" />
+    <path fill="#fff" d="M226 265h69l-7 73-62 17v59l115-32 16-174H226zm0-171v56h136l5-56z" />
+  </svg>
+)
 
 interface InstallTabProps {
   domains: string[]
@@ -10,9 +20,8 @@ interface InstallTabProps {
   onAddDomain: () => void
   onRemoveDomain: (domain: string) => void
   publicKey: string
-  onCopyEmbed: () => void
-  copied: boolean
   position: string
+  snippet: string
 }
 
 export function InstallTab({
@@ -22,9 +31,8 @@ export function InstallTab({
   onAddDomain,
   onRemoveDomain,
   publicKey,
-  onCopyEmbed,
-  copied,
   position,
+  snippet,
 }: InstallTabProps) {
   return (
     <div className="space-y-6 [&>*+*]:border-t [&>*+*]:border-border/40 [&>*+*]:pt-6">
@@ -38,28 +46,13 @@ export function InstallTab({
         description="Paste this before the closing </body> tag"
       >
         <div className="space-y-3">
-          <div className="relative rounded-xl bg-muted/40 ring-1 ring-border/30 overflow-hidden">
-            <button
-              type="button"
-              onClick={onCopyEmbed}
-              className="absolute top-2.5 right-2.5 z-10 flex size-7 items-center justify-center rounded-lg bg-card/80 text-muted-foreground/60 backdrop-blur-sm hover:bg-card hover:text-foreground transition-colors ring-1 ring-border/20"
-              aria-label="Copy code"
-            >
-              {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-            </button>
-            <pre className="overflow-x-auto px-4 py-3.5">
-              <code className="block font-mono text-[12px] leading-relaxed text-foreground/80">
-                <span className="text-muted-foreground/50">{'<!-- Convio widget -->'}</span>{'\n'}
-                <span className="text-foreground/60">{'<script'}</span>{' '}
-                <span className="text-foreground/50">src</span>
-                <span className="text-foreground/70">={`"${window.location.origin}/widget.js"`}</span>{'\n'}
-                {'  '}
-                <span className="text-foreground/50">data-widget-key</span>
-                <span className="text-foreground/70">={`"${publicKey}"`}</span>
-                <span className="text-foreground/60">{'></script>'}</span>
-              </code>
-            </pre>
-          </div>
+          {snippet ? (
+            <CodeBlock code={snippet} language="html" icon={<Html5Icon />} />
+          ) : (
+            <div className="rounded-lg bg-muted p-4">
+              <p className="font-mono text-xs text-muted-foreground/50">Loading embed code...</p>
+            </div>
+          )}
           <Button
             variant="outline"
             size="sm"

@@ -8,8 +8,10 @@ import { cn } from '@/lib/utils'
 
 export interface ChatWidgetProps {
   agentId: string
-  publicKey?: string
+  publicKey: string
   host?: string
+  visitorId?: string
+  widgetToken?: string
   preview?: boolean
   position?: 'bottom-right' | 'bottom-left'
   theme?: Partial<WidgetTheme>
@@ -65,6 +67,8 @@ export function ChatWidget({
   agentId,
   publicKey,
   host,
+  visitorId,
+  widgetToken,
   preview,
   position = 'bottom-right',
   theme: themeOverride,
@@ -87,7 +91,7 @@ export function ChatWidget({
   widgetHeight,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, host, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight })
+  const widget = useWidget({ agentId, publicKey, host, visitorId, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight })
 
   const stateValue = {
     isOpen: widget.isOpen,
@@ -122,6 +126,7 @@ export function ChatWidget({
     onToggle: widget.toggleWidget,
     onClose: widget.closeWidget,
     onMinimize: () => widget.setIsMinimized((prev) => !prev),
+    onClearChat: widget.clearChat,
     dismissError: () => widget.setError(null),
   }
 
@@ -129,7 +134,7 @@ export function ChatWidget({
     <WidgetStateProvider value={stateValue}>
       <WidgetStyles theme={theme} themeMode={themeMode} />
       <WidgetBackdrop show={widget.isOpen && !widget.isEmbed} onClose={widget.closeWidget} />
-      <div className="convio-widget font-sans antialiased">
+      <div className="convio-widget font-sans antialiased" style={{ background: 'transparent' }}>
         <WidgetButton />
         <WidgetWindow />
       </div>

@@ -41,8 +41,8 @@ export function NotificationFilters({ filters, onChange, counts, className }: No
             className={cn(
               'flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors',
               filters.status === tab.value
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
             )}
           >
             {tab.label}

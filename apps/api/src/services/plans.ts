@@ -1,4 +1,4 @@
-import { prisma } from '@convio/database'
+import { prisma, type Prisma } from '@convio/database'
 import { PLANS } from '@convio/config'
 
 export interface PlanLimits {
@@ -19,18 +19,7 @@ export interface PlanDef {
   providerYearlyProductId?: string
 }
 
-interface PlanRow {
-  key: string
-  name: string
-  price: string | null
-  priceMonthly: number | null
-  features: unknown
-  limits: unknown
-  providerMonthlyProductId: string | null
-  providerYearlyProductId: string | null
-}
-
-function toPlanDef(row: PlanRow): PlanDef {
+function toPlanDef(row: Prisma.PlanGetPayload<object>): PlanDef {
   const rawLimits = (row.limits ?? {}) as Partial<Record<keyof PlanLimits, number | null>>
   const limits: PlanLimits = {
     agents: rawLimits.agents ?? Infinity,
@@ -66,7 +55,7 @@ export async function getAllPlans(): Promise<PlanDef[]> {
 
 export async function getPlanDef(key: string): Promise<PlanDef | undefined> {
   const row = await prisma.plan.findUnique({ where: { key } })
-  if (row) return toPlanDef(row as unknown as PlanRow)
+  if (row) return toPlanDef(row)
 
   const staticPlan = PLANS[key]
   if (!staticPlan) return undefined

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { analyticsApi } from '@/lib/api/analytics'
 
 export function useOrgAnalytics(orgId: string | undefined, from: string, to: string) {
@@ -10,6 +10,7 @@ export function useOrgAnalytics(orgId: string | undefined, from: string, to: str
     },
     enabled: !!orgId,
     retry: false,
+    placeholderData: keepPreviousData,
   })
 }
 

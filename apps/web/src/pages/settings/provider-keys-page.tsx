@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
@@ -10,14 +10,20 @@ import {
   RefreshCw,
   PlugZap,
   Lightbulb,
+  LayoutGrid,
+  List,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/shared/loading'
 import { SearchInput } from '@/components/shared/search-input'
+import { SelectionCheckbox } from '@/components/shared/selection-checkbox'
+import { BulkActionBar } from '@/components/shared/bulk-action-bar'
+import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
+import { ProviderLogo } from '@/components/agents/provider-logos'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -61,7 +67,7 @@ import {
 import { providerKeys as keysApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { toast } from '@/lib/toast'
-import { formatRelativeTime } from '@/lib/utils'
+import { cn, formatRelativeTime } from '@/lib/utils'
 
 interface ProviderKey {
   id: string
@@ -73,22 +79,20 @@ interface ProviderKey {
 
 type ProviderMeta = {
   name: string
-  initial: string
-  color: string
   placeholder: string
 }
 
 const PROVIDER_META: Record<string, ProviderMeta> = {
-  openai: { name: 'OpenAI', initial: 'O', color: 'bg-info/10 text-info', placeholder: 'sk-proj-...' },
-  anthropic: { name: 'Anthropic', initial: 'A', color: 'bg-warning/10 text-warning', placeholder: 'sk-ant-...' },
-  google: { name: 'Google AI', initial: 'G', color: 'bg-success/10 text-success', placeholder: 'AIzaSy...' },
-  groq: { name: 'Groq', initial: 'G', color: 'bg-primary/10 text-primary', placeholder: 'gsk_...' },
-  openrouter: { name: 'OpenRouter', initial: 'O', color: 'bg-success/10 text-success', placeholder: 'sk-or-...' },
-  mistral: { name: 'Mistral', initial: 'M', color: 'bg-warning/10 text-warning', placeholder: '...' },
-  together: { name: 'Together', initial: 'T', color: 'bg-primary/10 text-primary', placeholder: '...' },
-  deepseek: { name: 'DeepSeek', initial: 'D', color: 'bg-info/10 text-info', placeholder: 'sk-...' },
-  perplexity: { name: 'Perplexity', initial: 'P', color: 'bg-success/10 text-success', placeholder: 'pplx-...' },
-  opencode: { name: 'OpenCode Zen', initial: 'Z', color: 'bg-primary/10 text-primary', placeholder: 'oc-...' },
+  openai: { name: 'OpenAI', placeholder: 'sk-proj-...' },
+  anthropic: { name: 'Anthropic', placeholder: 'sk-ant-...' },
+  google: { name: 'Google AI', placeholder: 'AIzaSy...' },
+  groq: { name: 'Groq', placeholder: 'gsk_...' },
+  openrouter: { name: 'OpenRouter', placeholder: 'sk-or-...' },
+  mistral: { name: 'Mistral', placeholder: '...' },
+  together: { name: 'Together', placeholder: '...' },
+  deepseek: { name: 'DeepSeek', placeholder: 'sk-...' },
+  perplexity: { name: 'Perplexity', placeholder: 'pplx-...' },
+  opencode: { name: 'OpenCode Zen', placeholder: 'oc-...' },
 }
 
 const PROVIDER_ORDER = [
@@ -106,25 +110,12 @@ const PROVIDER_ORDER = [
 
 const FALLBACK_META: ProviderMeta = {
   name: 'Unknown',
-  initial: '?',
-  color: 'bg-muted text-muted-foreground',
   placeholder: '...',
 }
 
 function getProviderMeta(id: string): ProviderMeta {
-  return PROVIDER_META[id] ?? { ...FALLBACK_META, name: id, initial: id.charAt(0).toUpperCase() }
+  return PROVIDER_META[id] ?? { ...FALLBACK_META, name: id }
 }
-
-function ProviderIcon({ meta, className }: { meta: ProviderMeta; className?: string }) {
-  return (
-    <div
-      className={`flex shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${meta.color} ${className ?? ''}`}
-    >
-      {meta.initial}
-    </div>
-  )
-}
-
 
 export default function ProviderKeysPage() {
   const { orgId, isLoading: orgLoading } = useOrg()
@@ -147,6 +138,13 @@ export default function ProviderKeysPage() {
   // Toolbar: text search + per-provider filter
   const [search, setSearch] = useState('')
   const [providerFilter, setProviderFilter] = useState('all')
+  const [view, setView] = useState<'list' | 'card'>(() => {
+    return localStorage.getItem('provider-keys-view') === 'list' ? 'list' : 'card'
+  })
+  const changeView = (next: 'list' | 'card') => {
+    setView(next)
+    localStorage.setItem('provider-keys-view', next)
+  }
   // Tracks which row is running a key test so its button can show a spinner
   const [testingId, setTestingId] = useState<string | null>(null)
 
@@ -186,6 +184,14 @@ export default function ProviderKeysPage() {
       return hay.includes(q)
     })
   }, [visibleKeys, search, providerFilter])
+
+  const bulk = useBulkSelection(displayKeys)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const exitSelectionMode = bulk.exitSelectionMode
+
+  useEffect(() => {
+    exitSelectionMode()
+  }, [search, providerFilter, view, exitSelectionMode])
 
   const availableProviders = useMemo(
     () => PROVIDER_ORDER.filter((id) => !configuredProviders.has(id)),
@@ -227,6 +233,24 @@ export default function ProviderKeysPage() {
       toast.success('Provider key deleted')
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to delete provider key'),
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!orgId) throw new Error('No organization selected')
+      await Promise.all(ids.map((id) => keysApi.delete(orgId, id)))
+    },
+    onSuccess: (_data, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['provider-keys', orgId] })
+      toast.success(`${ids.length} provider key${ids.length !== 1 ? 's' : ''} deleted`)
+      bulk.exitSelectionMode()
+      setBulkDeleteOpen(false)
+    },
+    onError: () => {
+      toast.error('Failed to delete some keys')
+      bulk.exitSelectionMode()
+      setBulkDeleteOpen(false)
+    },
   })
 
   async function handleTest(keyId: string) {
@@ -352,6 +376,96 @@ export default function ProviderKeysPage() {
             </AlertDialogContent>
           </AlertDialog>
         </TooltipProvider>
+      </div>
+    )
+  }
+
+  function renderListItem(key: ProviderKey) {
+    const meta = getProviderMeta(key.provider)
+    return (
+      <div
+        key={key.id}
+        className="group flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <ProviderLogo provider={key.provider} className="size-7 rounded-md" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{meta.name}</span>
+              {key.label && (
+                <Badge variant="outline" className="text-[10px] font-normal">
+                  {key.label}
+                </Badge>
+              )}
+            </div>
+            <div className="mt-0.5 flex items-center gap-2">
+              <code className="truncate text-xs text-muted-foreground">
+                {key.keyPreview}
+              </code>
+              <span className="text-muted-foreground/40">·</span>
+              <span className="shrink-0 text-[11px] text-muted-foreground">
+                {formatRelativeTime(key.createdAt)}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {bulk.selectionMode && (
+            <SelectionCheckbox
+              isSelected={bulk.isSelected(key.id)}
+              onToggle={() => bulk.toggleSelect(key.id)}
+            />
+          )}
+          {renderRowActions(key)}
+        </div>
+      </div>
+    )
+  }
+
+  function renderCard(key: ProviderKey) {
+    const meta = getProviderMeta(key.provider)
+    return (
+      <div
+        key={key.id}
+        className="group relative flex flex-col rounded-xl border border-border/60 bg-card p-5 transition-all hover:border-primary/30 hover:shadow-soft-lg"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <ProviderLogo provider={key.provider} className="size-9 rounded-lg" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="truncate text-[15px] font-semibold">{meta.name}</h3>
+                {key.label && (
+                  <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
+                    {key.label}
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                {key.keyPreview}
+              </p>
+            </div>
+          </div>
+          <SelectionCheckbox
+            isSelected={bulk.isSelected(key.id)}
+            onToggle={() => bulk.toggleSelect(key.id)}
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+            <span className="flex items-center gap-1">
+              <ShieldCheck className="size-3" />
+              Encrypted
+            </span>
+          </Badge>
+          <span className="text-[11px] text-muted-foreground">
+            Added {formatRelativeTime(key.createdAt)}
+          </span>
+        </div>
+        <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-3">
+          <span className="text-xs text-muted-foreground">{meta.name} key</span>
+          {renderRowActions(key)}
+        </div>
       </div>
     )
   }
@@ -511,24 +625,59 @@ export default function ProviderKeysPage() {
               })}
             </SelectContent>
           </Select>
+          <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+            <button
+              type="button"
+              onClick={() => changeView('card')}
+              className={cn(
+                'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
+                view === 'card'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              aria-label="Card view"
+            >
+              <LayoutGrid className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => changeView('list')}
+              className={cn(
+                'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
+                view === 'list'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              aria-label="List view"
+            >
+              <List className="size-3.5" />
+            </button>
+          </div>
       </div>
       </div>
 
-      <Card>
-        <CardContent>
+      <div>
           {pageLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
-                  <Skeleton className="size-9 rounded-lg" />
-                  <div className="flex-1 space-y-1.5">
-                    <Skeleton className="h-3.5 w-28" />
-                    <Skeleton className="h-3 w-40" />
+            view === 'card' ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-40 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+                    <Skeleton className="size-9 rounded-lg" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3.5 w-28" />
+                      <Skeleton className="h-3 w-40" />
+                    </div>
+                    <Skeleton className="h-8 w-16" />
                   </div>
-                  <Skeleton className="h-8 w-16" />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           ) : isError ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
               <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-destructive/10">
@@ -562,7 +711,7 @@ export default function ProviderKeysPage() {
             />
           ) : (
             <>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">
                   {displayKeys.length} key{displayKeys.length !== 1 ? 's' : ''}
                   {hasActiveSearch ? ' found' : ''}
@@ -574,45 +723,64 @@ export default function ProviderKeysPage() {
                 )}
               </div>
 
-              <div className="space-y-2.5">
-                {displayKeys.map((key) => {
-                  const meta = getProviderMeta(key.provider)
-                  return (
-                    <div
-                      key={key.id}
-                      className="group flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <ProviderIcon meta={meta} className="size-9" />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{meta.name}</span>
-                            {key.label && (
-                              <Badge variant="outline" className="text-[10px] font-normal">
-                                {key.label}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="mt-0.5 flex items-center gap-2">
-                            <code className="truncate text-xs text-muted-foreground">
-                              {key.keyPreview}
-                            </code>
-                            <span className="text-muted-foreground/40">·</span>
-                            <span className="shrink-0 text-[11px] text-muted-foreground">
-                              {formatRelativeTime(key.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      {renderRowActions(key)}
-                    </div>
-                  )
-                })}
-              </div>
+              {bulk.selectedCount > 0 && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={bulk.toggleSelectAll}
+                    className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Checkbox checked={bulk.isAllSelected} className="size-4" />
+                    {bulk.isAllSelected ? 'Deselect all' : `Select all ${displayKeys.length}`}
+                  </button>
+                  <BulkActionBar
+                    onExitSelectionMode={bulk.exitSelectionMode}
+                    action={
+                      <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+                        <Trash2 className="size-4" />
+                        Delete ({bulk.selectedCount})
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
+
+              {view === 'card' ? (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {displayKeys.map(renderCard)}
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {displayKeys.map(renderListItem)}
+                </div>
+              )}
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {bulk.selectedCount} provider key{bulk.selectedCount !== 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the selected keys. Agents will fall back to the
+              default system key for those providers. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={bulkDeleteMutation.isPending}
+              onClick={() => bulkDeleteMutation.mutate(Array.from(bulk.selectedIds))}
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete ${bulk.selectedCount}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit Dialog */}
       <Dialog

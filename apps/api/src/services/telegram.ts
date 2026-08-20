@@ -184,7 +184,7 @@ export async function executeTelegramBroadcast(broadcastId: string): Promise<{ s
   for (const conv of conversations) {
     if (!conv.contactPhone) continue
     try {
-      await sendTelegramMessage(botToken, conv.contactPhone, broadcast.templateName)
+      await sendTelegramMessage(botToken, conv.contactPhone, broadcast.message ?? broadcast.templateName)
       sent++
     } catch {
       failed++

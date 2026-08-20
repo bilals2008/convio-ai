@@ -10,6 +10,7 @@ import { checkMessageLimit } from '../../services/billing.js'
 import { resolveProviderKey } from '../../services/provider-key.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { computeCost } from '@convio/ai/pricing'
+import { getAgentWidgetDomains, assertPublicAccess } from '../widgets/access.js'
 import { z } from 'zod'
 
 // User-facing message shown when a message is blocked by moderation.
@@ -79,6 +80,15 @@ const widgetMessageBodySchema = z.object({
   content: z.string().min(1).max(10000),
 })
 
+// Instructs the model to emit Markdown so widget responses render as proper
+// lists, clickable links, headings, and emphasis instead of plain paragraphs.
+const WIDGET_FORMAT_GUIDE = `\n\n## Response formatting guidelines
+- Structure your answer with Markdown so it renders cleanly in the chat.
+- Use bullet lists (- item) whenever you list 2 or more items; use numbered lists (1. item) for steps or rankings.
+- Write URLs as clickable Markdown links with a descriptive label, e.g. [GitHub](https://github.com/example). Never output a bare URL.
+- Use **bold** for key terms, and headings (## / ###) to break up long answers.
+- Keep paragraphs short and scannable.`
+
 async function getConversationOrgId(conversationId: string): Promise<string> {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
@@ -91,6 +101,9 @@ async function getConversationOrgId(conversationId: string): Promise<string> {
 
   return conversation.agent.organizationId
 }
+
+type ToolHandler = Awaited<ReturnType<typeof loadAgentToolHandlers>>[number]
+type WidgetProvider = ReturnType<typeof getProviderForModel>
 
 export default async function messagesRoutes(fastify: FastifyInstance) {
   // POST /api/conversations/:id/messages — Add message (protected, member only)
@@ -516,6 +529,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       select: {
         agent: {
           select: {
+            id: true,
             organizationId: true,
             status: true,
             model: true,
@@ -532,6 +546,12 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     if (!conversation || conversation.agent.status === 'archived') {
       throw new AppError(404, 'Conversation not found or agent is unavailable')
     }
+
+    const widgetDomains = await getAgentWidgetDomains(conversation.agent.id)
+    if (widgetDomains === null) {
+      throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
+    }
+    assertPublicAccess(request, widgetDomains)
 
     // Moderate the inbound message before storing it or calling the AI.
     const widgetModeration = await moderateMessage(conversation.agent.organizationId, content)
@@ -583,9 +603,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       return { data: { response: 'AI provider is not available.' } }
     }
 
-    const systemContext = context
+    const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt
+      : agent.systemPrompt) + WIDGET_FORMAT_GUIDE
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
@@ -627,6 +647,38 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // GET /api/widget/conversations/:id/messages — Widget history (public, rate-limited).
+  // Used by the embedded widget to resume a visitor's conversation on return visits.
+  fastify.get('/widget/conversations/:id/messages', {
+    preHandler: [validate({ params: convParamsSchema, query: messagesQuerySchema })],
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { limit } = request.query as { limit: number }
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id },
+      select: { agent: { select: { id: true, status: true } } },
+    })
+    if (!conversation || conversation.agent.status === 'archived') {
+      throw new AppError(404, 'Conversation not found or agent is unavailable')
+    }
+
+    const widgetDomains = await getAgentWidgetDomains(conversation.agent.id)
+    if (widgetDomains === null) {
+      throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
+    }
+    assertPublicAccess(request, widgetDomains)
+
+    const messages = await prisma.message.findMany({
+      where: { conversationId: id },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+      select: { id: true, role: true, content: true, createdAt: true },
+    })
+    return { data: messages }
+  })
+
   // POST /api/widget/conversations/:id/messages/stream — Widget AI response via SSE (public, rate-limited)
   fastify.post('/widget/conversations/:id/messages/stream', {
     preHandler: [validate({ params: convParamsSchema, body: widgetMessageBodySchema })],
@@ -659,61 +711,102 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       throw new AppError(404, 'Conversation not found or agent is unavailable')
     }
 
-    const widgetModeration = await moderateMessage(conversation.agent.organizationId, content)
+    const widgetDomains = await getAgentWidgetDomains(conversation.agent.id)
+    if (widgetDomains === null) {
+      throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
+    }
+    assertPublicAccess(request, widgetDomains)
+
+    const agent = conversation.agent
+    let earlyResponse: string | null = null
+
+    const widgetModeration = await moderateMessage(agent.organizationId, content)
     if (!widgetModeration.allowed) {
       await logModerationViolation(fastify, {
-        organizationId: conversation.agent.organizationId,
+        organizationId: agent.organizationId,
         conversationId: id,
         channel: 'widget',
         flags: widgetModeration.result.flags,
       })
-      return { data: { response: widgetModeration.message } }
+      earlyResponse = widgetModeration.message
+    } else {
+      await prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } })
+      await prisma.conversation.update({ where: { id }, data: { status: 'active' } })
     }
 
-    await prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } })
-    await prisma.conversation.update({ where: { id }, data: { status: 'active' } })
+    if (!agent.model) earlyResponse = earlyResponse ?? 'I am not configured to respond yet.'
 
-    const agent = conversation.agent
-    if (!agent || !agent.model) {
-      return { data: { response: 'I am not configured to respond yet.' } }
-    }
+    let history: { role: string; content: string }[] = []
+    let context: string | null = null
+    let apiKey: string | undefined
+    let toolHandlers: ToolHandler[] = []
+    let provider: WidgetProvider | null = null
 
-    const historyPromise = prisma.message.findMany({
-      where: { conversationId: id },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-      select: { role: true, content: true },
-    })
-    const contextPromise = agent.knowledgeBaseId
-      ? retrieveContext(content, agent.knowledgeBaseId).catch(() => null)
-      : Promise.resolve(null)
-    const providerKeyPromise = agent.providerKeyId
-      ? prisma.providerKey.findFirst({
-          where: { id: agent.providerKeyId, organizationId: agent.organizationId },
-          select: { apiKey: true, provider: true },
+    if (!earlyResponse) {
+      try {
+        const historyPromise = prisma.message.findMany({
+          where: { conversationId: id },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+          select: { role: true, content: true },
         })
-      : Promise.resolve(null)
-    const toolsPromise = loadAgentToolHandlers(agent.id, prisma)
+        const contextPromise = agent.knowledgeBaseId
+          ? retrieveContext(content, agent.knowledgeBaseId).catch(() => null)
+          : Promise.resolve(null)
+        const providerKeyPromise = agent.providerKeyId
+          ? prisma.providerKey.findFirst({
+              where: { id: agent.providerKeyId, organizationId: agent.organizationId },
+              select: { apiKey: true, provider: true },
+            })
+          : Promise.resolve(null)
+        const toolsPromise = loadAgentToolHandlers(agent.id, prisma)
 
-    const [historyDesc, context, providerKey, toolHandlers] = await Promise.all([
-      historyPromise,
-      contextPromise,
-      providerKeyPromise,
-      toolsPromise,
-    ])
-    const history = historyDesc.reverse()
-    const apiKey = providerKey?.apiKey
-
-    let provider
-    try {
-      provider = getProviderForModel(agent.model, providerKey?.provider)
-    } catch {
-      return { data: { response: 'AI provider is not available.' } }
+        const [historyDesc, ctx, providerKey, handlers] = await Promise.all([
+          historyPromise,
+          contextPromise,
+          providerKeyPromise,
+          toolsPromise,
+        ])
+        history = historyDesc.reverse()
+        context = ctx
+        apiKey = providerKey?.apiKey
+        toolHandlers = handlers
+        provider = getProviderForModel(agent.model!, providerKey?.provider)
+      } catch {
+        earlyResponse = 'Sorry, something went wrong. Please try again.'
+      }
     }
 
-    const systemContext = context
+    reply.hijack()
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
+    })
+    reply.raw.flushHeaders()
+
+    // The stream contract is always SSE: canned replies (moderation refusal,
+    // missing model, provider failure) are delivered as a single content chunk
+    // instead of a JSON response so the client parser handles every branch.
+    const writeChunk = (payload: Record<string, unknown>) => {
+      reply.raw.write(`data: ${JSON.stringify(payload)}\n\n`)
+    }
+    const finishStream = () => {
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+    }
+
+    if (earlyResponse) {
+      writeChunk({ content: earlyResponse })
+      finishStream()
+      return
+    }
+
+    const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt
+      : agent.systemPrompt ?? '') + WIDGET_FORMAT_GUIDE
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
@@ -726,16 +819,6 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       parameters: h.schema.parameters,
     }))
 
-    reply.hijack()
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-      ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
-    })
-    reply.raw.flushHeaders()
-
     let clientDisconnected = false
     request.raw.once('close', () => { clientDisconnected = true })
 
@@ -744,8 +827,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     let totalOutputTokens = 0
 
     try {
-      const stream = provider.stream({
-        model: agent.model,
+      const stream = provider!.stream({
+        model: agent.model!,
         messages: aiMessages,
         temperature: agent.temperature ?? 0.7,
         maxTokens: agent.maxTokens ?? 2048,
@@ -761,12 +844,12 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         if (chunk.type === 'reasoning') continue
         if (chunk.type === 'text' && chunk.content) {
           firstResponseText += chunk.content
-          reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+          writeChunk({ content: chunk.content })
         } else if (chunk.type === 'tool_call' && chunk.toolCall) {
           toolCallsFromStream.push({ tool: chunk.toolCall.name, args: chunk.toolCall.arguments })
         } else if (chunk.content) {
           firstResponseText += chunk.content
-          reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+          writeChunk({ content: chunk.content })
         }
         if (chunk.type === 'done') {
           if (chunk.usage) {
@@ -792,8 +875,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
           .join('\n\n')
 
-        const finalStream = provider.stream({
-          model: agent.model,
+        const finalStream = provider!.stream({
+          model: agent.model!,
           messages: [
             ...aiMessages,
             { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
@@ -807,7 +890,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           if (clientDisconnected) break
           if (chunk.type === 'text' && chunk.content) {
             fullResponse += chunk.content
-            reply.raw.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`)
+            writeChunk({ content: chunk.content })
           }
           if (chunk.type === 'done' && chunk.usage) {
             totalInputTokens += chunk.usage.promptTokens || 0
@@ -819,9 +902,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       }
     } catch {
       if (!clientDisconnected) {
-        reply.raw.write(`data: ${JSON.stringify({ error: 'Sorry, something went wrong. Please try again.' })}\n\n`)
-        reply.raw.write('data: [DONE]\n\n')
-        reply.raw.end()
+        writeChunk({ error: 'Sorry, something went wrong. Please try again.' })
+        finishStream()
       }
       return
     }
@@ -843,14 +925,13 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           responseTimeMs,
           inputTokens: totalInputTokens || null,
           outputTokens: totalOutputTokens || null,
-          cost: computeCost(agent.model, totalInputTokens || 0, totalOutputTokens || 0),
+          cost: computeCost(agent.model!, totalInputTokens || 0, totalOutputTokens || 0),
         },
       })
     }
 
     if (!clientDisconnected) {
-      reply.raw.write('data: [DONE]\n\n')
-      reply.raw.end()
+      finishStream()
     }
   })
 }

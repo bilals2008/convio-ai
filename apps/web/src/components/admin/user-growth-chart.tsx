@@ -22,7 +22,7 @@ const chartConfig = {
 export function UserGrowthChart() {
   const [days, setDays] = useState(30)
   const [show, setShow] = useState(false)
-  const { data, isLoading } = useAdminAnalytics(days)
+  const { data, isFetching } = useAdminAnalytics(days)
 
   const chartData = useMemo(() => data?.userSignups || [], [data])
   const total = useMemo(() => chartData.reduce((s, d) => s + d.count, 0), [chartData])
@@ -71,7 +71,7 @@ export function UserGrowthChart() {
                 </div>
               </CardHeader>
               <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-                {isLoading ? (
+                {isFetching ? (
                   <Skeleton className="h-[280px] w-full" />
                 ) : chartData.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">

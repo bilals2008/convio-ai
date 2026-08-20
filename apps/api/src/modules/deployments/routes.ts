@@ -20,6 +20,7 @@ import {
   sendFollowupMessage,
   type DiscordInteraction,
 } from '../../services/discord.js'
+import { ensureDiscordGateway } from '../../services/discord-gateway.js'
 import { processSlackEvent } from '../../services/slack.js'
 import { processIncomingMessage, verifyTwilioSignature } from '../../services/twilio.js'
 import {
@@ -382,6 +383,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
           request.log.warn({ deploymentId: deployment.id, error: result.error }, 'Failed to register Discord commands')
         }
       }
+      ensureDiscordGateway(botToken)
     }
 
     // Auto-register Telegram webhook + bot commands
@@ -422,6 +424,31 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
 
     const deployments = await prisma.deployment.findMany({
       where: { agentId },
+      orderBy: { createdAt: 'desc' },
+      include: { agent: { select: { name: true } } },
+    })
+
+    return {
+      data: deployments.map((d) => ({
+        ...(maskSensitive(d) as Record<string, unknown>),
+        agentName: d.agent.name,
+      })),
+    }
+  })
+
+  // GET /api/organizations/:orgId/deployments — List deployments for org (member only)
+  fastify.get('/organizations/:orgId/deployments', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: z.object({ orgId: z.string().uuid() }) }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+
+    await fastify.getMembership(request.userId!, orgId)
+
+    const deployments = await prisma.deployment.findMany({
+      where: { agent: { organizationId: orgId } },
       orderBy: { createdAt: 'desc' },
       include: { agent: { select: { name: true } } },
     })
@@ -739,6 +766,8 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       })
     }
 
+    ensureDiscordGateway(botToken)
+
     return { data: { id: deployment.id, status: result.success ? 'active' : 'pending' } }
   })
 
@@ -917,10 +946,11 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       return reply.code(200).send('OK')
     }
 
-    // Verify X-Telegram-Bot-Api-Secret-Token (set only for deployments registered after this secret feature)
+    // Verify X-Telegram-Bot-Api-Secret-Token — required; the secret is
+    // auto-generated whenever a telegram webhook is registered.
     const secretToken = config.telegramWebhookSecret as string | undefined
     const receivedToken = request.headers['x-telegram-bot-api-secret-token'] as string | undefined
-    if (secretToken && (!receivedToken || receivedToken !== secretToken)) {
+    if (!secretToken || !receivedToken || receivedToken !== secretToken) {
       request.log.warn({ deploymentId: id }, 'Telegram webhook: invalid secret token')
       return reply.code(401).send('Unauthorized')
     }
@@ -1214,6 +1244,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
       organizationId: string
       agentId: string
       name: string
+      message?: string
       templateName: string
       templateLanguage?: string
       templateParams?: Record<string, string>[]

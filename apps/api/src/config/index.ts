@@ -39,6 +39,8 @@ const schema = Type.Object({
   TWILIO_NUMBER: Type.Optional(Type.String()),
   PLATFORM_ADMIN_EMAILS: Type.Optional(Type.String()),
   MCP_OAUTH_ENCRYPTION_KEY: Type.Optional(Type.String()),
+  CRON_SECRET: Type.Optional(Type.String()),
+  ENCRYPTION_KEY: Type.Optional(Type.String()),
 });
 
 export type Config = Static<typeof schema>;
@@ -56,6 +58,14 @@ export default fp(async function configPlugin(fastify: FastifyInstance) {
   });
 
   fastify.decorate('config', config);
+
+  if (config.NODE_ENV === 'production' && !config.ENCRYPTION_KEY) {
+    throw new Error('ENCRYPTION_KEY is required in production — provider API keys would otherwise be stored in plaintext');
+  }
+
+  if (config.NODE_ENV === 'production' && !config.CRON_SECRET) {
+    throw new Error('CRON_SECRET is required in production — the /broadcasts/process endpoint would otherwise be unauthenticated');
+  }
 }, {
   name: 'config',
 });

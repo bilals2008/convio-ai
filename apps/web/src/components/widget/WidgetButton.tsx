@@ -21,11 +21,10 @@ export function WidgetButton() {
       )}
       style={{
         background: agentAvatar
-          ? 'transparent'
+          ? `transparent`
           : `linear-gradient(135deg, hsl(var(--widget-primary)), color-mix(in srgb, hsl(var(--widget-primary)) 85%, black))`,
-        boxShadow: agentAvatar
-          ? `0 0 0 3px hsl(var(--widget-primary)), 0 4px 20px rgba(0,0,0,0.2)`
-          : `0 4px 20px rgba(0,0,0,0.2)`,
+        boxShadow: agentAvatar ? 'none' : `0 4px 20px rgba(0,0,0,0.2)`,
+        border: agentAvatar ? `3px solid hsl(var(--widget-primary))` : 'none',
       }}
       aria-label={launcherLabel || (isOpen ? 'Close chat' : 'Open chat')}
     >

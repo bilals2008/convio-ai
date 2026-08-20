@@ -41,6 +41,7 @@ model Organization {
   slug             String            @unique
   logo             String?
   plan             String            @default("free")
+  aiGenerationModel String?
   createdAt        DateTime          @default(now()) @db.Timestamptz(6)
   updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
   agents           Agent[]
@@ -510,6 +511,7 @@ model Broadcast {
   organizationId String
   agentId       String
   name          String
+  message       String?
   templateName  String
   templateLanguage String @default("en_US")
   templateParams Json     @default("[]")

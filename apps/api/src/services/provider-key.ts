@@ -1,17 +1,12 @@
 import { prisma } from '@convio/database'
 import { getProviderForModel } from '@convio/ai/providers'
+import { decryptSecret, getEncryptionKey } from './encryption.js'
 
 export interface ResolvedProviderKey {
   apiKey?: string
   provider?: string
 }
 
-/**
- * Resolve the API key to use for a generation:
- * 1. Explicit key linked to the agent/providerKeyId (org-scoped).
- * 2. Org's configured key for the model's provider (BYOK from Settings → Provider Keys).
- * 3. Nothing → provider falls back to its own env key.
- */
 export async function resolveProviderKey(opts: {
   organizationId: string
   model: string
@@ -22,7 +17,9 @@ export async function resolveProviderKey(opts: {
       where: { id: opts.providerKeyId, organizationId: opts.organizationId },
       select: { apiKey: true, provider: true },
     })
-    if (explicit) return explicit
+    if (explicit) {
+      return { apiKey: decryptSecret(explicit.apiKey, getEncryptionKey()), provider: explicit.provider }
+    }
   }
 
   let providerId: string | undefined
@@ -35,5 +32,7 @@ export async function resolveProviderKey(opts: {
     where: { organizationId_provider: { organizationId: opts.organizationId, provider: providerId } },
     select: { apiKey: true, provider: true },
   })
-  return orgKey ?? {}
+  return orgKey
+    ? { apiKey: decryptSecret(orgKey.apiKey, getEncryptionKey()), provider: orgKey.provider }
+    : {}
 }

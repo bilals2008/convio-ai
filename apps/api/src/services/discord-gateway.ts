@@ -5,31 +5,38 @@ import { formatResponse } from './formatters/index.js'
 import { handleMessageUpdate, handleMessageReaction, handleGuildCreate } from './discord/gateway.js'
 import { sendChannelMessage, createThread, BOT_COLOR } from './discord/client.js'
 
-const DISCORD_API = 'https://discord.com/api/v10'
 const GATEWAY_URL = 'wss://gateway.discord.gg/?v=10&encoding=json'
 
 const MAX_RECONNECT_ATTEMPTS = 5
 const RECONNECT_BASE_DELAY = 5000
 const RECONNECT_MAX_DELAY = 30000
 
-let botUserId: string | null = null
-let gateway: WebSocket | null = null
-let heartbeatInterval: ReturnType<typeof setInterval> | null = null
-let sequence: number | null = null
-let sessionId: string | null = null
-let reconnectAttempts = 0
-let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+// One connection per bot token (platform bot + per-user BYOK bots)
+interface Connection {
+  socket: WebSocket
+  token: string
+  heartbeat: ReturnType<typeof setInterval> | null
+  seq: number | null
+  sessionId: string | null
+  botUserId: string | null
+  reconnectAttempts: number
+  reconnectTimer: ReturnType<typeof setTimeout> | null
+}
+
+const connections = new Map<string, Connection>()
+let enabled = true
 
 const processedMessageIds = new Set<string>()
 const MAX_CACHED_IDS = 500
 
-async function handleMessageCreate(data: any, botToken: string) {
+async function handleMessageCreate(data: any, botToken: string, botUserId: string | null) {
   if (!data.id || data.author?.bot || data.author?.id === botUserId) return
 
-  // In-memory dedup (same process)
-  if (processedMessageIds.has(data.id)) return
+  // In-memory dedup per bot token (same message arrives on every bot in the guild)
+  const dedupKey = `${botToken}:${data.id}`
+  if (processedMessageIds.has(dedupKey)) return
   if (processedMessageIds.size >= MAX_CACHED_IDS) processedMessageIds.clear()
-  processedMessageIds.add(data.id)
+  processedMessageIds.add(dedupKey)
 
   // DB-level dedup (across instances — Railway + local)
   const existing = await prisma.message.findFirst({
@@ -48,9 +55,11 @@ async function handleMessageCreate(data: any, botToken: string) {
   let deployment: any
 
   if (guildId) {
+    // Resolve by the mentioned bot's token (all bots in a guild share the guildId)
     deployment = await prisma.deployment.findFirst({
-      where: { channel: 'discord', config: { path: ['guildId'], equals: guildId } },
+      where: { channel: 'discord', config: { path: ['botToken'], equals: botToken } },
       include: { agent: true },
+      orderBy: { createdAt: 'desc' },
     })
   } else {
     const existingConversation = await prisma.conversation.findFirst({
@@ -167,39 +176,50 @@ async function handleMessageCreate(data: any, botToken: string) {
   }
 }
 
-function startGateway(botToken: string) {
-  if (gateway) return
+function startGateway(token: string) {
+  if (connections.has(token)) return
 
-  gateway = new WebSocket(GATEWAY_URL)
+  const conn: Connection = {
+    socket: new WebSocket(GATEWAY_URL),
+    token,
+    heartbeat: null,
+    seq: null,
+    sessionId: null,
+    botUserId: null,
+    reconnectAttempts: 0,
+    reconnectTimer: null,
+  }
+  connections.set(token, conn)
+  const gw = conn.socket
 
-  gateway.on('open', () => {
-    console.log('[Discord Gateway] Connected')
-    reconnectAttempts = 0
+  gw.on('open', () => {
+    console.log(`[Discord Gateway] Connected (token ${token.slice(-6)})`)
+    conn.reconnectAttempts = 0
   })
 
-  gateway.on('message', async (raw) => {
+  gw.on('message', async (raw) => {
     try {
       const payload = JSON.parse(raw.toString())
       const { op, t, d, s } = payload
 
-      if (s) sequence = s
+      if (s) conn.seq = s
 
       switch (op) {
         case 10: {
           const { heartbeat_interval } = d
-          if (heartbeatInterval) clearInterval(heartbeatInterval)
-          heartbeatInterval = setInterval(() => {
-            gateway?.send(JSON.stringify({ op: 1, d: sequence }))
+          if (conn.heartbeat) clearInterval(conn.heartbeat)
+          conn.heartbeat = setInterval(() => {
+            conn.socket.send(JSON.stringify({ op: 1, d: conn.seq }))
           }, heartbeat_interval)
 
           const GUILD_MESSAGES = 1 << 9
           const DIRECT_MESSAGES = 1 << 12
           const MESSAGE_CONTENT = 1 << 15
           const GUILD_MESSAGE_REACTIONS = 1 << 10
-          gateway?.send(JSON.stringify({
+          conn.socket.send(JSON.stringify({
             op: 2,
             d: {
-              token: `Bot ${botToken}`,
+              token: `Bot ${token}`,
               intents: GUILD_MESSAGES | DIRECT_MESSAGES | MESSAGE_CONTENT | GUILD_MESSAGE_REACTIONS,
               properties: { os: 'linux', browser: 'convio', device: 'convio' },
             },
@@ -208,32 +228,34 @@ function startGateway(botToken: string) {
         }
         case 0: {
           if (t === 'READY') {
-            botUserId = d.user?.id
-            sessionId = d.session_id
-            console.log('[Discord Gateway] Ready — bot user:', botUserId)
+            conn.botUserId = d.user?.id
+            conn.sessionId = d.session_id
+            console.log(`[Discord Gateway] Ready — bot user: ${conn.botUserId} (token ${token.slice(-6)})`)
           }
           if (t === 'MESSAGE_CREATE') {
-            void handleMessageCreate(d, botToken)
+            void handleMessageCreate(d, token, conn.botUserId)
           }
           if (t === 'MESSAGE_UPDATE') {
-            void handleMessageUpdate(d, botToken)
+            void handleMessageUpdate(d, token)
           }
           if (t === 'MESSAGE_REACTION_ADD') {
-            void handleMessageReaction(d, botToken)
+            void handleMessageReaction(d, token)
           }
           if (t === 'GUILD_CREATE') {
-            void handleGuildCreate(d, botToken)
+            void handleGuildCreate(d, token)
           }
           break
         }
         case 7: {
-          console.log('[Discord Gateway] Reconnect requested')
-          reconnect(botToken)
+          console.log(`[Discord Gateway] Reconnect requested (token ${token.slice(-6)})`)
+          stopConnection(conn)
+          reconnect(token)
           break
         }
         case 9: {
-          console.error('[Discord Gateway] Invalid session')
-          reconnect(botToken)
+          console.error(`[Discord Gateway] Invalid session (token ${token.slice(-6)})`)
+          stopConnection(conn)
+          reconnect(token)
           break
         }
       }
@@ -242,54 +264,80 @@ function startGateway(botToken: string) {
     }
   })
 
-  gateway.on('close', (code, reason) => {
-    console.log(`[Discord Gateway] Closed (${code}): ${reason}`)
-    reconnect(botToken)
+  gw.on('close', (code, reason) => {
+    console.log(`[Discord Gateway] Closed (${code}): ${reason.toString()} (token ${token.slice(-6)})`)
+    stopConnection(conn)
+    reconnect(token)
   })
 
-  gateway.on('error', (err) => {
-    console.error('[Discord Gateway] Error:', err.message)
+  gw.on('error', (err) => {
+    console.error(`[Discord Gateway] Error (token ${token.slice(-6)}):`, err.message)
   })
 }
 
-function stopGateway() {
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
+function stopConnection(conn: Connection) {
+  if (conn.reconnectTimer) {
+    clearTimeout(conn.reconnectTimer)
+    conn.reconnectTimer = null
   }
-  if (heartbeatInterval) {
-    clearInterval(heartbeatInterval)
-    heartbeatInterval = null
+  if (conn.heartbeat) {
+    clearInterval(conn.heartbeat)
+    conn.heartbeat = null
   }
-  if (gateway) {
-    gateway.onclose = null
-    gateway.onerror = null
-    gateway.close()
-    gateway = null
+  if (connections.get(conn.token) === conn) connections.delete(conn.token)
+  try {
+    conn.socket.close()
+  } catch {
+    // already closed
   }
-  botUserId = null
-  sessionId = null
-  sequence = null
-  reconnectAttempts = 0
 }
 
-function reconnect(botToken: string) {
-  stopGateway()
-  reconnectAttempts++
-  if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) reconnectAttempts = 0
-  const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempts - 1), RECONNECT_MAX_DELAY)
-  console.log(`[Discord Gateway] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`)
-  reconnectTimer = setTimeout(() => startGateway(botToken), delay)
+function reconnect(token: string) {
+  const conn = connections.get(token)
+  if (!conn || conn.reconnectTimer) return
+  conn.reconnectAttempts++
+  if (conn.reconnectAttempts > MAX_RECONNECT_ATTEMPTS) conn.reconnectAttempts = 0
+  const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, conn.reconnectAttempts - 1), RECONNECT_MAX_DELAY)
+  console.log(`[Discord Gateway] Reconnecting in ${delay}ms (attempt ${conn.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) (token ${token.slice(-6)})`)
+  conn.reconnectTimer = setTimeout(() => {
+    conn.reconnectTimer = null
+    startGateway(token)
+  }, delay)
 }
 
-export function initDiscordGateway(botToken?: string) {
-  if (!botToken) {
-    console.log('[Discord Gateway] No bot token — skipping Gateway connection')
+// Idempotent — safe to call whenever a new discord deployment is created
+export function ensureDiscordGateway(token: string | undefined) {
+  if (!enabled || !token) return
+  startGateway(token)
+}
+
+export async function initDiscordGateway(tokens?: string | string[]) {
+  enabled = Boolean(tokens)
+  if (!enabled) {
+    console.log('[Discord Gateway] Disabled via DISCORD_GATEWAY_ENABLED=false')
     return
   }
-  startGateway(botToken)
+
+  const all = new Set(([] as string[]).concat(tokens ?? []).filter(Boolean))
+  try {
+    // Bring in every user's bot token so BYOK bots get gateway events too
+    const deployments = await prisma.deployment.findMany({
+      where: { channel: 'discord' },
+      select: { config: true },
+    })
+    for (const d of deployments) {
+      const t = (d.config as Record<string, unknown> | null)?.botToken as string | undefined
+      if (t) all.add(t)
+    }
+  } catch (err) {
+    console.error('[Discord Gateway] Failed to load deployment tokens:', err)
+  }
+
+  for (const t of all) startGateway(t)
+  console.log(`[Discord Gateway] Managing ${all.size} bot connection(s)`)
 }
 
 export function shutdownDiscordGateway() {
-  stopGateway()
+  for (const conn of connections.values()) stopConnection(conn)
+  connections.clear()
 }
