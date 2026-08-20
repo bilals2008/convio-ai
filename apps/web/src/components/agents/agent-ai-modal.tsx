@@ -22,7 +22,6 @@ interface AgentAiModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onApply: (draft: AgentDraft) => void
-  defaultModel?: string
   disabled?: boolean
 }
 
@@ -47,7 +46,7 @@ const deploymentLabels: Record<string, string> = {
   whatsapp: 'WhatsApp',
 }
 
-export function AgentAiModal({ open, onOpenChange, onApply, defaultModel, disabled }: AgentAiModalProps) {
+export function AgentAiModal({ open, onOpenChange, onApply, disabled }: AgentAiModalProps) {
   const [description, setDescription] = useState('')
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,7 +58,7 @@ export function AgentAiModal({ open, onOpenChange, onApply, defaultModel, disabl
     setError(null)
     setDraft(null)
     try {
-      const res = await agentsApi.generateDraft(description.trim(), defaultModel)
+      const res = await agentsApi.generateDraft(description.trim())
       setDraft((res.data.data || res.data) as AgentDraft)
     } catch (err: unknown) {
       const message =

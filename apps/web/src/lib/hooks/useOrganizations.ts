@@ -8,6 +8,7 @@ export interface Organization {
   logo?: string
   plan?: string
   role?: string
+  aiGenerationModel?: string | null
 }
 
 export function useOrganizations({ enabled = true }: { enabled?: boolean } = {}) {

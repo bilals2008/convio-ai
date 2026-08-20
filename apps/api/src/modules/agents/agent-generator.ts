@@ -74,7 +74,7 @@ export async function resolveGenerationProvider(
     (membership?.organization?.providerKeys || []).map((k) => [k.provider, decryptSecret(k.apiKey, getEncryptionKey())])
   )
 
-  const genModel = model || 'opencode/deepseek-v4-flash-free'
+  const genModel = model || membership?.organization?.aiGenerationModel || 'opencode/deepseek-v4-flash-free'
   let provider
   try {
     provider = getProviderForModel(genModel)

@@ -709,7 +709,7 @@ export default function ProviderKeysPage() {
             />
           ) : (
             <>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">
                   {displayKeys.length} key{displayKeys.length !== 1 ? 's' : ''}
                   {hasActiveSearch ? ' found' : ''}

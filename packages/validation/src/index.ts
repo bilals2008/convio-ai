@@ -73,6 +73,7 @@ export const organizationSchema = z.object({
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
   logo: z.string().url().optional(),
   plan: z.enum(['free', 'pro', 'business', 'enterprise']).default('free'),
+  aiGenerationModel: z.string().max(200).nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })
