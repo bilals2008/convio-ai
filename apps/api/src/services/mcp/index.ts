@@ -1,8 +1,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
 import type { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js'
+import { assertSafeUrl } from '../ssrf.js'
 
 export interface McpServerConfig {
   id: string
@@ -56,14 +56,10 @@ export class McpClient {
   }
 
   createTransport() {
-    if (this.config.type === 'stdio' && this.config.command) {
-      const args = Array.isArray(this.config.args)
-        ? this.config.args.map(String)
-        : []
-      return new StdioClientTransport({
-        command: this.config.command,
-        args,
-      })
+    // stdio is not supported: it executes arbitrary OS commands on the API
+    // host (RCE). Any existing stdio servers fail fast with a clear message.
+    if (this.config.type === 'stdio') {
+      throw new Error('stdio MCP servers are not supported for security reasons — use streamable-http')
     }
 
     if ((this.config.type === 'sse' || this.config.type === 'streamable-http') && this.config.url) {
@@ -87,6 +83,11 @@ export class McpClient {
 
   async connect(): Promise<void> {
     if (this.connected) return
+    if ((this.config.type === 'sse' || this.config.type === 'streamable-http') && this.config.url) {
+      await assertSafeUrl(this.config.url).catch(() => {
+        throw new Error('MCP server URL points to a blocked/internal address')
+      })
+    }
     this.transport = this.createTransport()
     try {
       await this.client.connect(this.transport)

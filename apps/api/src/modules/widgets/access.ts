@@ -11,22 +11,28 @@ const TOKEN_TTL_MS = 10 * 60 * 1000
 // forged. The server signs { publicKey, host, exp } and public endpoints trust
 // the signed host instead of the header. Fallback to the legacy header stays
 // for direct API callers (documented public API, previews without widget.js).
-function tokenSecret(): string {
-  // ponytail: dev fallback; set WIDGET_TOKEN_SECRET in production (see .env.example)
-  return process.env.WIDGET_TOKEN_SECRET || 'dev-widget-token-secret'
+function tokenSecret(): string | null {
+  const secret = process.env.WIDGET_TOKEN_SECRET
+  if (secret) return secret
+  if (process.env.NODE_ENV === 'production') return null
+  return 'dev-widget-token-secret'
 }
 
 export function issueWidgetToken(publicKey: string, host: string): string {
+  const secret = tokenSecret()
+  if (!secret) throw new AppError(500, 'WIDGET_TOKEN_SECRET is not configured', 'MISCONFIGURED')
   const payload = Buffer.from(JSON.stringify({ publicKey, host, exp: Date.now() + TOKEN_TTL_MS })).toString('base64url')
-  const signature = createHmac('sha256', tokenSecret()).update(payload).digest('base64url')
+  const signature = createHmac('sha256', secret).update(payload).digest('base64url')
   return `${payload}.${signature}`
 }
 
 export function verifyWidgetToken(token: string): { publicKey: string; host: string } | null {
+  const secret = tokenSecret()
+  if (!secret) return null
   const parts = token.split('.')
   if (parts.length !== 2) return null
   const [payload, signature] = parts
-  const expected = Buffer.from(createHmac('sha256', tokenSecret()).update(payload).digest('base64url'))
+  const expected = Buffer.from(createHmac('sha256', secret).update(payload).digest('base64url'))
   const actual = Buffer.from(signature)
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null
   try {
@@ -42,12 +48,15 @@ export function verifyWidgetToken(token: string): { publicKey: string; host: str
   }
 }
 
-// Resolve the requesting domain. For widget embeds the iframe runs on our own
-// origin, so the real host is passed by the embed parent via the X-Widget-Host
-// header; Origin is the fallback for direct browser calls.
+// Resolve the requesting domain. The X-Widget-Host header is client-set and
+// trivially spoofable, so it is trusted only in dev. In production the Origin
+// header (set by the browser, unforgeable) is the source of truth; widget.js
+// runs cross-origin in the customer's page so its requests always carry it.
 export function getRequestDomain(request: FastifyRequest): string | null {
-  const host = request.headers['x-widget-host']
-  if (typeof host === 'string' && host.trim()) return host.trim().toLowerCase()
+  if (process.env.NODE_ENV !== 'production') {
+    const host = request.headers['x-widget-host']
+    if (typeof host === 'string' && host.trim()) return host.trim().toLowerCase()
+  }
   return getRequestOriginHost(request)
 }
 
