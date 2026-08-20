@@ -1,6 +1,0 @@
-export { processDiscordInteraction } from './handler.js'
-export { verifyDiscordSignature, registerDiscordCommands, removeDiscordCommands, setBotNickname, sendDiscordMessage } from '../discord.js'
-export { handleMessageUpdate, handleMessageReaction, handleGuildCreate } from './gateway.js'
-export { sendOnboarding } from './onboarding.js'
-export { checkRolePermission } from './permissions.js'
-export type { DiscordInteraction, InteractionResponse } from './types.js'

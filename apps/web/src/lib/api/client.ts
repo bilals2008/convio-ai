@@ -22,13 +22,21 @@ api.interceptors.request.use(async (config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
-      captureError(error, { action: 'session-expired' })
-      supabase.auth.signOut()
-      const currentPath = window.location.pathname + window.location.search
-      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
-      return Promise.reject(error)
+  async (error) => {
+    const { response, config } = error
+    const onLoginPage = window.location.pathname.startsWith('/login')
+    if (response?.status === 401 && !onLoginPage && !config?._retried) {
+      config._retried = true
+      const { data, error: refreshError } = await supabase.auth.refreshSession()
+      if (refreshError || !data.session) {
+        captureError(error, { action: 'session-expired' })
+        supabase.auth.signOut()
+        const currentPath = window.location.pathname + window.location.search
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
+        return Promise.reject(error)
+      }
+      config.headers.Authorization = `Bearer ${data.session.access_token}`
+      return api(config)
     }
     const friendly = getFriendlyErrorMessage(error)
     error.friendlyMessage = friendly

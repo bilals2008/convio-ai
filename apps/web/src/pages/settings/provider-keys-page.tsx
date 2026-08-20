@@ -410,10 +410,12 @@ export default function ProviderKeysPage() {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <SelectionCheckbox
-            isSelected={bulk.isSelected(key.id)}
-            onToggle={() => bulk.toggleSelect(key.id)}
-          />
+          {bulk.selectionMode && (
+            <SelectionCheckbox
+              isSelected={bulk.isSelected(key.id)}
+              onToggle={() => bulk.toggleSelect(key.id)}
+            />
+          )}
           {renderRowActions(key)}
         </div>
       </div>

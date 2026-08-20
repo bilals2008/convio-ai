@@ -20,6 +20,7 @@ import {
   sendFollowupMessage,
   type DiscordInteraction,
 } from '../../services/discord.js'
+import { ensureDiscordGateway } from '../../services/discord-gateway.js'
 import { processSlackEvent } from '../../services/slack.js'
 import { processIncomingMessage, verifyTwilioSignature } from '../../services/twilio.js'
 import {
@@ -382,6 +383,7 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
           request.log.warn({ deploymentId: deployment.id, error: result.error }, 'Failed to register Discord commands')
         }
       }
+      ensureDiscordGateway(botToken)
     }
 
     // Auto-register Telegram webhook + bot commands
@@ -763,6 +765,8 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
         data: { status: 'active' },
       })
     }
+
+    ensureDiscordGateway(botToken)
 
     return { data: { id: deployment.id, status: result.success ? 'active' : 'pending' } }
   })

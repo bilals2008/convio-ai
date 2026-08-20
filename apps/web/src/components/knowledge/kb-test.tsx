@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Search, ArrowUp, Clock } from 'lucide-react'
+import { Search, ArrowUp, Clock, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn, formatTokenCount } from '@/lib/utils'
@@ -81,8 +81,8 @@ export function KbTestPanel({ knowledgeBaseId, onTested, onSearch }: KbTestPanel
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             ref={inputRef}
@@ -181,6 +181,13 @@ export function KbTestPanel({ knowledgeBaseId, onTested, onSearch }: KbTestPanel
           )}
         </>
       )}
+
+      <div className="flex items-center justify-center gap-1.5 border-t border-border/60 pt-4 text-center">
+        <Wand2 className="size-3.5 text-muted-foreground" />
+        <p className="text-[11px] text-muted-foreground">
+          AI-powered testing (ask questions with citations, auto-generated test questions) — coming soon
+        </p>
+      </div>
     </div>
   )
 }

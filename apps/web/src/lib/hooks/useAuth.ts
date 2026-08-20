@@ -46,7 +46,7 @@ export function useSession() {
     },
     staleTime: 5 * 60 * 1000,
     retry: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
   })
 }
 

@@ -8,22 +8,30 @@ export async function handleMessageUpdate(data: any, botToken: string) {
   // ponytail: only handle content edits, ignore embed/attachment changes
   if (!data.id || !data.content || data.author?.bot) return
 
+  // Stored content is stored with mentions stripped — strip here too before comparing
+  const content = data.content.replace(/<@!?(\d+)>/g, '').trim()
+
   const message = await prisma.message.findFirst({
-    where: { metadata: { path: ['discordMessageId'], equals: data.id } },
-    select: { id: true, content: true, conversationId: true },
+    where: {
+      OR: [
+        { metadata: { path: ['discordMessageId'], equals: data.id } },
+        { metadata: { path: ['providerMessageId'], equals: data.id } },
+      ],
+    },
+    select: { id: true, content: true, conversationId: true, createdAt: true },
   })
-  if (!message || message.content === data.content) return
+  if (!message || message.content === content) return
 
   // Update the stored message content
   await prisma.message.update({
     where: { id: message.id },
-    data: { content: data.content },
+    data: { content },
   })
 
-  // Find the bot's reply to this user message and regenerate
+  // Regenerate the bot reply that directly followed this edit
   const botReply = await prisma.message.findFirst({
-    where: { conversationId: message.conversationId, role: 'assistant' },
-    orderBy: { createdAt: 'desc' },
+    where: { conversationId: message.conversationId, role: 'assistant', createdAt: { gt: message.createdAt } },
+    orderBy: { createdAt: 'asc' },
     select: { id: true, content: true },
   })
   if (!botReply) return
@@ -89,8 +97,8 @@ const EMOJI_ACTIONS: Record<string, (botToken: string, channelId: string, messag
 }
 
 export async function handleMessageReaction(data: any, botToken: string) {
-  // ponytail: skip own reactions and non-bot-message reactions
-  if (!data.message_id || data.member?.user?.id === data.user_id) return
+  // ponytail: skip reactions by bots (e.g. the bot reacting to itself)
+  if (!data.message_id || data.member?.user?.bot) return
 
   const emoji = data.emoji?.name
   if (!emoji) return

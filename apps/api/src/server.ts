@@ -149,11 +149,7 @@ async function start() {
   try {
     await app.listen({ port: PORT, host: HOST })
     app.log.info(`Server listening on ${HOST}:${PORT}`)
-    if (app.config.DISCORD_GATEWAY_ENABLED) {
-      initDiscordGateway(app.config.DISCORD_BOT_TOKEN)
-    } else {
-      app.log.info('Discord gateway disabled via DISCORD_GATEWAY_ENABLED=false')
-    }
+    initDiscordGateway(app.config.DISCORD_GATEWAY_ENABLED ? app.config.DISCORD_BOT_TOKEN : undefined)
   } catch (err) {
     app.log.error(err)
     process.exit(1)

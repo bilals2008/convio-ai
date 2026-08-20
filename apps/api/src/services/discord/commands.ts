@@ -67,7 +67,17 @@ export async function setBotNickname(
   nickname: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${botUserId}`, {
+    // Callers may pass the application id — resolve the bot's real user id
+    const meRes = await fetch(`${DISCORD_API}/users/@me`, {
+      headers: { Authorization: `Bot ${botToken}` },
+    })
+    if (!meRes.ok) {
+      return { success: false, error: `Failed to fetch bot identity (${meRes.status})` }
+    }
+    const me = (await meRes.json()) as { id?: string }
+    const userId = me.id || botUserId
+
+    const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bot ${botToken}` },
       body: JSON.stringify({ nick: nickname }),
