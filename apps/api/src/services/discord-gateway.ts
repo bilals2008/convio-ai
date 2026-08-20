@@ -16,6 +16,8 @@ interface Connection {
   socket: WebSocket
   token: string
   heartbeat: ReturnType<typeof setInterval> | null
+  heartbeatIntervalMs: number
+  lastAck: number
   seq: number | null
   sessionId: string | null
   botUserId: string | null
@@ -183,6 +185,8 @@ function startGateway(token: string) {
     socket: new WebSocket(GATEWAY_URL),
     token,
     heartbeat: null,
+    heartbeatIntervalMs: 0,
+    lastAck: Date.now(),
     seq: null,
     sessionId: null,
     botUserId: null,
@@ -204,11 +208,25 @@ function startGateway(token: string) {
 
       if (s) conn.seq = s
 
+      // Heartbeat ACK watchdog: Discord closes the socket after a single
+      // missed ACK, so if we haven't heard back in ~2.5 intervals, force a
+      // close to trigger the reconnect path.
+      if (op === 11) {
+        conn.lastAck = Date.now()
+      }
+
       switch (op) {
         case 10: {
           const { heartbeat_interval } = d
+          conn.heartbeatIntervalMs = heartbeat_interval
           if (conn.heartbeat) clearInterval(conn.heartbeat)
+          conn.lastAck = Date.now()
           conn.heartbeat = setInterval(() => {
+            if (Date.now() - conn.lastAck > conn.heartbeatIntervalMs * 2.5) {
+              console.warn(`[Discord Gateway] No heartbeat ACK (token ${token.slice(-6)}) — forcing reconnect`)
+              conn.socket.terminate()
+              return
+            }
             conn.socket.send(JSON.stringify({ op: 1, d: conn.seq }))
           }, heartbeat_interval)
 
@@ -249,13 +267,13 @@ function startGateway(token: string) {
         case 7: {
           console.log(`[Discord Gateway] Reconnect requested (token ${token.slice(-6)})`)
           stopConnection(conn)
-          reconnect(token)
+          reconnect(conn)
           break
         }
         case 9: {
           console.error(`[Discord Gateway] Invalid session (token ${token.slice(-6)})`)
           stopConnection(conn)
-          reconnect(token)
+          reconnect(conn)
           break
         }
       }
@@ -267,7 +285,7 @@ function startGateway(token: string) {
   gw.on('close', (code, reason) => {
     console.log(`[Discord Gateway] Closed (${code}): ${reason.toString()} (token ${token.slice(-6)})`)
     stopConnection(conn)
-    reconnect(token)
+    reconnect(conn)
   })
 
   gw.on('error', (err) => {
@@ -292,16 +310,19 @@ function stopConnection(conn: Connection) {
   }
 }
 
-function reconnect(token: string) {
-  const conn = connections.get(token)
-  if (!conn || conn.reconnectTimer) return
+function reconnect(conn: Connection) {
+  // Reconnects are scheduled on the Connection object itself, which survives
+  // stopConnection() — the previous implementation looked the token up in the
+  // map after deletion and always bailed, killing the bot permanently.
+  if (conn.reconnectTimer) return
   conn.reconnectAttempts++
-  if (conn.reconnectAttempts > MAX_RECONNECT_ATTEMPTS) conn.reconnectAttempts = 0
+  // Backoff stays capped at RECONNECT_MAX_DELAY and never resets, so a dead
+  // bot keeps retrying forever at 30s instead of cycling 5s..30s..5s.
   const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, conn.reconnectAttempts - 1), RECONNECT_MAX_DELAY)
-  console.log(`[Discord Gateway] Reconnecting in ${delay}ms (attempt ${conn.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) (token ${token.slice(-6)})`)
+  console.log(`[Discord Gateway] Reconnecting in ${delay}ms (attempt ${conn.reconnectAttempts}) (token ${conn.token.slice(-6)})`)
   conn.reconnectTimer = setTimeout(() => {
     conn.reconnectTimer = null
-    startGateway(token)
+    startGateway(conn.token)
   }, delay)
 }
 
