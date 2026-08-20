@@ -119,6 +119,16 @@ export default async function analyticsRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // POST /api/analytics/process — Daily snapshot aggregation (called by cron, guarded by CRON_SECRET when set)
+  fastify.post('/analytics/process', async (request) => {
+    const secret = process.env.CRON_SECRET
+    if (secret && request.headers['x-cron-secret'] !== secret) {
+      throw new AppError(403, 'Unauthorized', 'FORBIDDEN')
+    }
+    const result = await service.processDailySnapshots()
+    return { data: result }
+  })
+
   // POST /api/agents/:agentId/analytics/snapshot — Upsert daily analytics snapshot
   fastify.post('/agents/:agentId/analytics/snapshot', {
     preHandler: [

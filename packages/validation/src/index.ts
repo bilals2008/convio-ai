@@ -357,14 +357,16 @@ export const bulkInviteSchema = z.object({
 })
 
 // MCP Server schemas
-export const mcpServerTypeSchema = z.enum(['stdio', 'sse', 'streamable-http'])
+// NOTE: 'stdio' is intentionally removed — it executes arbitrary OS commands
+// (RCE) on the API host. Only remote transports are allowed.
+export const mcpServerTypeSchema = z.enum(['sse', 'streamable-http'])
 export const mcpServerAuthTypeSchema = z.enum(['none', 'header', 'oauth'])
 
 export const mcpServerSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
   name: z.string().min(1).max(100),
-  type: mcpServerTypeSchema.default('stdio'),
+  type: mcpServerTypeSchema.default('streamable-http'),
   command: z.string().optional(),
   args: z.array(z.string()).default([]),
   url: z.string().optional(),

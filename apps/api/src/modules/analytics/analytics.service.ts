@@ -43,9 +43,9 @@ async function buildDaily(
   const dailyMap = buildDailyMap(agentIds, fromDate, toDate)
 
   for (const r of convByDate) {
-    const key = r.createdAt.toISOString().slice(0, 10)
+    const key = r.date.toISOString().slice(0, 10)
     if (!dailyMap.has(key)) dailyMap.set(key, { date: key, totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 })
-    dailyMap.get(key)!.totalConversations += r._count.id
+    dailyMap.get(key)!.totalConversations += r.count
   }
 
   const msgMap = new Map(msgByDate.map((r) => [r.date.toISOString().slice(0, 10), Number(r.count)]))
@@ -70,7 +70,7 @@ async function buildDaily(
   return Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date))
 }
 
-export async function getOrgAnalytics(
+export async function getOrgAnalyticsRaw(
   orgId: string,
   from?: string,
   to?: string,
@@ -256,7 +256,7 @@ export async function getOrgAnalytics(
   }
 }
 
-export async function getAgentAnalytics(
+export async function getAgentAnalyticsRaw(
   agentId: string,
   from?: string,
   to?: string,
@@ -339,9 +339,9 @@ export async function getAgentAnalytics(
 
     const dailyMap = buildDailyMap([agentId], fromDate, toDate)
     for (const r of convByDate) {
-      const key = r.createdAt.toISOString().slice(0, 10)
+      const key = r.date.toISOString().slice(0, 10)
       if (!dailyMap.has(key)) dailyMap.set(key, { date: key, totalConversations: 0, totalMessages: 0, uniqueUsers: 0, avgResponseTime: 0, inputTokens: 0, outputTokens: 0 })
-      dailyMap.get(key)!.totalConversations += r._count.id
+      dailyMap.get(key)!.totalConversations += r.count
     }
 
     const msgMap = new Map(msgByDate.map((r) => [r.date.toISOString().slice(0, 10), Number(r.count)]))
@@ -438,7 +438,7 @@ export async function getAgentDailyBreakdown(
   }))
 }
 
-export async function getTopAgents(
+export async function getTopAgentsRaw(
   orgId: string,
   from?: string,
   to?: string,
@@ -527,6 +527,53 @@ export async function getTopAgents(
   return liveData.slice(0, limit)
 }
 
+/**
+ * Daily cron: aggregate the previous day (or `target`) into per-agent
+ * Analytics snapshots so dashboards read the cheap snapshot table and
+ * plan limits are enforced from snapshots. Idempotent per day — the
+ * snapshot is replaced with absolute values, never added to.
+ */
+export async function processDailySnapshots(target?: Date) {
+  const date = target ?? new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000)
+
+  const { convs, msgs, users, resolution } = await repo.getDailySnapshotAggregates(start, end)
+
+  const convMap = new Map(convs.map((c) => [c.agent_id, c.count]))
+  const userMap = new Map(users.map((u) => [u.agent_id, u.count]))
+  const msgMap = new Map(msgs.map((m) => [m.agent_id, m]))
+  const resMap = new Map<string, { resolved: number; escalated: number }>()
+  for (const r of resolution) {
+    const entry = resMap.get(r.agent_id) ?? { resolved: 0, escalated: 0 }
+    if (r.status === 'resolved') entry.resolved += r.count
+    else entry.escalated += r.count
+    resMap.set(r.agent_id, entry)
+  }
+
+  const agentIds = new Set([...convMap.keys(), ...msgMap.keys()])
+  let processed = 0
+  for (const agentId of agentIds) {
+    const msg = msgMap.get(agentId)
+    const res = resMap.get(agentId) ?? { resolved: 0, escalated: 0 }
+    await repo.replaceAnalyticsSnapshot(agentId, start, {
+      totalConversations: convMap.get(agentId) ?? 0,
+      totalMessages: msg?.count ?? 0,
+      uniqueUsers: userMap.get(agentId) ?? 0,
+      avgResponseTime: msg?.avg_rt ? Math.round((msg.avg_rt / 1000) * 100) / 100 : 0,
+      resolvedConversations: res.resolved,
+      escalatedConversations: res.escalated,
+      totalCost: msg?.cost ?? 0,
+      totalInputTokens: Number(msg?.input ?? 0),
+      totalOutputTokens: Number(msg?.output ?? 0),
+      returningUsers: 0,
+    })
+    processed++
+  }
+
+  return { processed, date: start.toISOString().slice(0, 10) }
+}
+
 export async function upsertSnapshot(
   agentId: string,
   input: AnalyticsSnapshotInput,
@@ -567,4 +614,33 @@ export async function upsertSnapshot(
     totalOutputTokens: input.totalOutputTokens,
     returningUsers: input.returningUsers,
   })
+}
+
+// Dashboard aggregates are heavy (8-16 grouped queries); cache per
+// org/agent + range for 30s so a page load doesn't re-run them.
+import { createTtlCache, cached as cachedRun } from '../../services/cache.js'
+const aggregateCache = createTtlCache<Promise<OrgAnalyticsResponse | AgentAnalyticsResponse | TopAgentEntry[]>>(30_000)
+
+export function getOrgAnalytics(orgId: string, from?: string, to?: string) {
+  return cachedRun(
+    aggregateCache,
+    `org:${orgId}:${from ?? ''}:${to ?? ''}`,
+    () => getOrgAnalyticsRaw(orgId, from, to),
+  )
+}
+
+export function getAgentAnalytics(agentId: string, from?: string, to?: string) {
+  return cachedRun(
+    aggregateCache,
+    `agent:${agentId}:${from ?? ''}:${to ?? ''}`,
+    () => getAgentAnalyticsRaw(agentId, from, to),
+  )
+}
+
+export function getTopAgents(orgId: string, from?: string, to?: string, limit: number = 10) {
+  return cachedRun(
+    aggregateCache,
+    `top:${orgId}:${from ?? ''}:${to ?? ''}:${limit}`,
+    () => getTopAgentsRaw(orgId, from, to, limit),
+  )
 }
