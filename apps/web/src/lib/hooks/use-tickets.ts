@@ -15,16 +15,30 @@ export interface TicketSummary {
   messageCount: number
 }
 
+export interface TicketAttachment {
+  name: string
+  size: number
+  type: string
+  path: string
+}
+
 export interface TicketMessage {
   id: string
   content: string
+  attachments: TicketAttachment[]
   createdAt: string
   author: { id: string; name: string | null; email: string; avatar: string | null }
+}
+
+export interface TicketRead {
+  userId: string
+  lastReadAt: string
 }
 
 export interface TicketDetail extends TicketSummary {
   description: string
   reporter: { id: string; name: string | null; email: string; avatar: string | null }
+  reads: TicketRead[]
   messages: TicketMessage[]
 }
 
@@ -73,12 +87,20 @@ export function useCreateTicket(orgId: string | undefined) {
 export function useReplyTicket(orgId: string | undefined, ticketId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (content: string) => ticketsApi.reply(orgId!, ticketId!, content),
+    mutationFn: (data: { content: string; attachments?: TicketAttachment[] }) =>
+      ticketsApi.reply(orgId!, ticketId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ticketKeys.detail(orgId!, ticketId!) })
       queryClient.invalidateQueries({ queryKey: ['tickets', orgId] })
     },
     onError: (err: { friendlyMessage?: string }) => toast.error(err.friendlyMessage || 'Failed to send message'),
+  })
+}
+
+export function useMarkTicketRead(orgId: string | undefined, ticketId: string | undefined) {
+  return useMutation({
+    mutationFn: () => ticketsApi.markRead(orgId!, ticketId!),
+    retry: 1,
   })
 }
 

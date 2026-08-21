@@ -28,6 +28,7 @@ model Profile {
   adminConversations      AdminConversation[]
   supportTickets          SupportTicket[]          @relation("TicketReporter")
   supportMessages         SupportTicketMessage[]
+  ticketReads             SupportTicketRead[]
 
   @@index([email])
   @@index([status])
@@ -793,6 +794,7 @@ model SupportTicket {
   organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   reporter       Profile                @relation("TicketReporter", fields: [reporterId], references: [id], onDelete: Cascade)
   messages       SupportTicketMessage[]
+  reads          SupportTicketRead[]
 
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, status, updatedAt(sort: Desc)])
@@ -802,14 +804,27 @@ model SupportTicket {
 }
 
 model SupportTicketMessage {
-  id        String        @id @default(uuid())
-  ticketId  String
-  authorId  String
-  content   String
-  createdAt DateTime      @default(now()) @db.Timestamptz(6)
-  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author    Profile       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  id          String        @id @default(uuid())
+  ticketId    String
+  authorId    String
+  content     String
+  attachments Json          @default("[]")
+  createdAt   DateTime      @default(now()) @db.Timestamptz(6)
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author      Profile       @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([ticketId, createdAt])
   @@map("support_ticket_messages")
+}
+
+model SupportTicketRead {
+  ticketId   String
+  userId     String
+  lastReadAt DateTime      @default(now()) @db.Timestamptz(6)
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user       Profile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+  @@index([userId, lastReadAt(sort: Desc)])
+  @@map("support_ticket_reads")
 }
