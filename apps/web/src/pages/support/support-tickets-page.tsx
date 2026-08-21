@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   useReactTable,
   getCoreRowModel,
@@ -91,6 +91,7 @@ function TicketCardSkeleton() {
 
 export default function SupportTicketsPage() {
   const { orgId } = useOrg()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [submit, setSubmit] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table')
@@ -339,7 +340,7 @@ export default function SupportTicketsPage() {
               {pageRows.map((row, index) => (
                 <TableRow
                   key={row.id}
-                  onClick={() => window.location.assign(`/support/${row.original.id}`)}
+                  onClick={() => navigate(`/support/${row.original.id}`)}
                   className={cn(
                     'border-b border-border/60 last:border-0 cursor-pointer transition-colors',
                     index % 2 === 1 && 'bg-muted/20',
