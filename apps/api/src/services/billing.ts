@@ -2,6 +2,41 @@ import { prisma } from '@convio/database'
 import type { BillingPlan } from '@convio/types'
 import { getPlanDef, getPlanTierMap } from './plans.js'
 
+// ponytail: in-memory TTL cache; switch to Redis when the API runs multi-instance.
+interface OrgUsage {
+  month: number
+  year: number
+  conversations: number
+  messages: number
+  limit: number
+  messagesPercent: number
+}
+
+const usageCache = new Map<string, { expiresAt: number; value: OrgUsage }>()
+const USAGE_CACHE_TTL_MS = 60_000
+
+async function computeOrgUsage(orgId: string, month: number, year: number) {
+  const firstDay = new Date(year, month - 1, 1)
+  const lastDay = new Date(year, month, 0, 23, 59, 59, 999)
+
+  const [messages, conversations] = await Promise.all([
+    prisma.message.count({
+      where: {
+        createdAt: { gte: firstDay, lte: lastDay },
+        conversation: { agent: { organizationId: orgId } },
+      },
+    }),
+    prisma.conversation.count({
+      where: {
+        createdAt: { gte: firstDay, lte: lastDay },
+        agent: { organizationId: orgId },
+      },
+    }),
+  ])
+
+  return { conversations, messages }
+}
+
 export async function getOrgPlan(orgId: string): Promise<BillingPlan> {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -55,27 +90,24 @@ export async function getOrgPlan(orgId: string): Promise<BillingPlan> {
   }
 }
 
-export async function getOrgUsage(orgId: string, month?: number, year?: number) {
+export async function getOrgUsage(orgId: string, month?: number, year?: number): Promise<OrgUsage> {
   const now = new Date()
   const targetMonth = month ?? now.getMonth() + 1
   const targetYear = year ?? now.getFullYear()
 
-  const firstDay = new Date(targetYear, targetMonth - 1, 1)
-  const lastDay = new Date(targetYear, targetMonth, 0)
+  const cacheKey = `${orgId}:${targetYear}-${targetMonth}`
+  const cached = usageCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value
+  }
 
-  const analytics = await prisma.analytics.findMany({
-    where: {
-      agent: { organizationId: orgId },
-      date: { gte: firstDay, lte: lastDay },
-    },
-  })
-
-  const conversations = analytics.reduce((sum, r) => sum + r.totalConversations, 0)
-  const messages = analytics.reduce((sum, r) => sum + r.totalMessages, 0)
+  // Live count from Message/Conversation — the Analytics snapshot table was
+  // never written, so reading it silently made plan limits decorative.
+  const { conversations, messages } = await computeOrgUsage(orgId, targetMonth, targetYear)
 
   const plan = await getOrgPlan(orgId)
 
-  return {
+  const value = {
     month: targetMonth,
     year: targetYear,
     conversations,
@@ -85,6 +117,9 @@ export async function getOrgUsage(orgId: string, month?: number, year?: number) 
       ? 0
       : Math.round((messages / plan.limits.messagesPerMonth) * 100),
   }
+
+  usageCache.set(cacheKey, { expiresAt: Date.now() + USAGE_CACHE_TTL_MS, value })
+  return value
 }
 
 export async function checkAgentLimit(orgId: string) {

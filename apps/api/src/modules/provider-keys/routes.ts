@@ -5,7 +5,7 @@ import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notificatio
 import { encryptSecret, decryptSecret, getEncryptionKey } from '../../services/encryption.js'
 import { z } from 'zod'
 
-const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'opencode']
+const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'agnes', 'opencode']
 
 // Models-list endpoints used to validate a stored key. 404 = endpoint unknown,
 // reported as "cannot verify" instead of a hard failure. ponytail: single fetch per provider,
@@ -20,6 +20,7 @@ const TEST_ENDPOINTS: Record<string, string> = {
   together: 'https://api.together.xyz/v1/models',
   deepseek: 'https://api.deepseek.com/v1/models',
   perplexity: 'https://api.perplexity.ai/models',
+  agnes: 'https://apihub.agnes-ai.com/v1/models',
   opencode: 'https://opencode.ai/zen/v1/models',
 }
 

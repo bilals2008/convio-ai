@@ -124,13 +124,17 @@ export async function getConversationsByDate(
   fromDate: Date,
   toDate: Date,
 ) {
-  return prisma.conversation.groupBy({
-    by: ['createdAt'],
-    where: { agentId: { in: agentIds }, createdAt: { gte: fromDate, lte: toDate } },
-    _count: { id: true },
-    orderBy: { createdAt: 'asc' },
-    take: 365,
-  })
+  // Group by calendar date, not the full timestamp — the old groupBy on
+  // `createdAt` produced one group per conversation (flat chart of 1s).
+  return prisma.$queryRaw<{ date: Date; count: number }[]>`
+    SELECT DATE("createdAt") as date, COUNT(*)::int as count
+    FROM "Conversation"
+    WHERE "agentId" = ANY(${agentIds})
+      AND "createdAt" >= ${fromDate}
+      AND "createdAt" <= ${toDate}
+    GROUP BY DATE("createdAt")
+    ORDER BY date ASC
+  `
 }
 
 export async function getMessagesByDate(
@@ -314,11 +318,15 @@ export async function getAgentConversationsByDate(
   fromDate: Date,
   toDate: Date,
 ) {
-  return prisma.conversation.groupBy({
-    by: ['createdAt'],
-    where: { agentId, createdAt: { gte: fromDate, lte: toDate } },
-    _count: { id: true },
-  })
+  return prisma.$queryRaw<{ date: Date; count: number }[]>`
+    SELECT DATE("createdAt") as date, COUNT(*)::int as count
+    FROM "Conversation"
+    WHERE "agentId" = ${agentId}
+      AND "createdAt" >= ${fromDate}
+      AND "createdAt" <= ${toDate}
+    GROUP BY DATE("createdAt")
+    ORDER BY date ASC
+  `
 }
 
 export async function getAgentMessagesByDate(
@@ -529,6 +537,79 @@ export async function getTopAgentCosts(agentIds: string[], fromDate: Date, toDat
 }
 
 // ── Snapshot ──
+
+/**
+ * Per-agent daily aggregates used by the /analytics/process cron to write
+ * Analytics snapshots. All grouped in SQL — no row streaming to Node.
+ */
+export async function getDailySnapshotAggregates(start: Date, end: Date) {
+  const [convs, msgs, users, resolution] = await Promise.all([
+    prisma.$queryRaw<{ agent_id: string; count: number }[]>`
+      SELECT "agentId" as agent_id, COUNT(*)::int as count
+      FROM "Conversation"
+      WHERE "createdAt" >= ${start} AND "createdAt" < ${end}
+      GROUP BY "agentId"
+    `,
+    prisma.$queryRaw<{ agent_id: string; count: number; input: bigint | null; output: bigint | null; cost: number | null; avg_rt: number | null }[]>`
+      SELECT c."agentId" as agent_id,
+             COUNT(*)::int as count,
+             SUM(m."input_tokens") as input,
+             SUM(m."output_tokens") as output,
+             SUM(m."cost") as cost,
+             AVG(m."response_time_ms") as avg_rt
+      FROM "Message" m
+      JOIN "Conversation" c ON c."id" = m."conversationId"
+      WHERE m."createdAt" >= ${start} AND m."createdAt" < ${end}
+        AND m."role" = 'assistant'
+      GROUP BY c."agentId"
+    `,
+    prisma.$queryRaw<{ agent_id: string; count: number }[]>`
+      SELECT "agentId" as agent_id, COUNT(DISTINCT "userId")::int as count
+      FROM "Conversation"
+      WHERE "createdAt" >= ${start} AND "createdAt" < ${end}
+        AND "userId" IS NOT NULL
+      GROUP BY "agentId"
+    `,
+    prisma.$queryRaw<{ agent_id: string; status: string; count: number }[]>`
+      SELECT "agentId" as agent_id, "resolutionStatus" as status, COUNT(*)::int as count
+      FROM "Conversation"
+      WHERE "createdAt" >= ${start} AND "createdAt" < ${end}
+        AND "resolutionStatus" IN ('resolved', 'escalated')
+      GROUP BY "agentId", "resolutionStatus"
+    `,
+  ])
+  return { convs, msgs, users, resolution }
+}
+
+/** Upsert a snapshot with absolute (replace) values — used by the daily cron. */
+export async function replaceAnalyticsSnapshot(
+  agentId: string,
+  date: Date,
+  data: {
+    totalConversations: number
+    totalMessages: number
+    uniqueUsers: number
+    avgResponseTime: number
+    resolvedConversations?: number
+    escalatedConversations?: number
+    totalCost?: number
+    totalInputTokens?: number
+    totalOutputTokens?: number
+    returningUsers?: number
+  },
+) {
+  const existing = await prisma.analytics.findUnique({
+    where: { agentId_date: { agentId, date } },
+    select: { id: true },
+  })
+  if (existing) {
+    return prisma.analytics.update({
+      where: { agentId_date: { agentId, date } },
+      data,
+    })
+  }
+  return prisma.analytics.create({ data: { agentId, date, ...data } })
+}
 
 export async function findAnalyticsSnapshot(agentId: string, date: Date) {
   return prisma.analytics.findUnique({

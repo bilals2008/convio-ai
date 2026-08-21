@@ -10,74 +10,75 @@ import { OrgProvider } from '@/lib/org-context'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { AdminLayout } from '@/admin/admin-layout'
 import { AdminGuard } from '@/admin/admin-guard'
-import AdminOverviewPage from '@/admin/pages/overview-page'
-import AdminUsersPage from '@/admin/pages/users-page'
-import AdminUserDetailPage from '@/admin/pages/user-detail-page'
-import AdminOrgsPage from '@/admin/pages/orgs-page'
-import AdminOrgDetailPage from '@/admin/pages/org-detail-page'
-import AdminSystemPage from '@/admin/pages/system-page'
-import AdminAuditLogsPage from '@/admin/pages/audit-logs-page'
-import AdminAgentsPage from '@/admin/pages/agents-page'
-import AdminAnalyticsPage from '@/admin/pages/analytics-page'
-import AdminRevenuePage from '@/admin/pages/revenue-page'
-import AdminModerationPage from '@/admin/pages/moderation-page'
-import AdminBillingPage from '@/admin/pages/billing-page'
-import AdminPricingPage from '@/admin/pages/pricing-page'
-import AdminPlanDetailPage from '@/admin/pages/plan-detail-page'
-import AdminProvidersPage from '@/admin/pages/providers-page'
-import AdminNotificationsPage from '@/admin/pages/notifications-page'
-import AdminDocsFeedbackPage from '@/admin/pages/docs-feedback-page'
-import AdminKnowledgeBasesPage from '@/admin/pages/knowledge-bases-page'
-import AdminKnowledgeBaseDetailPage from '@/admin/pages/knowledge-base-detail-page'
-import AdminKnowledgeDocumentDetailPage from '@/admin/pages/knowledge-document-detail-page'
-import AdminAccessPage from '@/admin/pages/admin-access-page'
-import AdminAssistantPage from '@/admin/pages/assistant-page'
-import AdminTicketsPage from '@/admin/pages/tickets-page'
-import AdminTicketDetailPage from '@/admin/pages/ticket-detail-page'
-
-import Landing from '@/pages/landing'
-import PricingPage from '@/pages/pricing-page'
-import ContactPage from '@/pages/contact-page'
-import TermsPage from '@/pages/terms-page'
-import PrivacyPage from '@/pages/privacy-page'
-import LoginPage from '@/pages/auth/login-page'
-import SignupPage from '@/pages/auth/signup-page'
-import ForgotPasswordPage from '@/pages/auth/forgot-password-page'
-import DashboardOverviewPage from '@/pages/dashboard/dashboard-overview-page'
-import AgentsListPage from '@/pages/agents/agents-list-page'
-import AgentTemplatesPage from '@/pages/agents/agent-templates-page'
-import CreateAgentPage from '@/pages/agents/create-agent-page'
-import AgentDetailPage from '@/pages/agents/agent-detail-page'
-import ConversationsListPage from '@/pages/conversations/conversations-list-page'
 import { ConversationsLayout } from '@/components/conversations/conversations-layout'
 import { ChatView } from '@/components/conversations/chat-view'
 import { ErrorBoundary } from '@/components/shared/error-boundary'
-import KnowledgeListPage from '@/pages/knowledge/knowledge-list-page'
-import KnowledgeDetailPage from '@/pages/knowledge/knowledge-detail-page'
-
-import AnalyticsPage from '@/pages/analytics/analytics-page'
-import WidgetsListPage from '@/pages/widgets/widgets-list-page'
-import WidgetConfigPage from '@/pages/widgets/widget-config-page'
-import WidgetDemoPage from '@/pages/widget/WidgetDemo'
 import { SettingsLayout } from '@/components/settings/settings-layout'
-import OrganizationSettingsPage from '@/pages/settings/organization-settings-page'
-import DeploymentsPage from '@/pages/settings/deployments-page'
-import ProviderKeysPage from '@/pages/settings/provider-keys-page'
-import ProfilePage from '@/pages/settings/profile-page'
-import BillingPage from '@/pages/settings/billing-page'
-import DataManagementPage from '@/pages/settings/data-management-page'
-import McpServersPage from '@/pages/settings/mcp-servers-page'
-import McpTemplatesPage from '@/pages/settings/mcp-templates-page'
 import { PageContainer } from '@/components/shared/page-container'
-import SettingsAuditLogsPage from '@/pages/settings/audit-logs-page'
-import NotificationPreferencesPage from '@/pages/settings/notification-preferences-page'
-import SupportTicketsPage from '@/pages/support/support-tickets-page'
-import SupportTicketDetailPage from '@/pages/support/support-ticket-detail-page'
-import NotificationsPage from '@/pages/notifications-page'
 import { HelpLayout } from '@/components/help/help-layout'
-import HelpIndexPage from '@/pages/docs/help-index'
-import WhatIsConvioPage from '@/pages/docs/what-is-convio'
-import ComingSoonPage from '@/pages/coming-soon-page'
+
+const AdminOverviewPage = lazyLoad(() => import('@/admin/pages/overview-page'))
+const AdminUsersPage = lazyLoad(() => import('@/admin/pages/users-page'))
+const AdminUserDetailPage = lazyLoad(() => import('@/admin/pages/user-detail-page'))
+const AdminOrgsPage = lazyLoad(() => import('@/admin/pages/orgs-page'))
+const AdminOrgDetailPage = lazyLoad(() => import('@/admin/pages/org-detail-page'))
+const AdminSystemPage = lazyLoad(() => import('@/admin/pages/system-page'))
+const AdminAuditLogsPage = lazyLoad(() => import('@/admin/pages/audit-logs-page'))
+const AdminAgentsPage = lazyLoad(() => import('@/admin/pages/agents-page'))
+const AdminAnalyticsPage = lazyLoad(() => import('@/admin/pages/analytics-page'))
+const AdminRevenuePage = lazyLoad(() => import('@/admin/pages/revenue-page'))
+const AdminModerationPage = lazyLoad(() => import('@/admin/pages/moderation-page'))
+const AdminBillingPage = lazyLoad(() => import('@/admin/pages/billing-page'))
+const AdminPricingPage = lazyLoad(() => import('@/admin/pages/pricing-page'))
+const AdminPlanDetailPage = lazyLoad(() => import('@/admin/pages/plan-detail-page'))
+const AdminProvidersPage = lazyLoad(() => import('@/admin/pages/providers-page'))
+const AdminNotificationsPage = lazyLoad(() => import('@/admin/pages/notifications-page'))
+const AdminDocsFeedbackPage = lazyLoad(() => import('@/admin/pages/docs-feedback-page'))
+const AdminKnowledgeBasesPage = lazyLoad(() => import('@/admin/pages/knowledge-bases-page'))
+const AdminKnowledgeBaseDetailPage = lazyLoad(() => import('@/admin/pages/knowledge-base-detail-page'))
+const AdminKnowledgeDocumentDetailPage = lazyLoad(() => import('@/admin/pages/knowledge-document-detail-page'))
+const AdminAccessPage = lazyLoad(() => import('@/admin/pages/admin-access-page'))
+const AdminAssistantPage = lazyLoad(() => import('@/admin/pages/assistant-page'))
+const AdminTicketsPage = lazyLoad(() => import('@/admin/pages/tickets-page'))
+const AdminTicketDetailPage = lazyLoad(() => import('@/admin/pages/ticket-detail-page'))
+
+const Landing = lazyLoad(() => import('@/pages/landing'))
+const PricingPage = lazyLoad(() => import('@/pages/pricing-page'))
+const ContactPage = lazyLoad(() => import('@/pages/contact-page'))
+const TermsPage = lazyLoad(() => import('@/pages/terms-page'))
+const PrivacyPage = lazyLoad(() => import('@/pages/privacy-page'))
+const LoginPage = lazyLoad(() => import('@/pages/auth/login-page'))
+const SignupPage = lazyLoad(() => import('@/pages/auth/signup-page'))
+const ForgotPasswordPage = lazyLoad(() => import('@/pages/auth/forgot-password-page'))
+const DashboardOverviewPage = lazyLoad(() => import('@/pages/dashboard/dashboard-overview-page'))
+const AgentsListPage = lazyLoad(() => import('@/pages/agents/agents-list-page'))
+const AgentTemplatesPage = lazyLoad(() => import('@/pages/agents/agent-templates-page'))
+const CreateAgentPage = lazyLoad(() => import('@/pages/agents/create-agent-page'))
+const AgentDetailPage = lazyLoad(() => import('@/pages/agents/agent-detail-page'))
+const ConversationsListPage = lazyLoad(() => import('@/pages/conversations/conversations-list-page'))
+const KnowledgeListPage = lazyLoad(() => import('@/pages/knowledge/knowledge-list-page'))
+const KnowledgeDetailPage = lazyLoad(() => import('@/pages/knowledge/knowledge-detail-page'))
+
+const AnalyticsPage = lazyLoad(() => import('@/pages/analytics/analytics-page'))
+const WidgetsListPage = lazyLoad(() => import('@/pages/widgets/widgets-list-page'))
+const WidgetConfigPage = lazyLoad(() => import('@/pages/widgets/widget-config-page'))
+const WidgetDemoPage = lazyLoad(() => import('@/pages/widget/WidgetDemo'))
+const OrganizationSettingsPage = lazyLoad(() => import('@/pages/settings/organization-settings-page'))
+const DeploymentsPage = lazyLoad(() => import('@/pages/settings/deployments-page'))
+const ProviderKeysPage = lazyLoad(() => import('@/pages/settings/provider-keys-page'))
+const ProfilePage = lazyLoad(() => import('@/pages/settings/profile-page'))
+const BillingPage = lazyLoad(() => import('@/pages/settings/billing-page'))
+const DataManagementPage = lazyLoad(() => import('@/pages/settings/data-management-page'))
+const McpServersPage = lazyLoad(() => import('@/pages/settings/mcp-servers-page'))
+const McpTemplatesPage = lazyLoad(() => import('@/pages/settings/mcp-templates-page'))
+const SettingsAuditLogsPage = lazyLoad(() => import('@/pages/settings/audit-logs-page'))
+const NotificationPreferencesPage = lazyLoad(() => import('@/pages/settings/notification-preferences-page'))
+const SupportTicketsPage = lazyLoad(() => import('@/pages/support/support-tickets-page'))
+const SupportTicketDetailPage = lazyLoad(() => import('@/pages/support/support-ticket-detail-page'))
+const NotificationsPage = lazyLoad(() => import('@/pages/notifications-page'))
+const HelpIndexPage = lazyLoad(() => import('@/pages/docs/help-index'))
+const WhatIsConvioPage = lazyLoad(() => import('@/pages/docs/what-is-convio'))
+const ComingSoonPage = lazyLoad(() => import('@/pages/coming-soon-page'))
 
 // Phase 1 - Getting Started
 const ConvioVsOthersPage = lazyLoad(() => import('@/pages/docs/convio-vs-others'))

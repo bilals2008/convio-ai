@@ -53,3 +53,6 @@ graphify-out/
 # AI agent tooling.claude/
 .opencode/
 
+
+# Local tooling
+.freebuff/

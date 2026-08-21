@@ -33,7 +33,7 @@
     if (host) params += '&host=' + encodeURIComponent(host)
     var visitorId = localStorage.getItem('convio:visitorId')
     if (visitorId) params += '&visitorId=' + encodeURIComponent(visitorId)
-    return baseUrl + '/widget/demo?' + params
+    return baseUrl + '/widget-entry.html?' + params
   }
 
   iframe.src = buildUrl()

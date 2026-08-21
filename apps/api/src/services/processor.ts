@@ -7,8 +7,9 @@ import { emitDomainEvent, NOTIFICATION_EVENTS } from './notifications/events.js'
 import { mkdtemp, rm, writeFile, readFile, readdir } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { lookup } from 'node:dns/promises'
-import { isIP } from 'node:net'
+import { isBlockedAddress, assertSafeUrl } from './ssrf.js'
+
+export { isBlockedAddress, assertSafeUrl }
 
 const CHUNK_SIZE = 1000
 const CHUNK_OVERLAP_WORDS = 40
@@ -124,57 +125,6 @@ async function extractPdfMarkdown(filePath: string): Promise<string> {
     return await readFile(join(tmpDir, mdFile), 'utf-8')
   } finally {
     await rm(tmpDir, { recursive: true, force: true })
-  }
-}
-
-// Blocks internal/private targets that could be used for SSRF (cloud metadata,
-// internal services, link-local, etc). ponytail: single-pass IP check; add a
-// DNS-rebinding resolver loop if you harden further.
-export function isBlockedAddress(address: string): boolean {
-  if (isIP(address) === 0) return false
-  if (address.includes(':')) {
-    // IPv6: block loopback, link-local, and ULA
-    const lower = address.toLowerCase()
-    return (
-      lower === '::1' ||
-      lower === '::' ||
-      lower.startsWith('fe80:') ||
-      lower.startsWith('fc00:') ||
-      lower.startsWith('fd00:') ||
-      lower.startsWith('ff00:') ||
-      lower.startsWith('::ffff:10.') ||
-      lower.startsWith('::ffff:127.') ||
-      lower.startsWith('::ffff:169.254')
-    )
-  }
-  const parts = address.split('.').map(Number)
-  const [a, b] = parts
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 100 && b >= 64 && b <= 127) || // CGNAT
-    (a === 169 && b === 254) || // link-local
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    a >= 224 // multicast + reserved
-  )
-}
-
-export async function assertSafeUrl(rawUrl: string): Promise<void> {
-  let url: URL
-  try {
-    url = new URL(rawUrl)
-  } catch {
-    throw new Error('Invalid URL')
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('Only http(s) URLs are supported')
-  }
-  const { address } = await lookup(url.hostname)
-  if (isBlockedAddress(address)) {
-    throw new Error('URL points to a blocked/internal address')
   }
 }
 

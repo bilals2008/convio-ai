@@ -1,5 +1,6 @@
 import { prisma, type Prisma } from '@convio/database'
 import { PLANS } from '@convio/config'
+import { createTtlCache } from './cache.js'
 
 export interface PlanLimits {
   agents: number
@@ -48,9 +49,15 @@ function toPlanDef(row: Prisma.PlanGetPayload<object>): PlanDef {
   }
 }
 
+const plansCache = createTtlCache<PlanDef[]>(60_000)
+
 export async function getAllPlans(): Promise<PlanDef[]> {
+  const cached = plansCache.get('all')
+  if (cached) return cached
   const rows = await prisma.plan.findMany({ orderBy: { sortOrder: 'asc' } })
-  return rows.map(toPlanDef)
+  const plans = rows.map(toPlanDef)
+  plansCache.set('all', plans)
+  return plans
 }
 
 export async function getPlanDef(key: string): Promise<PlanDef | undefined> {

@@ -8,26 +8,27 @@ datasource db {
 }
 
 model Profile {
-  id            String       @id
-  email         String
-  name          String?
-  avatar        String?
-  status        String       @default("active")
-  emailVerified Boolean      @default(false)
-  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
-  createdAgents Agent[]      @relation("AgentCreator")
-  memberships   Membership[]
-  invitedMe     Invitation[]
-  onboarding    Onboarding?
-  docFeedback   DocFeedback[]
-  loginActivity LoginActivity[]
-  adminGrants   AdminGrant[]
-  notifications Notification[]
+  id                      String                   @id
+  email                   String
+  name                    String?
+  avatar                  String?
+  status                  String                   @default("active")
+  emailVerified           Boolean                  @default(false)
+  createdAt               DateTime                 @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime                 @updatedAt @db.Timestamptz(6)
+  createdAgents           Agent[]                  @relation("AgentCreator")
+  memberships             Membership[]
+  invitedMe               Invitation[]
+  onboarding              Onboarding?
+  docFeedback             DocFeedback[]
+  loginActivity           LoginActivity[]
+  adminGrants             AdminGrant[]
+  notifications           Notification[]
   notificationPreferences NotificationPreference[]
-  adminConversations AdminConversation[]
-  supportTickets     SupportTicket[]     @relation("TicketReporter")
-  supportMessages    SupportTicketMessage[]
+  adminConversations      AdminConversation[]
+  supportTickets          SupportTicket[]          @relation("TicketReporter")
+  supportMessages         SupportTicketMessage[]
+  ticketReads             SupportTicketRead[]
 
   @@index([email])
   @@index([status])
@@ -36,33 +37,32 @@ model Profile {
 }
 
 model Organization {
-  id               String            @id @default(uuid())
-  name             String
-  slug             String            @unique
-  logo             String?
-  plan             String            @default("free")
-  aiGenerationModel String?
-  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
-  agents           Agent[]
-  knowledgeBases   KnowledgeBase[]
-  memberships      Membership[]
-  providerKeys     ProviderKey[]
-  tools            Tool[]
-  mcpServers       McpServer[]
-  widgets          Widget[]
-  auditLogs        AuditLog[]
-  invitations      Invitation[]
-  moderationConfig ModerationConfig?
-  ssoConfigs       SsoConfig?
-  billingCustomer  BillingCustomer?
-  broadcasts       Broadcast[]
-  avatarPresets    AvatarPreset[]
-  docFeedback      DocFeedback[]
-  notifications    Notification[]
+  id                      String                   @id @default(uuid())
+  name                    String
+  slug                    String                   @unique
+  logo                    String?
+  plan                    String                   @default("free")
+  aiGenerationModel       String?
+  createdAt               DateTime                 @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime                 @updatedAt @db.Timestamptz(6)
+  agents                  Agent[]
+  knowledgeBases          KnowledgeBase[]
+  memberships             Membership[]
+  providerKeys            ProviderKey[]
+  tools                   Tool[]
+  mcpServers              McpServer[]
+  widgets                 Widget[]
+  auditLogs               AuditLog[]
+  invitations             Invitation[]
+  moderationConfig        ModerationConfig?
+  ssoConfigs              SsoConfig?
+  billingCustomer         BillingCustomer?
+  broadcasts              Broadcast[]
+  avatarPresets           AvatarPreset[]
+  docFeedback             DocFeedback[]
+  notifications           Notification[]
   notificationPreferences NotificationPreference[]
-  supportTickets   SupportTicket[]
-
+  supportTickets          SupportTicket[]
 
   @@index([slug])
 }
@@ -90,29 +90,29 @@ model Membership {
 }
 
 model Agent {
-  id              String         @id @default(uuid())
+  id              String           @id @default(uuid())
   organizationId  String
   name            String
   description     String?
-  model           String         @default("gpt-4o-mini")
+  model           String           @default("gpt-4o-mini")
   systemPrompt    String
-  temperature     Float          @default(0.7)
+  temperature     Float            @default(0.7)
   maxTokens       Int?
-  createdAt       DateTime       @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime       @updatedAt @db.Timestamptz(6)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
   providerKeyId   String?
   knowledgeBaseId String?
   avatar          String?
   reasoningEffort String?
   createdById     String?
-  status          String         @default("draft")
+  status          String           @default("draft")
   welcomeMessage  String?
-  widgetColor     String         @default("#fb923c")
+  widgetColor     String           @default("#fb923c")
   widgetConfig    Json?
-  creator         Profile?       @relation("AgentCreator", fields: [createdById], references: [id])
-  knowledgeBase   KnowledgeBase? @relation(fields: [knowledgeBaseId], references: [id])
-  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  providerKey     ProviderKey?   @relation(fields: [providerKeyId], references: [id])
+  creator         Profile?         @relation("AgentCreator", fields: [createdById], references: [id])
+  knowledgeBase   KnowledgeBase?   @relation(fields: [knowledgeBaseId], references: [id])
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  providerKey     ProviderKey?     @relation(fields: [providerKeyId], references: [id])
   tools           AgentTool[]
   mcpServers      AgentMcpServer[]
   analytics       Analytics[]
@@ -203,19 +203,19 @@ model Conversation {
 }
 
 model Message {
-  id               String       @id @default(uuid())
-  conversationId   String
-  role             String
-  content          String
-  status           String       @default("sent")
-  responseTimeMs   Int?         @map("response_time_ms")
-  inputTokens      Int?         @map("input_tokens")
-  outputTokens     Int?         @map("output_tokens")
-  cost             Float?
-  metadata         Json?
-  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
-  conversation     Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  queries          DocumentQuery[]
+  id             String          @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  status         String          @default("sent")
+  responseTimeMs Int?            @map("response_time_ms")
+  inputTokens    Int?            @map("input_tokens")
+  outputTokens   Int?            @map("output_tokens")
+  cost           Float?
+  metadata       Json?
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  queries        DocumentQuery[]
 
   @@index([conversationId, createdAt])
   @@index([createdAt])
@@ -246,7 +246,7 @@ model Document {
   status          String          @default("pending")
   createdAt       DateTime        @default(now()) @db.Timestamptz(6)
   fileKey         String?
-  knowledgeBase   KnowledgeBase    @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  knowledgeBase   KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
   chunks          DocumentChunk[]
   queries         DocumentQuery[]
 
@@ -256,12 +256,12 @@ model Document {
 }
 
 model DocumentChunk {
-  id         String                 @id @default(uuid())
+  id         String                      @id @default(uuid())
   documentId String
   content    String
   embedding  Unsupported("vector(384)")?
-  createdAt  DateTime               @default(now()) @db.Timestamptz(6)
-  document   Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime                    @default(now()) @db.Timestamptz(6)
+  document   Document                    @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
 }
@@ -295,23 +295,23 @@ model Tool {
 }
 
 model McpServer {
-  id             String       @id @default(uuid())
+  id             String           @id @default(uuid())
   organizationId String
   name           String
-  type           String       @default("stdio")
+  type           String           @default("stdio")
   command        String?
-  args           Json         @default("[]")
+  args           Json             @default("[]")
   url            String?
-  authType       String       @default("none") // none | header | oauth
-  headers        Json         @default("{}")   // custom headers for http transports
+  authType       String           @default("none") // none | header | oauth
+  headers        Json             @default("{}") // custom headers for http transports
   apiKey         String?
-  oauthState     Json?        // persisted OAuth provider state (tokens, client info, pkce)
-  enabled        Boolean      @default(true)
+  oauthState     Json? // persisted OAuth provider state (tokens, client info, pkce)
+  enabled        Boolean          @default(true)
   lastTestResult Json?
   lastTestedAt   DateTime?
-  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(6)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   agents         AgentMcpServer[]
 
   @@unique([organizationId, name])
@@ -319,10 +319,10 @@ model McpServer {
 }
 
 model AgentMcpServer {
-  agentId       String
-  mcpServerId   String
-  agent         Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  mcpServer     McpServer  @relation(fields: [mcpServerId], references: [id])
+  agentId     String
+  mcpServerId String
+  agent       Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  mcpServer   McpServer @relation(fields: [mcpServerId], references: [id])
 
   @@id([agentId, mcpServerId])
   @@index([mcpServerId])
@@ -339,22 +339,22 @@ model AgentTool {
 }
 
 model Analytics {
-  id                    String   @id @default(uuid())
-  date                  DateTime @db.Date
-  totalConversations    Int      @default(0)
-  totalMessages         Int      @default(0)
-  uniqueUsers           Int      @default(0)
-  avgResponseTime       Float    @default(0)
-  satisfactionScore     Float?
-  resolvedConversations Int      @default(0)
-  escalatedConversations Int     @default(0)
-  totalCost             Float    @default(0)
-  totalInputTokens      Int      @default(0)
-  totalOutputTokens     Int      @default(0)
-  returningUsers        Int      @default(0)
-  createdAt             DateTime @default(now()) @db.Timestamptz(6)
-  agentId               String
-  agent                 Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  id                     String   @id @default(uuid())
+  date                   DateTime @db.Date
+  totalConversations     Int      @default(0)
+  totalMessages          Int      @default(0)
+  uniqueUsers            Int      @default(0)
+  avgResponseTime        Float    @default(0)
+  satisfactionScore      Float?
+  resolvedConversations  Int      @default(0)
+  escalatedConversations Int      @default(0)
+  totalCost              Float    @default(0)
+  totalInputTokens       Int      @default(0)
+  totalOutputTokens      Int      @default(0)
+  returningUsers         Int      @default(0)
+  createdAt              DateTime @default(now()) @db.Timestamptz(6)
+  agentId                String
+  agent                  Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([agentId, date])
   @@index([agentId])
@@ -430,36 +430,36 @@ model SsoConfig {
 }
 
 model BillingCustomer {
-  id                  String          @id @default(uuid())
-  organizationId      String          @unique
-  providerCustomerId  String          @unique
-  createdAt           DateTime        @default(now()) @db.Timestamptz(6)
-  updatedAt           DateTime        @updatedAt @db.Timestamptz(6)
+  id                 String   @id @default(uuid())
+  organizationId     String   @unique
+  providerCustomerId String   @unique
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @db.Timestamptz(6)
 
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  subscriptions  Subscription[]
-  invoices       Invoice[]
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+  invoices      Invoice[]
 
   @@map("billing_customers")
 }
 
 model Subscription {
-  id                      String          @id @default(uuid())
-  customerId              String
-  providerSubscriptionId  String          @unique
-  providerProductId       String
-  providerPlanId          String
-  plan                    String
-  status                  String
-  trialEndsAt             DateTime?       @db.Timestamptz(6)
-  renewsAt                DateTime?       @db.Timestamptz(6)
-  endsAt                  DateTime?       @db.Timestamptz(6)
-  cancelAtPeriodEnd       Boolean         @default(false)
-  createdAt               DateTime        @default(now()) @db.Timestamptz(6)
-  updatedAt               DateTime        @updatedAt @db.Timestamptz(6)
+  id                     String    @id @default(uuid())
+  customerId             String
+  providerSubscriptionId String    @unique
+  providerProductId      String
+  providerPlanId         String
+  plan                   String
+  status                 String
+  trialEndsAt            DateTime? @db.Timestamptz(6)
+  renewsAt               DateTime? @db.Timestamptz(6)
+  endsAt                 DateTime? @db.Timestamptz(6)
+  cancelAtPeriodEnd      Boolean   @default(false)
+  createdAt              DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime  @updatedAt @db.Timestamptz(6)
 
-  customer  BillingCustomer @relation(fields: [customerId], references: [id])
-  invoices  Invoice[]
+  customer BillingCustomer @relation(fields: [customerId], references: [id])
+  invoices Invoice[]
 
   @@index([customerId])
   @@index([status])
@@ -467,21 +467,21 @@ model Subscription {
 }
 
 model Invoice {
-  id                String          @id @default(uuid())
+  id                String    @id @default(uuid())
   subscriptionId    String?
   customerId        String
-  providerInvoiceId String          @unique
+  providerInvoiceId String    @unique
   invoiceNumber     String?
   status            String
   total             Float
-  currency          String          @default("USD")
+  currency          String    @default("USD")
   invoiceUrl        String?
-  paidAt            DateTime?       @db.Timestamptz(6)
+  paidAt            DateTime? @db.Timestamptz(6)
   billingReason     String?
-  createdAt         DateTime        @default(now()) @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
 
-  subscription  Subscription?   @relation(fields: [subscriptionId], references: [id])
-  customer      BillingCustomer  @relation(fields: [customerId], references: [id])
+  subscription Subscription?   @relation(fields: [subscriptionId], references: [id])
+  customer     BillingCustomer @relation(fields: [customerId], references: [id])
 
   @@index([customerId])
   @@index([subscriptionId])
@@ -498,7 +498,7 @@ model LoginActivity {
   os        String?
   location  String?
   status    String   @default("success")
-  createdAt DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   profile   Profile  @relation(fields: [userId], references: [id])
 
   @@index([userId, createdAt(sort: Desc)])
@@ -507,26 +507,26 @@ model LoginActivity {
 }
 
 model Broadcast {
-  id            String     @id @default(uuid())
-  organizationId String
-  agentId       String
-  name          String
-  message       String?
-  templateName  String
-  templateLanguage String @default("en_US")
-  templateParams Json     @default("[]")
-  contactFilter Json?
-  scheduleCron  String?
-  scheduleAt    DateTime?
-  status        String     @default("draft")
-  executedAt    DateTime?  @db.Timestamptz(6)
-  totalContacts Int        @default(0)
-  sentCount     Int        @default(0)
-  failCount     Int        @default(0)
-  createdAt     DateTime   @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime   @updatedAt @db.Timestamptz(6)
-  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  agent         Agent        @relation(fields: [agentId], references: [id])
+  id               String       @id @default(uuid())
+  organizationId   String
+  agentId          String
+  name             String
+  message          String?
+  templateName     String
+  templateLanguage String       @default("en_US")
+  templateParams   Json         @default("[]")
+  contactFilter    Json?
+  scheduleCron     String?
+  scheduleAt       DateTime?
+  status           String       @default("draft")
+  executedAt       DateTime?    @db.Timestamptz(6)
+  totalContacts    Int          @default(0)
+  sentCount        Int          @default(0)
+  failCount        Int          @default(0)
+  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @db.Timestamptz(6)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agent            Agent        @relation(fields: [agentId], references: [id])
 
   @@index([organizationId, status])
   @@index([status, scheduleCron])
@@ -609,12 +609,12 @@ model DocFeedback {
 }
 
 model AdminGrant {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   email       String
-  expiresAt   DateTime  @db.Timestamptz(6)
+  expiresAt   DateTime @db.Timestamptz(6)
   grantedById String?
-  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
-  grantedBy   Profile?  @relation(fields: [grantedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  grantedBy   Profile? @relation(fields: [grantedById], references: [id], onDelete: SetNull)
 
   @@index([email])
   @@index([grantedById])
@@ -622,28 +622,28 @@ model AdminGrant {
 }
 
 model AdminConversation {
-  id        String          @id @default(uuid())
+  id        String         @id @default(uuid())
   adminId   String
-  title     String          @default("New conversation")
-  createdAt DateTime        @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime        @updatedAt @db.Timestamptz(6)
+  title     String         @default("New conversation")
+  createdAt DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime       @updatedAt @db.Timestamptz(6)
   messages  AdminMessage[]
-  admin     Profile         @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  admin     Profile        @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId, updatedAt(sort: Desc)])
   @@map("admin_conversations")
 }
 
 model AdminMessage {
-  id             String             @id @default(uuid())
+  id             String            @id @default(uuid())
   conversationId String
   role           String
   content        String
   toolCalls      Json?
   usage          Json?
   error          String?
-  createdAt      DateTime           @default(now()) @db.Timestamptz(6)
-  conversation   AdminConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(6)
+  conversation   AdminConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
   @@map("admin_messages")
@@ -740,19 +740,19 @@ model Notification {
 }
 
 model NotificationPreference {
-  id               String   @id @default(uuid())
-  userId           String   @unique
+  id               String        @id @default(uuid())
+  userId           String        @unique
   organizationId   String?
-  emailEnabled     Boolean  @default(true)
-  pushEnabled      Boolean  @default(true)
-  inAppEnabled     Boolean  @default(true)
-  digestFrequency  String   @default("never")
-  quietHours       Json     @default("{}")
-  categorySettings Json     @default("{}")
-  muteAll          Boolean  @default(false)
-  createdAt        DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
-  profile          Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled     Boolean       @default(true)
+  pushEnabled      Boolean       @default(true)
+  inAppEnabled     Boolean       @default(true)
+  digestFrequency  String        @default("never")
+  quietHours       Json          @default("{}")
+  categorySettings Json          @default("{}")
+  muteAll          Boolean       @default(false)
+  createdAt        DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @db.Timestamptz(6)
+  profile          Profile       @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([userId])
@@ -760,18 +760,18 @@ model NotificationPreference {
 }
 
 model NotificationDelivery {
-  id             String                   @id @default(uuid())
+  id             String                     @id @default(uuid())
   notificationId String
   channel        NotificationChannel
   status         NotificationDeliveryStatus @default(pending)
-  sentAt         DateTime?                @db.Timestamptz(6)
-  deliveredAt    DateTime?                @db.Timestamptz(6)
-  failedAt       DateTime?                @db.Timestamptz(6)
-  retryCount     Int                      @default(0)
+  sentAt         DateTime?                  @db.Timestamptz(6)
+  deliveredAt    DateTime?                  @db.Timestamptz(6)
+  failedAt       DateTime?                  @db.Timestamptz(6)
+  retryCount     Int                        @default(0)
   error          Json?
-  createdAt      DateTime                 @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime                 @updatedAt @db.Timestamptz(6)
-  notification   Notification             @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime                   @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime                   @updatedAt @db.Timestamptz(6)
+  notification   Notification               @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
   @@index([notificationId])
   @@index([status, retryCount])
@@ -780,20 +780,21 @@ model NotificationDelivery {
 }
 
 model SupportTicket {
-  id             String               @id @default(uuid())
+  id             String                 @id @default(uuid())
   organizationId String
   reporterId     String
   title          String
   description    String
-  category       String               @default("general")
-  priority       String               @default("normal")
-  status         String               @default("open")
-  createdAt      DateTime             @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime             @updatedAt @db.Timestamptz(6)
-  resolvedAt     DateTime?            @db.Timestamptz(6)
-  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  reporter       Profile              @relation("TicketReporter", fields: [reporterId], references: [id])
+  category       String                 @default("general")
+  priority       String                 @default("normal")
+  status         String                 @default("open")
+  createdAt      DateTime               @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime               @updatedAt @db.Timestamptz(6)
+  resolvedAt     DateTime?              @db.Timestamptz(6)
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reporter       Profile                @relation("TicketReporter", fields: [reporterId], references: [id], onDelete: Cascade)
   messages       SupportTicketMessage[]
+  reads          SupportTicketRead[]
 
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, status, updatedAt(sort: Desc)])
@@ -803,14 +804,27 @@ model SupportTicket {
 }
 
 model SupportTicketMessage {
-  id        String        @id @default(uuid())
-  ticketId  String
-  authorId  String
-  content   String
-  createdAt DateTime      @default(now()) @db.Timestamptz(6)
-  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author    Profile       @relation(fields: [authorId], references: [id])
+  id          String        @id @default(uuid())
+  ticketId    String
+  authorId    String
+  content     String
+  attachments Json          @default("[]")
+  createdAt   DateTime      @default(now()) @db.Timestamptz(6)
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author      Profile       @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([ticketId, createdAt])
   @@map("support_ticket_messages")
+}
+
+model SupportTicketRead {
+  ticketId   String
+  userId     String
+  lastReadAt DateTime      @default(now()) @db.Timestamptz(6)
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user       Profile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+  @@index([userId, lastReadAt(sort: Desc)])
+  @@map("support_ticket_reads")
 }

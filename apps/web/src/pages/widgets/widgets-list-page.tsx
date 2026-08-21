@@ -333,7 +333,7 @@ export default function WidgetsListPage() {
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()
-                    window.open(`/widget/demo?embed=true&widgetKey=${w.publicKey}&preview=true`, '_blank')
+                    window.open(`/widget-entry.html?embed=true&widgetKey=${w.publicKey}&preview=true`, '_blank')
                   }}
                 >
                   <Eye className="size-4" />

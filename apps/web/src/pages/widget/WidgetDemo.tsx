@@ -20,7 +20,7 @@ function isLightColor(hex: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 > 128
 }
 
-function WidgetEmbedPage() {
+export function WidgetEmbedPage() {
   const params = new URLSearchParams(window.location.search)
   const widgetKey = params.get('widgetKey')
   const host = params.get('host') || undefined

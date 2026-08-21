@@ -774,25 +774,27 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const days = Math.min(query.limit || 30, 90)
     const startDate = new Date(Date.now() - days * 86_400_000)
 
-    const [messages, convs, orgs, profiles, agents, deployments] = await Promise.all([
-      prisma.message.findMany({
-        where: { createdAt: { gte: startDate } },
-        select: { createdAt: true },
-      }),
-      prisma.conversation.findMany({
-        where: { createdAt: { gte: startDate } },
-        select: { createdAt: true, status: true, agentId: true, channel: true },
-      }),
-      prisma.organization.findMany({
-        where: { createdAt: { gte: startDate } },
-        select: { createdAt: true, plan: true },
-      }),
-      prisma.profile.findMany({ select: { createdAt: true } }),
+    const [msgDays, convDays, orgDays, userDays, channelRows, statusRows, agentCount] = await Promise.all([
+      prisma.$queryRaw<{ date: Date; count: number }[]>`
+        SELECT DATE("createdAt") as date, COUNT(*)::int as count
+        FROM "Message" WHERE "createdAt" >= ${startDate}
+        GROUP BY DATE("createdAt")`,
+      prisma.$queryRaw<{ date: Date; count: number }[]>`
+        SELECT DATE("createdAt") as date, COUNT(*)::int as count
+        FROM "Conversation" WHERE "createdAt" >= ${startDate}
+        GROUP BY DATE("createdAt")`,
+      prisma.$queryRaw<{ date: Date; count: number }[]>`
+        SELECT DATE("createdAt") as date, COUNT(*)::int as count
+        FROM "Organization" WHERE "createdAt" >= ${startDate}
+        GROUP BY DATE("createdAt")`,
+      prisma.$queryRaw<{ date: Date; count: number }[]>`
+        SELECT DATE("createdAt") as date, COUNT(*)::int as count
+        FROM "profiles" GROUP BY DATE("createdAt")`,
+      prisma.$queryRaw<{ channel: string | null; count: number }[]>`
+        SELECT channel, COUNT(*)::int as count FROM "Conversation" WHERE "createdAt" >= ${startDate} GROUP BY channel`,
+      prisma.$queryRaw<{ status: string; count: number }[]>`
+        SELECT status, COUNT(*)::int as count FROM "Conversation" WHERE "createdAt" >= ${startDate} GROUP BY status`,
       prisma.agent.count(),
-      prisma.deployment.findMany({
-        where: { createdAt: { gte: startDate } },
-        select: { createdAt: true, channel: true },
-      }),
     ])
 
     const dayMap = new Map<string, { conversations: number; messages: number }>()
@@ -805,29 +807,29 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       userDayMap.set(d, 0)
     }
 
-    for (const m of messages) {
-      const key = m.createdAt.toISOString().slice(0, 10)
+    for (const row of msgDays) {
+      const key = row.date.toISOString().slice(0, 10)
       const entry = dayMap.get(key)
-      if (entry) entry.messages++
+      if (entry) entry.messages += row.count
     }
-    for (const c of convs) {
-      const key = c.createdAt.toISOString().slice(0, 10)
+    for (const row of convDays) {
+      const key = row.date.toISOString().slice(0, 10)
       const entry = dayMap.get(key)
-      if (entry) entry.conversations++
+      if (entry) entry.conversations += row.count
     }
-    for (const o of orgs) {
-      const key = o.createdAt.toISOString().slice(0, 10)
-      if (orgDayMap.has(key)) orgDayMap.set(key, orgDayMap.get(key)! + 1)
+    for (const row of orgDays) {
+      const key = row.date.toISOString().slice(0, 10)
+      if (orgDayMap.has(key)) orgDayMap.set(key, orgDayMap.get(key)! + row.count)
     }
-    for (const p of profiles) {
-      const key = p.createdAt.toISOString().slice(0, 10)
-      if (userDayMap.has(key)) userDayMap.set(key, userDayMap.get(key)! + 1)
+    for (const row of userDays) {
+      const key = row.date.toISOString().slice(0, 10)
+      if (userDayMap.has(key)) userDayMap.set(key, userDayMap.get(key)! + row.count)
     }
 
     const chBreakdown: Record<string, number> = {}
-    for (const c of convs) {
-      const ch = c.channel || 'web'
-      chBreakdown[ch] = (chBreakdown[ch] || 0) + 1
+    for (const row of channelRows) {
+      const ch = row.channel || 'web'
+      chBreakdown[ch] = (chBreakdown[ch] || 0) + row.count
     }
 
     const planDist: Record<string, number> = {}
@@ -837,9 +839,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       planDist[p] = (planDist[p] || 0) + 1
     }
 
-    const totalConversations = convs.length
-    const totalMessages = messages.length
-    const resolvedConvs = convs.filter((c) => c.status === 'resolved' || c.status === 'closed').length
+    const totalConversations = convDays.reduce((s, r) => s + r.count, 0)
+    const totalMessages = msgDays.reduce((s, r) => s + r.count, 0)
+    const resolvedConvs = statusRows
+      .filter((r) => r.status === 'resolved' || r.status === 'closed')
+      .reduce((s, r) => s + r.count, 0)
     const successRate = totalConversations > 0 ? Math.round((resolvedConvs / totalConversations) * 100) : 0
 
     const dailyBreakdown = Array.from(dayMap.entries())
@@ -899,7 +903,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       data: {
         totalConversations,
         totalMessages,
-        uniqueUsers: profiles.length,
+        uniqueUsers: userDays.reduce((s, r) => s + r.count, 0),
         successRate,
         conversationsChange: convsChange,
         messagesChange: 0,
@@ -910,8 +914,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         orgSignups,
         userSignups,
         totalOrgs: allOrgs.length,
-        totalAgents: agents,
-        totalUsers: profiles.length,
+        totalAgents: agentCount,
+        totalUsers: userDays.reduce((s, r) => s + r.count, 0),
         topOrgs: topOrgs.map((o) => ({
           id: o.id,
           name: o.name,

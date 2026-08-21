@@ -1039,12 +1039,9 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const signature = request.headers['x-twilio-signature'] as string | undefined
     const webhookUrl = `${fastify.config.PUBLIC_URL}/api/twilio-webhook`
 
-    if (signature) {
-      const valid = verifyTwilioSignature(authToken, webhookUrl, payload, signature)
-      if (!valid) {
-        request.log.warn({ deploymentId }, 'Twilio webhook: invalid signature')
-        return reply.code(401).send('<Response></Response>')
-      }
+    if (!signature || !verifyTwilioSignature(authToken, webhookUrl, payload, signature)) {
+      request.log.warn({ deploymentId }, 'Twilio webhook: missing or invalid signature')
+      return reply.code(401).send('<Response></Response>')
     }
 
     if (payload.MessageStatus) {

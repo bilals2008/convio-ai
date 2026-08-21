@@ -28,6 +28,7 @@ export class OpenRouterProvider implements AIProvider {
         allowSystemInMessages: true,
         temperature: params.temperature,
         maxOutputTokens: params.maxTokens,
+        abortSignal: params.signal,
       })
 
       return {
@@ -57,6 +58,7 @@ export class OpenRouterProvider implements AIProvider {
         temperature: params.temperature,
         maxOutputTokens: params.maxTokens,
         ...(tools && Object.keys(tools).length > 0 && { tools }),
+        abortSignal: params.signal,
       })
 
       for await (const chunk of result.fullStream) {

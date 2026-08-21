@@ -312,8 +312,16 @@ export const tickets = {
     api.get(`/organizations/${orgId}/tickets/${ticketId}`),
   create: (orgId: string, data: { title: string; description: string; category: string; priority: string }) =>
     api.post(`/organizations/${orgId}/tickets`, data),
-  reply: (orgId: string, ticketId: string, content: string) =>
-    api.post(`/organizations/${orgId}/tickets/${ticketId}/messages`, { content }),
+  reply: (
+    orgId: string,
+    ticketId: string,
+    data: {
+      content: string
+      attachments?: { name: string; size: number; type: string; path: string }[]
+    }
+  ) => api.post(`/organizations/${orgId}/tickets/${ticketId}/messages`, data),
+  markRead: (orgId: string, ticketId: string) =>
+    api.post(`/organizations/${orgId}/tickets/${ticketId}/read`),
   updateStatus: (orgId: string, ticketId: string, status: string) =>
     api.patch(`/organizations/${orgId}/tickets/${ticketId}`, { status }),
 }

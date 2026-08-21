@@ -1,55 +1,69 @@
+"use client"
+
 import { useState, useEffect } from 'react'
-import { X, Shield } from 'lucide-react'
+import { Shield } from 'lucide-react'
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+
+const DISMISS_KEY = 'beta-notice-dismissed'
 
 export function BetaNotice() {
   const [open, setOpen] = useState(false)
+  const [dontShow, setDontShow] = useState(true)
 
   useEffect(() => {
-    if (!sessionStorage.getItem('beta-notice-dismissed')) {
-      const timer = setTimeout(() => setOpen(true), 1500)
-      return () => clearTimeout(timer)
-    }
+    if (localStorage.getItem(DISMISS_KEY)) return
+    const timer = setTimeout(() => setOpen(true), 1500)
+    return () => clearTimeout(timer)
   }, [])
 
-  const dismiss = () => {
-    sessionStorage.setItem('beta-notice-dismissed', 'true')
+  const dismiss = (remember: boolean) => {
+    if (remember) localStorage.setItem(DISMISS_KEY, 'true')
     setOpen(false)
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="mx-4 w-full max-w-sm rounded-2xl border border-border/50 bg-card p-6 shadow-2xl">
-        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10">
-          <Shield className="size-6 text-primary" />
-        </div>
-        <h3 className="mb-2 text-lg font-semibold text-foreground">We're Building in Public</h3>
-        <p className="mb-1 text-sm text-muted-foreground">
-          Convio is currently in <span className="font-medium text-foreground">active development</span>. Features are shipping daily, and your feedback shapes what we build next.
-        </p>
-        <p className="mb-6 text-sm text-muted-foreground">
-          Something broken or missing?{' '}
-          <a href="mailto:teambilaldev@gmail.com" className="text-primary underline underline-offset-2 hover:text-primary/80">
-            Tell us
-          </a>
-        </p>
-        <div className="flex gap-3">
-          <button
-            onClick={dismiss}
-            className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
+    <Dialog open={open} onOpenChange={dismiss}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <div className="mx-auto mb-1 flex size-12 items-center justify-center rounded-full bg-primary/10">
+            <Shield className="size-6 text-primary" />
+          </div>
+          <DialogTitle className="text-center">We're building in public</DialogTitle>
+          <DialogDescription className="text-center">
+            Convio is in active development. Features ship daily, and your feedback
+            shapes what we build next.
+          </DialogDescription>
+          <DialogDescription className="text-center">
+            Something broken or missing?{' '}
+            <a
+              href="mailto:teambilaldev@gmail.com"
+              className="text-primary hover:text-primary/80"
+            >
+              Tell us
+            </a>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="!flex-col !items-stretch gap-3">
+          <Label className="flex items-center justify-start gap-2 text-sm text-muted-foreground cursor-pointer">
+            <Checkbox checked={dontShow} onCheckedChange={(v) => setDontShow(v === true)} />
+            Don't show this message again
+          </Label>
+          <Button className="w-full" onClick={() => dismiss(dontShow)}>
             Got it
-          </button>
-        </div>
-        <button
-          onClick={dismiss}
-          className="absolute right-4 top-4 flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Close"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

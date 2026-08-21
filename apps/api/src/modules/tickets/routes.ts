@@ -11,7 +11,7 @@ const TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'] as const
 
 const createTicketSchema = z.object({
   title: z.string().min(3).max(200),
-  description: z.string().min(10).max(10000),
+  description: z.string().min(1).max(10000),
   category: z.enum(TICKET_CATEGORIES).default('general'),
   priority: z.enum(TICKET_PRIORITIES).default('normal'),
 })
@@ -31,7 +31,31 @@ const updateTicketSchema = z.object({
 
 const ticketMessageSchema = z.object({
   content: z.string().min(1).max(5000),
+  attachments: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(255),
+        size: z.number().int().positive().max(10 * 1024 * 1024),
+        type: z.string().max(100),
+        path: z.string().min(1).max(1024),
+      })
+    )
+    .max(5)
+    .default([]),
 })
+
+const AUTHOR_SELECT = { id: true, name: true, email: true, avatar: true } as const
+
+interface Attachment {
+  name: string
+  size: number
+  type: string
+  path: string
+}
+
+function serializeAttachments(value: unknown): Attachment[] {
+  return Array.isArray(value) ? (value as Attachment[]) : []
+}
 
 async function getTicketForRole(fastify: FastifyInstance, userId: string, orgId: string, ticketId: string) {
   const membership = await fastify.getMembership(userId, orgId)
@@ -121,16 +145,17 @@ export default async function ticketRoutes(fastify: FastifyInstance) {
     const { orgId, ticketId } = request.params as { orgId: string; ticketId: string }
     const { ticket } = await getTicketForRole(fastify, request.userId!, orgId, ticketId)
 
-    const [messages, reporter] = await Promise.all([
+    const [messages, reporter, reads] = await Promise.all([
       prisma.supportTicketMessage.findMany({
         where: { ticketId },
-        include: { author: { select: { id: true, name: true, email: true, avatar: true } } },
+        include: { author: { select: AUTHOR_SELECT } },
         orderBy: { createdAt: 'asc' },
       }),
       prisma.profile.findUnique({
         where: { id: ticket.reporterId },
-        select: { id: true, name: true, email: true, avatar: true },
+        select: AUTHOR_SELECT,
       }),
+      prisma.supportTicketRead.findMany({ where: { ticketId } }),
     ])
 
     return {
@@ -145,9 +170,11 @@ export default async function ticketRoutes(fastify: FastifyInstance) {
         updatedAt: ticket.updatedAt,
         resolvedAt: ticket.resolvedAt,
         reporter: reporter ?? { id: ticket.reporterId, name: null, email: '', avatar: null },
+        reads: reads.map((r) => ({ userId: r.userId, lastReadAt: r.lastReadAt })),
         messages: messages.map((m) => ({
           id: m.id,
           content: m.content,
+          attachments: serializeAttachments(m.attachments),
           createdAt: m.createdAt,
           author: m.author,
         })),
@@ -159,12 +186,12 @@ export default async function ticketRoutes(fastify: FastifyInstance) {
     preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: ticketParamsSchema, body: ticketMessageSchema })],
   }, async (request) => {
     const { orgId, ticketId } = request.params as { orgId: string; ticketId: string }
-    const { content } = request.body as { content: string }
+    const { content, attachments } = request.body as z.infer<typeof ticketMessageSchema>
     const { ticket, isAdmin } = await getTicketForRole(fastify, request.userId!, orgId, ticketId)
 
     const message = await prisma.supportTicketMessage.create({
-      data: { ticketId, authorId: request.userId!, content },
-      include: { author: { select: { id: true, name: true, email: true, avatar: true } } },
+      data: { ticketId, authorId: request.userId!, content, attachments },
+      include: { author: { select: AUTHOR_SELECT } },
     })
 
     if (isAdmin) {
@@ -191,6 +218,21 @@ export default async function ticketRoutes(fastify: FastifyInstance) {
     }
 
     return { data: message }
+  })
+
+  fastify.post('/organizations/:orgId/tickets/:ticketId/read', {
+    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: ticketParamsSchema })],
+  }, async (request) => {
+    const { orgId, ticketId } = request.params as { orgId: string; ticketId: string }
+    await getTicketForRole(fastify, request.userId!, orgId, ticketId)
+
+    const read = await prisma.supportTicketRead.upsert({
+      where: { ticketId_userId: { ticketId, userId: request.userId! } },
+      create: { ticketId, userId: request.userId! },
+      update: { lastReadAt: new Date() },
+    })
+
+    return { data: read }
   })
 
   fastify.patch('/organizations/:orgId/tickets/:ticketId', {
