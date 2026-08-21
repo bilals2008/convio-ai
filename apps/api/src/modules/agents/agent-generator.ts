@@ -18,6 +18,7 @@ export const PROVIDER_ENV_KEYS: Record<string, string> = {
   together: 'TOGETHER_API_KEY',
   deepseek: 'DEEPSEEK_API_KEY',
   perplexity: 'PERPLEXITY_API_KEY',
+  agnes: 'AGNES_API_KEY',
   opencode: 'OPENCODE_API_KEY',
   local: 'LOCAL_API_URL',
 }

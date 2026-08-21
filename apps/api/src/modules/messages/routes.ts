@@ -771,12 +771,11 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         const contextPromise = agent.knowledgeBaseId
           ? retrieveContext(content, agent.knowledgeBaseId).catch(() => null)
           : Promise.resolve(null)
-        const providerKeyPromise = agent.providerKeyId
-          ? prisma.providerKey.findFirst({
-              where: { id: agent.providerKeyId, organizationId: agent.organizationId },
-              select: { apiKey: true, provider: true },
-            })
-          : Promise.resolve(null)
+        const providerKeyPromise = resolveProviderKey({
+          organizationId: agent.organizationId,
+          model: agent.model!,
+          providerKeyId: agent.providerKeyId,
+        })
         const toolsPromise = loadAgentToolHandlers(agent.id, prisma)
 
         const [historyDesc, ctx, providerKey, handlers] = await Promise.all([

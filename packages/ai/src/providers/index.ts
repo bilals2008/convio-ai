@@ -19,6 +19,7 @@ export const mistralProvider = new OpenAICompatibleProvider({ id: 'mistral', nam
 export const togetherProvider = new OpenAICompatibleProvider({ id: 'together', name: 'Together', baseURL: 'https://api.together.xyz/v1' })
 export const deepseekProvider = new OpenAICompatibleProvider({ id: 'deepseek', name: 'DeepSeek', baseURL: 'https://api.deepseek.com' })
 export const perplexityProvider = new OpenAICompatibleProvider({ id: 'perplexity', name: 'Perplexity', baseURL: 'https://api.perplexity.ai' })
+export const agnesProvider = new OpenAICompatibleProvider({ id: 'agnes', name: 'Agnes AI', baseURL: 'https://apihub.agnes-ai.com/v1' })
 
 export const allProviders: AIProvider[] = [
   openaiProvider,
@@ -32,6 +33,7 @@ export const allProviders: AIProvider[] = [
   togetherProvider,
   deepseekProvider,
   perplexityProvider,
+  agnesProvider,
 ]
 
 export function getProviderById(id: string): AIProvider | undefined {
@@ -65,6 +67,7 @@ export function getProviderForModel(model: string, providerHint?: string): AIPro
   if (OPENCODE_MODEL_PREFIXES.some(p => model.startsWith(p))) return opencodeProvider
   if (LOCAL_MODEL_PREFIXES.some(p => model.startsWith(p))) return localProvider
   if (model.startsWith('deepseek-')) return deepseekProvider
+  if (model.startsWith('agnes-')) return agnesProvider
   if (model.startsWith('mistral-') || model.startsWith('open-mistral-') || model.startsWith('codestral-') || model.startsWith('ministral-')) return mistralProvider
   if (model.toLowerCase().startsWith('sonar')) return perplexityProvider
   // OpenRouter models use the format: provider/model-name
