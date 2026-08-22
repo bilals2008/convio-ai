@@ -90,6 +90,7 @@ export const agents = {
     knowledgeBaseId?: string | null
     tools?: string[]
     mcpServerIds?: string[]
+    guardrails?: { enabled: boolean; blockedWords: string[]; restrictedTopics: string[] }
     history?: Array<{ role: 'user' | 'assistant'; content: string }>
     signal?: AbortSignal
   }) => {
