@@ -109,6 +109,7 @@ model Agent {
   welcomeMessage  String?
   widgetColor     String           @default("#fb923c")
   widgetConfig    Json?
+  guardrails      Json?
   creator         Profile?         @relation("AgentCreator", fields: [createdById], references: [id])
   knowledgeBase   KnowledgeBase?   @relation(fields: [knowledgeBaseId], references: [id])
   organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)

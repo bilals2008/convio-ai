@@ -12,6 +12,7 @@ import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { computeCost } from '@convio/ai/pricing'
 import { getAgentWidgetDomains, assertPublicAccess } from '../widgets/access.js'
 import { runExclusive, createRequestSignal } from '../../services/concurrency.js'
+import { guardrailInputRefusal, guardrailPrompt } from '../../services/guardrails.js'
 import { z } from 'zod'
 
 // User-facing message shown when a message is blocked by moderation.
@@ -173,6 +174,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             providerKeyId: true,
             knowledgeBaseId: true,
             widgetConfig: true,
+            guardrails: true,
           },
         },
       },
@@ -231,6 +233,24 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       }
     }
 
+    // Per-agent guardrails: blocklist hit → canned refusal without an LLM call.
+    const agentGuardrailRefusal = guardrailInputRefusal(content, agent.guardrails)
+    if (agentGuardrailRefusal) {
+      reply.hijack()
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+        ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
+      })
+      reply.raw.flushHeaders()
+      reply.raw.write(`data: ${JSON.stringify({ content: agentGuardrailRefusal })}\n\n`)
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+      return
+    }
+
     const historyPromise = prisma.message.findMany({
       where: { conversationId: id },
       orderBy: { createdAt: 'desc' },
@@ -265,9 +285,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       toolsPromise,
     ])
     const history = historyDesc.reverse()
-    const systemContext = context
+    const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt
+      : agent.systemPrompt) + guardrailPrompt(agent.guardrails)
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
@@ -543,6 +563,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             maxTokens: true,
             providerKeyId: true,
             knowledgeBaseId: true,
+            guardrails: true,
           },
         },
       },
@@ -573,6 +594,11 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         flags: widgetModeration.result.flags,
       })
       return { data: { response: widgetModeration.message } }
+    }
+
+    const widgetGuardrailRefusal = guardrailInputRefusal(content, conversation.agent.guardrails)
+    if (widgetGuardrailRefusal) {
+      return { data: { response: widgetGuardrailRefusal } }
     }
 
     await prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } })
@@ -615,7 +641,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt) + WIDGET_FORMAT_GUIDE
+      : agent.systemPrompt) + WIDGET_FORMAT_GUIDE + guardrailPrompt(agent.guardrails)
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
@@ -715,6 +741,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             providerKeyId: true,
             knowledgeBaseId: true,
             widgetConfig: true,
+            guardrails: true,
           },
         },
       },
@@ -747,6 +774,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         flags: widgetModeration.result.flags,
       })
       earlyResponse = widgetModeration.message
+    } else if (guardrailInputRefusal(content, agent.guardrails)) {
+      earlyResponse = guardrailInputRefusal(content, agent.guardrails)
     } else if (!earlyResponse) {
       await prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } })
       await prisma.conversation.update({ where: { id }, data: { status: 'active' } })
@@ -824,7 +853,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt ?? '') + WIDGET_FORMAT_GUIDE
+      : agent.systemPrompt ?? '') + WIDGET_FORMAT_GUIDE + guardrailPrompt(agent.guardrails)
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },

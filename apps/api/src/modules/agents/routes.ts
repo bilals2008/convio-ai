@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
-import { createAgentSchema, updateAgentSchema } from '@convio/validation'
+import { createAgentSchema, updateAgentSchema, agentGuardrailsSchema } from '@convio/validation'
 import { AppError } from '../../plugins/error.js'
 import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
@@ -12,6 +12,7 @@ import { getTemplate, listTemplates } from './templates.js'
 import { AGENT_GENERATION_PROMPT, resolveGenerationProvider, parseAgentDraft } from './agent-generator.js'
 import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
 import { getOrgPlan } from '../../services/billing.js'
+import { guardrailInputRefusal, guardrailPrompt } from '../../services/guardrails.js'
 import { NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 
@@ -57,6 +58,7 @@ const testStreamSchema = z.object({
   tools: z.array(z.string()).optional().default([]),
   toolIds: z.array(z.string().uuid()).optional().default([]),
   mcpServerIds: z.array(z.string().uuid()).optional().default([]),
+  guardrails: agentGuardrailsSchema.optional(),
 })
 
 const createAgentBodySchema = createAgentSchema.extend({
@@ -493,6 +495,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       tools: toolNames,
       toolIds,
       mcpServerIds,
+      guardrails,
     } = request.body as z.infer<typeof testStreamSchema>
 
     const providerKey = providerKeyId
@@ -585,6 +588,21 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     let systemContext = systemPrompt
     if (gatedToolNote) {
       systemContext = `${systemContext}\n\n${gatedToolNote}`
+    }
+    systemContext += guardrailPrompt(guardrails)
+
+    const guardrailRefusal = guardrailInputRefusal(message, guardrails)
+    if (guardrailRefusal) {
+      reply.hijack()
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        ...corsHeaders,
+      })
+      reply.raw.write(`data: ${JSON.stringify({ type: 'text', content: guardrailRefusal })}\n\n`)
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+      return
     }
 
     // Convert tool names to native tool definitions for the AI provider
