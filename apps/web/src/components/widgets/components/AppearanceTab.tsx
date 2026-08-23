@@ -3,6 +3,8 @@ import { Palette, PaintBucket, Upload, X, Loader2, Image as ImageIcon, MessageCi
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { usePlan } from '@/lib/hooks/use-billing'
 import { SectionCard } from './SectionCard'
 import { ColorField } from './ColorField'
 import { AvatarPresetModal } from '@/components/agents/avatar-preset-modal'
@@ -65,6 +67,9 @@ interface AppearanceTabProps {
 }
 
 export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
+  const { data: plan } = usePlan()
+  const isFreePlan = !plan || plan.name === 'free'
+
   // Local aliases over the config object keep the markup below readable while
   // every edit flows through the single patch-style onChange.
   const agentName = config.agentName ?? ''
@@ -496,10 +501,24 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
                   <span className="text-xs font-medium text-foreground">Powered by Convio</span>
-                  <button type="button" role="switch" aria-checked={showPoweredBy} onClick={() => onShowPoweredByChange(!showPoweredBy)}
-                    className={cn('relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors', showPoweredBy ? 'bg-primary' : 'bg-muted-foreground/20')}>
-                    <span className={cn('pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform', showPoweredBy ? 'translate-x-4' : 'translate-x-0.5')} />
-                  </button>
+                  {isFreePlan ? (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={<span className="inline-flex cursor-not-allowed opacity-50" />}
+                      >
+                        <button type="button" role="switch" aria-checked={true} disabled
+                          className="relative inline-flex h-5 w-9 shrink-0 cursor-not-allowed rounded-full transition-colors bg-primary opacity-60">
+                          <span className="pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform translate-x-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Upgrade to Pro to hide this</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <button type="button" role="switch" aria-checked={showPoweredBy} onClick={() => onShowPoweredByChange(!showPoweredBy)}
+                      className={cn('relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors', showPoweredBy ? 'bg-primary' : 'bg-muted-foreground/20')}>
+                      <span className={cn('pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform', showPoweredBy ? 'translate-x-4' : 'translate-x-0.5')} />
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="placeholderText" className="text-xs font-medium text-foreground">Input placeholder</Label>

@@ -277,7 +277,7 @@ export default function WidgetConfigPage() {
 
       {widget && (
         <ChatWidget
-          key={JSON.stringify([config.agentName, config.primaryColor, config.backgroundColor, config.textColor, config.position, config.headerTitle, config.headerSubtitle, config.launcherLabel, config.footerBgColor, config.quickReplies])}
+          key={JSON.stringify([config.agentName, config.primaryColor, config.backgroundColor, config.textColor, config.position, config.headerTitle, config.headerSubtitle, config.launcherLabel, config.footerBgColor, config.quickReplies, config.widgetWidth, config.widgetHeight, config.launcherSize, config.borderRadius, config.launcherShape, config.customWidth, config.customHeight, config.launcherOffset, config.teaserMessage, config.teaserDelay, config.showPoweredBy, config.themeMode])}
           agentId={widget.agent.id}
           publicKey={widget.publicKey}
           position={config.position}
