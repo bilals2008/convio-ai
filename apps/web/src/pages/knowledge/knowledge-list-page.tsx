@@ -383,26 +383,10 @@ export default function KnowledgeListPage() {
           <p className="text-sm text-muted-foreground">Manage context for your AI agents.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {bulk.selectedCount > 0 ? (
-            <BulkActionBar
-              onExitSelectionMode={bulk.exitSelectionMode}
-              action={
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setBulkDeleteOpen(true)}
-                >
-                  <Trash2 className="size-4" />
-                  Delete ({bulk.selectedCount})
-                </Button>
-              }
-            />
-          ) : (
-            <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-              <Plus className="size-4" />
-              Create Knowledge Base
-            </Button>
-          )}
+          <Button onClick={() => setCreateOpen(true)} className="shrink-0">
+            <Plus className="size-4" />
+            Create Knowledge Base
+          </Button>
         </div>
       </div>
 
@@ -453,7 +437,7 @@ export default function KnowledgeListPage() {
 
        {/* Toolbar */}
       {knowledgeBases.length > 0 && (
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex items-center gap-3">
           <div className="flex-1">
             <SearchInput
               value={search}
@@ -553,24 +537,34 @@ export default function KnowledgeListPage() {
       {!loading && filtered.length > 0 && (
         <>
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {filtered.length} knowledge base{filtered.length !== 1 ? 's' : ''}
-              {search ? ' found' : ''}
-            </p>
+            <div className="flex items-center gap-2">
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={bulk.isAllSelected}
+                  onCheckedChange={() => bulk.toggleSelectAll()}
+                  className="size-4"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {bulk.selectedCount > 0
+                  ? `${bulk.selectedCount} selected`
+                  : `${filtered.length} knowledge base${filtered.length !== 1 ? 's' : ''}${search ? ' found' : ''}`}
+              </p>
+            </div>
             {bulk.selectedCount > 0 ? (
-              <button
-                type="button"
-                onClick={bulk.toggleSelectAll}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <div onClick={(e) => e.stopPropagation()}>
-                  <Checkbox
-                    checked={bulk.isAllSelected}
-                    className="size-4"
-                  />
-                </div>
-                {bulk.isAllSelected ? 'Deselect all' : 'Select all'}
-              </button>
+              <BulkActionBar
+                onExitSelectionMode={bulk.exitSelectionMode}
+                action={
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setBulkDeleteOpen(true)}
+                  >
+                    <Trash2 className="size-4" />
+                    Delete ({bulk.selectedCount})
+                  </Button>
+                }
+              />
             ) : null}
           </div>
 
