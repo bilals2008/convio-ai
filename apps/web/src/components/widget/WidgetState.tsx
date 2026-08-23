@@ -30,6 +30,12 @@ export interface WidgetStateValue {
   launcherLabel?: string
   placeholderText?: string
   showPoweredBy?: boolean
+  launcherShape?: 'circle' | 'pill' | 'square'
+  launcherOffset?: number
+  teaserMessage?: string
+  teaserVisible?: boolean
+  dismissTeaser?: () => void
+  isHidden?: boolean
   onSendMessage: (content: string) => void
   onToggle: () => void
   onClose: () => void

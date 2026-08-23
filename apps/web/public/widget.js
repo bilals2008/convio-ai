@@ -54,6 +54,10 @@
     }
   }
 
+  function setOffset(offsetPx) {
+    iframe.style.bottom = (20 + (offsetPx || 0)) + 'px'
+  }
+
   // Fetch a short-lived signed token from the API. The browser sends the Origin
   // header here (credentials: omit), which is the unspoofable proof that this
   // page's host is allowed for the widget. The iframe then passes the token back
@@ -88,7 +92,7 @@
         iframe.style.background = '#fff'
         return
       }
-      iframe.style.bottom = '20px'
+      iframe.style.bottom = (20 + (event.data.offset || 0)) + 'px'
       iframe.style.borderRadius = '12px'
       iframe.style.maxWidth = 'calc(100vw - 40px)'
       iframe.style.maxHeight = 'calc(100vh - 40px)'

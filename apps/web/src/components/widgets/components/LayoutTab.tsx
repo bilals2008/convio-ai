@@ -1,6 +1,9 @@
-import { Move, Smartphone } from 'lucide-react'
+import { useState } from 'react'
+import { Move, HelpCircle, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SectionCard } from './SectionCard'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import type { WidgetConfig } from '../types'
 import {
@@ -9,6 +12,7 @@ import {
   LAUNCHER_SIZE_OPTIONS,
   BORDER_RADIUS_OPTIONS,
   MOBILE_BEHAVIOR_OPTIONS,
+  LAUNCHER_SHAPE_OPTIONS,
 } from '../constants'
 
 interface LayoutTabProps {
@@ -23,6 +27,13 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
   const launcherSize = config.launcherSize ?? 'default'
   const borderRadius = config.borderRadius ?? 'default'
   const mobileBehavior = config.mobileBehavior ?? 'default'
+  const launcherShape = config.launcherShape ?? 'circle'
+  const customWidth = config.customWidth ?? 0
+  const customHeight = config.customHeight ?? 0
+  const launcherOffset = config.launcherOffset ?? 0
+  const teaserMessage = config.teaserMessage ?? ''
+  const teaserDelay = config.teaserDelay ?? 5
+  const hiddenPages = config.hiddenPages ?? []
 
   const fields: {
     label: string
@@ -44,19 +55,25 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
       label: 'Height',
       value: widgetHeight,
       options: HEIGHT_OPTIONS,
-      onSelect: (v) => onChange({ widgetHeight: Number(v) }),
+      onSelect: (v) => onChange({ widgetHeight: Number(v), customHeight: 0 }),
     },
     {
       label: 'Width',
       value: widgetWidth,
       options: WIDTH_OPTIONS,
-      onSelect: (v) => onChange({ widgetWidth: v as WidgetConfig['widgetWidth'] }),
+      onSelect: (v) => onChange({ widgetWidth: v as WidgetConfig['widgetWidth'], customWidth: 0 }),
     },
     {
       label: 'Launcher size',
       value: launcherSize,
       options: LAUNCHER_SIZE_OPTIONS,
       onSelect: (v) => onChange({ launcherSize: v as WidgetConfig['launcherSize'] }),
+    },
+    {
+      label: 'Launcher shape',
+      value: launcherShape,
+      options: LAUNCHER_SHAPE_OPTIONS,
+      onSelect: (v) => onChange({ launcherShape: v as WidgetConfig['launcherShape'] }),
     },
     {
       label: 'Corner radius',
@@ -72,6 +89,19 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
       tooltip: 'Fullscreen opens the widget edge-to-edge on small screens.',
     },
   ]
+
+  const [pagePatternInput, setPagePatternInput] = useState('')
+
+  const addPagePattern = () => {
+    const p = pagePatternInput.trim()
+    if (!p || hiddenPages.includes(p) || hiddenPages.length >= 20) return
+    onChange({ hiddenPages: [...hiddenPages, p] })
+    setPagePatternInput('')
+  }
+
+  const removePagePattern = (pattern: string) => {
+    onChange({ hiddenPages: hiddenPages.filter((x) => x !== pattern) })
+  }
 
   return (
     <SectionCard
@@ -91,10 +121,9 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
                     className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground/50 hover:text-foreground transition-colors"
                     aria-label={field.tooltip}
                   >
-                    <span className="text-[10px] leading-none font-medium">?</span>
+                    <HelpCircle className="size-3" />
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={4} className="max-w-[200px]">
-                    <Smartphone className="size-3 shrink-0" />
                     {field.tooltip}
                   </TooltipContent>
                 </Tooltip>
@@ -121,6 +150,122 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Advanced controls */}
+      <div className="mt-6 space-y-4 border-t border-border/40 pt-5">
+        <p className="text-xs font-medium text-foreground">Advanced</p>
+
+        {/* Custom width / height sliders */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Width</span>
+              <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">
+                {customWidth > 0 ? `${customWidth}px` : 'auto'}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={800}
+              step={10}
+              value={customWidth}
+              onChange={(e) => onChange({ customWidth: Number(e.target.value) })}
+              className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+            />
+            <p className="text-[11px] text-muted-foreground/50">0 = use preset above</p>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Height</span>
+              <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">
+                {customHeight > 0 ? `${customHeight}px` : 'auto'}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1200}
+              step={10}
+              value={customHeight}
+              onChange={(e) => onChange({ customHeight: Number(e.target.value) })}
+              className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+            />
+            <p className="text-[11px] text-muted-foreground/50">0 = use preset above</p>
+          </div>
+        </div>
+
+        {/* Launcher offset */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Bottom spacing</span>
+            <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">{launcherOffset}px</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={200}
+            step={5}
+            value={launcherOffset}
+            onChange={(e) => onChange({ launcherOffset: Number(e.target.value) })}
+            className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+          />
+          <p className="text-[11px] text-muted-foreground/50">Offset from bottom edge — useful if a cookie banner overlaps the launcher.</p>
+        </div>
+
+        {/* Teaser message */}
+        <div className="space-y-2">
+          <span className="text-xs font-medium text-foreground">Teaser message</span>
+          <Input
+            value={teaserMessage}
+            onChange={(e) => onChange({ teaserMessage: e.target.value })}
+            placeholder="Need help? Chat with us"
+            maxLength={80}
+            className="h-8 text-xs"
+          />
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] text-muted-foreground">Show after</span>
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={teaserDelay}
+              onChange={(e) => onChange({ teaserDelay: Number(e.target.value) || 5 })}
+              className="h-7 w-14 rounded-md border border-border bg-muted/30 px-2 text-center text-xs tabular-nums"
+            />
+            <span className="text-[11px] text-muted-foreground">seconds</span>
+          </div>
+        </div>
+
+        {/* Hidden pages */}
+        <div className="space-y-2">
+          <span className="text-xs font-medium text-foreground">Hide widget on pages</span>
+          <div className="flex flex-wrap gap-1.5">
+            {hiddenPages.map((pattern) => (
+              <span key={pattern} className="flex items-center gap-1 rounded-lg border border-border/40 bg-muted/20 px-2 py-0.5 text-[11px] text-foreground font-mono">
+                {pattern}
+                <button type="button" onClick={() => removePagePattern(pattern)} className="text-muted-foreground/40 hover:text-destructive transition-colors">
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Input
+              value={pagePatternInput}
+              onChange={(e) => setPagePatternInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPagePattern() } }}
+              placeholder="/checkout, /admin/*"
+              className="h-8 text-xs flex-1 min-w-[140px]"
+              maxLength={200}
+            />
+            <Button type="button" size="sm" className="h-8 text-xs" onClick={addPagePattern} disabled={!pagePatternInput.trim()}>
+              <Plus className="size-3" />
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground/50">URL path prefixes. Supports trailing * as wildcard (e.g. /admin/*).</p>
+        </div>
       </div>
     </SectionCard>
   )

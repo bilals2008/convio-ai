@@ -115,6 +115,12 @@ export const MOBILE_BEHAVIOR_OPTIONS = [
   { value: 'fullscreen', label: 'Fullscreen' },
 ] as const
 
+export const LAUNCHER_SHAPE_OPTIONS = [
+  { value: 'circle', label: 'Circle' },
+  { value: 'pill', label: 'Pill' },
+  { value: 'square', label: 'Square' },
+] as const
+
 // Single source of truth for widget config defaults — used by the form hook,
 // dirty checks and the preview. New options only need an entry here.
 export const DEFAULT_WIDGET_CONFIG = {
@@ -146,4 +152,11 @@ export const DEFAULT_WIDGET_CONFIG = {
   showPoweredBy: true,
   quickReplies: [] as string[],
   mobileBehavior: 'default',
+  launcherShape: 'circle',
+  customWidth: 0,
+  customHeight: 0,
+  launcherOffset: 0,
+  teaserMessage: '',
+  teaserDelay: 5,
+  hiddenPages: [],
 } as const

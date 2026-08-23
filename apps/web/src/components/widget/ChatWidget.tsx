@@ -33,6 +33,13 @@ export interface ChatWidgetProps {
   showPoweredBy?: boolean
   widgetHeight?: number
   mobileBehavior?: 'default' | 'fullscreen'
+  launcherShape?: 'circle' | 'pill' | 'square'
+  customWidth?: number
+  customHeight?: number
+  launcherOffset?: number
+  teaserMessage?: string
+  teaserDelay?: number
+  hiddenPages?: string[]
 }
 
 const defaultTheme: WidgetTheme = {
@@ -91,9 +98,16 @@ export function ChatWidget({
   showPoweredBy,
   widgetHeight,
   mobileBehavior = 'default',
+  launcherShape = 'circle',
+  customWidth = 0,
+  customHeight = 0,
+  launcherOffset = 0,
+  teaserMessage = '',
+  teaserDelay = 5,
+  hiddenPages = [],
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, host, visitorId, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior })
+  const widget = useWidget({ agentId, publicKey, host, visitorId, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior, launcherShape, customWidth, customHeight, launcherOffset, teaserMessage, teaserDelay, hiddenPages })
   // Fullscreen windows are edge-to-edge — sharp corners regardless of setting.
   const effectiveBorderRadius = widget.isFullscreen ? 'none' : borderRadius
 
@@ -118,6 +132,7 @@ export function ChatWidget({
     widgetWidth,
     launcherSize,
     borderRadius: effectiveBorderRadius,
+    launcherShape,
     headerGradient,
     headerTitle,
     headerSubtitle,
@@ -132,7 +147,15 @@ export function ChatWidget({
     onMinimize: () => widget.setIsMinimized((prev) => !prev),
     onClearChat: widget.clearChat,
     dismissError: () => widget.setError(null),
+    isHidden: widget.isHidden,
+    teaserMessage,
+    teaserVisible: widget.teaserVisible,
+    dismissTeaser: widget.dismissTeaser,
+    launcherShape: widget.launcherShape,
+    launcherOffset: widget.LAUNCHER_OFFSET,
   }
+
+  if (widget.isHidden) return null
 
   return createPortal(
     <WidgetStateProvider value={stateValue}>

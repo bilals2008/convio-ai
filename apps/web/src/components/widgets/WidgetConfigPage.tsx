@@ -298,6 +298,13 @@ export default function WidgetConfigPage() {
           widgetHeight={config.widgetHeight}
           quickReplies={(config.quickReplies?.length ?? 0) > 0 ? config.quickReplies : undefined}
           mobileBehavior={config.mobileBehavior}
+          launcherShape={config.launcherShape}
+          customWidth={config.customWidth}
+          customHeight={config.customHeight}
+          launcherOffset={config.launcherOffset}
+          teaserMessage={config.teaserMessage}
+          teaserDelay={config.teaserDelay}
+          hiddenPages={config.hiddenPages}
           preview
           theme={{
             primaryColor: config.primaryColor ?? '#1cca4a',

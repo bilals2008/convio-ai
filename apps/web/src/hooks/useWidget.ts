@@ -43,6 +43,13 @@ export interface WidgetConfig {
   headerGradient?: boolean
   widgetHeight?: number
   mobileBehavior?: 'default' | 'fullscreen'
+  launcherShape?: 'circle' | 'pill' | 'square'
+  customWidth?: number
+  customHeight?: number
+  launcherOffset?: number
+  teaserMessage?: string
+  teaserDelay?: number
+  hiddenPages?: string[]
 }
 const defaultTheme: WidgetTheme = {
   primaryColor: '#1cca4a',
@@ -229,9 +236,48 @@ export function useWidget(config: WidgetConfig) {
   // Closed iframe size: must fit the 56px bubble + its inset + shadow so it
   // isn't clipped by the iframe's overflow:hidden.
   const BTN_SIZE = 80
-  const OPEN_WIDTH_MAP: Record<string, number> = { narrow: 320, default: 400, wide: 480 }
-  const OPEN_WIDTH = OPEN_WIDTH_MAP[config.widgetWidth || 'default'] || 400
-  const OPEN_HEIGHT = Math.min(Math.max(config.widgetHeight || 620, 300), 900)
+  const OPEN_WIDTH_MAP: Record<string, number> = { narrow: 320, default: 400, wide: 440 }
+  const OPEN_WIDTH = config.customWidth && config.customWidth > 0
+    ? config.customWidth
+    : OPEN_WIDTH_MAP[config.widgetWidth || 'default'] || 400
+  const OPEN_HEIGHT = config.customHeight && config.customHeight > 0
+    ? Math.min(Math.max(config.customHeight, 300), 1200)
+    : Math.min(Math.max(config.widgetHeight || 620, 300), 900)
+  const LAUNCHER_OFFSET = Math.min(Math.max(config.launcherOffset ?? 0, 0), 200)
+
+  // Hide widget on specific pages (pattern matching against current path).
+  const isPathHidden = useCallback((): boolean => {
+    if (config.preview) return false
+    const pages = config.hiddenPages
+    if (!pages || pages.length === 0) return false
+    const path = window.location.pathname
+    return pages.some((pattern) => {
+      if (pattern.endsWith('*')) return path.startsWith(pattern.slice(0, -1))
+      return path === pattern
+    })
+  }, [config.preview, config.hiddenPages])
+  const [isHidden, setIsHidden] = useState(isPathHidden)
+  useEffect(() => {
+    if (config.preview) return
+    const check = () => setIsHidden(isPathHidden())
+    check()
+    // Listen for SPA navigations via popstate (covers browser back/forward).
+    window.addEventListener('popstate', check)
+    return () => window.removeEventListener('popstate', check)
+  }, [isPathHidden, config.preview])
+
+  // Teaser message — appears after a delay, dismisses on open.
+  const [teaserVisible, setTeaserVisible] = useState(false)
+  useEffect(() => {
+    if (config.preview || !config.teaserMessage || isOpen || isHidden) {
+      setTeaserVisible(false)
+      return
+    }
+    const delay = Math.max(config.teaserDelay ?? 5, 1) * 1000
+    const id = setTimeout(() => setTeaserVisible(true), delay)
+    return () => clearTimeout(id)
+  }, [config.preview, config.teaserMessage, config.teaserDelay, isOpen, isHidden])
+  const dismissTeaser = useCallback(() => setTeaserVisible(false), [])
 
   // Fullscreen on small screens: track viewport so open/close sizing follows
   // orientation changes. Preview mode keeps the fixed-size dashboard preview.
@@ -255,16 +301,19 @@ export function useWidget(config: WidgetConfig) {
       open,
       position: config.position,
       fullscreen: open && isFullscreen,
+      offset: LAUNCHER_OFFSET,
     }, '*')
-  }, [config.position, isFullscreen])
+  }, [config.position, isFullscreen, LAUNCHER_OFFSET])
 
   const openWidget = useCallback(() => {
+    if (isHidden) return
     setError(null)
     setEntering(true)
     setExiting(false)
     setIsOpen(true)
     setIsMinimized(false)
     setUnreadCount(0)
+    setTeaserVisible(false)
     if (isFullscreen) {
       sendResize(viewportWidth, window.innerHeight, true)
     } else {
@@ -273,7 +322,7 @@ export function useWidget(config: WidgetConfig) {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setEntering(false))
     })
-  }, [sendResize, isFullscreen, viewportWidth, OPEN_WIDTH, OPEN_HEIGHT])
+  }, [sendResize, isFullscreen, viewportWidth, OPEN_WIDTH, OPEN_HEIGHT, isHidden])
 
   const closeWidget = useCallback(() => {
     setExiting(true)
@@ -388,6 +437,7 @@ export function useWidget(config: WidgetConfig) {
     isMinimized,
     isEmbed: isEmbed.current,
     isFullscreen,
+    isHidden,
     messages,
     isTyping,
     isCreatingConversation,
@@ -406,5 +456,9 @@ export function useWidget(config: WidgetConfig) {
     toggleWidget,
     setIsMinimized,
     widgetHeight: config.widgetHeight,
+    teaserVisible,
+    dismissTeaser,
+    launcherShape: config.launcherShape ?? 'circle',
+    LAUNCHER_OFFSET,
   }
 }
