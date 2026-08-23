@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,7 +9,7 @@ import {
   createColumnHelper,
   type SortingState,
 } from '@/lib/table'
-import { Plus, LifeBuoy, MessageSquare, Inbox, LayoutGrid, List, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { Plus, LifeBuoy, MessageSquare, Inbox, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Button } from '@/components/ui/button'
@@ -46,55 +46,11 @@ function categoryLabel(value: string) {
   return CATEGORIES.find((c) => c.value === value)?.label ?? value
 }
 
-function TicketCard({ ticket }: { ticket: TicketSummary }) {
-  return (
-    <Link
-      to={`/support/${ticket.id}`}
-      className="group flex items-center gap-4 rounded-xl border p-4 transition-colors hover:bg-muted/40"
-    >
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium group-hover:text-primary">{ticket.title}</span>
-          {ticket.category !== 'general' && (
-            <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
-              {categoryLabel(ticket.category)}
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <MessageSquare className="size-3" />
-            {ticket.messageCount}
-          </span>
-          <span className="text-muted-foreground/40">·</span>
-          <span>{formatRelativeTime(ticket.updatedAt)}</span>
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <TicketStatusBadge status={ticket.status} />
-      </div>
-    </Link>
-  )
-}
-
-function TicketCardSkeleton() {
-  return (
-    <div className="flex items-center gap-4 rounded-xl border p-4">
-      <div className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-3 w-32" />
-      </div>
-      <Skeleton className="h-6 w-16" />
-    </div>
-  )
-}
-
 export default function SupportTicketsPage() {
   const { orgId } = useOrg()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [submit, setSubmit] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'table'>('table')
   const [sorting, setSorting] = useState<SortingState>([])
 
   const ticketsQuery = useTickets(orgId ?? undefined, {})
@@ -216,40 +172,10 @@ export default function SupportTicketsPage() {
         title="Support"
         description="Get help from the team. Tickets are tracked in your organization."
         action={
-          <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                className={cn(
-                  'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
-                  viewMode === 'list'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                aria-label="List view"
-              >
-                <List className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={cn(
-                  'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
-                  viewMode === 'table'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                aria-label="Table view"
-              >
-                <LayoutGrid className="size-3.5" />
-              </button>
-            </div>
-            <Button onClick={() => setOpen(true)}>
-              <Plus className="size-4 shrink-0" />
-              New Ticket
-            </Button>
-          </div>
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="size-4 shrink-0" />
+            New Ticket
+          </Button>
         }
       />
 
@@ -263,8 +189,7 @@ export default function SupportTicketsPage() {
       />
 
       {ticketsQuery.isLoading ? (
-        viewMode === 'table' ? (
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-b border-border">
@@ -295,11 +220,6 @@ export default function SupportTicketsPage() {
               </TableBody>
             </Table>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => <TicketCardSkeleton key={i} />)}
-          </div>
-        )
       ) : ticketsQuery.isError ? (
         <EmptyState
           icon={Inbox}
@@ -314,7 +234,7 @@ export default function SupportTicketsPage() {
           description="Need help? Create a ticket and the team will get back to you."
           action={{ label: 'Create a ticket', onClick: () => setOpen(true) }}
         />
-      ) : viewMode === 'table' ? (
+      ) : (
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <Table>
             <TableHeader>
@@ -383,10 +303,6 @@ export default function SupportTicketsPage() {
               </div>
             </div>
           )}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {tickets.map((ticket) => <TicketCard key={ticket.id} ticket={ticket} />)}
         </div>
       )}
     </div>

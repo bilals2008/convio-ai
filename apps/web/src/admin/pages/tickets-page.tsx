@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,7 +9,7 @@ import {
   createColumnHelper,
   type SortingState,
 } from '@/lib/table'
-import { LifeBuoy, RefreshCw, LayoutGrid, List, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock, MessageSquare } from 'lucide-react'
+import { LifeBuoy, RefreshCw, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock, MessageSquare } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -38,59 +38,8 @@ function TicketStatusBadge({ status }: { status: string }) {
   return <Badge variant={meta.variant as 'outline'}>{meta.label}</Badge>
 }
 
-function TicketCard({ ticket }: { ticket: AdminTicket }) {
-  return (
-    <Link
-      to={`/admin/tickets/${ticket.id}`}
-      className="group flex items-center gap-4 rounded-lg border p-3 transition-colors hover:bg-muted/40"
-    >
-      <Avatar className="size-9 shrink-0">
-        <AvatarImage src={ticket.reporter.avatar ?? undefined} />
-        <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-          {(ticket.reporter.name || ticket.reporter.email).slice(0, 2).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium group-hover:text-primary">{ticket.title}</span>
-          {ticket.priority === 'urgent' && (
-            <Badge variant="destructive" className="shrink-0 text-[10px]">Urgent</Badge>
-          )}
-        </div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-          <span className="truncate">{ticket.reporter.name || ticket.reporter.email}</span>
-          <span className="text-muted-foreground/40">·</span>
-          <span className="truncate">{ticket.organization.name}</span>
-          <span className="text-muted-foreground/40">·</span>
-          <span>{ticket.messageCount} message{ticket.messageCount !== 1 ? 's' : ''}</span>
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <span className="hidden text-[11px] text-muted-foreground sm:inline">
-          {formatRelativeTime(ticket.updatedAt)}
-        </span>
-        <TicketStatusBadge status={ticket.status} />
-      </div>
-    </Link>
-  )
-}
-
-function TicketCardSkeleton() {
-  return (
-    <div className="flex items-center gap-4 rounded-lg border p-3">
-      <Skeleton className="size-9 rounded-full" />
-      <div className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-3 w-56" />
-      </div>
-      <Skeleton className="h-6 w-16" />
-    </div>
-  )
-}
-
 export default function AdminTicketsPage() {
   const navigate = useNavigate()
-  const [viewMode, setViewMode] = useState<'list' | 'table'>('table')
   const [status, setStatus] = useState('all')
   const [search, setSearch] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
@@ -104,8 +53,6 @@ export default function AdminTicketsPage() {
     () => query.data?.pages.flatMap((p) => p.data) ?? [],
     [query.data],
   )
-  const hasNextPage = !!query.data?.pages[query.data.pages.length - 1]?.nextCursor
-
   const loading = query.isLoading
   const isError = query.isError
 
@@ -234,35 +181,7 @@ export default function AdminTicketsPage() {
             <Button variant="outline" size="sm" onClick={() => query.refetch()} disabled={query.isFetching}>
               <RefreshCw className={`size-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />
               Refresh
-            </Button>
-            <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                className={cn(
-                  'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
-                  viewMode === 'list'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                aria-label="List view"
-              >
-                <List className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={cn(
-                  'inline-flex size-7 items-center justify-center rounded-md text-sm transition-colors',
-                  viewMode === 'table'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                aria-label="Table view"
-              >
-                <LayoutGrid className="size-3.5" />
-              </button>
-            </div>
+              </Button>
           </div>
         }
       />
@@ -289,8 +208,7 @@ export default function AdminTicketsPage() {
       </div>
 
       {loading && (
-        viewMode === 'table' ? (
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-b border-border">
@@ -324,11 +242,6 @@ export default function AdminTicketsPage() {
               </TableBody>
             </Table>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => <TicketCardSkeleton key={i} />)}
-          </div>
-        )
       )}
 
       {!loading && isError && (
@@ -345,10 +258,8 @@ export default function AdminTicketsPage() {
       )}
 
       {!loading && !isError && tickets.length > 0 && (
-        <>
-          {viewMode === 'table' ? (
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <Table>
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow
@@ -375,7 +286,7 @@ export default function AdminTicketsPage() {
                   {pageRows.map((row, index) => (
                     <TableRow
                       key={row.id}
-                      onClick={() => navigate?.(`/admin/tickets/${row.original.id}`)}
+                      onClick={() => navigate(`/admin/tickets/${row.original.id}`)}
                       className={cn(
                         'border-b border-border/60 last:border-0 cursor-pointer transition-colors',
                         index % 2 === 1 && 'bg-muted/20',
@@ -428,20 +339,7 @@ export default function AdminTicketsPage() {
                   </div>
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {tickets.map((ticket) => <TicketCard key={ticket.id} ticket={ticket} />)}
-              {hasNextPage && (
-                <div className="pt-2 text-center">
-                  <Button variant="outline" size="sm" onClick={() => query.fetchNextPage()}>
-                    Load more
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </>
+        </div>
       )}
     </PageContainer>
   )

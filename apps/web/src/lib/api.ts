@@ -309,30 +309,8 @@ export const auditLogs = {
 export const tickets = {
   list: (orgId: string, params?: { status?: string; cursor?: string; limit?: number }) =>
     api.get(`/organizations/${orgId}/tickets`, { params }),
-  get: (orgId: string, ticketId: string) =>
-    api.get(`/organizations/${orgId}/tickets/${ticketId}`),
   create: (orgId: string, data: { title: string; description: string; category: string; priority: string }) =>
     api.post(`/organizations/${orgId}/tickets`, data),
-  reply: (
-    orgId: string,
-    ticketId: string,
-    data: {
-      content: string
-      attachments?: { name: string; size: number; type: string; path: string }[]
-    }
-  ) => api.post(`/organizations/${orgId}/tickets/${ticketId}/messages`, data),
-  markRead: (orgId: string, ticketId: string) =>
-    api.post(`/organizations/${orgId}/tickets/${ticketId}/read`),
-  updateStatus: (orgId: string, ticketId: string, status: string) =>
-    api.patch(`/organizations/${orgId}/tickets/${ticketId}`, { status }),
-}
-
-export const adminTickets = {
-  list: (params?: { status?: string; search?: string; cursor?: string; limit?: number }) =>
-    api.get('/admin/tickets', { params }),
-  get: (ticketId: string) => api.get(`/admin/tickets/${ticketId}`),
-  updateStatus: (ticketId: string, status: string) =>
-    api.patch(`/admin/tickets/${ticketId}`, { status }),
 }
 
 export const publicApi = axios.create({
