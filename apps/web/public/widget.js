@@ -75,6 +75,23 @@
       requestToken(event.data.apiUrl)
     }
     if (event.data.type === 'convio-resize') {
+      if (event.data.fullscreen && event.data.open) {
+        iframe.style.left = '0'
+        iframe.style.right = '0'
+        iframe.style.bottom = '0'
+        iframe.style.width = '100vw'
+        iframe.style.height = '100vh'
+        iframe.style.maxWidth = 'none'
+        iframe.style.maxHeight = 'none'
+        iframe.style.borderRadius = '0'
+        iframe.style.boxShadow = 'none'
+        iframe.style.background = '#fff'
+        return
+      }
+      iframe.style.bottom = '20px'
+      iframe.style.borderRadius = '12px'
+      iframe.style.maxWidth = 'calc(100vw - 40px)'
+      iframe.style.maxHeight = 'calc(100vh - 40px)'
       iframe.style.width = (event.data.width || 0) + 'px'
       iframe.style.height = (event.data.height || 0) + 'px'
       setPosition(event.data.position)

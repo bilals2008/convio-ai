@@ -37,6 +37,7 @@ export interface WidgetConfig {
   placeholderText?: string
   showPoweredBy?: boolean
   quickReplies?: string[]
+  mobileBehavior?: 'default' | 'fullscreen'
 }
 
 export interface ApiError {

@@ -45,6 +45,7 @@ const widgetConfigFields = {
   widgetWidth: z.enum(['narrow', 'default', 'wide']).optional(),
   launcherSize: z.enum(['small', 'default', 'large']).optional(),
   borderRadius: z.enum(['none', 'default', 'full']).optional(),
+  mobileBehavior: z.enum(['default', 'fullscreen']).optional(),
 } as const
 
 const widgetConfigSchema = z.object(widgetConfigFields)

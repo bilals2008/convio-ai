@@ -32,6 +32,7 @@ export interface ChatWidgetProps {
   placeholderText?: string
   showPoweredBy?: boolean
   widgetHeight?: number
+  mobileBehavior?: 'default' | 'fullscreen'
 }
 
 const defaultTheme: WidgetTheme = {
@@ -89,9 +90,12 @@ export function ChatWidget({
   placeholderText,
   showPoweredBy,
   widgetHeight,
+  mobileBehavior = 'default',
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, host, visitorId, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight })
+  const widget = useWidget({ agentId, publicKey, host, visitorId, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior })
+  // Fullscreen windows are edge-to-edge — sharp corners regardless of setting.
+  const effectiveBorderRadius = widget.isFullscreen ? 'none' : borderRadius
 
   const stateValue = {
     isOpen: widget.isOpen,
@@ -113,7 +117,7 @@ export function ChatWidget({
     homeMenu: homeMenu || [],
     widgetWidth,
     launcherSize,
-    borderRadius,
+    borderRadius: effectiveBorderRadius,
     headerGradient,
     headerTitle,
     headerSubtitle,

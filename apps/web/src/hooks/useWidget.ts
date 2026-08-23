@@ -42,6 +42,7 @@ export interface WidgetConfig {
   borderRadius?: 'none' | 'default' | 'full'
   headerGradient?: boolean
   widgetHeight?: number
+  mobileBehavior?: 'default' | 'fullscreen'
 }
 const defaultTheme: WidgetTheme = {
   primaryColor: '#1cca4a',
@@ -232,10 +233,30 @@ export function useWidget(config: WidgetConfig) {
   const OPEN_WIDTH = OPEN_WIDTH_MAP[config.widgetWidth || 'default'] || 400
   const OPEN_HEIGHT = Math.min(Math.max(config.widgetHeight || 620, 300), 900)
 
+  // Fullscreen on small screens: track viewport so open/close sizing follows
+  // orientation changes. Preview mode keeps the fixed-size dashboard preview.
+  const [viewportWidth, setViewportWidth] = useState(
+    () => (typeof window !== 'undefined' ? window.innerWidth : 1280),
+  )
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const isFullscreen =
+    !config.preview && config.mobileBehavior === 'fullscreen' && viewportWidth < 640
+
   const sendResize = useCallback((w: number, h: number, open: boolean) => {
     if (!isEmbed.current) return
-    window.parent.postMessage({ type: 'convio-resize', width: w, height: h, open, position: config.position }, '*')
-  }, [config.position])
+    window.parent.postMessage({
+      type: 'convio-resize',
+      width: w,
+      height: h,
+      open,
+      position: config.position,
+      fullscreen: open && isFullscreen,
+    }, '*')
+  }, [config.position, isFullscreen])
 
   const openWidget = useCallback(() => {
     setError(null)
@@ -244,11 +265,15 @@ export function useWidget(config: WidgetConfig) {
     setIsOpen(true)
     setIsMinimized(false)
     setUnreadCount(0)
-    sendResize(OPEN_WIDTH, OPEN_HEIGHT, true)
+    if (isFullscreen) {
+      sendResize(viewportWidth, window.innerHeight, true)
+    } else {
+      sendResize(OPEN_WIDTH, OPEN_HEIGHT, true)
+    }
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setEntering(false))
     })
-  }, [sendResize])
+  }, [sendResize, isFullscreen, viewportWidth, OPEN_WIDTH, OPEN_HEIGHT])
 
   const closeWidget = useCallback(() => {
     setExiting(true)
@@ -267,6 +292,11 @@ export function useWidget(config: WidgetConfig) {
       openWidget()
     }
   }, [isOpen, openWidget, closeWidget])
+
+  // Keep the fullscreen window glued to the viewport across orientation changes.
+  useEffect(() => {
+    if (isOpen && isFullscreen) sendResize(viewportWidth, window.innerHeight, true)
+  }, [isOpen, isFullscreen, viewportWidth, sendResize])
 
   const addAgentMessage = useCallback((content: string) => {
     const agentMessage: WidgetMessage = {
@@ -357,6 +387,7 @@ export function useWidget(config: WidgetConfig) {
     isOpen,
     isMinimized,
     isEmbed: isEmbed.current,
+    isFullscreen,
     messages,
     isTyping,
     isCreatingConversation,
