@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LayoutDashboard, Database, FlaskConical, History, Loader2, PenLine, Check, X } from 'lucide-react'
 import { FileIcon } from '@/components/shared/file-icon'
@@ -31,6 +31,7 @@ import {
   type KbSettings,
 } from '@/components/knowledge/kb-types'
 import { knowledge as knowledgeApi } from '@/lib/api'
+import type { SourceType } from '@/components/knowledge/source-picker-modal'
 import { useOrg } from '@/lib/org-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -69,6 +70,7 @@ interface DocItem {
 export default function KnowledgeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { orgId } = useOrg()
   const isCreate = id === 'new'
@@ -192,6 +194,19 @@ export default function KnowledgeDetailPage() {
       if (kb.settings) setSettings({ ...DEFAULT_KB_SETTINGS, ...kb.settings })
     }
   }, [kb])
+
+  const pendingSource = useRef(false)
+  useEffect(() => {
+    if (!isEdit || pendingSource.current) return
+    const sourceType = (location.state as { sourceType?: SourceType } | null)?.sourceType
+    navigate(location.pathname, { replace: true })
+    if (!sourceType) return
+    pendingSource.current = true
+    setActiveTab('sources')
+    if (['website', 'sitemap', 'api'].includes(sourceType)) setUrlDialogOpen(true)
+    else setTimeout(() => fileInputRef.current?.click(), 100)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!isEdit || !id) return

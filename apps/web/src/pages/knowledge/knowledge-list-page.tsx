@@ -34,15 +34,12 @@ import {
   ArrowDown,
   ChevronLeft,
   ChevronRight,
-  Clock,
   LayoutTemplate,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Table,
   TableBody,
@@ -85,7 +82,7 @@ import { knowledge as knowledgeApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { KnowledgeCard, KnowledgeCardSkeleton } from '@/components/knowledge/knowledge-card'
-import { KnowledgeTemplateModal, type KbTemplate } from '@/components/knowledge/knowledge-template-modal'
+import { KnowledgeTemplateModal } from '@/components/knowledge/knowledge-template-modal'
 import { SourcePickerModal, type SourceType } from '@/components/knowledge/source-picker-modal'
 import { FileIcon } from '@/components/shared/file-icon'
 import { toast } from '@/lib/toast'
@@ -114,13 +111,6 @@ const quickSources = [
   { id: 'sitemap' as SourceType, label: 'Sitemap', icon: Link2, color: 'bg-cyan-500/10 text-cyan-500' },
 ]
 
-function kbStatus(kb: KnowledgeBase): { label: string; variant: 'active' | 'pending' | 'canceled' } {
-  if ((kb.errorCount ?? 0) > 0) return { label: 'Error', variant: 'canceled' }
-  if ((kb.processingCount ?? 0) > 0) return { label: 'Processing', variant: 'pending' }
-  if (kb.documentCount === 0) return { label: 'Empty', variant: 'pending' }
-  return { label: 'Ready', variant: 'active' }
-}
-
 const columnHelper = createColumnHelper<KnowledgeBase>()
 
 export default function KnowledgeListPage() {
@@ -135,6 +125,7 @@ export default function KnowledgeListPage() {
   const [createDesc, setCreateDesc] = useState('')
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
+  const [pendingSource, setPendingSource] = useState<SourceType | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [sorting, setSorting] = useState<SortingState>([])
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
@@ -187,7 +178,7 @@ export default function KnowledgeListPage() {
       setCreateName('')
       setCreateDesc('')
       toast.success('Knowledge base created')
-      if (createdId) navigate(`/knowledge/${createdId}`)
+      if (createdId) navigate(`/knowledge/${createdId}`, { state: { sourceType: pendingSource } })
     },
     onError: () => toast.error('Failed to create knowledge base'),
   })
@@ -374,6 +365,7 @@ export default function KnowledgeListPage() {
   const loading = orgLoading || isLoading
 
   const handleSourceSelect = (sourceId: SourceType) => {
+    setPendingSource(sourceId)
     setCreateOpen(true)
   }
 
@@ -750,7 +742,7 @@ export default function KnowledgeListPage() {
 
       <Dialog open={createOpen} onOpenChange={(open) => {
         setCreateOpen(open)
-        if (!open) { setCreateName(''); setCreateDesc(''); setSelectedTemplateId(null) }
+        if (!open) { setCreateName(''); setCreateDesc(''); setSelectedTemplateId(null); setPendingSource(null) }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
