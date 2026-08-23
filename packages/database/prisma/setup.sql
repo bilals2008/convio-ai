@@ -1,26 +1,11 @@
 -- Convio Database Setup (Supabase / Postgres)
 -- Run this after `prisma db push` to apply RLS and server configuration.
 -- Apply with: psql $DATABASE_URL -f setup.sql
+-- NOTE: no ALTER SYSTEM here — Supabase hosted Postgres blocks it (needs superuser).
+-- Tune timeouts/work_mem from Supabase Dashboard -> Database settings instead.
 
 -- ============================================================
--- 1. CONNECTION MANAGEMENT (conn-* rules)
--- ============================================================
-
--- Terminate connections idle in transaction after 30s
-ALTER SYSTEM SET idle_in_transaction_session_timeout = '30s';
-
--- Terminate completely idle connections after 10min
-ALTER SYSTEM SET idle_session_timeout = '10min';
-
--- Set work_mem conservatively: 8MB per connection * max_connections
--- On Supabase the max_connections is managed; set work_mem per query-sort
-ALTER SYSTEM SET work_mem = '8MB';
-
--- Apply configuration changes (superuser required on Supabase)
--- SELECT pg_reload_conf();
-
--- ============================================================
--- 2. ROW LEVEL SECURITY (security-rls-* rules)
+-- 1. ROW LEVEL SECURITY (security-rls-* rules)
 -- ============================================================
 
 -- Organization: members only see their orgs
@@ -184,7 +169,7 @@ BEGIN
 END $$;
 
 -- ============================================================
--- 3. PRIVILEGE MANAGEMENT (security-privileges)
+-- 2. PRIVILEGE MANAGEMENT (security-privileges)
 -- ============================================================
 
 -- Revoke public schema access from anonymous roles
@@ -203,3 +188,38 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 -- UUID generation
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================================
+-- 5. PROFILE SYNC (auth.users -> public.profiles)
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, name, avatar, "emailVerified")
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(
+      NEW.raw_user_meta_data ->> 'full_name',
+      NEW.raw_user_meta_data ->> 'name'
+    ),
+    COALESCE(
+      NEW.raw_user_meta_data ->> 'avatar_url',
+      NEW.raw_user_meta_data ->> 'picture'
+    ),
+    COALESCE(NEW.email_confirmed_at IS NOT NULL, NEW.confirmed_at IS NOT NULL, false)
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

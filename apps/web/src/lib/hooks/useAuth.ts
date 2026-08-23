@@ -111,7 +111,12 @@ export function useSignup() {
       }
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error))
+      const msg = getErrorMessage(error)
+      if (/already registered/i.test(msg)) {
+        toast.error('Account already exists with this email — please sign in instead')
+      } else {
+        toast.error(msg)
+      }
     },
   })
 }

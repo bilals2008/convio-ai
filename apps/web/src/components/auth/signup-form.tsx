@@ -55,8 +55,8 @@ export function SignupForm({ plan, billing }: { plan?: string; billing?: string 
       { email, password, name },
       {
         onError: (err) => {
-          const msg = (err as { response?: { data?: { error?: string; message?: string } } }).response?.data
-          setError(msg?.error || msg?.message || 'Failed to create account')
+          const msg = err as { response?: { data?: { error?: string; message?: string } }; message?: string }
+          setError(msg.response?.data?.error || msg.response?.data?.message || msg.message || 'Failed to create account')
         },
         onSuccess: () => {
           if (plan) {
