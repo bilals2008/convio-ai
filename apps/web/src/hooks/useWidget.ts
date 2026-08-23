@@ -87,7 +87,8 @@ export function useWidget(config: WidgetConfig) {
   const publicHeaders = useCallback((): Record<string, string> => ({
     ...(config.host ? { 'X-Widget-Host': config.host } : {}),
     ...(config.widgetToken ? { 'X-Widget-Token': config.widgetToken } : {}),
-  }), [config.host, config.widgetToken])
+    ...(config.visitorId ? { 'X-Widget-Visitor': config.visitorId } : {}),
+  }), [config.host, config.widgetToken, config.visitorId])
 
   const createConversation = useCallback(async () => {
     setIsCreatingConversation(true)

@@ -78,6 +78,13 @@ export function assertPublicAccess(
 ) {
   if (preview) return
 
+  // ponytail: defense-in-depth — the publish guard already blocks activation
+  // without domains, but no code path should ever serve a widget with an empty
+  // allowlist in production.
+  if (process.env.NODE_ENV === 'production' && allowedDomains.length === 0) {
+    throw new AppError(403, 'This widget is not allowed on this domain')
+  }
+
   const token = request.headers['x-widget-token']
   if (typeof token === 'string' && token) {
     const verified = verifyWidgetToken(token)
@@ -93,6 +100,26 @@ export function assertPublicAccess(
   const domain = getRequestDomain(request)
   if (allowedDomains.length === 0 || !domain || allowedDomains.includes(domain)) return
   throw new AppError(403, 'This widget is not allowed on this domain')
+}
+
+// Binds a public conversation to the widget that created it and to the visitor
+// who owns it. Conversations created via POST /public/widgets/:publicKey/conversations
+// store the issuing publicKey in metadata; rows created before that existed (or
+// without a visitorId) fall back to the domain-only check.
+export function assertConversationAccess(
+  request: FastifyRequest,
+  allowedDomains: string[],
+  conversation: { userId: string | null; metadata: unknown },
+) {
+  const meta = conversation.metadata as { widgetPublicKey?: unknown } | null
+  const widgetPublicKey = typeof meta?.widgetPublicKey === 'string' ? meta.widgetPublicKey : undefined
+  assertPublicAccess(request, allowedDomains, widgetPublicKey)
+  if (!widgetPublicKey || !conversation.userId) return
+  const visitor = request.headers['x-widget-visitor']
+  const visitorId = Array.isArray(visitor) ? visitor[0] : visitor
+  if (visitorId !== conversation.userId) {
+    throw new AppError(403, 'This conversation belongs to another visitor', 'FORBIDDEN')
+  }
 }
 
 // Union of allowedDomains across an agent's non-archived widgets. Used to

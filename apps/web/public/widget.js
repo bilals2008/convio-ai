@@ -31,8 +31,14 @@
   function buildUrl() {
     var params = 'embed=true&widgetKey=' + encodeURIComponent(widgetKey)
     if (host) params += '&host=' + encodeURIComponent(host)
+    // Stable first-party visitor id: lets the server bind conversations to this
+    // browser so chat history can't be read by anyone who guesses the id.
     var visitorId = localStorage.getItem('convio:visitorId')
-    if (visitorId) params += '&visitorId=' + encodeURIComponent(visitorId)
+    if (!visitorId) {
+      visitorId = crypto.randomUUID ? crypto.randomUUID() : 'v-' + Date.now() + '-' + Math.random().toString(36).slice(2)
+      try { localStorage.setItem('convio:visitorId', visitorId) } catch (e) { /* storage unavailable */ }
+    }
+    params += '&visitorId=' + encodeURIComponent(visitorId)
     return baseUrl + '/widget-entry.html?' + params
   }
 

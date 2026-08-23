@@ -10,7 +10,7 @@ import { checkMessageLimit } from '../../services/billing.js'
 import { resolveProviderKey } from '../../services/provider-key.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { computeCost } from '@convio/ai/pricing'
-import { getAgentWidgetDomains, assertPublicAccess } from '../widgets/access.js'
+import { getAgentWidgetDomains, assertConversationAccess } from '../widgets/access.js'
 import { runExclusive, createRequestSignal } from '../../services/concurrency.js'
 import { guardrailInputRefusal, guardrailPrompt } from '../../services/guardrails.js'
 import { z } from 'zod'
@@ -552,6 +552,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const conversation = await prisma.conversation.findUnique({
       where: { id },
       select: {
+        userId: true,
+        metadata: true,
         agent: {
           select: {
             id: true,
@@ -577,7 +579,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     if (widgetDomains === null) {
       throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
     }
-    assertPublicAccess(request, widgetDomains)
+    assertConversationAccess(request, widgetDomains, conversation)
 
     const widgetLimitCheck = await checkMessageLimit(conversation.agent.organizationId)
     if (!widgetLimitCheck.allowed) {
@@ -697,7 +699,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
-      select: { agent: { select: { id: true, status: true } } },
+      select: { agent: { select: { id: true, status: true } }, userId: true, metadata: true },
     })
     if (!conversation || conversation.agent.status === 'archived') {
       throw new AppError(404, 'Conversation not found or agent is unavailable')
@@ -707,7 +709,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     if (widgetDomains === null) {
       throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
     }
-    assertPublicAccess(request, widgetDomains)
+    assertConversationAccess(request, widgetDomains, conversation)
 
     const messages = await prisma.message.findMany({
       where: { conversationId: id },
@@ -729,6 +731,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const conversation = await prisma.conversation.findUnique({
       where: { id },
       select: {
+        userId: true,
+        metadata: true,
         agent: {
           select: {
             id: true,
@@ -755,7 +759,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     if (widgetDomains === null) {
       throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
     }
-    assertPublicAccess(request, widgetDomains)
+    assertConversationAccess(request, widgetDomains, conversation)
 
     const agent = conversation.agent
     let earlyResponse: string | null = null

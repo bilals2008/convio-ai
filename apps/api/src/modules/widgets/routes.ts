@@ -255,6 +255,9 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
         agentId: widget.agentId,
         userId: visitorId ?? null,
         channel: 'web',
+        // Binds the conversation to this widget so the message endpoints can
+        // verify the caller's signed token was issued for the same widget.
+        metadata: { widgetPublicKey: publicKey },
       },
     })
     reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))

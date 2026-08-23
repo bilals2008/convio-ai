@@ -133,6 +133,15 @@ export default function WidgetConfigPage() {
     return () => window.removeEventListener('keydown', handler)
   }, [isDirty, save])
 
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
+
   if (isLoading || !widget) {
     return (
       <PageContainer>
@@ -386,7 +395,7 @@ export default function WidgetConfigPage() {
 
       {widget && (
         <ChatWidget
-          key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${headerTitle}-${headerSubtitle}-${launcherLabel}-${footerBgColor}-${quickReplies.join(',')}`}
+          key={JSON.stringify([agentName, primaryColor, backgroundColor, textColor, position, headerTitle, headerSubtitle, launcherLabel, footerBgColor, quickReplies])}
           agentId={widget.agent.id}
           publicKey={widget.publicKey}
           position={position}
