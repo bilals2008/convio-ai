@@ -356,12 +356,10 @@ export function KbSources({
         </div>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 h-9">
+          <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5 h-9" />}>
               <UploadCloud className="size-3.5" />
               Add Source
               <ChevronDown className="size-3 text-muted-foreground" />
-            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem onClick={onAddFile}>
