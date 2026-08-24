@@ -117,7 +117,6 @@ const VectorSearchPage = lazyLoad(() => import('@/pages/docs/vector-search'))
 const RerankingPage = lazyLoad(() => import('@/pages/docs/reranking'))
 const DocumentStatusesPage = lazyLoad(() => import('@/pages/docs/document-statuses'))
 const ManagingKnowledgeBasesPage = lazyLoad(() => import('@/pages/docs/managing-knowledge-bases'))
-const KnowledgeBaseTemplatesPage = lazyLoad(() => import('@/pages/docs/knowledge-base-templates'))
 
 // Phase 5 - Tools & MCP
 const ToolsOverviewPage = lazyLoad(() => import('@/pages/docs/tools-overview'))
@@ -369,7 +368,6 @@ export function App() {
               <Route path="/docs/reranking" element={<RerankingPage />} />
               <Route path="/docs/document-statuses" element={<DocumentStatusesPage />} />
               <Route path="/docs/managing-knowledge-bases" element={<ManagingKnowledgeBasesPage />} />
-              <Route path="/docs/knowledge-base-templates" element={<KnowledgeBaseTemplatesPage />} />
 
               {/* Phase 5 - Tools & MCP */}
               <Route path="/docs/tools-overview" element={<ToolsOverviewPage />} />

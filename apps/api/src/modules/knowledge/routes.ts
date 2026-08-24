@@ -10,7 +10,8 @@ import { rerank } from '../../services/reranker.js'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { getKnowledgeTemplate, listKnowledgeTemplates } from './knowledge-templates.js'
+import { resolveGenerationProvider } from '../agents/agent-generator.js'
+import { KB_GENERATION_PROMPT, parseKbDraft } from './kb-generator.js'
 
 const documentTypes = ['txt', 'pdf', 'csv', 'md', 'json', 'url'] as const
 type DocumentType = (typeof documentTypes)[number]
@@ -46,7 +47,11 @@ const docListQuerySchema = z.object({
 const createKbBodySchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(500).optional(),
-  templateId: z.string().optional(),
+})
+
+const generateKbBodySchema = z.object({
+  description: z.string().trim().min(20).max(2000),
+  model: z.string().max(200).optional(),
 })
 
 const updateKbBodySchema = z.object({
@@ -111,38 +116,69 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     ],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
-    const { name, description, templateId } = request.body as { name: string; description?: string; templateId?: string }
+    const { name, description } = request.body as { name: string; description?: string }
 
     const kb = await prisma.knowledgeBase.create({
       data: { organizationId: orgId, name, description },
     })
 
-    if (templateId) {
-      const template = getKnowledgeTemplate(templateId)
-      if (template) {
-        await Promise.all(
-          template.documents.map((doc) =>
-            prisma.document.create({
-              data: {
-                knowledgeBaseId: kb.id,
-                name: doc.name,
-                type: doc.type,
-                content: doc.content,
-                status: 'pending',
-              },
-            })
-          )
-        )
+    return { data: kb }
+  })
 
-        for (const doc of template.documents) {
-          const created = await prisma.document.findFirst({
-            where: { knowledgeBaseId: kb.id, name: doc.name, type: doc.type },
-          })
-          if (created) {
-            runIndexing(created.id, request.log)
-          }
-        }
-      }
+  // POST /api/organizations/:orgId/knowledge-bases/generate — Generate a starter KB with AI (member only)
+  fastify.post('/organizations/:orgId/knowledge-bases/generate', {
+    preHandler: [
+      fastify.authenticate,
+      fastify.requireMembership,
+      validate({ params: orgParamsSchema, body: generateKbBodySchema }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+    const { description, model } = request.body as z.infer<typeof generateKbBodySchema>
+
+    const { provider, apiKey, model: genModel } = await resolveGenerationProvider(request.userId!, model)
+
+    let result
+    try {
+      result = await provider.generate({
+        model: genModel,
+        messages: [
+          { role: 'system', content: KB_GENERATION_PROMPT },
+          { role: 'user', content: description },
+        ],
+        temperature: 0.7,
+        maxTokens: 4096,
+        apiKey,
+      })
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Generation failed'
+      throw new AppError(502, `AI generation failed: ${msg}`)
+    }
+
+    const draft = parseKbDraft(result.content)
+
+    const kb = await prisma.knowledgeBase.create({
+      data: {
+        organizationId: orgId,
+        name: draft.name,
+        description: draft.description,
+        documents: {
+          create: draft.documents.map((doc) => ({
+            name: doc.name,
+            type: 'md',
+            content: doc.content,
+            status: 'pending',
+          })),
+        },
+      },
+    })
+
+    for (const doc of draft.documents) {
+      const created = await prisma.document.findFirst({
+        where: { knowledgeBaseId: kb.id, name: doc.name },
+        select: { id: true },
+      })
+      if (created) runIndexing(created.id, request.log)
     }
 
     return { data: kb }
@@ -200,17 +236,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // GET /api/organizations/:orgId/knowledge-templates — List available KB templates
-  fastify.get('/organizations/:orgId/knowledge-templates', {
-    preHandler: [
-      fastify.authenticate,
-      fastify.requireMembership,
-      validate({ params: orgParamsSchema }),
-    ],
-  }, async (request) => {
-    const { orgId } = request.params as { orgId: string }
-    return { data: listKnowledgeTemplates() }
-  })
+
 
   // GET /api/knowledge-bases/:id — Get knowledge base by ID (member only, include documents count)
   fastify.get('/knowledge-bases/:id', {

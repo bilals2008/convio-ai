@@ -34,7 +34,7 @@ import {
   ArrowDown,
   ChevronLeft,
   ChevronRight,
-  LayoutTemplate,
+  Wand2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,7 +82,7 @@ import { knowledge as knowledgeApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { KnowledgeCard, KnowledgeCardSkeleton } from '@/components/knowledge/knowledge-card'
-import { KnowledgeTemplateModal } from '@/components/knowledge/knowledge-template-modal'
+import { KbGenerateModal as KnowledgeGenerateModal } from '@/components/knowledge/kb-generate-modal'
 import { SourcePickerModal, type SourceType } from '@/components/knowledge/source-picker-modal'
 import { FileIcon } from '@/components/shared/file-icon'
 import { toast } from '@/lib/toast'
@@ -123,8 +123,7 @@ export default function KnowledgeListPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [createName, setCreateName] = useState('')
   const [createDesc, setCreateDesc] = useState('')
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-  const [templateModalOpen, setTemplateModalOpen] = useState(false)
+  const [generateOpen, setGenerateOpen] = useState(false)
   const [pendingSource, setPendingSource] = useState<SourceType | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [sorting, setSorting] = useState<SortingState>([])
@@ -168,7 +167,6 @@ export default function KnowledgeListPage() {
       knowledgeApi.create({
         name: createName.trim() || 'Untitled',
         description: createDesc.trim(),
-        templateId: selectedTemplateId || undefined,
         organizationId: orgId,
       }),
     onSuccess: (res) => {
@@ -419,19 +417,19 @@ export default function KnowledgeListPage() {
         </button>
        </div>
 
-       {/* Templates */}
+       {/* Generate with AI */}
        <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 shadow-sm">
          <div className="flex items-center gap-3">
-           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500">
-             <LayoutTemplate className="size-4.5" />
+           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+             <Wand2 className="size-4.5" />
            </div>
            <div>
-             <p className="text-sm font-medium">Start from a template</p>
-             <p className="text-xs text-muted-foreground">Pre-built knowledge base with starter documents ready to go.</p>
+             <p className="text-sm font-medium">Generate with AI</p>
+             <p className="text-xs text-muted-foreground">Describe your business and get a starter KB with documents and FAQs.</p>
            </div>
          </div>
-         <Button type="button" variant="outline" size="sm" onClick={() => setTemplateModalOpen(true)}>
-           Browse templates
+         <Button type="button" variant="outline" size="sm" onClick={() => setGenerateOpen(true)}>
+           Try it
          </Button>
        </div>
 
@@ -722,21 +720,14 @@ export default function KnowledgeListPage() {
         onSelect={handleSourceSelect}
       />
 
-      <KnowledgeTemplateModal
-        open={templateModalOpen}
-        onOpenChange={setTemplateModalOpen}
-        activeTemplateId={selectedTemplateId}
-        onSelect={(template) => {
-          setCreateName(template.name)
-          setCreateDesc(template.description)
-          setSelectedTemplateId(template.id)
-          setCreateOpen(true)
-        }}
+      <KnowledgeGenerateModal
+        open={generateOpen}
+        onOpenChange={setGenerateOpen}
       />
 
       <Dialog open={createOpen} onOpenChange={(open) => {
         setCreateOpen(open)
-        if (!open) { setCreateName(''); setCreateDesc(''); setSelectedTemplateId(null); setPendingSource(null) }
+        if (!open) { setCreateName(''); setCreateDesc(''); setPendingSource(null) }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
