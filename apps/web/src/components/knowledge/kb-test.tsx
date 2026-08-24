@@ -52,6 +52,7 @@ export function KbTestPanel({ knowledgeBaseId, onTested, onSearch }: KbTestPanel
   const [searching, setSearching] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [latency, setLatency] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const run = async (q: string) => {
@@ -59,6 +60,7 @@ export function KbTestPanel({ knowledgeBaseId, onTested, onSearch }: KbTestPanel
     if (!term || searching) return
     setQuery(term)
     setSearching(true)
+    setError(null)
     const start = performance.now()
     try {
       const res = await knowledgeApi.searchChunks(knowledgeBaseId, term, 10)
@@ -68,10 +70,17 @@ export function KbTestPanel({ knowledgeBaseId, onTested, onSearch }: KbTestPanel
       setHasSearched(true)
       onTested()
       onSearch?.({ latency: Math.round(performance.now() - start), found: data.length, query: term })
-    } catch {
+    } catch (err: unknown) {
       setResults([])
       setLatency(null)
       setHasSearched(true)
+      const message =
+        err && typeof err === 'object' && 'response' in err
+          ? ((err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Search request failed')
+          : err instanceof Error
+            ? err.message
+            : 'Search request failed'
+      setError(message)
     } finally {
       setSearching(false)
     }
@@ -127,7 +136,14 @@ export function KbTestPanel({ knowledgeBaseId, onTested, onSearch }: KbTestPanel
 
       {hasSearched && !searching && (
         <>
-          {results.length === 0 ? (
+          {error ? (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+              <p className="mt-1 text-xs text-destructive/70">
+                Check that the API server is running, your documents finished indexing, and an embedding provider (OPENAI_API_KEY) is configured.
+              </p>
+            </div>
+          ) : results.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/60 py-10 text-center">
               <p className="text-sm text-muted-foreground">No results for "{query}"</p>
               <p className="mt-1 text-xs text-muted-foreground/70">Try different keywords.</p>

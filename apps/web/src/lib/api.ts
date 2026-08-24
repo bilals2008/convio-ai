@@ -158,6 +158,11 @@ export const knowledge = {
   },
   update: (id: string, data: Record<string, unknown>) => api.patch(`/knowledge-bases/${id}`, data),
   delete: (id: string) => api.delete(`/knowledge-bases/${id}`),
+  duplicate: (id: string) => api.post(`/knowledge-bases/${id}/duplicate`),
+  expandSitemap: (knowledgeBaseId: string, url: string) =>
+    api.post(`/knowledge-bases/${knowledgeBaseId}/sitemap`, { url }),
+  getSitemapStatus: (knowledgeBaseId: string, jobId: string) =>
+    api.get(`/knowledge-bases/${knowledgeBaseId}/sitemap/${jobId}`),
   uploadDocument: (knowledgeBaseId: string, data: Record<string, unknown>) =>
     api.post(`/knowledge-bases/${knowledgeBaseId}/documents`, data),
   uploadPdf: (knowledgeBaseId: string, formData: FormData) =>
@@ -175,8 +180,6 @@ getDocuments: (knowledgeBaseId: string, params?: { cursor?: string; limit?: numb
     }),
   getDocumentChunks: (docId: string) =>
     api.get(`/documents/${docId}/chunks`),
-  updateDocument: (docId: string, data: Record<string, unknown>) =>
-    api.patch(`/documents/${docId}`, data),
   reprocessDocument: (docId: string) => api.post(`/documents/${docId}/reprocess`),
   deleteDocument: (docId: string) => api.delete(`/documents/${docId}`),
 }

@@ -130,7 +130,7 @@ async function extractPdfMarkdown(filePath: string): Promise<string> {
 
 async function fetchUrlContent(url: string): Promise<string> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 20_000)
+  const timeout = setTimeout(() => controller.abort(), 30_000)
 
   try {
     // SSRF guard: re-check every hop since fetch follows redirects by default.
@@ -170,7 +170,9 @@ async function fetchUrlContent(url: string): Promise<string> {
         }
       }
 
-      if (contentType.includes('text/html') || raw.includes('<html') || raw.includes('<!DOCTYPE')) {
+      const looksLikeMarkup =
+        /<!doctype\s+html|<html[\s>]|\s<html:|<head[\s>]|<body[\s>]|<\/[a-z]+>/i.test(raw)
+      if (contentType.includes('text/html') || looksLikeMarkup) {
         return htmlToText(raw)
       }
 
@@ -184,6 +186,7 @@ async function fetchUrlContent(url: string): Promise<string> {
 
 function htmlToText(html: string): string {
   return html
+    .replace(/<head[\s\S]*?<\/head>/gi, ' ')
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
@@ -295,17 +298,6 @@ export async function processDocument(
       content: text.slice(0, 200_000),
       status: 'ready',
     },
-  })
-
-  emitDomainEvent(NOTIFICATION_EVENTS.DOCUMENT_PROCESSED, {
-    organizationId: doc.knowledgeBase.organizationId,
-    entityId: doc.id,
-    entityName: doc.name,
-  })
-  emitDomainEvent(NOTIFICATION_EVENTS.DOCUMENT_EMBEDDED, {
-    organizationId: doc.knowledgeBase.organizationId,
-    entityId: doc.id,
-    entityName: doc.name,
   })
   } catch (err) {
     await prisma.document.update({

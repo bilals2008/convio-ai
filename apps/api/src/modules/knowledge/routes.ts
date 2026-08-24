@@ -2,10 +2,10 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
-import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { z } from 'zod'
 import { uploadFile, deleteFile } from '../../lib/storage.js'
 import { processDocument, processPdf, embedText } from '../../services/processor.js'
+import { assertSafeUrl, safeFetchText } from '../../services/ssrf.js'
 import { rerank } from '../../services/reranker.js'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
@@ -16,6 +16,9 @@ const documentTypes = ['txt', 'pdf', 'csv', 'md', 'json', 'url'] as const
 type DocumentType = (typeof documentTypes)[number]
 
 const documentStatuses = ['pending', 'processing', 'ready', 'error', 'archived'] as const
+
+// In-memory sitemap import jobs — ponytail: single instance only, like concurrency.ts
+const sitemapJobs = new Map<string, { total: number; done: number; failed: number; status: 'running' | 'done' }>()
 
 const orgParamsSchema = z.object({
   orgId: z.string().uuid(),
@@ -70,16 +73,6 @@ const updateDocBodySchema = z.object({
   content: z.string().max(50000).optional().nullable(),
   url: z.string().url().optional().nullable(),
 })
-
-function emitDocumentUploaded(orgId: string, actorId: string, doc: { id: string; name: string }, knowledgeBaseId: string) {
-  emitDomainEvent(NOTIFICATION_EVENTS.DOCUMENT_UPLOADED, {
-    organizationId: orgId,
-    actorId,
-    entityId: doc.id,
-    entityName: doc.name,
-    metadata: { knowledgeBaseId },
-  })
-}
 
 function runIndexing(documentId: string, log: FastifyInstance['log'], pdfPath?: string) {
   const work = pdfPath
@@ -308,6 +301,147 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     reply.code(204).send()
   })
 
+  // POST /api/knowledge-bases/:id/duplicate — Clone KB with documents & chunks (admin only)
+  fastify.post('/knowledge-bases/:id/duplicate', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: kbParamsSchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+
+    const kb = await prisma.knowledgeBase.findUnique({ where: { id } })
+    if (!kb) throw new AppError(404, 'Knowledge base not found')
+
+    await fastify.ensureAdmin(request.userId!, kb.organizationId)
+
+    const copy = await prisma.knowledgeBase.create({
+      data: {
+        organizationId: kb.organizationId,
+        name: `${kb.name} (Copy)`,
+        description: kb.description,
+      },
+    })
+
+    const docs = await prisma.document.findMany({ where: { knowledgeBaseId: id } })
+    for (const doc of docs) {
+      const clone = await prisma.document.create({
+        data: {
+          knowledgeBaseId: copy.id,
+          name: doc.name,
+          type: doc.type,
+          content: doc.content,
+          url: doc.url,
+          status: doc.status,
+          fileKey: doc.fileKey, // ponytail: shares the stored file with the original; deleting the original breaks PDF re-index on the copy
+        },
+      })
+
+      // Copy chunks with embeddings as-is; no re-embedding needed
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "DocumentChunk" ("id", "documentId", "content", "embedding", "createdAt")
+         SELECT gen_random_uuid(), $2, "content", "embedding", now() FROM "DocumentChunk" WHERE "documentId" = $1`,
+        doc.id,
+        clone.id,
+      )
+    }
+
+    return { data: copy }
+  })
+
+  // POST /api/knowledge-bases/:id/sitemap — Expand a sitemap.xml into url documents (member only)
+  fastify.post('/knowledge-bases/:id/sitemap', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: kbParamsSchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { url } = request.body as { url?: string }
+
+    if (!url || !/^https?:\/\//i.test(url)) throw new AppError(400, 'A valid sitemap URL is required')
+    await assertSafeUrl(url)
+
+    const kb = await prisma.knowledgeBase.findUnique({ where: { id } })
+    if (!kb) throw new AppError(404, 'Knowledge base not found')
+
+    await fastify.getMembership(request.userId!, kb.organizationId)
+
+    const sitemapUrl = /\.xml$/i.test(url) ? url : `${url.replace(/\/+$/, '')}/sitemap.xml`
+    // ponytail: 60s for large sitemaps; stream-parse if even that times out
+    const res = await safeFetchText(sitemapUrl, {}, 5, 60_000)
+    // ponytail: regex parse covers standard sitemaps; sitemap index files (<sitemapindex>) are not expanded
+    const urls = [...res.text.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)]
+      .map((m) => m[1])
+      .filter((u) => /^https?:\/\//i.test(u))
+      .slice(0, 50)
+    if (!urls.length) throw new AppError(400, 'No URLs found in sitemap')
+
+    let count = 0
+    const createdIds: string[] = []
+    for (const u of urls) {
+      const existing = await prisma.document.findFirst({ where: { knowledgeBaseId: id, url: u }, select: { id: true } })
+      if (existing) continue
+      const doc = await prisma.document.create({
+        data: { knowledgeBaseId: id, name: u, type: 'url', url: u, status: 'pending' },
+      })
+      createdIds.push(doc.id)
+      count++
+    }
+
+    // Index in the background, 3 pages at a time — 50 concurrent fetch+embed jobs hit rate limits
+    const jobId = crypto.randomUUID()
+    const job: { total: number; done: number; failed: number; status: 'running' | 'done' } = {
+      total: createdIds.length,
+      done: 0,
+      failed: 0,
+      status: 'running',
+    }
+    sitemapJobs.set(jobId, job)
+    let next = 0
+    void Promise.all(
+      Array.from({ length: Math.min(3, createdIds.length) }, async () => {
+        while (next < createdIds.length) {
+          const docId = createdIds[next++]
+          try {
+            await processDocument(docId)
+          } catch {
+            job.failed++
+          } finally {
+            job.done++
+          }
+        }
+      }),
+    ).then(() => {
+      job.status = 'done'
+      // ponytail: jobs are tiny; sweep old ones on each completion instead of a timer
+      for (const [k, v] of sitemapJobs) {
+        if (v.status === 'done' && k !== jobId) sitemapJobs.delete(k)
+      }
+    })
+
+    return { data: { jobId, found: urls.length, added: count } }
+  })
+
+  // GET /api/knowledge-bases/:id/sitemap/:jobId — Sitemap import progress (member only)
+  fastify.get('/knowledge-bases/:id/sitemap/:jobId', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: z.object({ id: kbParamsSchema.shape.id, jobId: z.string().uuid() }) }),
+    ],
+  }, async (request) => {
+    const { jobId } = request.params as { jobId: string }
+
+    const kb = await prisma.knowledgeBase.findUnique({ where: { id: (request.params as { id: string }).id } })
+    if (!kb) throw new AppError(404, 'Knowledge base not found')
+    await fastify.getMembership(request.userId!, kb.organizationId)
+
+    const job = sitemapJobs.get(jobId)
+    if (!job) throw new AppError(404, 'Import job not found')
+
+    return { data: job }
+  })
+
   // POST /api/knowledge-bases/:id/documents — Add document from text/url (member only)
   fastify.post('/knowledge-bases/:id/documents', {
     preHandler: [
@@ -343,7 +477,6 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
       },
     })
 
-    emitDocumentUploaded(kb.organizationId, request.userId!, doc, id)
     runIndexing(doc.id, request.log)
 
     return { data: { ...doc, chunkCount: 0 } }
@@ -392,8 +525,6 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
         },
       })
 
-      emitDocumentUploaded(kb.organizationId, request.userId!, doc, id)
-
       const tmpPath = join(tmpdir(), `convio-upload-${doc.id}.pdf`)
       await writeFile(tmpPath, buffer)
       processPdf(tmpPath, doc.id)
@@ -427,8 +558,6 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
         status: 'pending',
       },
     })
-
-    emitDocumentUploaded(kb.organizationId, request.userId!, doc, id)
     runIndexing(doc.id, request.log)
 
     return { data: { ...doc, chunkCount: 0 } }
@@ -495,7 +624,9 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
     }
 
     const embedding = await embedText(q)
-    if (!embedding) return { data: [] }
+    if (!embedding) {
+      throw new AppError(503, 'Embedding provider unavailable — set OPENAI_API_KEY (or wait for the local model to load) and re-index documents')
+    }
 
     const vectorStr = `[${embedding.join(',')}]`
     const candidates = useRerank === 'true' ? 20 : topK
