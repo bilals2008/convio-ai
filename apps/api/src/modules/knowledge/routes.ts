@@ -12,6 +12,7 @@ import { join } from 'path'
 import { tmpdir } from 'os'
 import { resolveGenerationProvider } from '../agents/agent-generator.js'
 import { KB_GENERATION_PROMPT, parseKbDraft } from './kb-generator.js'
+import { getOrCreateQaDocument, syncQaChunk, deleteQaChunk, getQaOrThrow } from './qa-service.js'
 
 const documentTypes = ['txt', 'pdf', 'csv', 'md', 'json', 'url'] as const
 type DocumentType = (typeof documentTypes)[number]
@@ -52,6 +53,21 @@ const createKbBodySchema = z.object({
 const generateKbBodySchema = z.object({
   description: z.string().trim().min(20).max(2000),
   model: z.string().max(200).optional(),
+})
+
+const createQaBodySchema = z.object({
+  question: z.string().trim().min(1).max(1000),
+  answer: z.string().trim().min(1).max(10000),
+})
+
+const updateQaBodySchema = z.object({
+  question: z.string().trim().min(1).max(1000).optional(),
+  answer: z.string().trim().min(1).max(10000).optional(),
+})
+
+const qaParamsSchema = z.object({
+  id: z.string().uuid(),
+  qaId: z.string().uuid(),
 })
 
 const updateKbBodySchema = z.object({
@@ -363,6 +379,9 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
         },
       })
 
+      // Q&A chunks are rebuilt from pairs below (chunk id must equal pair id)
+      if (doc.type === 'qa') continue
+
       // Copy chunks with embeddings as-is; no re-embedding needed
       await prisma.$executeRawUnsafe(
         `INSERT INTO "DocumentChunk" ("id", "documentId", "content", "embedding", "createdAt")
@@ -370,6 +389,35 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
         doc.id,
         clone.id,
       )
+    }
+
+    // Clone Q&A pairs with fresh ids and re-sync their chunks
+    const qaDoc = await prisma.document.findFirst({
+      where: { knowledgeBaseId: id, type: 'qa' },
+      select: { id: true },
+    })
+    if (qaDoc) {
+      const cloneQaDoc = await prisma.document.findFirst({
+        where: { knowledgeBaseId: copy.id, type: 'qa' },
+        select: { id: true },
+      })
+      if (cloneQaDoc) {
+        const pairs = await prisma.questionAnswer.findMany({
+          where: { documentId: qaDoc.id },
+          orderBy: { position: 'asc' },
+        })
+        for (const qa of pairs) {
+          const cloneQa = await prisma.questionAnswer.create({
+            data: {
+              documentId: cloneQaDoc.id,
+              question: qa.question,
+              answer: qa.answer,
+              position: qa.position,
+            },
+          })
+          await syncQaChunk(cloneQa)
+        }
+      }
     }
 
     return { data: copy }
@@ -608,7 +656,7 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, kb.organizationId)
 
-    const where: { knowledgeBaseId: string; status?: string } = { knowledgeBaseId: id }
+    const where: { knowledgeBaseId: string; status?: string; type?: { not: string } } = { knowledgeBaseId: id, type: { not: 'qa' } }
     if (status) where.status = status
 
     const docs = await prisma.document.findMany({
@@ -702,6 +750,99 @@ export default async function knowledgeRoutes(fastify: FastifyInstance) {
         score: 1 - r.distance,
       })),
     }
+  })
+
+  // GET /api/knowledge-bases/:id/qa — List Q&A pairs (member only)
+  fastify.get('/knowledge-bases/:id/qa', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: kbParamsSchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const kb = await prisma.knowledgeBase.findUnique({ where: { id }, select: { organizationId: true } })
+    if (!kb) throw new AppError(404, 'Knowledge base not found')
+    await fastify.getMembership(request.userId!, kb.organizationId)
+
+    const qaDoc = await prisma.document.findFirst({
+      where: { knowledgeBaseId: id, type: 'qa' },
+      select: { id: true },
+    })
+    if (!qaDoc) return { data: [] }
+
+    const pairs = await prisma.questionAnswer.findMany({
+      where: { documentId: qaDoc.id },
+      orderBy: { position: 'asc' },
+    })
+    return { data: pairs }
+  })
+
+  // POST /knowledge-bases/:id/qa — Add a Q&A pair (member only)
+  fastify.post('/knowledge-bases/:id/qa', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: kbParamsSchema, body: createQaBodySchema }),
+    ],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { question, answer } = request.body as z.infer<typeof createQaBodySchema>
+    const kb = await prisma.knowledgeBase.findUnique({ where: { id }, select: { organizationId: true } })
+    if (!kb) throw new AppError(404, 'Knowledge base not found')
+    await fastify.getMembership(request.userId!, kb.organizationId)
+
+    const qaDoc = await getOrCreateQaDocument(id)
+    const last = await prisma.questionAnswer.findFirst({
+      where: { documentId: qaDoc.id },
+      orderBy: { position: 'desc' },
+      select: { position: true },
+    })
+
+    const qa = await prisma.questionAnswer.create({
+      data: { documentId: qaDoc.id, question, answer, position: (last?.position ?? -1) + 1 },
+    })
+    await syncQaChunk(qa)
+
+    return { data: qa }
+  })
+
+  // PATCH /knowledge-bases/:id/qa/:qaId — Edit a Q&A pair (member only)
+  fastify.patch('/knowledge-bases/:id/qa/:qaId', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: qaParamsSchema, body: updateQaBodySchema }),
+    ],
+  }, async (request) => {
+    const { qaId } = request.params as { qaId: string }
+    const { question, answer } = request.body as z.infer<typeof updateQaBodySchema>
+
+    const existing = await getQaOrThrow(qaId)
+    await fastify.getMembership(request.userId!, existing.document.knowledgeBase.organizationId)
+
+    const qa = await prisma.questionAnswer.update({
+      where: { id: qaId },
+      data: { ...(question !== undefined && { question }), ...(answer !== undefined && { answer }) },
+    })
+    await syncQaChunk(qa)
+
+    return { data: qa }
+  })
+
+  // DELETE /knowledge-bases/:id/qa/:qaId — Delete a Q&A pair (member only)
+  fastify.delete('/knowledge-bases/:id/qa/:qaId', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ params: qaParamsSchema }),
+    ],
+  }, async (request) => {
+    const { qaId } = request.params as { qaId: string }
+
+    const existing = await getQaOrThrow(qaId)
+    await fastify.getMembership(request.userId!, existing.document.knowledgeBase.organizationId)
+
+    await prisma.questionAnswer.delete({ where: { id: qaId } })
+    await deleteQaChunk(qaId)
+
+    return { success: true }
   })
 
   // GET /api/documents/:id/chunks — List chunks of a document (member only)

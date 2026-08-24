@@ -252,10 +252,26 @@ model Document {
   knowledgeBase   KnowledgeBase   @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
   chunks          DocumentChunk[]
   queries         DocumentQuery[]
+  questionAnswers QuestionAnswer[]
 
   @@index([knowledgeBaseId])
   @@index([status])
   @@index([knowledgeBaseId, status, createdAt(sort: Desc)])
+}
+
+// ponytail: Q&A pairs are the editable source of truth; each pair's RAG chunk
+// lives in DocumentChunk with the SAME id, so no mapping column is needed.
+model QuestionAnswer {
+  id         String   @id @default(uuid())
+  documentId String
+  question   String
+  answer     String
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, position])
 }
 
 model DocumentChunk {

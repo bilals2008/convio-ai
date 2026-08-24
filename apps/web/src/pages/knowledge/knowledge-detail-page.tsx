@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import { LayoutDashboard, Database, FlaskConical, History, Loader2, PenLine, Check, X, Globe } from 'lucide-react'
+import { LayoutDashboard, Database, FlaskConical, History, Loader2, PenLine, Check, X, Globe, BookOpen } from 'lucide-react'
 import { FileIcon } from '@/components/shared/file-icon'
 import { z } from 'zod'
 import { PageContainer } from '@/components/shared/page-container'
@@ -20,6 +20,7 @@ import { KbOverview, type KbFormValues } from '@/components/knowledge/kb-overvie
 import { KbSources } from '@/components/knowledge/kb-sources'
 import { KbTestPanel } from '@/components/knowledge/kb-test'
 import { KbActivityTab } from '@/components/knowledge/kb-activity'
+import { KbQaPanel } from '@/components/knowledge/kb-qa-panel'
 import { KbErrorCard } from '@/components/knowledge/kb-error-card'
 import { KbNextStep } from '@/components/knowledge/kb-next-step'
 import {
@@ -509,6 +510,7 @@ export default function KnowledgeDetailPage() {
         { value: 'sources', label: 'Sources', icon: Database },
         { value: 'test', label: 'Test', icon: FlaskConical },
         { value: 'activity', label: 'Activity', icon: History },
+        { value: 'qa', label: 'Q&A', icon: BookOpen },
       ]
 
   return (
@@ -622,6 +624,10 @@ export default function KnowledgeDetailPage() {
 
             <TabsContent value="test" className="mt-5">
               <KbTestPanel knowledgeBaseId={id!} onTested={() => setHasTested(true)} onSearch={handleTestSearch} />
+            </TabsContent>
+
+            <TabsContent value="qa" className="mt-5">
+              <KbQaPanel knowledgeBaseId={id!} />
             </TabsContent>
 
             <TabsContent value="activity" className="mt-5">

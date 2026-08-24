@@ -155,6 +155,12 @@ export const knowledge = {
     return api.post(`/organizations/${orgId}/knowledge-bases/generate`, data, { timeout: 120000 })
   },
   get: (id: string) => api.get(`/knowledge-bases/${id}`),
+  getQa: (id: string) => api.get(`/knowledge-bases/${id}/qa`),
+  addQa: (id: string, data: { question: string; answer: string }) => api.post(`/knowledge-bases/${id}/qa`, data),
+  updateQa: (kbId: string, qaId: string, data: { question?: string; answer?: string }) => api.patch(`/knowledge-bases/${kbId}/qa/${qaId}`, data),
+  deleteQa: (kbId: string, qaId: string) => api.delete(`/knowledge-bases/${kbId}/qa/${qaId}`),
+  createQa: (kbId: string, body: { question: string; answer: string }) => api.post(`/knowledge-bases/${kbId}/qa`, body),
+  get: (id: string) => api.get(`/knowledge-bases/${id}`),
   create: (body: Record<string, unknown>) => {
     const { orgId, data } = extractOrgId(body)
     return api.post(`/organizations/${orgId}/knowledge-bases`, data)
