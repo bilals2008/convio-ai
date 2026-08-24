@@ -415,13 +415,6 @@ export default async function billingRoutes(fastify: FastifyInstance) {
                   endsAt: eventObject.ends_at ? new Date(eventObject.ends_at) : null,
                 },
               })
-
-              if (eventType === 'subscription.paid' || eventType === 'subscription.active') {
-                emitDomainEvent(NOTIFICATION_EVENTS.SUBSCRIPTION_RENEWED, {
-                  organizationId: bc.organizationId,
-                  entityName: plan,
-                })
-              }
             } else {
               await prisma.subscription.create({
                 data: {

@@ -117,13 +117,6 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       } as any,
     })
 
-    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_CREATED, {
-      organizationId: orgId,
-      actorId: request.userId,
-      entityId: agent.id,
-      entityName: agent.name,
-    })
-
     return { data: agent }
   })
 
@@ -169,13 +162,6 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         knowledgeBaseId: body.knowledgeBaseId || null,
         providerKeyId: body.providerKeyId ?? null,
       } as any,
-    })
-
-    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_CREATED, {
-      organizationId,
-      actorId: request.userId,
-      entityId: agent.id,
-      entityName: agent.name,
     })
 
     await fastify.auditLog({
@@ -306,13 +292,6 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const agent = await prisma.agent.update({
       where: { id },
       data: updateData as any,
-    })
-
-    fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_UPDATED, {
-      organizationId: existing.organizationId,
-      actorId: request.userId,
-      entityId: agent.id,
-      entityName: agent.name,
     })
 
     return { data: agent }
@@ -814,15 +793,6 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       where: { id },
       data: { status },
     })
-
-    if (status === 'active') {
-      fastify.emitEvent(NOTIFICATION_EVENTS.AGENT_PUBLISHED, {
-        organizationId: existing.organizationId,
-        actorId: request.userId,
-        entityId: agent.id,
-        entityName: agent.name,
-      })
-    }
 
     return { data: agent }
   })

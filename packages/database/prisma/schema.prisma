@@ -735,10 +735,9 @@ model Notification {
   @@unique([userId, dedupeKey])
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, status, createdAt(sort: Desc)])
-  @@index([userId, category, status, createdAt(sort: Desc)])
-  @@index([organizationId, createdAt(sort: Desc)])
-  @@index([priority, createdAt(sort: Desc)])
-  @@index([expiresAt])
+  // ponytail: single createdAt index serves cleanupExpired sweeps; per-user
+  // queries are covered by the two userId indexes above.
+  @@index([createdAt])
   @@map("notifications")
 }
 
