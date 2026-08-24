@@ -122,13 +122,11 @@ export default function AdminOverviewPage() {
   }))
 
   // cumulative signups → growth lines (users vs orgs)
-  let u = 0
-  let o = 0
-  const growthData = (analytics?.dailyBreakdown || []).map((d, i) => {
-    u += analytics?.userSignups?.[i]?.count ?? 0
-    o += analytics?.orgSignups?.[i]?.count ?? 0
-    return { date: d.date, users: u, orgs: o }
-  })
+  const growthData = (analytics?.dailyBreakdown || []).map((d, i) => ({
+    date: d.date,
+    users: analytics?.userSignups?.slice(0, i + 1).reduce((s, x) => s + x.count, 0) ?? 0,
+    orgs: analytics?.orgSignups?.slice(0, i + 1).reduce((s, x) => s + x.count, 0) ?? 0,
+  }))
 
   const channelData = (analytics?.channelBreakdown ?? []).map((c) => ({
     channel: c.channel.charAt(0).toUpperCase() + c.channel.slice(1),

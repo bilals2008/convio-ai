@@ -12,6 +12,7 @@ interface InvitationData {
   role: string
   organization: { id: string; name: string; logo?: string }
   invitedBy: string
+  expiresAt: string
 }
 
 export default function InvitePage() {
@@ -164,7 +165,7 @@ export default function InvitePage() {
 
         <p className="text-xs text-muted-foreground">
           This invitation will expire on{' '}
-          {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+          {new Date(invitation.expiresAt).toLocaleDateString()}
         </p>
       </div>
     </div>

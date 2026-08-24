@@ -570,6 +570,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
         role: invitation.role,
         organization: invitation.organization,
         invitedBy: invitation.invitedBy?.name || 'A team member',
+        expiresAt: invitation.expiresAt,
       },
     }
   })
