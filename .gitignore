@@ -29,7 +29,6 @@ Thumbs.db
 *.txt
 
 # Prisma
-packages/database/prisma/migrations/
 packages/database/src/generated/
 
 # Logs
