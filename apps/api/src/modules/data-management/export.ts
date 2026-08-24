@@ -1,5 +1,9 @@
 import { prisma } from '@convio/database'
 
+type Write = (chunk: string) => void
+
+const CONVO_BATCH = 200
+
 function esc(val: unknown): string {
   const s = val == null ? '' : String(val)
   if (s.includes(',') || s.includes('"') || s.includes('\n')) {
@@ -15,68 +19,121 @@ function toCsv(rows: Record<string, unknown>[]): string {
   return headers.join(',') + '\n' + lines.join('\n')
 }
 
-export async function exportAgents(orgId: string, format: string) {
+function csvLine(headers: string[], r: Record<string, unknown>): string {
+  return headers.map((h) => esc(r[h])).join(',')
+}
+
+// ponytail: conversations export is cursor-batched because it's the only unbounded table;
+// the other scopes are org-bounded and small enough to build in one shot.
+export async function exportAgents(orgId: string, format: string, write: Write) {
   const rows = await prisma.agent.findMany({
     where: { organizationId: orgId },
     select: { id: true, name: true, model: true, status: true, temperature: true, systemPrompt: true, createdAt: true, updatedAt: true },
     orderBy: { createdAt: 'desc' },
   })
-  if (format === 'csv') return toCsv(rows)
-  return JSON.stringify(rows, null, 2)
+  write(format === 'csv' ? toCsv(rows) : JSON.stringify(rows, null, 2))
 }
 
-export async function exportConversations(orgId: string, format: string) {
+const CONVERSATION_HEADERS = [
+  'conversationId', 'channel', 'contactName', 'agentName',
+  'messageId', 'role', 'content', 'inputTokens', 'outputTokens', 'cost', 'createdAt',
+]
+
+function conversationRows(
+  c: {
+    id: string
+    channel: string
+    contactName: string | null
+    createdAt: Date
+    agent: { name: string }
+    messages: Array<{ id: string; role: string; content: string; inputTokens: number | null; outputTokens: number | null; cost: number | null; createdAt: Date }>
+  },
+): Record<string, unknown>[] {
+  if (c.messages.length === 0) {
+    return [{
+      conversationId: c.id,
+      channel: c.channel,
+      contactName: c.contactName ?? '',
+      agentName: c.agent.name,
+      messageId: '',
+      role: '',
+      content: '',
+      inputTokens: '',
+      outputTokens: '',
+      cost: '',
+      createdAt: c.createdAt.toISOString(),
+    }]
+  }
+  return c.messages.map((m) => ({
+    conversationId: c.id,
+    channel: c.channel,
+    contactName: c.contactName ?? '',
+    agentName: c.agent.name,
+    messageId: m.id,
+    role: m.role,
+    content: m.content,
+    inputTokens: m.inputTokens ?? '',
+    outputTokens: m.outputTokens ?? '',
+    cost: m.cost ?? '',
+    createdAt: m.createdAt.toISOString(),
+  }))
+}
+
+export async function exportConversations(orgId: string, format: string, write: Write) {
   const agents = await prisma.agent.findMany({ where: { organizationId: orgId }, select: { id: true } })
   const agentIds = agents.map((a) => a.id)
-  if (agentIds.length === 0) return format === 'csv' ? '' : '[]'
+  if (agentIds.length === 0) {
+    write(format === 'csv' ? '' : '[]')
+    return
+  }
 
-  const convos = await prisma.conversation.findMany({
-    where: { agentId: { in: agentIds } },
-    include: {
-      agent: { select: { name: true } },
-      messages: { orderBy: { createdAt: 'asc' }, select: { id: true, role: true, content: true, createdAt: true, inputTokens: true, outputTokens: true, cost: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+  let cursor: string | undefined
+  let wroteHeader = false
+  let wroteRow = false
 
-  const rows = convos.flatMap((c) =>
-    c.messages.length > 0
-      ? c.messages.map((m) => ({
-          conversationId: c.id,
-          channel: c.channel,
-          contactName: c.contactName ?? '',
-          agentName: c.agent.name,
-          messageId: m.id,
-          role: m.role,
-          content: m.content,
-          inputTokens: m.inputTokens ?? '',
-          outputTokens: m.outputTokens ?? '',
-          cost: m.cost ?? '',
-          createdAt: m.createdAt.toISOString(),
-        }))
-      : [{
-          conversationId: c.id,
-          channel: c.channel,
-          contactName: c.contactName ?? '',
-          agentName: c.agent.name,
-          messageId: '',
-          role: '',
-          content: '',
-          inputTokens: '',
-          outputTokens: '',
-          cost: '',
-          createdAt: c.createdAt.toISOString(),
-        }]
-  )
+  while (true) {
+    const convos = await prisma.conversation.findMany({
+      where: { agentId: { in: agentIds } },
+      include: {
+        agent: { select: { name: true } },
+        messages: { orderBy: { createdAt: 'asc' }, select: { id: true, role: true, content: true, createdAt: true, inputTokens: true, outputTokens: true, cost: true } },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: CONVO_BATCH,
+      ...(cursor ? { cursor: { id: cursor } } : {}),
+    })
 
-  if (format === 'csv') return toCsv(rows)
-  return JSON.stringify(convos, null, 2)
+    if (format === 'json') write(wroteRow ? ',\n' : '[\n')
+    else if (format === 'csv' && !wroteHeader) {
+      write(CONVERSATION_HEADERS.join(',') + '\n')
+      wroteHeader = true
+    }
+
+    for (let i = 0; i < convos.length; i++) {
+      const c = convos[i]
+      if (format === 'csv') {
+        for (const row of conversationRows(c)) {
+          write(csvLine(CONVERSATION_HEADERS, row) + '\n')
+        }
+        continue
+      }
+      write((i > 0 || wroteRow ? ',' : '') + JSON.stringify(c, null, 2))
+    }
+
+    wroteRow = wroteRow || convos.length > 0
+    if (convos.length < CONVO_BATCH) break
+    cursor = convos[convos.length - 1].id
+    wroteRow = true
+  }
+
+  if (format === 'json' && !wroteRow) write('[]')
+  else if (format === 'json') write('\n]')
 }
 
-export async function exportAnalytics(orgId: string, format: string) {
+export async function exportAnalytics(orgId: string, format: string, write: Write) {
   const agents = await prisma.agent.findMany({ where: { organizationId: orgId }, select: { id: true, name: true } })
   const agentIds = agents.map((a) => a.id)
-  if (agentIds.length === 0) return format === 'csv' ? '' : '[]'
+  if (agentIds.length === 0) return void write(format === 'csv' ? '' : '[]')
 
   const rows = await prisma.analytics.findMany({
     where: { agentId: { in: agentIds } },
@@ -100,11 +157,10 @@ export async function exportAnalytics(orgId: string, format: string) {
     returningUsers: r.returningUsers,
   }))
 
-  if (format === 'csv') return toCsv(flat)
-  return JSON.stringify(flat, null, 2)
+  write(format === 'csv' ? toCsv(flat) : JSON.stringify(flat, null, 2))
 }
 
-export async function exportKnowledgeBases(orgId: string, format: string) {
+export async function exportKnowledgeBases(orgId: string, format: string, write: Write) {
   const kbs = await prisma.knowledgeBase.findMany({
     where: { organizationId: orgId },
     include: {
@@ -135,14 +191,13 @@ export async function exportKnowledgeBases(orgId: string, format: string) {
         }]
   )
 
-  if (format === 'csv') return toCsv(rows)
-  return JSON.stringify(kbs, null, 2)
+  write(format === 'csv' ? toCsv(rows) : JSON.stringify(kbs, null, 2))
 }
 
-export async function exportDeployments(orgId: string, format: string) {
+export async function exportDeployments(orgId: string, format: string, write: Write) {
   const agents = await prisma.agent.findMany({ where: { organizationId: orgId }, select: { id: true, name: true } })
   const agentIds = agents.map((a) => a.id)
-  if (agentIds.length === 0) return format === 'csv' ? '' : '[]'
+  if (agentIds.length === 0) return void write(format === 'csv' ? '' : '[]')
 
   const rows = await prisma.deployment.findMany({
     where: { agentId: { in: agentIds } },
@@ -158,13 +213,12 @@ export async function exportDeployments(orgId: string, format: string) {
     createdAt: r.createdAt.toISOString(),
   }))
 
-  if (format === 'csv') return toCsv(flat)
-  return JSON.stringify(flat, null, 2)
+  write(format === 'csv' ? toCsv(flat) : JSON.stringify(flat, null, 2))
 }
 
 export type ExportScope = 'agents' | 'conversations' | 'analytics' | 'knowledge-bases' | 'deployments'
 
-const exportFns: Record<ExportScope, (orgId: string, format: string) => Promise<string>> = {
+const exportFns: Record<ExportScope, (orgId: string, format: string, write: Write) => Promise<void>> = {
   agents: exportAgents,
   conversations: exportConversations,
   analytics: exportAnalytics,
@@ -172,17 +226,23 @@ const exportFns: Record<ExportScope, (orgId: string, format: string) => Promise<
   deployments: exportDeployments,
 }
 
-export async function exportOrgData(orgId: string, format: string, scope: ExportScope | 'all'): Promise<{ content: string; filename: string }> {
-  if (scope === 'all') {
-    const parts: string[] = []
-    const scopes: ExportScope[] = ['agents', 'conversations', 'analytics', 'knowledge-bases', 'deployments']
-    for (const s of scopes) {
-      const data = await exportFns[s](orgId, format)
-      parts.push(`=== ${s} ===\n${data}`)
-    }
-    return { content: parts.join('\n\n'), filename: `convio-export-all.${format === 'csv' ? 'csv' : 'json'}` }
+export async function exportOrgData(
+  orgId: string,
+  format: string,
+  scope: ExportScope | 'all',
+  write: Write,
+): Promise<{ filename: string }> {
+  const ext = format === 'csv' ? 'csv' : 'json'
+  if (scope !== 'all') {
+    await exportFns[scope](orgId, format, write)
+    return { filename: `convio-export-${scope}.${ext}` }
   }
 
-  const data = await exportFns[scope](orgId, format)
-  return { content: data, filename: `convio-export-${scope}.${format === 'csv' ? 'csv' : 'json'}` }
+  const scopes: ExportScope[] = ['agents', 'conversations', 'analytics', 'knowledge-bases', 'deployments']
+  for (const s of scopes) {
+    write(`=== ${s} ===\n`)
+    await exportFns[s](orgId, format, write)
+    write('\n\n')
+  }
+  return { filename: `convio-export-all.${ext}` }
 }

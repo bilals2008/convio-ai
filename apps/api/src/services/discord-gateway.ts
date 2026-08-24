@@ -42,7 +42,8 @@ async function handleMessageCreate(data: any, botToken: string, botUserId: strin
 
   // DB-level dedup (across instances — Railway + local)
   const existing = await prisma.message.findFirst({
-    where: { metadata: { path: ['providerMessageId'], equals: data.id } },
+    where: { providerMessageId: data.id },
+    select: { id: true },
   })
   if (existing) return
 
@@ -114,7 +115,7 @@ async function handleMessageCreate(data: any, botToken: string, botUserId: strin
   }
 
   await prisma.message.create({
-    data: { conversationId: conversation.id, role: 'user', content: text, metadata: { userId: contactId, providerMessageId: data.id } },
+    data: { conversationId: conversation.id, role: 'user', content: text, providerMessageId: data.id, metadata: { userId: contactId, providerMessageId: data.id } },
   })
 
   const history = await prisma.message.findMany({

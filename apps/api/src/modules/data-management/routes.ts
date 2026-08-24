@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { PassThrough } from 'node:stream'
 import { prisma } from '@convio/database'
 import { z } from 'zod'
 import { validate } from '../../plugins/validate.js'
@@ -489,17 +490,30 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
     return { data: counts }
   })
 
-  // GET /api/organizations/:orgId/export — Export data as CSV/JSON
+  // GET /api/organizations/:orgId/export — Export data as CSV/JSON (streamed)
   fastify.get('/organizations/:orgId/export', {
     preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema, query: z.object({ format: z.enum(['csv', 'json']).default('csv'), scope: z.enum(['agents', 'conversations', 'analytics', 'knowledge-bases', 'deployments', 'all']).default('all') }) })],
   }, async (request, reply) => {
     const { orgId } = request.params as { orgId: string }
     const { format, scope } = request.query as { format: 'csv' | 'json'; scope: 'agents' | 'conversations' | 'analytics' | 'knowledge-bases' | 'deployments' | 'all' }
 
-    const { content, filename } = await exportOrgData(orgId, format, scope)
     const contentType = format === 'csv' ? 'text/csv' : 'application/json'
+    const ext = format === 'csv' ? 'csv' : 'json'
+    const filename = `convio-export-${scope}.${ext}`
+
     reply.header('Content-Type', `${contentType}; charset=utf-8`)
     reply.header('Content-Disposition', `attachment; filename="${filename}"`)
-    return reply.send(content)
+
+    const stream = new PassThrough()
+    exportOrgData(orgId, format, scope, (chunk) => stream.write(chunk))
+      .catch((err) => {
+        request.log.error(err, 'export failed')
+        stream.destroy()
+      })
+      .finally(() => {
+        if (!stream.destroyed) stream.end()
+      })
+
+    return reply.send(stream)
   })
 }

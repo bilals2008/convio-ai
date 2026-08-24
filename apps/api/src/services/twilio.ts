@@ -152,11 +152,7 @@ export async function processIncomingMessage(
     const contactName = payload.ProfileName || undefined
 
     const already = await prisma.message.findFirst({
-      where: {
-        role: 'user',
-        conversation: { agentId, channel: 'whatsapp', contactPhone: fromNumber },
-        metadata: { path: ['providerMessageId'], equals: payload.MessageSid },
-      },
+      where: { providerMessageId: payload.MessageSid },
       select: { id: true },
     })
     if (already) return { response: undefined }
@@ -233,6 +229,7 @@ export async function processIncomingMessage(
         conversationId: conversation.id,
         role: 'user',
         content: text || (mediaCount > 0 ? '[Media message]' : ''),
+        providerMessageId: payload.MessageSid || null,
         metadata: metadata as any,
       },
     })

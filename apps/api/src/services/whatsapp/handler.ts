@@ -106,11 +106,7 @@ export async function processIncomingMessage(
     // Dedup
     if (payload.messageId) {
       const already = await prisma.message.findFirst({
-        where: {
-          role: 'user',
-          conversation: { agentId, channel: 'whatsapp', contactPhone: contactKey },
-          metadata: { path: ['providerMessageId'], equals: payload.messageId },
-        },
+        where: { providerMessageId: payload.messageId },
         select: { id: true },
       })
       if (already) return { response: undefined }
@@ -218,6 +214,7 @@ export async function processIncomingMessage(
         conversationId: conversation.id,
         role: 'user',
         content: body,
+        providerMessageId: payload.messageId || null,
         metadata: {
           from: fromNumber,
           ...(payload.messageId ? { providerMessageId: payload.messageId } : {}),

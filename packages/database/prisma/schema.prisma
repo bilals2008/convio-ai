@@ -204,23 +204,25 @@ model Conversation {
 }
 
 model Message {
-  id             String          @id @default(uuid())
-  conversationId String
-  role           String
-  content        String
-  status         String          @default("sent")
-  responseTimeMs Int?            @map("response_time_ms")
-  inputTokens    Int?            @map("input_tokens")
-  outputTokens   Int?            @map("output_tokens")
-  cost           Float?
-  metadata       Json?
-  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
-  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  queries        DocumentQuery[]
+  id                String          @id @default(uuid())
+  conversationId    String
+  role              String
+  content           String
+  status            String          @default("sent")
+  responseTimeMs    Int?            @map("response_time_ms")
+  inputTokens       Int?            @map("input_tokens")
+  outputTokens      Int?            @map("output_tokens")
+  cost              Float?
+  providerMessageId String?         @map("provider_message_id")
+  metadata          Json?
+  createdAt         DateTime        @default(now()) @db.Timestamptz(6)
+  conversation      Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  queries           DocumentQuery[]
 
   @@index([conversationId, createdAt])
   @@index([createdAt])
   @@index([responseTimeMs])
+  @@index([providerMessageId])
 }
 
 model KnowledgeBase {

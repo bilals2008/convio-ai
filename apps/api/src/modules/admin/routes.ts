@@ -833,10 +833,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     }
 
     const planDist: Record<string, number> = {}
-    const allOrgs = await prisma.organization.findMany({ select: { plan: true } })
-    for (const o of allOrgs) {
-      const p = o.plan || 'free'
-      planDist[p] = (planDist[p] || 0) + 1
+    const planGroups = await prisma.organization.groupBy({ by: ['plan'], _count: { _all: true } })
+    for (const g of planGroups) {
+      planDist[g.plan || 'free'] = g._count._all
     }
 
     const totalConversations = convDays.reduce((s, r) => s + r.count, 0)
@@ -913,7 +912,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         planDistribution: Object.entries(planDist).map(([plan, count]) => ({ plan, count })),
         orgSignups,
         userSignups,
-        totalOrgs: allOrgs.length,
+        totalOrgs: Object.values(planDist).reduce((s, c) => s + c, 0),
         totalAgents: agentCount,
         totalUsers: userDays.reduce((s, r) => s + r.count, 0),
         topOrgs: topOrgs.map((o) => ({
@@ -1154,42 +1153,46 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/billing — Platform billing overview (revenue, subs, invoices)
   fastify.get('/admin/billing', adminGuard, async () => {
-    const [subscriptions, invoices, customers] = await Promise.all([
-      prisma.subscription.findMany({
-        select: { id: true, plan: true, status: true, createdAt: true, customerId: true },
-      }),
+    const [
+      totalSubscriptions,
+      activeSubscriptions,
+      subPlanGroups,
+      subStatusGroups,
+      revenueAgg,
+      invoices,
+    ] = await Promise.all([
+      prisma.subscription.count(),
+      prisma.subscription.count({ where: { status: 'active' } }),
+      prisma.subscription.groupBy({ by: ['plan'], _count: { _all: true } }),
+      prisma.subscription.groupBy({ by: ['status'], _count: { _all: true } }),
+      prisma.invoice.aggregate({ _sum: { total: true }, where: { status: 'paid' } }),
       prisma.invoice.findMany({
         orderBy: { createdAt: 'desc' },
         take: 20,
         select: { id: true, invoiceNumber: true, status: true, total: true, currency: true, createdAt: true, paidAt: true, customerId: true },
       }),
-      prisma.billingCustomer.findMany({
-        select: { id: true, organizationId: true },
-      }),
     ])
 
-    const customerOrgMap = new Map(customers.map((c) => [c.id, c.organizationId]))
-    const orgIds = [...new Set(customers.map((c) => c.organizationId))]
+    const customerOrgMap = new Map(
+      (
+        await prisma.billingCustomer.findMany({
+          where: { id: { in: [...new Set(invoices.map((i) => i.customerId))] } },
+          select: { id: true, organizationId: true },
+        })
+      ).map((c) => [c.id, c.organizationId]),
+    )
+    const orgIds = [...new Set(customerOrgMap.values())]
     const orgs = orgIds.length > 0
       ? await prisma.organization.findMany({ where: { id: { in: orgIds } }, select: { id: true, name: true, slug: true } })
       : []
     const orgMap = new Map(orgs.map((o) => [o.id, o]))
 
-    const activeSubs = subscriptions.filter((s) => s.status === 'active')
-    const planDist: Record<string, number> = {}
-    for (const s of subscriptions) {
-      planDist[s.plan] = (planDist[s.plan] || 0) + 1
-    }
-
-    const paidInvoices = invoices.filter((i) => i.status === 'paid')
-    const totalRevenue = paidInvoices.reduce((sum, i) => sum + i.total, 0)
-
     return {
       data: {
-        totalSubscriptions: subscriptions.length,
-        activeSubscriptions: activeSubs.length,
-        totalRevenue,
-        planDistribution: Object.entries(planDist).map(([plan, count]) => ({ plan, count })),
+        totalSubscriptions,
+        activeSubscriptions,
+        totalRevenue: revenueAgg._sum.total ?? 0,
+        planDistribution: subPlanGroups.map((g) => ({ plan: g.plan, count: g._count._all })),
         invoices: invoices.map((inv) => ({
           id: inv.id,
           invoiceNumber: inv.invoiceNumber,
@@ -1201,12 +1204,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           organization: orgMap.get(customerOrgMap.get(inv.customerId) || '') || null,
         })),
         subscriptionsByStatus: Object.fromEntries(
-          Object.entries(
-            subscriptions.reduce((acc, s) => {
-              acc[s.status] = (acc[s.status] || 0) + 1
-              return acc
-            }, {} as Record<string, number>)
-          )
+          subStatusGroups.map((g) => [g.status, g._count._all])
         ),
       },
     }
@@ -1219,20 +1217,44 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request) => {
     const { period } = request.query as { period: RevenuePeriod }
 
-    const [invoices, subscriptions, plans] = await Promise.all([
-      prisma.invoice.findMany({
-        select: { id: true, subscriptionId: true, customerId: true, status: true, total: true, currency: true, invoiceNumber: true, paidAt: true, createdAt: true },
-      }),
-      prisma.subscription.findMany({
-        select: { id: true, plan: true, status: true, createdAt: true, endsAt: true },
-      }),
-      prisma.plan.findMany({ select: { key: true, priceMonthly: true } }),
-    ])
-
-    const priceByPlan = new Map<string, number>(plans.map((p) => [p.key, p.priceMonthly || 0]))
+    const priceByPlan = new Map<string, number>()
+    {
+      const plans = await prisma.plan.findMany({ select: { key: true, priceMonthly: true } })
+      for (const p of plans) priceByPlan.set(p.key, p.priceMonthly || 0)
+    }
     const priceOf = (plan: string) => priceByPlan.get(plan) ?? 0
 
     const { buckets, windowStart, prevStart } = buildRevenueBuckets(period)
+
+    // ponytail: fetch only rows touching the current + previous window; anything older
+    // is collapsed into grouped counts (active subs / MRR at window start)
+    const [invoices, windowSubs, oldActiveGroups, activeNowGroups] = await Promise.all([
+      prisma.invoice.findMany({
+        where: { OR: [{ paidAt: { gte: prevStart } }, { createdAt: { gte: prevStart } }] },
+        select: { id: true, subscriptionId: true, customerId: true, status: true, total: true, currency: true, invoiceNumber: true, paidAt: true, createdAt: true },
+      }),
+      prisma.subscription.findMany({
+        where: { OR: [{ createdAt: { gte: windowStart } }, { endsAt: { gte: windowStart } }] },
+        select: { id: true, plan: true, status: true, createdAt: true, endsAt: true },
+      }),
+      prisma.subscription.groupBy({
+        by: ['plan'],
+        where: { createdAt: { lt: windowStart }, OR: [{ endsAt: null }, { endsAt: { gt: windowStart } }] },
+        _count: { _all: true },
+      }),
+      prisma.subscription.groupBy({
+        by: ['plan'],
+        where: { status: 'active' },
+        _count: { _all: true },
+      }),
+    ])
+
+    const oldActiveTotal = oldActiveGroups.reduce((s, g) => s + g._count._all, 0)
+    const mrrStart = oldActiveGroups.reduce((sum, g) => sum + priceOf(g.plan) * g._count._all, 0)
+    const activeStartCount = oldActiveTotal
+    const mrr = activeNowGroups.reduce((sum, g) => sum + priceOf(g.plan) * g._count._all, 0)
+    const activeNowCount = activeNowGroups.reduce((s, g) => s + g._count._all, 0)
+
     const rows = buckets.map((b) => ({ ...b, revenue: 0, loss: 0, newSubs: 0, churnedSubs: 0, active: 0, paidInvoices: 0 }))
 
     const rowIndexOf = (date: Date) => {
@@ -1258,7 +1280,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
     }
 
-    for (const sub of subscriptions) {
+    for (const sub of windowSubs) {
       const createdI = rowIndexOf(sub.createdAt)
       if (createdI >= 0) rows[createdI].newSubs++
       if (sub.endsAt) {
@@ -1270,8 +1292,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
     }
 
-    const activeAt = (t: Date) => subscriptions.filter((s) => s.createdAt <= t && (!s.endsAt || s.endsAt > t))
-    let running = activeAt(windowStart).length
+    let running = activeStartCount
     for (const r of rows) {
       running += r.newSubs - r.churnedSubs
       r.active = running
@@ -1282,10 +1303,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const newSubscriptions = rows.reduce((s, r) => s + r.newSubs, 0)
     const churnedSubscriptions = rows.reduce((s, r) => s + r.churnedSubs, 0)
     const paidInvoiceCount = rows.reduce((s, r) => s + r.paidInvoices, 0)
-
-    const mrr = subscriptions.filter((s) => s.status === 'active').reduce((sum, s) => sum + priceOf(s.plan), 0)
-    const mrrStart = activeAt(windowStart).reduce((sum, s) => sum + priceOf(s.plan), 0)
-    const activeStartCount = activeAt(windowStart).length
 
     // inv.total is in cents (Creem order.amount); priceMonthly is in dollars — normalize to dollars
     const toDollars = (cents: number) => Math.round(cents) / 100
@@ -1300,7 +1317,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       active: r.active,
     }))
 
-    const subPlanMap = new Map(subscriptions.map((s) => [s.id, s.plan]))
+    const invSubIds = [...new Set(invoices.map((i) => i.subscriptionId).filter((x): x is string => Boolean(x)))]
+    const extraSubs = invSubIds.length > 0
+      ? await prisma.subscription.findMany({ where: { id: { in: invSubIds } }, select: { id: true, plan: true } })
+      : []
+    const subPlanMap = new Map([...windowSubs, ...extraSubs].map((s) => [s.id, s.plan]))
     const planRevenue: Record<string, number> = {}
     for (const inv of invoices) {
       if (inv.status !== 'paid' || rowIndexOf(inv.paidAt ?? inv.createdAt) < 0) continue
@@ -1338,7 +1359,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           netProfit: toDollars(totalRevenue - totalLoss),
           mrr: Math.round(mrr * 100) / 100,
           mrrChange: mrrStart > 0 ? Math.round(((mrr - mrrStart) / mrrStart) * 100) : 0,
-          activeSubscriptions: subscriptions.filter((s) => s.status === 'active').length,
+          activeSubscriptions: activeNowCount,
           newSubscriptions,
           churnedSubscriptions,
           churnRate: activeStartCount > 0 ? Math.round((churnedSubscriptions / activeStartCount) * 100) : 0,

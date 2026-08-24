@@ -15,7 +15,7 @@ export async function handleMessageUpdate(data: any, botToken: string) {
     where: {
       OR: [
         { metadata: { path: ['discordMessageId'], equals: data.id } },
-        { metadata: { path: ['providerMessageId'], equals: data.id } },
+        { providerMessageId: data.id },
       ],
     },
     select: { id: true, content: true, conversationId: true, createdAt: true },
