@@ -59,7 +59,7 @@ export function InstallTab({
             className="gap-1.5 h-8 text-xs"
             onClick={() =>
               window.open(
-                `/widget/demo?embed=true&widgetKey=${publicKey}&position=${position}&preview=true`,
+                `/widget-entry.html?embed=true&widgetKey=${publicKey}&position=${position}&preview=true`,
                 '_blank',
               )
             }

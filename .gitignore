@@ -29,7 +29,6 @@ Thumbs.db
 *.txt
 
 # Prisma
-packages/database/prisma/migrations/
 packages/database/src/generated/
 
 # Logs
@@ -53,3 +52,6 @@ graphify-out/
 # AI agent tooling.claude/
 .opencode/
 
+
+# Local tooling
+.freebuff/

@@ -3,7 +3,7 @@ import { prisma } from '@convio/database'
 import { getTemplate, type RecipientKind } from './templates.js'
 import type { NotificationEventPayload, NotificationEventType } from './events.js'
 
-async function resolveRecipients(fastify: FastifyInstance, kinds: RecipientKind[], payload: NotificationEventPayload): Promise<string[]> {
+async function resolveRecipients(kinds: RecipientKind[], payload: NotificationEventPayload): Promise<string[]> {
   const recipients = new Set<string>()
   const add = (id?: string | null) => {
     if (id) recipients.add(id)
@@ -33,7 +33,7 @@ export async function handleNotificationEvent(
   const template = getTemplate(event)
   if (!template) return
 
-  const recipientIds = await resolveRecipients(fastify, template.recipients, payload)
+  const recipientIds = await resolveRecipients(template.recipients, payload)
   if (recipientIds.length === 0) return
 
   const metadata = {

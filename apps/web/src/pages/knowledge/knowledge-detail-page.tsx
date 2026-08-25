@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LayoutDashboard, Database, FlaskConical, History, Loader2, PenLine, Check, X } from 'lucide-react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { LayoutDashboard, Database, FlaskConical, History, Loader2, PenLine, Check, X, Globe, BookOpen } from 'lucide-react'
 import { FileIcon } from '@/components/shared/file-icon'
 import { z } from 'zod'
 import { PageContainer } from '@/components/shared/page-container'
@@ -20,6 +20,7 @@ import { KbOverview, type KbFormValues } from '@/components/knowledge/kb-overvie
 import { KbSources } from '@/components/knowledge/kb-sources'
 import { KbTestPanel } from '@/components/knowledge/kb-test'
 import { KbActivityTab } from '@/components/knowledge/kb-activity'
+import { KbQaPanel } from '@/components/knowledge/kb-qa-panel'
 import { KbErrorCard } from '@/components/knowledge/kb-error-card'
 import { KbNextStep } from '@/components/knowledge/kb-next-step'
 import {
@@ -31,6 +32,7 @@ import {
   type KbSettings,
 } from '@/components/knowledge/kb-types'
 import { knowledge as knowledgeApi } from '@/lib/api'
+import type { SourceType } from '@/components/knowledge/source-picker-modal'
 import { useOrg } from '@/lib/org-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -69,6 +71,7 @@ interface DocItem {
 export default function KnowledgeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { orgId } = useOrg()
   const isCreate = id === 'new'
@@ -83,6 +86,7 @@ export default function KnowledgeDetailPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [reprocessingId, setReprocessingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [viewDocId, setViewDocId] = useState<string | null>(null)
@@ -90,6 +94,12 @@ export default function KnowledgeDetailPage() {
   const [editContent, setEditContent] = useState('')
   const [urlDialogOpen, setUrlDialogOpen] = useState(false)
   const [urlsInput, setUrlsInput] = useState('')
+  const [sitemapInput, setSitemapInput] = useState('')
+  const [importJob, setImportJob] = useState<{ id: string; found: number } | null>(null)
+  const [textDialogOpen, setTextDialogOpen] = useState(false)
+  const [textKind, setTextKind] = useState<'text' | 'faq'>('text')
+  const [textName, setTextName] = useState('')
+  const [textContent, setTextContent] = useState('')
   const [hasTested, setHasTested] = useState(false)
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([])
   const [activeTab, setActiveTab] = useState(isCreate ? 'overview' : 'sources')
@@ -105,18 +115,22 @@ export default function KnowledgeDetailPage() {
     enabled: isEdit,
   })
 
-  const { data: documents = [], isLoading: docsLoading } = useQuery({
+  const docsQuery = useInfiniteQuery({
     queryKey: ['knowledge-base-documents', id],
-    queryFn: async () => {
-      const res = await knowledgeApi.getDocuments(id!)
-      return (res.data.data || []) as DocItem[]
+    queryFn: async ({ pageParam }) => {
+      const res = await knowledgeApi.getDocuments(id!, { cursor: pageParam, limit: 50 })
+      return res.data as { data: DocItem[]; nextCursor: string | null }
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: isEdit,
     refetchInterval: (query) => {
-      const docs = query.state.data as DocItem[] | undefined
-      return docs?.some((d) => d.status === 'pending' || d.status === 'processing') ? 2500 : false
+      const docs = query.state.data?.pages.flatMap((p) => p.data) ?? []
+      return docs.some((d) => d.status === 'pending' || d.status === 'processing') ? 2500 : false
     },
   })
+  const documents = useMemo(() => docsQuery.data?.pages.flatMap((p) => p.data) ?? [], [docsQuery])
+  const docsLoading = docsQuery.isLoading
 
   const { data: viewDoc, isLoading: viewLoading } = useQuery({
     queryKey: ['document', viewDocId],
@@ -193,6 +207,22 @@ export default function KnowledgeDetailPage() {
     }
   }, [kb])
 
+  const pendingSource = useRef(false)
+  useEffect(() => {
+    if (!isEdit || pendingSource.current) return
+    const sourceType = (location.state as { sourceType?: SourceType } | null)?.sourceType
+    navigate(location.pathname, { replace: true })
+    if (!sourceType) return
+    pendingSource.current = true
+    setActiveTab('sources')
+    if (['website', 'sitemap', 'api'].includes(sourceType)) setUrlDialogOpen(true)
+    else if (sourceType === 'custom-text' || sourceType === 'faq') {
+      setTextKind(sourceType === 'faq' ? 'faq' : 'text')
+      setTextDialogOpen(true)
+    } else setTimeout(() => fileInputRef.current?.click(), 100)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (!isEdit || !id) return
     const hasActive = documents.some((d) => d.status === 'pending' || d.status === 'processing')
@@ -231,6 +261,17 @@ export default function KnowledgeDetailPage() {
       navigate('/knowledge')
     },
     onError: (err: unknown) => toast.error(`Failed to delete: ${err instanceof Error ? err.message : String(err)}`),
+  })
+
+  const duplicateMutation = useMutation({
+    mutationFn: () => knowledgeApi.duplicate(id!),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] })
+      toast.success('Knowledge base duplicated')
+      const newId = res.data?.data?.id as string | undefined
+      if (newId) navigate(`/knowledge/${newId}`)
+    },
+    onError: (err: unknown) => toast.error(`Failed to duplicate: ${err instanceof Error ? err.message : String(err)}`),
   })
 
   const handleSave = () => {
@@ -314,24 +355,83 @@ export default function KnowledgeDetailPage() {
     },
   })
 
+  const addTextMutation = useMutation({
+    mutationFn: (data: { name: string; content: string }) =>
+      knowledgeApi.uploadDocument(id!, { type: 'txt', ...data }),
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
+      queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
+      toast.success(vars.name ? `"${vars.name}" added` : textKind === 'faq' ? 'FAQ added' : 'Text added')
+      setTextDialogOpen(false)
+      setTextName('')
+      setTextContent('')
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Failed to add source'),
+  })
+
+  const sitemapMutation = useMutation({
+    mutationFn: (url: string) => knowledgeApi.expandSitemap(id!, url),
+    onSuccess: (res) => {
+      const { jobId, found } = (res.data?.data ?? {}) as { jobId?: string; found?: number }
+      setUrlsInput('')
+      if (jobId) setImportJob({ id: jobId, found: found ?? 0 })
+      else setUrlDialogOpen(false)
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Sitemap import failed'),
+  })
+
+  const { data: importJobStatus } = useQuery({
+    queryKey: ['sitemap-job', importJob?.id],
+    queryFn: async () => {
+      const res = await knowledgeApi.getSitemapStatus(id!, importJob!.id)
+      return res.data.data as { total: number; done: number; failed: number; status: 'running' | 'done' }
+    },
+    enabled: !!importJob,
+    refetchInterval: 700,
+  })
+
+  const importing = !!importJob && importJobStatus?.status !== 'done'
+  const jobDone = importJobStatus?.status === 'done'
+  const jobFinishedRef = useRef(false)
+  useEffect(() => {
+    if (!jobDone || !importJob || jobFinishedRef.current) return
+    jobFinishedRef.current = true
+    const { total, failed } = importJobStatus!
+    if (failed > 0) toast.warning(`Sitemap import finished: ${total - failed} ok, ${failed} failed`)
+    else toast.success(`${total} page${total !== 1 ? 's' : ''} imported from sitemap`)
+    queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
+    queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
+    setImportJob(null)
+    setSitemapInput('')
+    setUrlDialogOpen(false)
+  }, [jobDone, importJob, importJobStatus, id, queryClient])
+
   const handleUploadFiles = async (files: File[]) => {
     if (!id || isCreate) return
     setUploading(true)
+    setUploadProgress({ done: 0, total: files.length })
+    let failed = 0
     try {
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
         const fd = new FormData()
         fd.append('file', file)
-        await knowledgeApi.uploadPdf(id, fd)
+        try {
+          await knowledgeApi.uploadPdf(id, fd)
+        } catch (err) {
+          failed++
+          const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+          toast.error(`${file.name}: ${message || 'upload failed'}`)
+        }
+        setUploadProgress({ done: i + 1, total: files.length })
       }
       queryClient.invalidateQueries({ queryKey: ['knowledge-base-documents', id] })
       queryClient.invalidateQueries({ queryKey: ['knowledge-base', id] })
-      toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded`)
-    } catch (err) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      toast.error(message || 'Upload failed')
+      const ok = files.length - failed
+      if (ok > 0) toast.success(`${ok} file${ok > 1 ? 's' : ''} uploaded${failed ? `, ${failed} failed` : ''}`)
     } finally {
       setUploading(false)
+      setUploadProgress(null)
     }
   }
 
@@ -410,6 +510,7 @@ export default function KnowledgeDetailPage() {
         { value: 'sources', label: 'Sources', icon: Database },
         { value: 'test', label: 'Test', icon: FlaskConical },
         { value: 'activity', label: 'Activity', icon: History },
+        { value: 'qa', label: 'Q&A', icon: BookOpen },
       ]
 
   return (
@@ -420,7 +521,7 @@ export default function KnowledgeDetailPage() {
         onBack={() => navigate('/knowledge')}
         onSave={handleSave}
         onDelete={() => deleteMutation.mutate()}
-        onDuplicate={() => toast.info('Duplicate coming soon')}
+        onDuplicate={() => duplicateMutation.mutate()}
         onViewLogs={() => toast.info('Logs coming soon')}
       />
 
@@ -504,11 +605,29 @@ export default function KnowledgeDetailPage() {
                 onBulkReprocess={handleBulkReprocess}
                 onUploadFiles={handleUploadFiles}
                 uploading={uploading}
+                uploadProgress={uploadProgress}
               />
+              {docsQuery.hasNextPage && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => docsQuery.fetchNextPage()}
+                    disabled={docsQuery.isFetchingNextPage}
+                  >
+                    {docsQuery.isFetchingNextPage && <Loader2 className="size-3.5 animate-spin mr-1.5" />}
+                    Load more ({documents.length} loaded)
+                  </Button>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="test" className="mt-5">
               <KbTestPanel knowledgeBaseId={id!} onTested={() => setHasTested(true)} onSearch={handleTestSearch} />
+            </TabsContent>
+
+            <TabsContent value="qa" className="mt-5">
+              <KbQaPanel knowledgeBaseId={id!} />
             </TabsContent>
 
             <TabsContent value="activity" className="mt-5">
@@ -648,7 +767,10 @@ export default function KnowledgeDetailPage() {
           e.target.value = ''
         }}
       />
-      <Dialog open={urlDialogOpen} onOpenChange={setUrlDialogOpen}>
+      <Dialog open={urlDialogOpen} onOpenChange={(open) => {
+        setUrlDialogOpen(open)
+        if (!open) { setUrlsInput(''); setSitemapInput(''); setImportJob(null); jobFinishedRef.current = false }
+      }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Add web pages</DialogTitle>
@@ -670,6 +792,58 @@ export default function KnowledgeDetailPage() {
                 </p>
               )}
             </div>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <Separator className="flex-1" />
+              or
+              <Separator className="flex-1" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Import from sitemap.xml</label>
+              {importJob && importJobStatus ? (
+                <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Loader2 className="size-3.5 animate-spin text-primary" />
+                      {jobDone ? 'Finishing up…' : 'Importing pages'}
+                    </span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {importJobStatus.done}/{importJobStatus.total}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                      style={{ width: `${importJobStatus.total ? (importJobStatus.done / importJobStatus.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                  {importJobStatus.failed > 0 && (
+                    <p className="text-[11px] text-destructive">{importJobStatus.failed} page{importJobStatus.failed !== 1 ? 's' : ''} failed — re-index them later from Sources</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      value={sitemapInput}
+                      onChange={(e) => setSitemapInput(e.target.value)}
+                      placeholder="https://example.com/sitemap.xml"
+                      className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 shrink-0"
+                      disabled={!sitemapInput.trim() || sitemapMutation.isPending}
+                      onClick={() => sitemapMutation.mutate(sitemapInput.trim())}
+                    >
+                      {sitemapMutation.isPending ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <Globe className="size-3.5 mr-1.5" />}
+                      {sitemapMutation.isPending ? 'Fetching…' : 'Import'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Fetches the sitemap and adds up to 50 pages.</p>
+                </>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => { setUrlDialogOpen(false); setUrlsInput('') }}>Cancel</Button>
               <Button
@@ -683,6 +857,58 @@ export default function KnowledgeDetailPage() {
               >
                 {addUrlMutation.isPending && <Loader2 className="size-3.5 animate-spin mr-1.5" />}
                 Add {urlsInput.trim().split('\n').filter(Boolean).length > 1 ? `(${urlsInput.trim().split('\n').filter(Boolean).length})` : ''} page{urlsInput.trim().split('\n').filter(Boolean).length > 1 ? 's' : ''}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={textDialogOpen} onOpenChange={(open) => {
+        setTextDialogOpen(open)
+        if (!open) { setTextName(''); setTextContent('') }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{textKind === 'faq' ? 'Add FAQ' : 'Add text'}</DialogTitle>
+            <DialogDescription>
+              {textKind === 'faq'
+                ? 'Paste Q&A pairs — one question per line, answer on the next line.'
+                : 'Give it a title and paste the content to index.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Title</label>
+              <input
+                value={textName}
+                onChange={(e) => setTextName(e.target.value)}
+                placeholder={textKind === 'faq' ? 'e.g. Support FAQ' : 'e.g. Product notes'}
+                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Content</label>
+              <Textarea
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                rows={8}
+                placeholder={
+                  textKind === 'faq'
+                    ? 'Q: What are your support hours?\nA: Mon-Fri, 9am-6pm.\n\nQ: How do I reset my password?\nA: Use the forgot password link on the login page.'
+                    : 'Paste or type the text content here…'
+                }
+                className="resize-y font-mono text-xs leading-relaxed"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setTextDialogOpen(false); setTextName(''); setTextContent('') }}>Cancel</Button>
+              <Button
+                size="sm"
+                disabled={!textContent.trim() || !textName.trim() || addTextMutation.isPending}
+                onClick={() => addTextMutation.mutate({ name: textName.trim(), content: textContent.trim() })}
+              >
+                {addTextMutation.isPending && <Loader2 className="size-3.5 animate-spin mr-1.5" />}
+                Add
               </Button>
             </div>
           </div>

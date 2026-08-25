@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { ArrowLeft, Loader2, Plus, Globe, Link, Plug, User, BrainCircuit, BookOpen, Wrench, Zap, LayoutTemplate, Wand2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Globe, Link, Plug, User, BrainCircuit, BookOpen, Wrench, Zap, LayoutTemplate, Wand2, Shield } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 const CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
@@ -19,6 +19,7 @@ import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
 import { defaultCapabilities } from '@/components/agents/agent-capabilities'
 import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
 import { AgentKnowledgeSources } from '@/components/agents/agent-knowledge-sources'
+import { AgentGuardrails, defaultGuardrails, type AgentGuardrailsValue } from '@/components/agents/agent-guardrails'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
 import { AgentTemplateModal, type AgentTemplate } from '@/components/agents/agent-template-modal'
 import { AgentAiModal, type AgentDraft } from '@/components/agents/agent-ai-modal'
@@ -71,6 +72,7 @@ export default function CreateAgentPage() {
   const [deploymentOptions, setDeploymentOptions] = useState(DEFAULT_DEPLOYMENTS)
   const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<string[]>([])
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] = useState<string>('')
+  const [guardrails, setGuardrails] = useState<AgentGuardrailsValue>(defaultGuardrails)
   const [mcpModalOpen, setMcpModalOpen] = useState(false)
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const [aiModalOpen, setAiModalOpen] = useState(false)
@@ -214,6 +216,7 @@ export default function CreateAgentPage() {
         tools: tools.filter((t) => t.enabled).map((t) => t.id),
         deployment: deploymentOptions.filter((o) => o.enabled).map((o) => o.id),
         settings: { toneOfVoice: data.toneOfVoice, language: data.language },
+        guardrails: guardrails.enabled ? guardrails : undefined,
       })
     },
     () => toast.error('Please fix the form errors before submitting'),
@@ -352,6 +355,26 @@ export default function CreateAgentPage() {
                 <AgentKnowledgeSources
                   value={selectedKnowledgeBaseId}
                   onChange={setSelectedKnowledgeBaseId}
+                  disabled={saving}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Guardrails */}
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-500">
+                  <Shield className="size-4.5" />
+                </div>
+                <div>
+                  <CardTitle>Guardrails</CardTitle>
+                  <CardDescription>Keep the agent on-topic and safe.</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <AgentGuardrails
+                  value={guardrails}
+                  onChange={setGuardrails}
                   disabled={saving}
                 />
               </CardContent>

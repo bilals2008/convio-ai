@@ -31,6 +31,11 @@ function createPrismaClient(): PrismaClient {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL!,
     ssl: { rejectUnauthorized: false },
+    max: Number(process.env.PG_POOL_MAX ?? 10),
+    // ponytail: remote Supabase handshakes can be slow — don't close idle conns
+    // (pg default: never) or every idle gap pays a fresh connect; 30s cap only
+    // on connect attempts so a dead DB fails fast instead of hanging.
+    connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS ?? 30_000),
   })
 
   const adapter = new PrismaPg(pool)

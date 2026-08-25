@@ -12,7 +12,7 @@ const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(50).optional(),
   search: z.string().max(100).optional(),
-  type: z.enum(['stdio', 'streamable-http']).optional(),
+  type: z.enum(['sse', 'streamable-http']).optional(),
   status: z.enum(['enabled', 'disabled', 'connected', 'failed']).optional(),
 })
 

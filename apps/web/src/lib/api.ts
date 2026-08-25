@@ -90,6 +90,7 @@ export const agents = {
     knowledgeBaseId?: string | null
     tools?: string[]
     mcpServerIds?: string[]
+    guardrails?: { enabled: boolean; blockedWords: string[]; restrictedTopics: string[] }
     history?: Array<{ role: 'user' | 'assistant'; content: string }>
     signal?: AbortSignal
   }) => {
@@ -149,7 +150,16 @@ export const messages = {
 
 export const knowledge = {
   list: (orgId: string) => api.get(`/organizations/${orgId}/knowledge-bases`),
-    templates: (orgId: string) => api.get(`/organizations/${orgId}/knowledge-templates`),
+  generate: (body: Record<string, unknown>) => {
+    const { orgId, data } = extractOrgId(body)
+    return api.post(`/organizations/${orgId}/knowledge-bases/generate`, data, { timeout: 120000 })
+  },
+  get: (id: string) => api.get(`/knowledge-bases/${id}`),
+  getQa: (id: string) => api.get(`/knowledge-bases/${id}/qa`),
+  addQa: (id: string, data: { question: string; answer: string }) => api.post(`/knowledge-bases/${id}/qa`, data),
+  updateQa: (kbId: string, qaId: string, data: { question?: string; answer?: string }) => api.patch(`/knowledge-bases/${kbId}/qa/${qaId}`, data),
+  deleteQa: (kbId: string, qaId: string) => api.delete(`/knowledge-bases/${kbId}/qa/${qaId}`),
+  createQa: (kbId: string, body: { question: string; answer: string }) => api.post(`/knowledge-bases/${kbId}/qa`, body),
   get: (id: string) => api.get(`/knowledge-bases/${id}`),
   create: (body: Record<string, unknown>) => {
     const { orgId, data } = extractOrgId(body)
@@ -157,6 +167,11 @@ export const knowledge = {
   },
   update: (id: string, data: Record<string, unknown>) => api.patch(`/knowledge-bases/${id}`, data),
   delete: (id: string) => api.delete(`/knowledge-bases/${id}`),
+  duplicate: (id: string) => api.post(`/knowledge-bases/${id}/duplicate`),
+  expandSitemap: (knowledgeBaseId: string, url: string) =>
+    api.post(`/knowledge-bases/${knowledgeBaseId}/sitemap`, { url }),
+  getSitemapStatus: (knowledgeBaseId: string, jobId: string) =>
+    api.get(`/knowledge-bases/${knowledgeBaseId}/sitemap/${jobId}`),
   uploadDocument: (knowledgeBaseId: string, data: Record<string, unknown>) =>
     api.post(`/knowledge-bases/${knowledgeBaseId}/documents`, data),
   uploadPdf: (knowledgeBaseId: string, formData: FormData) =>
@@ -174,8 +189,6 @@ getDocuments: (knowledgeBaseId: string, params?: { cursor?: string; limit?: numb
     }),
   getDocumentChunks: (docId: string) =>
     api.get(`/documents/${docId}/chunks`),
-  updateDocument: (docId: string, data: Record<string, unknown>) =>
-    api.patch(`/documents/${docId}`, data),
   reprocessDocument: (docId: string) => api.post(`/documents/${docId}/reprocess`),
   deleteDocument: (docId: string) => api.delete(`/documents/${docId}`),
 }
@@ -308,22 +321,8 @@ export const auditLogs = {
 export const tickets = {
   list: (orgId: string, params?: { status?: string; cursor?: string; limit?: number }) =>
     api.get(`/organizations/${orgId}/tickets`, { params }),
-  get: (orgId: string, ticketId: string) =>
-    api.get(`/organizations/${orgId}/tickets/${ticketId}`),
   create: (orgId: string, data: { title: string; description: string; category: string; priority: string }) =>
     api.post(`/organizations/${orgId}/tickets`, data),
-  reply: (orgId: string, ticketId: string, content: string) =>
-    api.post(`/organizations/${orgId}/tickets/${ticketId}/messages`, { content }),
-  updateStatus: (orgId: string, ticketId: string, status: string) =>
-    api.patch(`/organizations/${orgId}/tickets/${ticketId}`, { status }),
-}
-
-export const adminTickets = {
-  list: (params?: { status?: string; search?: string; cursor?: string; limit?: number }) =>
-    api.get('/admin/tickets', { params }),
-  get: (ticketId: string) => api.get(`/admin/tickets/${ticketId}`),
-  updateStatus: (ticketId: string, status: string) =>
-    api.patch(`/admin/tickets/${ticketId}`, { status }),
 }
 
 export const publicApi = axios.create({

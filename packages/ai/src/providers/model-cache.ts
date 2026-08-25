@@ -1,6 +1,7 @@
 import type { Model } from '../index.js'
 
 const cache = new Map<string, { data: Model[]; expires: number }>()
+const MAX_ENTRIES = 100
 
 export async function getCachedModels(
   key: string,
@@ -10,7 +11,13 @@ export async function getCachedModels(
   const hit = cache.get(key)
   if (hit && hit.expires > Date.now()) return hit.data
   const data = await loader()
-  if (data.length > 0) cache.set(key, { data, expires: Date.now() + ttlMs })
+  if (data.length > 0) {
+    if (cache.size >= MAX_ENTRIES) {
+      const oldest = cache.keys().next().value
+      if (oldest !== undefined) cache.delete(oldest)
+    }
+    cache.set(key, { data, expires: Date.now() + ttlMs })
+  }
   return data
 }
 

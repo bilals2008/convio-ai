@@ -88,7 +88,6 @@ export const docSections: DocSection[] = [
       { title: 'Reranking', href: '/docs/reranking', icon: Zap },
       { title: 'Document Statuses', href: '/docs/document-statuses', icon: Zap },
       { title: 'Managing KBs', href: '/docs/managing-knowledge-bases', icon: Database },
-      { title: 'KB Templates', href: '/docs/knowledge-base-templates', icon: BookOpen },
     ],
   },
   {

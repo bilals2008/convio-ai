@@ -85,6 +85,13 @@ export const THEME_MODES = [
 
 export type ThemeMode = 'auto' | 'light' | 'dark'
 
+export const HEIGHT_OPTIONS = [
+  { value: 420, label: 'Compact', height: 420 },
+  { value: 540, label: 'Default', height: 540 },
+  { value: 660, label: 'Tall', height: 660 },
+  { value: 760, label: 'Full', height: 760 },
+] as const
+
 export const WIDTH_OPTIONS = [
   { value: 'narrow', label: 'Narrow', width: 320 },
   { value: 'default', label: 'Default', width: 380 },
@@ -102,3 +109,54 @@ export const BORDER_RADIUS_OPTIONS = [
   { value: 'default', label: 'Rounded', radius: 16 },
   { value: 'full', label: 'Full', radius: 24 },
 ] as const
+
+export const MOBILE_BEHAVIOR_OPTIONS = [
+  { value: 'default', label: 'Default' },
+  { value: 'fullscreen', label: 'Fullscreen' },
+] as const
+
+export const LAUNCHER_SHAPE_OPTIONS = [
+  { value: 'circle', label: 'Circle' },
+  { value: 'pill', label: 'Pill' },
+  { value: 'square', label: 'Square' },
+] as const
+
+// Single source of truth for widget config defaults — used by the form hook,
+// dirty checks and the preview. New options only need an entry here.
+export const DEFAULT_WIDGET_CONFIG = {
+  position: 'bottom-right',
+  primaryColor: '#1cca4a',
+  backgroundColor: '#1c1c1c',
+  textColor: '#f3f4f6',
+  promptBgColor: '#2a2a2a',
+  headerGradientStart: '#1cca4a',
+  headerGradientEnd: '#0d7a34',
+  headerGradientDirection: 135,
+  headerGradient: true,
+  borderColor: '',
+  inputBgColor: '',
+  sendBtnColor: '',
+  footerBgColor: '',
+  widgetHeight: 540,
+  widgetWidth: 'default',
+  launcherSize: 'default',
+  borderRadius: 'default',
+  agentName: '',
+  agentAvatar: '',
+  themeMode: 'auto',
+  headerTitle: '',
+  headerSubtitle: '',
+  showOnlineIndicator: true,
+  launcherLabel: '',
+  placeholderText: '',
+  showPoweredBy: true,
+  quickReplies: [] as string[],
+  mobileBehavior: 'default',
+  launcherShape: 'circle',
+  customWidth: 0,
+  customHeight: 0,
+  launcherOffset: 0,
+  teaserMessage: '',
+  teaserDelay: 5,
+  hiddenPages: [],
+} as const

@@ -17,6 +17,7 @@ export interface GenerateParams {
   temperature?: number
   maxTokens?: number
   apiKey?: string
+  signal?: AbortSignal
   reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | 'xhigh'
   thinking?: boolean | { budget_tokens?: number }
 }

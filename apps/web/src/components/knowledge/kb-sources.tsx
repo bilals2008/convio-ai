@@ -79,9 +79,10 @@ interface KbSourcesProps {
   onBulkReprocess: () => void
   onUploadFiles: (files: File[]) => void
   uploading: boolean
+  uploadProgress?: { done: number; total: number } | null
 }
 
-function DropZone({ onFiles, uploading, onMoreSources }: { onFiles: (f: File[]) => void; uploading: boolean; onMoreSources?: () => void }) {
+function DropZone({ onFiles, uploading, uploadProgress, onMoreSources }: { onFiles: (f: File[]) => void; uploading: boolean; uploadProgress?: { done: number; total: number } | null; onMoreSources?: () => void }) {
   const [over, setOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   return (
@@ -108,7 +109,13 @@ function DropZone({ onFiles, uploading, onMoreSources }: { onFiles: (f: File[]) 
         <UploadCloud className={cn('size-6', over ? 'text-primary' : 'text-muted-foreground')} />
       )}
       <p className="mt-2 text-sm font-medium">
-        {uploading ? 'Uploading…' : over ? 'Drop to upload' : 'Drag & drop files or click to browse'}
+        {uploading
+          ? uploadProgress && uploadProgress.total > 1
+            ? `Uploading ${uploadProgress.done}/${uploadProgress.total}…`
+            : 'Uploading…'
+          : over
+            ? 'Drop to upload'
+            : 'Drag & drop files or click to browse'}
       </p>
       <p className="mt-0.5 text-xs text-muted-foreground">PDF, TXT, MD, CSV, JSON · multiple allowed</p>
       {onMoreSources && (
@@ -154,6 +161,7 @@ export function KbSources({
   onBulkReprocess,
   onUploadFiles,
   uploading,
+  uploadProgress,
 }: KbSourcesProps) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('all')
@@ -334,7 +342,7 @@ export function KbSources({
 
   return (
     <div className="space-y-4">
-      <DropZone onFiles={onUploadFiles} uploading={uploading} onMoreSources={onAddFile} />
+      <DropZone onFiles={onUploadFiles} uploading={uploading} uploadProgress={uploadProgress} onMoreSources={onAddFile} />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[200px] flex-1">
@@ -348,12 +356,10 @@ export function KbSources({
         </div>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 h-9">
+          <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5 h-9" />}>
               <UploadCloud className="size-3.5" />
               Add Source
               <ChevronDown className="size-3 text-muted-foreground" />
-            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem onClick={onAddFile}>

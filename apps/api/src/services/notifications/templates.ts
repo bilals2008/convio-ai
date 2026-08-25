@@ -50,11 +50,6 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     title: (p) => `${p.entityName ?? 'A new member'} was invited to your organization`,
     message: () => 'An invitation was sent.',
   },
-  [NOTIFICATION_EVENTS.MEMBER_JOINED]: {
-    category: 'organization', priority: 'medium', recipients: ['org_admins'],
-    title: (p) => `${p.entityName ?? 'Someone'} joined your organization`,
-    message: () => 'A new member has joined.',
-  },
   [NOTIFICATION_EVENTS.MEMBER_REMOVED]: {
     category: 'organization', priority: 'medium', recipients: ['org_admins', 'target'],
     title: (p) => p.userId ? 'You were removed from the organization' : `${p.entityName ?? 'A member'} was removed`,
@@ -64,32 +59,10 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     title: (p) => `Your role changed to ${String(p.metadata?.role ?? '')}`,
     message: (p) => `${p.actorId ? 'An admin updated your role in ' + (p.entityName ?? 'the organization') : ''}`,
   },
-  [NOTIFICATION_EVENTS.ORG_SETTINGS_UPDATED]: {
-    category: 'organization', priority: 'low', recipients: ['org_members'],
-    title: () => 'Organization settings updated',
-    message: (p) => `${p.actorId ? 'Settings were updated by an admin' : 'Organization settings changed'}`,
-  },
   // Agent
-  [NOTIFICATION_EVENTS.AGENT_CREATED]: {
-    category: 'agent', priority: 'info', recipients: ['actor'],
-    title: (p) => `Agent "${p.entityName ?? ''}" created`,
-    message: () => 'Your agent is ready to configure.',
-    actionUrl: (p) => `/agents/${p.entityId ?? ''}/edit`,
-  },
-  [NOTIFICATION_EVENTS.AGENT_UPDATED]: {
-    category: 'agent', priority: 'info', recipients: ['actor'],
-    title: (p) => `Agent "${p.entityName ?? ''}" updated`,
-    actionUrl: (p) => `/agents/${p.entityId ?? ''}/edit`,
-  },
   [NOTIFICATION_EVENTS.AGENT_DELETED]: {
     category: 'agent', priority: 'medium', recipients: ['actor', 'org_admins'],
     title: (p) => `Agent "${p.entityName ?? ''}" deleted`,
-  },
-  [NOTIFICATION_EVENTS.AGENT_PUBLISHED]: {
-    category: 'agent', priority: 'info', recipients: ['actor', 'org_admins'],
-    title: (p) => `Agent "${p.entityName ?? ''}" is live`,
-    message: () => 'Your agent has been published.',
-    actionUrl: (p) => `/agents/${p.entityId ?? ''}/edit`,
   },
   [NOTIFICATION_EVENTS.AGENT_FAILED]: {
     category: 'agent', priority: 'high', recipients: ['actor', 'org_admins'],
@@ -104,11 +77,6 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     actionUrl: () => '/settings/billing',
   },
   // Conversation
-  [NOTIFICATION_EVENTS.CONVERSATION_STARTED]: {
-    category: 'conversation', priority: 'low', recipients: ['org_admins'],
-    title: (p) => `New conversation with ${p.entityName ?? 'a visitor'}`,
-    actionUrl: (p) => `/conversations/${p.entityId ?? ''}`,
-  },
   [NOTIFICATION_EVENTS.CONVERSATION_ASSIGNED]: {
     category: 'conversation', priority: 'medium', recipients: ['target'],
     title: () => 'Conversation assigned to you',
@@ -116,13 +84,13 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
   },
   [NOTIFICATION_EVENTS.CONVERSATION_NEEDS_ATTENTION]: {
     category: 'conversation', priority: 'medium', recipients: ['org_admins'],
-    title: (p) => `Conversation needs attention`,
+    title: () => 'Conversation needs attention',
     message: (p) => String(p.metadata?.reason ?? ''),
     actionUrl: (p) => `/conversations/${p.entityId ?? ''}`,
   },
   [NOTIFICATION_EVENTS.CONVERSATION_HIGH_PRIORITY]: {
     category: 'conversation', priority: 'high', recipients: ['org_admins'],
-    title: (p) => `High-priority conversation detected`,
+    title: () => 'High-priority conversation detected',
     actionUrl: (p) => `/conversations/${p.entityId ?? ''}`,
   },
   [NOTIFICATION_EVENTS.CONVERSATION_ESCALATED]: {
@@ -131,30 +99,10 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     actionUrl: (p) => `/conversations/${p.entityId ?? ''}`,
   },
   // Knowledge
-  [NOTIFICATION_EVENTS.DOCUMENT_UPLOADED]: {
-    category: 'knowledge', priority: 'info', recipients: ['actor'],
-    title: (p) => `"${p.entityName ?? 'Document'}" uploaded`,
-    message: () => 'Processing has started.',
-    actionUrl: (p) => `/knowledge/${p.metadata?.knowledgeBaseId ?? ''}`,
-  },
   [NOTIFICATION_EVENTS.DOCUMENT_UPLOAD_FAILED]: {
     category: 'knowledge', priority: 'high', recipients: ['actor'],
     title: (p) => `Upload failed for "${p.entityName ?? 'document'}"`,
     message: (p) => String(p.metadata?.error ?? 'Please try again.'),
-  },
-  [NOTIFICATION_EVENTS.DOCUMENT_PROCESSING]: {
-    category: 'knowledge', priority: 'info', recipients: ['actor'],
-    title: (p) => `Processing "${p.entityName ?? 'document'}"`,
-  },
-  [NOTIFICATION_EVENTS.DOCUMENT_PROCESSED]: {
-    category: 'knowledge', priority: 'info', recipients: ['org_admins'],
-    title: (p) => `"${p.entityName ?? 'Document'}" is ready`,
-    message: () => 'Processing completed successfully.',
-  },
-  [NOTIFICATION_EVENTS.DOCUMENT_EMBEDDED]: {
-    category: 'knowledge', priority: 'info', recipients: ['org_admins'],
-    title: (p) => `Embeddings generated for "${p.entityName ?? 'document'}"`,
-    message: () => 'Your agent can now answer from this document.',
   },
   [NOTIFICATION_EVENTS.DOCUMENT_FAILED]: {
     category: 'knowledge', priority: 'high', recipients: ['org_admins'],
@@ -162,27 +110,10 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     message: (p) => String(p.metadata?.error ?? 'The document could not be processed.'),
   },
   // Integration
-  [NOTIFICATION_EVENTS.WHATSAPP_CONNECTED]: {
-    category: 'integration', priority: 'info', recipients: ['actor', 'org_admins'],
-    title: () => 'WhatsApp connected',
-    message: () => 'You can now receive conversations from WhatsApp.',
-  },
   [NOTIFICATION_EVENTS.WHATSAPP_DISCONNECTED]: {
     category: 'integration', priority: 'high', recipients: ['org_admins'],
     title: () => 'WhatsApp disconnected',
     message: (p) => String(p.metadata?.reason ?? 'Reconnect to keep receiving conversations.'),
-  },
-  [NOTIFICATION_EVENTS.TELEGRAM_CONNECTED]: {
-    category: 'integration', priority: 'info', recipients: ['actor', 'org_admins'],
-    title: () => 'Telegram connected',
-  },
-  [NOTIFICATION_EVENTS.DISCORD_CONNECTED]: {
-    category: 'integration', priority: 'info', recipients: ['actor', 'org_admins'],
-    title: () => 'Discord connected',
-  },
-  [NOTIFICATION_EVENTS.SLACK_CONNECTED]: {
-    category: 'integration', priority: 'info', recipients: ['actor', 'org_admins'],
-    title: () => 'Slack connected',
   },
   [NOTIFICATION_EVENTS.API_KEY_EXPIRED]: {
     category: 'integration', priority: 'high', recipients: ['org_admins'],
@@ -196,12 +127,6 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     message: (p) => String(p.metadata?.error ?? ''),
   },
   // Billing
-  [NOTIFICATION_EVENTS.SUBSCRIPTION_RENEWED]: {
-    category: 'billing', priority: 'low', recipients: ['org_admins'],
-    title: () => 'Subscription renewed',
-    message: (p) => `Your ${p.entityName ?? 'plan'} was renewed successfully.`,
-    actionUrl: () => '/settings/billing',
-  },
   [NOTIFICATION_EVENTS.PAYMENT_FAILED]: {
     category: 'billing', priority: 'critical', recipients: ['org_admins'],
     title: () => 'Payment failed',
@@ -217,11 +142,6 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
   [NOTIFICATION_EVENTS.TRIAL_EXPIRED]: {
     category: 'billing', priority: 'high', recipients: ['org_admins'],
     title: () => 'Your trial has ended',
-    actionUrl: () => '/settings/billing',
-  },
-  [NOTIFICATION_EVENTS.INVOICE_GENERATED]: {
-    category: 'billing', priority: 'low', recipients: ['org_admins'],
-    title: (p) => `Invoice ${String(p.metadata?.number ?? '')} generated`,
     actionUrl: () => '/settings/billing',
   },
   [NOTIFICATION_EVENTS.USAGE_LIMIT_REACHED]: {
@@ -243,23 +163,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     message: (p) => String(p.metadata?.summary ?? ''),
     actionUrl: () => '/dashboard/analytics',
   },
-  [NOTIFICATION_EVENTS.HIGH_USAGE]: {
-    category: 'analytics', priority: 'medium', recipients: ['org_admins'],
-    title: () => 'High usage detected',
-    actionUrl: () => '/dashboard/analytics',
-  },
-  [NOTIFICATION_EVENTS.MONTHLY_REPORT]: {
-    category: 'analytics', priority: 'low', recipients: ['org_members'],
-    title: () => 'Your monthly report is ready',
-    actionUrl: () => '/dashboard/analytics',
-  },
   // Security
-  [NOTIFICATION_EVENTS.NEW_LOGIN]: {
-    category: 'security', priority: 'medium', recipients: ['target'],
-    title: () => 'New login detected',
-    message: (p) => `${String(p.metadata?.browser ?? '')} ${String(p.metadata?.os ?? '')} from ${String(p.metadata?.location ?? 'an unknown location')}`,
-    actionUrl: () => '/settings/security',
-  },
   [NOTIFICATION_EVENTS.FAILED_LOGINS]: {
     category: 'security', priority: 'high', recipients: ['target'],
     title: () => 'Multiple failed login attempts',
@@ -270,15 +174,6 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     category: 'security', priority: 'high', recipients: ['target'],
     title: () => 'Your password was changed',
     message: () => 'If this wasn\'t you, reset your password immediately.',
-  },
-  [NOTIFICATION_EVENTS.API_KEY_GENERATED]: {
-    category: 'security', priority: 'low', recipients: ['target'],
-    title: (p) => `API key generated for ${p.entityName ?? 'your account'}`,
-    actionUrl: () => '/settings/provider-keys',
-  },
-  [NOTIFICATION_EVENTS.API_KEY_REVOKED]: {
-    category: 'security', priority: 'medium', recipients: ['target'],
-    title: (p) => `API key revoked for ${p.entityName ?? 'your account'}`,
   },
   [NOTIFICATION_EVENTS.SUSPICIOUS_ACTIVITY]: {
     category: 'security', priority: 'critical', recipients: ['target'],
@@ -293,37 +188,11 @@ export const NOTIFICATION_TEMPLATES: Record<string, NotificationTemplate> = {
     message: () => 'Create your first agent to get started.',
     actionUrl: () => '/agents/new',
   },
-  [NOTIFICATION_EVENTS.ONBOARDING_STEP]: {
-    category: 'user', priority: 'low', recipients: ['target'],
-    title: (p) => `Next step: ${String(p.metadata?.step ?? 'continue onboarding')}`,
-    actionUrl: () => '/dashboard',
-  },
-  [NOTIFICATION_EVENTS.PROFILE_INCOMPLETE]: {
-    category: 'user', priority: 'low', recipients: ['target'],
-    title: () => 'Complete your profile',
-    actionUrl: () => '/settings/profile',
-  },
-  [NOTIFICATION_EVENTS.FEATURE_SUGGESTION]: {
-    category: 'user', priority: 'low', recipients: ['target'],
-    title: (p) => String(p.metadata?.title ?? 'A feature you might like'),
-    actionUrl: (p) => String(p.metadata?.url ?? '/dashboard'),
-  },
   // Support tickets
   [NOTIFICATION_EVENTS.TICKET_CREATED]: {
     category: 'organization', priority: 'medium', recipients: ['org_admins'],
     title: (p) => `New support ticket: ${p.entityName ?? ''}`,
     message: () => 'A user reported a problem and is waiting for a response.',
-    actionUrl: (p) => `/support/${p.entityId ?? ''}`,
-  },
-  [NOTIFICATION_EVENTS.TICKET_REPLIED]: {
-    category: 'organization', priority: 'low', recipients: ['org_admins', 'target'],
-    title: (p) => `New reply on ticket: ${p.entityName ?? ''}`,
-    actionUrl: (p) => `/support/${p.entityId ?? ''}`,
-  },
-  [NOTIFICATION_EVENTS.TICKET_STATUS_CHANGED]: {
-    category: 'organization', priority: 'low', recipients: ['target'],
-    title: (p) => `Ticket status changed to ${String(p.metadata?.status ?? '')}`,
-    message: (p) => `"${p.entityName ?? ''}" is now ${String(p.metadata?.status ?? '')}.`,
     actionUrl: (p) => `/support/${p.entityId ?? ''}`,
   },
 }

@@ -3,7 +3,7 @@ import { DollarSign, CheckCircle, Cpu, Users, AlertCircle } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { PageHeader } from '@/components/shared/page-header'
-import { OverviewChart } from '@/components/dashboard/overview-chart'
+import { ActivityChart } from '@/components/analytics/activity-charts'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
 import { ResponseTimeChart } from '@/components/analytics/response-time-chart'
 import { ChannelPerformanceChart } from '@/components/analytics/channel-performance-chart'
@@ -77,6 +77,7 @@ export default function AnalyticsPage() {
     date: d.date,
     conversations: d.totalConversations,
     messages: d.totalMessages,
+    users: d.uniqueUsers,
   }))
 
   const responseTimeData = (overview?.dailyBreakdown || []).map((d) => ({
@@ -145,7 +146,7 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      <OverviewChart data={chartData} loading={isFetching} />
+      <ActivityChart data={chartData} loading={isFetching} title="Activity" />
 
       <div className="grid gap-3 lg:grid-cols-2">
         <ResponseTimeChart data={responseTimeData} loading={isFetching} />

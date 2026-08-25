@@ -3,6 +3,7 @@ import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
 import { AgentCapabilities, type Capability } from '@/components/agents/agent-capabilities'
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
 import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
+import { AgentGuardrails, type AgentGuardrailsValue } from '@/components/agents/agent-guardrails'
 import { Plug } from 'lucide-react'
 
 interface ModelOption {
@@ -31,6 +32,8 @@ interface AgentBuilderProps {
   mcpServers?: McpServerOption[]
   linkedMcpServerIds?: string[]
   onMcpServerToggle?: (serverId: string, checked: boolean) => void
+  guardrails?: AgentGuardrailsValue
+  onGuardrailsChange?: (value: AgentGuardrailsValue) => void
 }
 
 export function AgentBuilder({
@@ -47,6 +50,8 @@ export function AgentBuilder({
   mcpServers,
   linkedMcpServerIds = [],
   onMcpServerToggle,
+  guardrails,
+  onGuardrailsChange,
 }: AgentBuilderProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -64,6 +69,12 @@ export function AgentBuilder({
           modelsError={modelsError}
           modelsErrorMessage={modelsErrorMessage}
         />
+
+        {guardrails && onGuardrailsChange && (
+          <div className="space-y-3 border-t border-border/40 pt-5">
+            <AgentGuardrails value={guardrails} onChange={onGuardrailsChange} disabled={disabled} />
+          </div>
+        )}
       </div>
 
       <div className="space-y-6">

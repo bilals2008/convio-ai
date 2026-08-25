@@ -570,6 +570,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
         role: invitation.role,
         organization: invitation.organization,
         invitedBy: invitation.invitedBy?.name || 'A team member',
+        expiresAt: invitation.expiresAt,
       },
     }
   })
@@ -604,12 +605,6 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
 
     const membership = await prisma.membership.create({
       data: { userId: request.userId!, organizationId: invitation.organizationId, role: invitation.role },
-    })
-
-    fastify.emitEvent(NOTIFICATION_EVENTS.MEMBER_JOINED, {
-      organizationId: invitation.organizationId,
-      userId: request.userId,
-      entityName: profile.name ?? profile.email,
     })
 
     await prisma.invitation.update({ where: { id: invitation.id }, data: { acceptedAt: new Date() } })

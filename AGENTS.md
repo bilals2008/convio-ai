@@ -28,6 +28,8 @@ Rules for AI agents working on this codebase.
 
 - Import from `@/components/ui/` not custom implementations
 - Use `cn()` utility for conditional classes
+- NEVER nest cards/boxes inside cards (card-in-card clutter) — shared components stay flat (fields only), the page owns the Card wrapper
+- No over-info: one short helper line max per control; prefer self-explanatory placeholders over extra text
 
 ## Forms
 

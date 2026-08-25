@@ -9,7 +9,6 @@ import {
   NotificationStatus,
   type Prisma,
 } from '@convio/database'
-import type { RealtimeNotificationEvent } from './realtime.js'
 
 export interface CreateNotificationInput {
   userId: string
@@ -76,22 +75,6 @@ export interface ListNotificationsOptions {
   limit?: number
 }
 
-export interface NotificationDto {
-  id: string
-  userId: string
-  title: string
-  message: string | null
-  type: string
-  category: string
-  priority: string
-  status: string
-  metadata: Prisma.JsonValue | null
-  actionUrl: string | null
-  createdAt: Date
-  readAt: Date | null
-  archivedAt: Date | null
-}
-
 const NOTIFICATION_SELECT = {
   id: true,
   userId: true,
@@ -108,9 +91,9 @@ const NOTIFICATION_SELECT = {
   archivedAt: true,
 } as const
 
-const unexpired: Prisma.NotificationWhereInput = {
+const notExpired = (): Prisma.NotificationWhereInput => ({
   OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-}
+})
 
 export class NotificationService {
   private readonly fastify: FastifyInstance
@@ -127,16 +110,16 @@ export class NotificationService {
     const prefs = await this.loadPrefs(userIds)
     const now = new Date()
 
-    const rows: Prisma.NotificationCreateManyInput[] = []
-    const emailCandidates = new Map<string, CreateNotificationInput>()
-
+    // ponytail: publish/email straight from in-memory rows — skips a re-fetch
+    // query. A dedupe-collision row could ping SSE without persisting; dedupeKey
+    // is unused by handlers today, so collisions don't happen.
+    const rows: Array<{ row: Prisma.NotificationCreateManyInput; input: CreateNotificationInput }> = []
     for (const input of inputs) {
       const pref = prefs.get(input.userId) ?? null
       if (pref?.muteAll) continue
-      if (pref ? !pref.inAppEnabled : false) continue
-      const id = randomUUID()
-      rows.push({
-        id,
+      if (pref && !pref.inAppEnabled) continue
+      const row: Prisma.NotificationCreateManyInput = {
+        id: randomUUID(),
         userId: input.userId,
         organizationId: input.organizationId ?? null,
         type: input.type,
@@ -148,77 +131,75 @@ export class NotificationService {
         actionUrl: input.actionUrl ?? null,
         dedupeKey: input.dedupeKey ?? null,
         expiresAt: input.expiresAt ?? null,
-      })
-      emailCandidates.set(id, input)
+      }
+      rows.push({ row, input })
     }
 
     if (rows.length === 0) return 0
-    const created = await prisma.notification.createMany({ data: rows, skipDuplicates: true })
-
-    const inserted = await prisma.notification.findMany({
-      where: { id: { in: rows.map((r) => r.id!) } },
-      select: NOTIFICATION_SELECT,
+    const created = await prisma.notification.createMany({
+      data: rows.map((r) => r.row),
+      skipDuplicates: true,
     })
 
-    for (const row of inserted) {
-      this.publishRealtime(row)
+    const hub = this.fastify.notificationsRealtime
+    if (hub.clientCount() > 0) {
+      for (const { row, input } of rows) {
+        hub.publish(row.userId, {
+          id: row.id!,
+          type: row.type,
+          category: input.category,
+          priority: input.priority,
+          title: row.title,
+          message: row.message,
+          actionUrl: row.actionUrl,
+          metadata: (row.metadata ?? null) as Record<string, unknown> | null,
+          createdAt: now.toISOString(),
+        })
+      }
     }
 
-    await this.queueEmailDeliveries(inserted, emailCandidates, prefs)
+    await this.queueEmailDeliveries(rows, prefs)
     return created.count
   }
 
-  private publishRealtime(row: NotificationDto) {
-    const event: RealtimeNotificationEvent = {
-      id: row.id,
-      type: row.type,
-      category: row.category,
-      priority: row.priority,
-      title: row.title,
-      message: row.message,
-      actionUrl: row.actionUrl,
-      metadata: row.metadata as Record<string, unknown> | null,
-      createdAt: row.createdAt.toISOString(),
-    }
-    this.fastify.notificationsRealtime.publish(row.userId, event)
-  }
-
   private async queueEmailDeliveries(
-    inserted: NotificationDto[],
-    emailCandidates: Map<string, CreateNotificationInput>,
+    rows: Array<{ row: Prisma.NotificationCreateManyInput; input: CreateNotificationInput }>,
     prefs: Map<string, Awaited<ReturnType<NotificationService['getPreferences']>> | null>
   ) {
     const now = new Date()
-    const targets = inserted.filter((row) => {
-      const input = emailCandidates.get(row.id)
-      if (!input) return false
-      const pref = prefs.get(row.userId) ?? null
-      return shouldSendEmail(pref as unknown as NotificationPrefLike | null, row.category as NotificationCategory, row.priority as NotificationPriority, now, input.sendEmail)
+    const targets = rows.filter(({ row, input }) => {
+      const pref = prefs.get(String(row.userId)) ?? null
+      return shouldSendEmail(
+        pref as unknown as NotificationPrefLike | null,
+        row.category as NotificationCategory,
+        row.priority as NotificationPriority,
+        now,
+        input.sendEmail
+      )
     })
     if (targets.length === 0) return
 
     const profiles = await prisma.profile.findMany({
-      where: { id: { in: [...new Set(targets.map((t) => t.userId))] } },
+      where: { id: { in: [...new Set(targets.map((t) => String(t.row.userId)))] } },
       select: { id: true, email: true },
     })
     const emailMap = new Map(profiles.map((p) => [p.id, p.email]))
 
-    const deliveries = targets.map((row) => ({
+    const deliveries = targets.map(({ row }) => ({
       id: randomUUID(),
-      notificationId: row.id,
+      notificationId: String(row.id),
       channel: NotificationChannel.email,
       status: NotificationDeliveryStatus.pending,
     }))
     await prisma.notificationDelivery.createMany({ data: deliveries })
 
-    for (const row of targets) {
-      const to = emailMap.get(row.userId)
-      const delivery = deliveries.find((d) => d.notificationId === row.id)
-      if (!to || !delivery) continue
-      void this.sendEmail(delivery.id, {
+    for (let i = 0; i < targets.length; i++) {
+      const to = emailMap.get(String(targets[i].row.userId))
+      if (!to) continue
+      void this.sendEmail(deliveries[i].id, {
         to,
-        subject: `[Convio] ${row.title}`,
-        html: renderEmailHtml(row.title, row.message, row.actionUrl),
+        subject: `[Convio] ${targets[i].row.title}`,
+        html: renderEmailHtml(targets[i].row.title, targets[i].row.message ?? null, targets[i].row.actionUrl ?? null),
       })
     }
   }
@@ -251,24 +232,37 @@ export class NotificationService {
     }
   }
 
-  async retryFailedDeliveries(maxAgeMinutes = 60, maxRetries = 3) {    const stale = await prisma.notificationDelivery.findMany({
+  async retryFailedDeliveries(maxAgeMinutes = 60, maxRetries = 3) {
+    const stale = await prisma.notificationDelivery.findMany({
       where: {
         status: NotificationDeliveryStatus.failed,
         retryCount: { lt: maxRetries },
         failedAt: { lt: new Date(Date.now() - maxAgeMinutes * 60_000) },
       },
-      include: { notification: true },
+      select: {
+        id: true,
+        notification: { select: { userId: true, title: true, message: true, actionUrl: true } },
+      },
       take: 50,
     })
+    if (stale.length === 0) return 0
+
+    await prisma.notificationDelivery.updateMany({
+      where: { id: { in: stale.map((d) => d.id) } },
+      data: { retryCount: { increment: 1 }, status: NotificationDeliveryStatus.pending, failedAt: null },
+    })
+
+    const profiles = await prisma.profile.findMany({
+      where: { id: { in: [...new Set(stale.map((d) => d.notification.userId))] } },
+      select: { id: true, email: true },
+    })
+    const emailMap = new Map(profiles.map((p) => [p.id, p.email]))
+
     for (const delivery of stale) {
-      await prisma.notificationDelivery.update({
-        where: { id: delivery.id },
-        data: { retryCount: { increment: 1 }, status: NotificationDeliveryStatus.pending, failedAt: null },
-      })
-      const profile = await prisma.profile.findUnique({ where: { id: delivery.notification.userId }, select: { email: true } })
-      if (!profile?.email) continue
+      const to = emailMap.get(delivery.notification.userId)
+      if (!to) continue
       void this.sendEmail(delivery.id, {
-        to: profile.email,
+        to,
         subject: `[Convio] ${delivery.notification.title}`,
         html: renderEmailHtml(delivery.notification.title, delivery.notification.message, delivery.notification.actionUrl),
       }).catch(() => {})
@@ -316,7 +310,7 @@ export class NotificationService {
 
   async list(userId: string, opts: ListNotificationsOptions) {
     const limit = Math.min(opts.limit ?? 30, 100)
-    const conditions: Prisma.NotificationWhereInput[] = [unexpired]
+    const conditions: Prisma.NotificationWhereInput[] = [notExpired()]
     if (opts.orgId) {
       conditions.push({ OR: [{ organizationId: opts.orgId }, { organizationId: null }] })
     }
@@ -350,10 +344,17 @@ export class NotificationService {
   }
 
   async unreadCount(userId: string) {
-    const [unread, critical] = await Promise.all([
-      prisma.notification.count({ where: { userId, status: NotificationStatus.unread, AND: [unexpired] } }),
-      prisma.notification.count({ where: { userId, status: NotificationStatus.unread, priority: NotificationPriority.critical, AND: [unexpired] } }),
-    ])
+    const groups = await prisma.notification.groupBy({
+      by: ['priority'],
+      where: { userId, status: NotificationStatus.unread, AND: [notExpired()] },
+      _count: { _all: true },
+    })
+    let unread = 0
+    let critical = 0
+    for (const g of groups) {
+      unread += g._count._all
+      if (g.priority === NotificationPriority.critical) critical = g._count._all
+    }
     return { unread, critical }
   }
 
@@ -427,12 +428,21 @@ export class NotificationService {
   }
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+}
+
 function renderEmailHtml(title: string, message: string | null, actionUrl: string | null) {
-  const action = actionUrl ? `<p style="margin:24px 0 0;"><a href="${actionUrl}" style="background:#166534;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-family:sans-serif;font-size:14px;">Open in Convio</a></p>` : ''
+  const safeTitle = escapeHtml(title)
+  const action = actionUrl ? `<p style="margin:24px 0 0;"><a href="${escapeHtml(actionUrl)}" style="background:#166534;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-family:sans-serif;font-size:14px;">Open in Convio</a></p>` : ''
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;">
-      <h2 style="margin:0 0 12px;font-size:18px;color:#111;">${title}</h2>
-      ${message ? `<p style="font-size:14px;line-height:1.6;color:#374151;margin:0 0 8px;">${message}</p>` : ''}
+      <h2 style="margin:0 0 12px;font-size:18px;color:#111;">${safeTitle}</h2>
+      ${message ? `<p style="font-size:14px;line-height:1.6;color:#374151;margin:0 0 8px;">${escapeHtml(message)}</p>` : ''}
       ${action}
     </div>`
 }

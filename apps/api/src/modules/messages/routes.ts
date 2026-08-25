@@ -10,7 +10,9 @@ import { checkMessageLimit } from '../../services/billing.js'
 import { resolveProviderKey } from '../../services/provider-key.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { computeCost } from '@convio/ai/pricing'
-import { getAgentWidgetDomains, assertPublicAccess } from '../widgets/access.js'
+import { getAgentWidgetDomains, assertConversationAccess } from '../widgets/access.js'
+import { runExclusive, createRequestSignal } from '../../services/concurrency.js'
+import { guardrailInputRefusal, guardrailPrompt } from '../../services/guardrails.js'
 import { z } from 'zod'
 
 // User-facing message shown when a message is blocked by moderation.
@@ -172,6 +174,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             providerKeyId: true,
             knowledgeBaseId: true,
             widgetConfig: true,
+            guardrails: true,
           },
         },
       },
@@ -230,6 +233,24 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       }
     }
 
+    // Per-agent guardrails: blocklist hit → canned refusal without an LLM call.
+    const agentGuardrailRefusal = guardrailInputRefusal(content, agent.guardrails)
+    if (agentGuardrailRefusal) {
+      reply.hijack()
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+        ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
+      })
+      reply.raw.flushHeaders()
+      reply.raw.write(`data: ${JSON.stringify({ content: agentGuardrailRefusal })}\n\n`)
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+      return
+    }
+
     const historyPromise = prisma.message.findMany({
       where: { conversationId: id },
       orderBy: { createdAt: 'desc' },
@@ -264,9 +285,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       toolsPromise,
     ])
     const history = historyDesc.reverse()
-    const systemContext = context
+    const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt
+      : agent.systemPrompt) + guardrailPrompt(agent.guardrails)
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
@@ -303,20 +324,23 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     request.raw.once('close', () => {
       clientDisconnected = true
     })
+    const signal = createRequestSignal((cb) => request.raw.once('close', cb))
 
-    let fullResponse = ''
-    let totalInputTokens = 0
-    let totalOutputTokens = 0
+    await runExclusive(`conv:${id}`, async () => {
+      let fullResponse = ''
+      let totalInputTokens = 0
+      let totalOutputTokens = 0
 
-    try {
-      const stream = provider.stream({
-        model: agent.model,
-        messages: aiMessages,
-        temperature: agent.temperature ?? 0.7,
-        maxTokens: agent.maxTokens ?? 2048,
-        apiKey,
-        tools: toolDefs.length > 0 ? toolDefs : undefined,
-      })
+      try {
+        const stream = provider.stream({
+          model: agent.model,
+          messages: aiMessages,
+          temperature: agent.temperature ?? 0.7,
+          maxTokens: agent.maxTokens ?? 2048,
+          apiKey,
+          signal,
+          tools: toolDefs.length > 0 ? toolDefs : undefined,
+        })
 
       let firstResponseText = ''
       const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
@@ -370,6 +394,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           temperature: agent.temperature ?? 0.7,
           maxTokens: agent.maxTokens ?? 2048,
           apiKey,
+          signal,
         })
         for await (const chunk of finalStream) {
           if (clientDisconnected) break
@@ -392,7 +417,6 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         reply.raw.write('data: [DONE]\n\n')
         reply.raw.end()
       }
-      return
     }
 
     if (fullResponse) {
@@ -428,8 +452,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         })
       } catch {}
     }
+    })
 
-    if (!clientDisconnected) {
+    if (!clientDisconnected && !reply.raw.writableEnded) {
       reply.raw.write('data: [DONE]\n\n')
       reply.raw.end()
     }
@@ -527,6 +552,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const conversation = await prisma.conversation.findUnique({
       where: { id },
       select: {
+        userId: true,
+        metadata: true,
         agent: {
           select: {
             id: true,
@@ -538,6 +565,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             maxTokens: true,
             providerKeyId: true,
             knowledgeBaseId: true,
+            guardrails: true,
           },
         },
       },
@@ -551,7 +579,12 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     if (widgetDomains === null) {
       throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
     }
-    assertPublicAccess(request, widgetDomains)
+    assertConversationAccess(request, widgetDomains, conversation)
+
+    const widgetLimitCheck = await checkMessageLimit(conversation.agent.organizationId)
+    if (!widgetLimitCheck.allowed) {
+      return { data: { response: 'This conversation has reached its monthly message limit.' } }
+    }
 
     // Moderate the inbound message before storing it or calling the AI.
     const widgetModeration = await moderateMessage(conversation.agent.organizationId, content)
@@ -563,6 +596,11 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         flags: widgetModeration.result.flags,
       })
       return { data: { response: widgetModeration.message } }
+    }
+
+    const widgetGuardrailRefusal = guardrailInputRefusal(content, conversation.agent.guardrails)
+    if (widgetGuardrailRefusal) {
+      return { data: { response: widgetGuardrailRefusal } }
     }
 
     await prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } })
@@ -605,21 +643,24 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt) + WIDGET_FORMAT_GUIDE
+      : agent.systemPrompt) + WIDGET_FORMAT_GUIDE + guardrailPrompt(agent.guardrails)
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
       ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     ]
 
+    const signal = createRequestSignal((cb) => request.raw.once('close', cb))
+
     try {
-      const response = await provider.generate({
+      const response = await runExclusive(`conv:${id}`, () => provider.generate({
         model: agent.model,
         messages: aiMessages,
         temperature: agent.temperature ?? 0.7,
         maxTokens: agent.maxTokens ?? 2048,
         apiKey,
-      })
+        signal,
+      }))
 
       const lastUserMsg = await prisma.message.findFirst({
         where: { conversationId: id, role: 'user' },
@@ -658,7 +699,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
-      select: { agent: { select: { id: true, status: true } } },
+      select: { agent: { select: { id: true, status: true } }, userId: true, metadata: true },
     })
     if (!conversation || conversation.agent.status === 'archived') {
       throw new AppError(404, 'Conversation not found or agent is unavailable')
@@ -668,7 +709,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     if (widgetDomains === null) {
       throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
     }
-    assertPublicAccess(request, widgetDomains)
+    assertConversationAccess(request, widgetDomains, conversation)
 
     const messages = await prisma.message.findMany({
       where: { conversationId: id },
@@ -690,6 +731,8 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     const conversation = await prisma.conversation.findUnique({
       where: { id },
       select: {
+        userId: true,
+        metadata: true,
         agent: {
           select: {
             id: true,
@@ -702,6 +745,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             providerKeyId: true,
             knowledgeBaseId: true,
             widgetConfig: true,
+            guardrails: true,
           },
         },
       },
@@ -715,10 +759,15 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
     if (widgetDomains === null) {
       throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
     }
-    assertPublicAccess(request, widgetDomains)
+    assertConversationAccess(request, widgetDomains, conversation)
 
     const agent = conversation.agent
     let earlyResponse: string | null = null
+
+    const widgetLimitCheck = await checkMessageLimit(agent.organizationId)
+    if (!widgetLimitCheck.allowed) {
+      earlyResponse = 'This conversation has reached its monthly message limit.'
+    }
 
     const widgetModeration = await moderateMessage(agent.organizationId, content)
     if (!widgetModeration.allowed) {
@@ -729,7 +778,9 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         flags: widgetModeration.result.flags,
       })
       earlyResponse = widgetModeration.message
-    } else {
+    } else if (guardrailInputRefusal(content, agent.guardrails)) {
+      earlyResponse = guardrailInputRefusal(content, agent.guardrails)
+    } else if (!earlyResponse) {
       await prisma.message.create({ data: { conversationId: id, role: 'user', content, status: 'sent' } })
       await prisma.conversation.update({ where: { id }, data: { status: 'active' } })
     }
@@ -753,12 +804,11 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         const contextPromise = agent.knowledgeBaseId
           ? retrieveContext(content, agent.knowledgeBaseId).catch(() => null)
           : Promise.resolve(null)
-        const providerKeyPromise = agent.providerKeyId
-          ? prisma.providerKey.findFirst({
-              where: { id: agent.providerKeyId, organizationId: agent.organizationId },
-              select: { apiKey: true, provider: true },
-            })
-          : Promise.resolve(null)
+        const providerKeyPromise = resolveProviderKey({
+          organizationId: agent.organizationId,
+          model: agent.model!,
+          providerKeyId: agent.providerKeyId,
+        })
         const toolsPromise = loadAgentToolHandlers(agent.id, prisma)
 
         const [historyDesc, ctx, providerKey, handlers] = await Promise.all([
@@ -794,6 +844,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       reply.raw.write(`data: ${JSON.stringify(payload)}\n\n`)
     }
     const finishStream = () => {
+      if (reply.raw.writableEnded) return
       reply.raw.write('data: [DONE]\n\n')
       reply.raw.end()
     }
@@ -806,7 +857,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     const systemContext = (context
       ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
-      : agent.systemPrompt ?? '') + WIDGET_FORMAT_GUIDE
+      : agent.systemPrompt ?? '') + WIDGET_FORMAT_GUIDE + guardrailPrompt(agent.guardrails)
 
     const aiMessages = [
       { role: 'system' as const, content: systemContext },
@@ -821,20 +872,23 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
     let clientDisconnected = false
     request.raw.once('close', () => { clientDisconnected = true })
+    const signal = createRequestSignal((cb) => request.raw.once('close', cb))
 
-    let fullResponse = ''
-    let totalInputTokens = 0
-    let totalOutputTokens = 0
+    await runExclusive(`conv:${id}`, async () => {
+      let fullResponse = ''
+      let totalInputTokens = 0
+      let totalOutputTokens = 0
 
-    try {
-      const stream = provider!.stream({
-        model: agent.model!,
-        messages: aiMessages,
-        temperature: agent.temperature ?? 0.7,
-        maxTokens: agent.maxTokens ?? 2048,
-        apiKey,
-        tools: toolDefs.length > 0 ? toolDefs : undefined,
-      })
+      try {
+        const stream = provider!.stream({
+          model: agent.model!,
+          messages: aiMessages,
+          temperature: agent.temperature ?? 0.7,
+          maxTokens: agent.maxTokens ?? 2048,
+          apiKey,
+          signal,
+          tools: toolDefs.length > 0 ? toolDefs : undefined,
+        })
 
       let firstResponseText = ''
       const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
@@ -885,6 +939,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           temperature: agent.temperature ?? 0.7,
           maxTokens: agent.maxTokens ?? 2048,
           apiKey,
+          signal,
         })
         for await (const chunk of finalStream) {
           if (clientDisconnected) break
@@ -905,7 +960,6 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         writeChunk({ error: 'Sorry, something went wrong. Please try again.' })
         finishStream()
       }
-      return
     }
 
     if (fullResponse) {
@@ -929,6 +983,7 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         },
       })
     }
+    })
 
     if (!clientDisconnected) {
       finishStream()

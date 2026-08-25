@@ -1,3 +1,5 @@
+import { safeFetchText } from '../ssrf.js'
+
 export interface UrlFetchResult {
   title?: string
   content: string
@@ -20,25 +22,13 @@ export async function fetchUrl(url: string): Promise<UrlFetchResult> {
     return { content: '', error: 'Invalid URL format' }
   }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 15_000)
-
   try {
-    const res = await fetch(normalizedUrl, {
-      signal: controller.signal,
+    const { contentType, text: raw } = await safeFetchText(normalizedUrl, {
       headers: {
         'User-Agent': 'Convio/1.0 (Document Fetcher; +https://convio.app)',
         Accept: 'text/html,text/plain,application/json;q=0.9,*/*;q=0.8',
       },
-      redirect: 'follow',
-    })
-
-    if (!res.ok) {
-      return { content: '', error: `HTTP ${res.status}: ${res.statusText}` }
-    }
-
-    const contentType = res.headers.get('content-type') || ''
-    const raw = await res.text()
+    }, 5, 15_000)
 
     let title = ''
     const titleMatch = raw.match(/<title[^>]*>([^<]*)<\/title>/i)
@@ -70,8 +60,6 @@ export async function fetchUrl(url: string): Promise<UrlFetchResult> {
       return { content: '', error: 'Request timed out after 15 seconds' }
     }
     return { content: '', error: `Failed to fetch: ${(err as Error).message}` }
-  } finally {
-    clearTimeout(timeout)
   }
 }
 

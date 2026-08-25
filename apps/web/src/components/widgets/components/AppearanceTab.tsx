@@ -3,6 +3,8 @@ import { Palette, PaintBucket, Upload, X, Loader2, Image as ImageIcon, MessageCi
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { usePlan } from '@/lib/hooks/use-billing'
 import { SectionCard } from './SectionCard'
 import { ColorField } from './ColorField'
 import { AvatarPresetModal } from '@/components/agents/avatar-preset-modal'
@@ -10,6 +12,7 @@ import { useAgentAvatarUpload } from '@/lib/hooks/use-agent-avatar-upload'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import type { WidgetConfig } from '../types'
 import {
   primaryPresets,
   bgPresets,
@@ -59,98 +62,62 @@ const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const MAX_SIZE_MB = 2
 
 interface AppearanceTabProps {
-  agentName: string
-  onAgentNameChange: (value: string) => void
-  agentAvatar: string
-  onAgentAvatarChange: (value: string) => void
-  primaryColor: string
-  onPrimaryColorChange: (value: string) => void
-  backgroundColor: string
-  onBackgroundColorChange: (value: string) => void
-  textColor: string
-  onTextColorChange: (value: string) => void
-  promptBgColor: string
-  onPromptBgColorChange: (value: string) => void
-  headerGradientStart: string
-  onHeaderGradientStartChange: (value: string) => void
-  headerGradientEnd: string
-  onHeaderGradientEndChange: (value: string) => void
-  headerGradientDirection: number
-  onHeaderGradientDirectionChange: (value: number) => void
-  headerGradient: boolean
-  onHeaderGradientChange: (value: boolean) => void
-  borderColor: string
-  onBorderColorChange: (value: string) => void
-  inputBgColor: string
-  onInputBgColorChange: (value: string) => void
-  sendBtnColor: string
-  onSendBtnColorChange: (value: string) => void
-  footerBgColor: string
-  onFooterBgColorChange: (value: string) => void
-  themeMode: ThemeMode
-  onThemeModeChange: (value: ThemeMode) => void
-  headerTitle: string
-  onHeaderTitleChange: (value: string) => void
-  headerSubtitle: string
-  onHeaderSubtitleChange: (value: string) => void
-  showOnlineIndicator: boolean
-  onShowOnlineIndicatorChange: (value: boolean) => void
-  placeholderText: string
-  onPlaceholderTextChange: (value: string) => void
-  showPoweredBy: boolean
-  onShowPoweredByChange: (value: boolean) => void
-  quickReplies: string[]
-  onQuickRepliesChange: (value: string[]) => void
-  launcherLabel: string
-  onLauncherLabelChange: (value: string) => void
+  config: WidgetConfig
+  onChange: (patch: Partial<WidgetConfig>) => void
 }
 
-export function AppearanceTab({
-  agentName,
-  onAgentNameChange,
-  agentAvatar,
-  onAgentAvatarChange,
-  primaryColor,
-  onPrimaryColorChange,
-  backgroundColor,
-  onBackgroundColorChange,
-  textColor,
-  onTextColorChange,
-  promptBgColor,
-  onPromptBgColorChange,
-  headerGradientStart,
-  onHeaderGradientStartChange,
-  headerGradientEnd,
-  onHeaderGradientEndChange,
-  headerGradientDirection,
-  onHeaderGradientDirectionChange,
-  headerGradient,
-  onHeaderGradientChange,
-  borderColor,
-  onBorderColorChange,
-  inputBgColor,
-  onInputBgColorChange,
-  sendBtnColor,
-  onSendBtnColorChange,
-  footerBgColor,
-  onFooterBgColorChange,
-  themeMode,
-  onThemeModeChange,
-  headerTitle,
-  onHeaderTitleChange,
-  headerSubtitle,
-  onHeaderSubtitleChange,
-  showOnlineIndicator,
-  onShowOnlineIndicatorChange,
-  placeholderText,
-  onPlaceholderTextChange,
-  showPoweredBy,
-  onShowPoweredByChange,
-  quickReplies,
-  onQuickRepliesChange,
-  launcherLabel,
-  onLauncherLabelChange,
-}: AppearanceTabProps) {
+export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
+  const { data: plan } = usePlan()
+  const isFreePlan = !plan || plan.name === 'free'
+
+  // Local aliases over the config object keep the markup below readable while
+  // every edit flows through the single patch-style onChange.
+  const agentName = config.agentName ?? ''
+  const agentAvatar = config.agentAvatar ?? ''
+  const primaryColor = config.primaryColor ?? ''
+  const backgroundColor = config.backgroundColor ?? ''
+  const textColor = config.textColor ?? ''
+  const promptBgColor = config.promptBgColor ?? ''
+  const headerGradientStart = config.headerGradientStart ?? ''
+  const headerGradientEnd = config.headerGradientEnd ?? ''
+  const headerGradientDirection = config.headerGradientDirection ?? 135
+  const headerGradient = config.headerGradient ?? true
+  const borderColor = config.borderColor ?? ''
+  const inputBgColor = config.inputBgColor ?? ''
+  const sendBtnColor = config.sendBtnColor ?? ''
+  const footerBgColor = config.footerBgColor ?? ''
+  const themeMode = config.themeMode ?? 'auto'
+  const headerTitle = config.headerTitle ?? ''
+  const headerSubtitle = config.headerSubtitle ?? ''
+  const showOnlineIndicator = config.showOnlineIndicator ?? true
+  const placeholderText = config.placeholderText ?? ''
+  const showPoweredBy = config.showPoweredBy ?? true
+  const quickReplies = config.quickReplies ?? []
+  const launcherLabel = config.launcherLabel ?? ''
+
+  const onAgentNameChange = (value: string) => onChange({ agentName: value })
+  const onAgentAvatarChange = (value: string) => onChange({ agentAvatar: value })
+  const onPrimaryColorChange = (value: string) => onChange({ primaryColor: value })
+  const onBackgroundColorChange = (value: string) => onChange({ backgroundColor: value })
+  const onTextColorChange = (value: string) => onChange({ textColor: value })
+  const onPromptBgColorChange = (value: string) => onChange({ promptBgColor: value })
+  const onHeaderGradientStartChange = (value: string) => onChange({ headerGradientStart: value })
+  const onHeaderGradientEndChange = (value: string) => onChange({ headerGradientEnd: value })
+  const onHeaderGradientDirectionChange = (value: number) => onChange({ headerGradientDirection: value })
+  const onHeaderGradientChange = (value: boolean) => onChange({ headerGradient: value })
+  const onBorderColorChange = (value: string) => onChange({ borderColor: value })
+  const onInputBgColorChange = (value: string) => onChange({ inputBgColor: value })
+  const onSendBtnColorChange = (value: string) => onChange({ sendBtnColor: value })
+  const onFooterBgColorChange = (value: string) => onChange({ footerBgColor: value })
+  const onThemeModeChange = (value: ThemeMode) => onChange({ themeMode: value })
+  const onHeaderTitleChange = (value: string) => onChange({ headerTitle: value })
+  const onHeaderSubtitleChange = (value: string) => onChange({ headerSubtitle: value })
+  const onShowOnlineIndicatorChange = (value: boolean) => onChange({ showOnlineIndicator: value })
+  const onPlaceholderTextChange = (value: string) => onChange({ placeholderText: value })
+  const onShowPoweredByChange = (value: boolean) => onChange({ showPoweredBy: value })
+  const onQuickRepliesChange = (value: string[]) => onChange({ quickReplies: value })
+  const onLauncherLabelChange = (value: string) => onChange({ launcherLabel: value })
+
   const { orgId } = useOrg()
   const { upload, isUploading, progress } = useAgentAvatarUpload()
   const [presetModalOpen, setPresetModalOpen] = useState(false)
@@ -534,10 +501,24 @@ export function AppearanceTab({
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
                   <span className="text-xs font-medium text-foreground">Powered by Convio</span>
-                  <button type="button" role="switch" aria-checked={showPoweredBy} onClick={() => onShowPoweredByChange(!showPoweredBy)}
-                    className={cn('relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors', showPoweredBy ? 'bg-primary' : 'bg-muted-foreground/20')}>
-                    <span className={cn('pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform', showPoweredBy ? 'translate-x-4' : 'translate-x-0.5')} />
-                  </button>
+                  {isFreePlan ? (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={<span className="inline-flex cursor-not-allowed opacity-50" />}
+                      >
+                        <button type="button" role="switch" aria-checked={true} disabled
+                          className="relative inline-flex h-5 w-9 shrink-0 cursor-not-allowed rounded-full transition-colors bg-primary opacity-60">
+                          <span className="pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform translate-x-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Upgrade to Pro to hide this</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <button type="button" role="switch" aria-checked={showPoweredBy} onClick={() => onShowPoweredByChange(!showPoweredBy)}
+                      className={cn('relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors', showPoweredBy ? 'bg-primary' : 'bg-muted-foreground/20')}>
+                      <span className={cn('pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform', showPoweredBy ? 'translate-x-4' : 'translate-x-0.5')} />
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="placeholderText" className="text-xs font-medium text-foreground">Input placeholder</Label>

@@ -4,10 +4,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { widgets as widgetsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
-import type { WidgetDetail, ApiError } from '../types'
-import { type ThemeMode } from '../constants'
+import { type WidgetDetail, type WidgetConfig, type ApiError } from '../types'
+import { DEFAULT_WIDGET_CONFIG } from '../constants'
 import type { WidgetDraft as WidgetAiDraft } from '../components/DesignAiTab'
 import { sanitizeDomain } from '../helpers'
+
+// Resolved config for a widget: stored values merged over defaults, with the
+// agent's name as fallback for agentName.
+function resolveConfig(widget: WidgetDetail): WidgetConfig {
+  return {
+    ...DEFAULT_WIDGET_CONFIG,
+    ...widget.config,
+    quickReplies: widget.config.quickReplies ?? [],
+    agentName: widget.config.agentName ?? widget.agent.name ?? '',
+  }
+}
 
 export function useWidgetForm(widgetId: string) {
   const navigate = useNavigate()
@@ -29,37 +40,16 @@ export function useWidgetForm(widgetId: string) {
   const [name, setName] = useState('')
   const [domains, setDomains] = useState<string[]>([])
   const [domainInput, setDomainInput] = useState('')
-  const [position, setPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
-  const [primaryColor, setPrimaryColor] = useState('#1cca4a')
-  const [backgroundColor, setBackgroundColor] = useState('#1c1c1c')
-  const [textColor, setTextColor] = useState('#f3f4f6')
-  const [promptBgColor, setPromptBgColor] = useState('#2a2a2a')
-const [headerGradientStart, setHeaderGradientStart] = useState('#1cca4a')
-const [headerGradientEnd, setHeaderGradientEnd] = useState('#0d7a34')
-  const [headerGradientDirection, setHeaderGradientDirection] = useState(135)
-  const [headerGradient, setHeaderGradient] = useState(true)
-  const [borderColor, setBorderColor] = useState('')
-  const [inputBgColor, setInputBgColor] = useState('')
-  const [sendBtnColor, setSendBtnColor] = useState('')
-  const [footerBgColor, setFooterBgColor] = useState('')
-  const [widgetHeight, setWidgetHeight] = useState(540)
-  const [widgetWidth, setWidgetWidth] = useState<'narrow' | 'default' | 'wide'>('default')
-  const [launcherSize, setLauncherSize] = useState<'small' | 'default' | 'large'>('default')
-  const [borderRadius, setBorderRadius] = useState<'none' | 'default' | 'full'>('default')
-  const [agentName, setAgentName] = useState('')
-  const [agentAvatar, setAgentAvatar] = useState('')
-  const [themeMode, setThemeMode] = useState<ThemeMode>('auto')
-  const [headerTitle, setHeaderTitle] = useState('')
-  const [headerSubtitle, setHeaderSubtitle] = useState('')
-  const [showOnlineIndicator, setShowOnlineIndicator] = useState(true)
-  const [launcherLabel, setLauncherLabel] = useState('')
-  const [placeholderText, setPlaceholderText] = useState('')
-  const [showPoweredBy, setShowPoweredBy] = useState(true)
-  const [quickReplies, setQuickReplies] = useState<string[]>([])
+  const [config, setConfigState] = useState<WidgetConfig>(DEFAULT_WIDGET_CONFIG)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('appearance')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const initializedWidgetId = useRef<string | null>(null)
+
+  // Patch-style setter: setConfig({ primaryColor: '#fff' }) merges over current.
+  const setConfig = useCallback((patch: Partial<WidgetConfig>) => {
+    setConfigState((prev) => ({ ...prev, ...patch }))
+  }, [])
 
   useEffect(() => {
     if (!widget) return
@@ -67,101 +57,19 @@ const [headerGradientEnd, setHeaderGradientEnd] = useState('#0d7a34')
     initializedWidgetId.current = widget.id
     setName(widget.name)
     setDomains(widget.allowedDomains ?? [])
-    setPosition(widget.config.position ?? 'bottom-right')
-    setPrimaryColor(widget.config.primaryColor ?? '#1cca4a')
-    setBackgroundColor(widget.config.backgroundColor ?? '#1c1c1c')
-    setTextColor(widget.config.textColor ?? '#f3f4f6')
-    setPromptBgColor(widget.config.promptBgColor ?? '#2a2a2a')
-    setHeaderGradientStart(widget.config.headerGradientStart ?? '#1cca4a')
-    setHeaderGradientEnd(widget.config.headerGradientEnd ?? '#0d7a34')
-    setHeaderGradientDirection(widget.config.headerGradientDirection ?? 135)
-    setHeaderGradient(widget.config.headerGradient ?? true)
-    setBorderColor(widget.config.borderColor ?? '')
-    setInputBgColor(widget.config.inputBgColor ?? '')
-    setSendBtnColor(widget.config.sendBtnColor ?? '')
-    setFooterBgColor(widget.config.footerBgColor ?? '')
-    setWidgetHeight(widget.config.widgetHeight ?? 540)
-    setWidgetWidth(widget.config.widgetWidth ?? 'default')
-    setLauncherSize(widget.config.launcherSize ?? 'default')
-    setBorderRadius(widget.config.borderRadius ?? 'default')
-    setAgentName(widget.config.agentName ?? widget.agent.name ?? '')
-    setAgentAvatar(widget.config.agentAvatar ?? '')
-    setThemeMode(widget.config.themeMode ?? 'auto')
-    setHeaderTitle(widget.config.headerTitle ?? '')
-    setHeaderSubtitle(widget.config.headerSubtitle ?? '')
-    setShowOnlineIndicator(widget.config.showOnlineIndicator ?? true)
-    setLauncherLabel(widget.config.launcherLabel ?? '')
-    setPlaceholderText(widget.config.placeholderText ?? '')
-    setShowPoweredBy(widget.config.showPoweredBy ?? true)
-    setQuickReplies(widget.config.quickReplies ?? [])
+    setConfigState(resolveConfig(widget))
   }, [widget])
 
-   const isDirty = useMemo(() => {
-     if (!widget) return false
-      const saved = {
-        name: widget.name,
-        domains: (widget.allowedDomains ?? []).join(','),
-        position: widget.config.position ?? 'bottom-right',
-        primaryColor: widget.config.primaryColor ?? '#1cca4a',
-        backgroundColor: widget.config.backgroundColor ?? '#1c1c1c',
-        textColor: widget.config.textColor ?? '#f3f4f6',
-        promptBgColor: widget.config.promptBgColor ?? '#2a2a2a',
-        headerGradientStart: widget.config.headerGradientStart ?? '#1cca4a',
-        headerGradientEnd: widget.config.headerGradientEnd ?? '#0d7a34',
-        headerGradientDirection: widget.config.headerGradientDirection ?? 135,
-        headerGradient: widget.config.headerGradient ?? true,
-        borderColor: widget.config.borderColor ?? '',
-        inputBgColor: widget.config.inputBgColor ?? '',
-        sendBtnColor: widget.config.sendBtnColor ?? '',
-        footerBgColor: widget.config.footerBgColor ?? '',
-        widgetHeight: widget.config.widgetHeight ?? 540,
-        widgetWidth: widget.config.widgetWidth ?? 'default',
-        launcherSize: widget.config.launcherSize ?? 'default',
-        borderRadius: widget.config.borderRadius ?? 'default',
-        agentName: widget.config.agentName ?? widget.agent.name ?? '',
-        agentAvatar: widget.config.agentAvatar ?? '',
-        themeMode: widget.config.themeMode ?? 'auto',
-        headerTitle: widget.config.headerTitle ?? '',
-        headerSubtitle: widget.config.headerSubtitle ?? '',
-        showOnlineIndicator: widget.config.showOnlineIndicator ?? true,
-        launcherLabel: widget.config.launcherLabel ?? '',
-        placeholderText: widget.config.placeholderText ?? '',
-        showPoweredBy: widget.config.showPoweredBy ?? true,
-        quickReplies: (widget.config.quickReplies ?? []).join(','),
-      }
-      const current = {
-        name,
-        domains: domains.join(','),
-        position,
-        primaryColor,
-        backgroundColor,
-        textColor,
-        promptBgColor,
-        headerGradientStart,
-        headerGradientEnd,
-        headerGradientDirection,
-        headerGradient,
-        borderColor,
-        inputBgColor,
-        sendBtnColor,
-        footerBgColor,
-        widgetHeight,
-        widgetWidth,
-        launcherSize,
-        borderRadius,
-        agentName,
-        agentAvatar,
-        themeMode,
-        headerTitle,
-        headerSubtitle,
-        showOnlineIndicator,
-        launcherLabel,
-        placeholderText,
-        showPoweredBy,
-        quickReplies: quickReplies.join(','),
-      }
-      return JSON.stringify(current) !== JSON.stringify(saved)
-    }, [widget, name, domains, position, primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, headerGradient, borderColor, inputBgColor, sendBtnColor, footerBgColor, widgetHeight, widgetWidth, launcherSize, borderRadius, agentName, agentAvatar, themeMode, headerTitle, headerSubtitle, showOnlineIndicator, launcherLabel, placeholderText, showPoweredBy, quickReplies])
+  const isDirty = useMemo(() => {
+    if (!widget) return false
+    const saved = {
+      name: widget.name,
+      domains: (widget.allowedDomains ?? []).join(','),
+      config: resolveConfig(widget),
+    }
+    const current = { name, domains: domains.join(','), config }
+    return JSON.stringify(current) !== JSON.stringify(saved)
+  }, [widget, name, domains, config])
 
   useEffect(() => {
     if (!isDirty) return
@@ -179,36 +87,8 @@ const [headerGradientEnd, setHeaderGradientEnd] = useState('#0d7a34')
         name,
         status,
         allowedDomains: domains,
-        config: {
-          position,
-          primaryColor,
-          backgroundColor,
-          textColor,
-          promptBgColor,
-          headerGradientStart,
-          headerGradientEnd,
-          headerGradientDirection,
-          headerGradient,
-          borderColor,
-          inputBgColor,
-          sendBtnColor,
-          footerBgColor,
-          widgetHeight,
-          widgetWidth,
-          launcherSize,
-          borderRadius,
-          agentName,
-          themeMode,
-          headerTitle,
-          headerSubtitle,
-          showOnlineIndicator,
-          launcherLabel,
-          placeholderText,
-          showPoweredBy,
-          quickReplies,
-          greeting: widget?.config?.greeting || 'Hi there!',
-          agentAvatar,
-        },
+        // greeting is not editable in this form — pass the stored value through
+        config: { ...config, greeting: widget?.config?.greeting || 'Hi there!' },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['widget', widgetId] })
@@ -266,32 +146,14 @@ const [headerGradientEnd, setHeaderGradientEnd] = useState('#0d7a34')
 
   const applyAiDraft = useCallback(
     (draft: WidgetAiDraft) => {
-      if (draft.name) setName(draft.name)
-      if (draft.primaryColor) setPrimaryColor(draft.primaryColor)
-      if (draft.backgroundColor) setBackgroundColor(draft.backgroundColor)
-      if (draft.textColor) setTextColor(draft.textColor)
-      if (draft.promptBgColor) setPromptBgColor(draft.promptBgColor)
-      if (draft.headerGradientStart) setHeaderGradientStart(draft.headerGradientStart)
-      if (draft.headerGradientEnd) setHeaderGradientEnd(draft.headerGradientEnd)
-      if (draft.headerGradientDirection !== undefined) setHeaderGradientDirection(draft.headerGradientDirection)
-      if (draft.borderColor) setBorderColor(draft.borderColor)
-      if (draft.inputBgColor) setInputBgColor(draft.inputBgColor)
-      if (draft.sendBtnColor) setSendBtnColor(draft.sendBtnColor)
-      if (draft.footerBgColor) setFooterBgColor(draft.footerBgColor)
-      if (draft.agentName) setAgentName(draft.agentName)
-      if (draft.headerTitle) setHeaderTitle(draft.headerTitle)
-      if (draft.headerSubtitle) setHeaderSubtitle(draft.headerSubtitle)
-      if (draft.placeholderText) setPlaceholderText(draft.placeholderText)
-      if (draft.quickReplies) setQuickReplies(draft.quickReplies.slice(0, 4))
-      if (draft.themeMode) setThemeMode(draft.themeMode)
-      if (draft.position) setPosition(draft.position)
-      if (draft.widgetWidth) setWidgetWidth(draft.widgetWidth)
-      if (draft.launcherSize) setLauncherSize(draft.launcherSize)
-      if (draft.borderRadius) setBorderRadius(draft.borderRadius)
+      const { name: draftName, ...rest } = draft
+      if (draftName) setName(draftName)
+      if (rest.quickReplies) rest.quickReplies = rest.quickReplies.slice(0, 4)
+      setConfig(rest)
       setActiveTab('appearance')
       toast.success('AI design applied — review and save')
     },
-    [],
+    [setConfig],
   )
 
   return {
@@ -302,60 +164,11 @@ const [headerGradientEnd, setHeaderGradientEnd] = useState('#0d7a34')
     setName,
     domainInput,
     setDomainInput,
-    position,
-    setPosition,
-    primaryColor,
-    setPrimaryColor,
-    backgroundColor,
-    setBackgroundColor,
-    textColor,
-    setTextColor,
-    promptBgColor,
-    setPromptBgColor,
-    headerGradientStart,
-    setHeaderGradientStart,
-    headerGradientEnd,
-    setHeaderGradientEnd,
-    headerGradientDirection,
-    setHeaderGradientDirection,
-    headerGradient,
-    setHeaderGradient,
-    borderColor,
-    setBorderColor,
-    inputBgColor,
-    setInputBgColor,
-    sendBtnColor,
-    setSendBtnColor,
-    footerBgColor,
-    setFooterBgColor,
-    widgetHeight,
-    setWidgetHeight,
-    widgetWidth,
-    setWidgetWidth,
-    launcherSize,
-    setLauncherSize,
-    borderRadius,
-    setBorderRadius,
-    agentName,
-    setAgentName,
-    agentAvatar,
-    setAgentAvatar,
-    themeMode,
-    setThemeMode,
-    headerTitle,
-    setHeaderTitle,
-    headerSubtitle,
-    setHeaderSubtitle,
-    showOnlineIndicator,
-    setShowOnlineIndicator,
-    launcherLabel,
-    setLauncherLabel,
-    placeholderText,
-    setPlaceholderText,
-    showPoweredBy,
-    setShowPoweredBy,
-    quickReplies,
-    setQuickReplies,
+    domains,
+    addDomain,
+    removeDomain,
+    config,
+    setConfig,
     copied,
     activeTab,
     setActiveTab,
@@ -363,11 +176,8 @@ const [headerGradientEnd, setHeaderGradientEnd] = useState('#0d7a34')
     deleteOpen,
     setDeleteOpen,
     isDirty,
-    domains,
     save,
     deleteWidget,
     copyEmbed,
-    addDomain,
-    removeDomain,
   }
 }

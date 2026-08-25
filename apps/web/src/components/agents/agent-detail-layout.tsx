@@ -100,51 +100,64 @@ export function AgentDetailLayout({
   children,
 }: AgentDetailLayoutProps) {
   const navigate = useNavigate()
+  const isChat = activeTab === 'test-chat'
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden">
       <div className="px-6 pt-2 pb-0">
-        <Breadcrumb className="mb-5">
-          <BreadcrumbList className="text-sm text-muted-foreground">
-            <BreadcrumbItem>
-              <BreadcrumbLink
-                onClick={() => navigate('/agents')}
-                className="cursor-pointer transition-colors hover:text-foreground"
-              >
-                Agents
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage className="font-medium text-foreground">
-                {agentName}
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <div
+          className={cn(
+            'overflow-hidden transition-all duration-300 ease-out',
+            isChat ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
+          )}
+        >
+          <Breadcrumb className="mb-5">
+            <BreadcrumbList className="text-sm text-muted-foreground">
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  onClick={() => navigate('/agents')}
+                  className="cursor-pointer transition-colors hover:text-foreground"
+                >
+                  Agents
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="font-medium text-foreground">
+                  {agentName}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Avatar className="size-12">
+        <div className={cn(
+          'flex items-center justify-between transition-all duration-300 ease-out',
+          isChat ? 'mb-2' : 'mb-4'
+        )}>
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar className={cn('shrink-0 transition-all duration-300', isChat ? 'size-7' : 'size-12')}>
               {agentAvatar && <AvatarImage src={agentAvatar} alt={agentName} />}
-              <AvatarFallback className="text-base">{agentName.charAt(0).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className={cn('transition-all duration-300', isChat ? 'text-xs' : 'text-base')}>{agentName.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                <h1 className={cn('font-bold tracking-tight text-foreground truncate transition-all duration-300', isChat ? 'text-sm' : 'text-2xl')}>
                   {agentName}
                 </h1>
                 <Badge
                   variant="secondary"
-                  className="gap-1.5 border-0 bg-success/10 px-2.5 py-1 text-xs font-medium text-success"
+                  className="gap-1.5 border-0 bg-success/10 px-2 py-0.5 text-xs font-medium text-success shrink-0"
                 >
                   <span className="size-1.5 rounded-full bg-success" />
                   Live
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
-                {agentDescription || 'No description'}
-              </p>
+              {!isChat && (
+                <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
+                  {agentDescription || 'No description'}
+                </p>
+              )}
             </div>
           </div>
 
@@ -200,7 +213,7 @@ export function AgentDetailLayout({
       </div>
 
       <ScrollableTabs>{tabs}</ScrollableTabs>
-      <Separator />
+      <Separator className="shrink-0" />
 
       <div className={cn(
         'flex-1 min-h-0',

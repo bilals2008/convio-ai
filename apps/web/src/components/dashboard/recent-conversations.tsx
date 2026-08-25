@@ -37,13 +37,17 @@ function getChannelBadge(channel: string) {
   return colors[channel] || 'bg-muted text-muted-foreground'
 }
 
+import { useOrg } from '@/lib/org-context'
+
 export function RecentConversations() {
+  const { orgId } = useOrg()
   const { data, isLoading } = useQuery({
-    queryKey: ['recent-conversations'],
+    queryKey: ['recent-conversations', orgId],
     queryFn: async () => {
       const res = await conversationsApi.list({ limit: 5 })
       return res.data.data
     },
+    enabled: !!orgId,
   })
 
   if (isLoading) {

@@ -15,11 +15,8 @@ export async function handleMessageStatus(
   const status = statusPayload.status ? STATUS_MAP[statusPayload.status] : null
   if (!messageId || !status) return
 
-  // ponytail: find message by providerMessageId metadata, update status
   const message = await prisma.message.findFirst({
-    where: {
-      metadata: { path: ['providerMessageId'], equals: messageId },
-    },
+    where: { providerMessageId: messageId },
     select: { id: true },
   })
   if (!message) return

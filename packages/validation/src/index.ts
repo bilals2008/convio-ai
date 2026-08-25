@@ -108,6 +108,15 @@ export const aiModelSchema = z.enum([
   'llama-3.1-70b',
 ])
 
+// Per-agent guardrails (input blocklist + topic restrictions)
+export const agentGuardrailsSchema = z.object({
+  enabled: z.boolean().default(false),
+  blockedWords: z.array(z.string().trim().min(1)).max(200).default([]),
+  restrictedTopics: z.array(z.string().trim().min(1).max(200)).max(20).default([]),
+})
+
+export type AgentGuardrails = z.infer<typeof agentGuardrailsSchema>
+
 export const agentStatusSchema = z.enum(['active', 'inactive', 'draft'])
 
 export const agentSchema = z.object({
@@ -134,6 +143,8 @@ export const createAgentSchema = agentSchema.omit({
   organizationId: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  guardrails: agentGuardrailsSchema.optional(),
 })
 
 export const createAgentFullSchema = createAgentSchema.extend({
@@ -143,7 +154,6 @@ export const createAgentFullSchema = createAgentSchema.extend({
 export const updateAgentSchema = createAgentSchema.partial().extend({
   knowledgeBaseId: z.string().uuid().optional().nullable(),
 })
-
 // Conversation schemas
 export const channelSchema = z.enum(['web', 'api', 'whatsapp', 'telegram', 'discord', 'slack', 'twilio'])
 export const conversationStatusSchema = z.enum(['active', 'waiting', 'resolved', 'closed', 'archived'])
@@ -357,14 +367,16 @@ export const bulkInviteSchema = z.object({
 })
 
 // MCP Server schemas
-export const mcpServerTypeSchema = z.enum(['stdio', 'sse', 'streamable-http'])
+// NOTE: 'stdio' is intentionally removed — it executes arbitrary OS commands
+// (RCE) on the API host. Only remote transports are allowed.
+export const mcpServerTypeSchema = z.enum(['sse', 'streamable-http'])
 export const mcpServerAuthTypeSchema = z.enum(['none', 'header', 'oauth'])
 
 export const mcpServerSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
   name: z.string().min(1).max(100),
-  type: mcpServerTypeSchema.default('stdio'),
+  type: mcpServerTypeSchema.default('streamable-http'),
   command: z.string().optional(),
   args: z.array(z.string()).default([]),
   url: z.string().optional(),

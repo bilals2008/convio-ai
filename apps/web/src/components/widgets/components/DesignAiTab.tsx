@@ -1,10 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Loader2, Wand2, Check } from 'lucide-react'
 import { SectionCard } from './SectionCard'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { widgets as widgetsApi } from '@/lib/api'
+
+const GENERATING_PHASES = [
+  'Reading your description…',
+  'Picking the perfect palette…',
+  'Styling your widget…',
+  'Adding final touches…',
+]
 
 export interface WidgetDraft {
   name?: string
@@ -38,12 +45,20 @@ interface DesignAiTabProps {
 export function DesignAiTab({ onApplyAiDraft, disabled }: DesignAiTabProps) {
   const [description, setDescription] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [phase, setPhase] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<WidgetDraft | null>(null)
+
+  useEffect(() => {
+    if (!generating) return
+    const id = setInterval(() => setPhase((p) => (p + 1) % GENERATING_PHASES.length), 1600)
+    return () => clearInterval(id)
+  }, [generating])
 
   const handleGenerate = async () => {
     if (!description.trim()) return
     setGenerating(true)
+    setPhase(0)
     setError(null)
     setDraft(null)
     try {
@@ -113,32 +128,66 @@ export function DesignAiTab({ onApplyAiDraft, disabled }: DesignAiTabProps) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3 overflow-hidden relative"
+            className="relative overflow-hidden rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3"
           >
-            <div className="flex items-center gap-2">
-              <motion.span
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 2.5, ease: 'linear' }}
-                className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary"
-              >
-                <Wand2 className="size-3" />
-              </motion.span>
-              <div className="flex-1 space-y-1.5">
-                <motion.div
-                  className="h-2.5 rounded-full bg-muted-foreground/15"
-                  animate={{ opacity: [0.4, 1, 0.4] }}
+            {/* Spinning conic ring + wand */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex size-9 shrink-0 items-center justify-center">
+                <motion.span
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: 'conic-gradient(from 0deg, transparent 0%, var(--primary) 35%, transparent 65%)',
+                    WebkitMaskImage: 'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
+                    maskImage: 'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
+                  }}
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
+                />
+                <motion.span
+                  animate={{ scale: [1, 1.15, 1] }}
                   transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
-                  style={{ width: '70%' }}
-                />
-                <motion.div
-                  className="h-2 rounded-full bg-muted-foreground/10"
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut', delay: 0.2 }}
-                  style={{ width: '45%' }}
-                />
+                >
+                  <Wand2 className="size-3.5 text-primary" />
+                </motion.span>
+              </div>
+
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={phase}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.22 }}
+                    className="text-xs font-medium text-foreground truncate"
+                  >
+                    {GENERATING_PHASES[phase]}
+                  </motion.p>
+                </AnimatePresence>
+                <div className="h-1 overflow-hidden rounded-full bg-muted-foreground/10">
+                  <motion.div
+                    className="h-full w-2/5 rounded-full bg-gradient-to-r from-transparent via-primary/50 to-transparent"
+                    animate={{ x: ['-120%', '280%'] }}
+                    transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+                  />
+                </div>
               </div>
             </div>
 
+            {/* Shimmer skeleton rows */}
+            <div className="space-y-2 pt-1">
+              {['w-3/4', 'w-1/2', 'w-2/3'].map((w, i) => (
+                <div key={i} className={`relative h-2 overflow-hidden rounded-full bg-muted-foreground/10 ${w}`}>
+                  <motion.div
+                    className="absolute inset-y-0 w-1/2 rounded-full bg-gradient-to-r from-transparent via-foreground/15 to-transparent"
+                    animate={{ x: ['-150%', '260%'] }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut', delay: i * 0.25 }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Palette chips materializing */}
             <div className="flex flex-wrap gap-1.5">
               {[
                 { label: 'Primary', c: 'bg-primary' },
@@ -150,7 +199,7 @@ export function DesignAiTab({ onApplyAiDraft, disabled }: DesignAiTabProps) {
                   key={s.label}
                   initial={{ opacity: 0, scale: 0.6 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.12 }}
+                  transition={{ delay: 0.3 + i * 0.12, type: 'spring', stiffness: 300, damping: 20 }}
                   className="flex items-center gap-1.5 rounded-lg bg-card/60 px-2 py-1 text-[11px] text-muted-foreground/70 ring-1 ring-border/20"
                 >
                   <motion.span
@@ -162,10 +211,6 @@ export function DesignAiTab({ onApplyAiDraft, disabled }: DesignAiTabProps) {
                 </motion.span>
               ))}
             </div>
-
-            <p className="text-center text-[11px] text-muted-foreground/60">
-              AI is styling your widget…
-            </p>
 
             <motion.div
               className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"

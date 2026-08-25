@@ -553,14 +553,6 @@ export const adminApi = {
 
   ticketStats: () => api.get<{ data: { total: number; open: number; inProgress: number } }>('/admin/tickets/stats'),
 
-  ticket: (id: string) => api.get<{ data: AdminTicketDetail }>(`/admin/tickets/${id}`),
-
-  updateTicketStatus: (id: string, status: string) =>
-    api.patch<{ data: { id: string; status: string } }>(`/admin/tickets/${id}`, { status }),
-
-  replyToTicket: (id: string, content: string) =>
-    api.post<{ data: { id: string; content: string; createdAt: string } }>(`/admin/tickets/${id}/messages`, { content }),
-
   assistant: {
     conversations: () => api.get<{ data: AdminConversation[] }>('/admin/assistant/conversations'),
     createConversation: () => api.post<{ data: AdminConversation }>('/admin/assistant/conversations'),
@@ -605,26 +597,4 @@ export interface AdminTicket {
   reporter: { id: string; name: string | null; email: string; avatar: string | null }
   organization: { id: string; name: string; slug: string }
   messageCount: number
-}
-
-export interface AdminTicketMessage {
-  id: string
-  content: string
-  createdAt: string
-  author: { id: string; name: string | null; email: string; avatar: string | null }
-}
-
-export interface AdminTicketDetail {
-  id: string
-  title: string
-  description: string
-  category: string
-  priority: string
-  status: string
-  createdAt: string
-  updatedAt: string
-  resolvedAt: string | null
-  reporter: { id: string; name: string | null; email: string; avatar: string | null }
-  organization: { id: string; name: string; slug: string; plan: string | null }
-  messages: AdminTicketMessage[]
 }

@@ -37,6 +37,14 @@ export interface WidgetConfig {
   placeholderText?: string
   showPoweredBy?: boolean
   quickReplies?: string[]
+  mobileBehavior?: 'default' | 'fullscreen'
+  launcherShape?: 'circle' | 'pill' | 'square'
+  customWidth?: number
+  customHeight?: number
+  launcherOffset?: number
+  teaserMessage?: string
+  teaserDelay?: number
+  hiddenPages?: string[]
 }
 
 export interface ApiError {

@@ -28,6 +28,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { defaultCapabilities } from '@/components/agents/agent-capabilities'
 import { builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
+import { defaultGuardrails, type AgentGuardrailsValue } from '@/components/agents/agent-guardrails'
 import { AgentDetailLayout } from '@/components/agents/agent-detail-layout'
 import {
   AgentOverview,
@@ -83,6 +84,7 @@ export default function AgentDetailPage() {
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
   const [linkedMcpServerIds, setLinkedMcpServerIds] = useState<string[]>([])
+  const [guardrails, setGuardrails] = useState<AgentGuardrailsValue>(defaultGuardrails)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const form = useForm({
@@ -197,6 +199,11 @@ export default function AgentDetailPage() {
           prev.map((t) => ({ ...t, enabled: savedTools.includes(t.id) }))
         )
       }
+
+      const savedGuardrails = (agent as { guardrails?: AgentGuardrailsValue | null }).guardrails
+      if (savedGuardrails) {
+        setGuardrails({ ...defaultGuardrails, ...savedGuardrails })
+      }
     }
   }, [agent, form])
 
@@ -249,6 +256,7 @@ export default function AgentDetailPage() {
       reasoningEffort: data.reasoningEffort,
       maxTokens: data.maxTokens,
       tools: tools.filter((t) => t.enabled).map((t) => t.id),
+      guardrails,
     })
   })
 
@@ -286,7 +294,7 @@ export default function AgentDetailPage() {
   const values = form.watch()
 
   return (
-    <Tabs ref={tabsRootRef} value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+    <Tabs ref={tabsRootRef} value={activeTab} onValueChange={setActiveTab} className="flex h-full min-h-0 flex-col">
       <AgentDetailLayout
         agentName={values.name || agent.name}
         agentAvatar={agent.avatar}
@@ -359,6 +367,8 @@ export default function AgentDetailPage() {
             mcpServers={mcpServers}
             linkedMcpServerIds={linkedMcpServerIds}
             onMcpServerToggle={handleMcpServerToggle}
+            guardrails={guardrails}
+            onGuardrailsChange={setGuardrails}
           />
         </TabsContent>
 
@@ -370,7 +380,7 @@ export default function AgentDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="test-chat" className="flex flex-col min-h-0">
+        <TabsContent value="test-chat" className="flex flex-1 min-h-0 flex-col">
           <AgentTestChat
             agentId={id!}
             agentConfig={{
@@ -384,6 +394,7 @@ export default function AgentDetailPage() {
               knowledgeBaseId: agent.knowledgeBaseId || null,
               tools: tools.filter((t) => t.enabled).map((t) => t.id),
               mcpServerIds: linkedMcpServerIds,
+              guardrails,
               avatar: agent.avatar,
             }}
           />

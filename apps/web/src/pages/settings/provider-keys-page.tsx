@@ -92,6 +92,7 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   together: { name: 'Together', placeholder: '...' },
   deepseek: { name: 'DeepSeek', placeholder: 'sk-...' },
   perplexity: { name: 'Perplexity', placeholder: 'pplx-...' },
+  agnes: { name: 'Agnes AI', placeholder: '...' },
   opencode: { name: 'OpenCode Zen', placeholder: 'oc-...' },
 }
 
@@ -105,6 +106,7 @@ const PROVIDER_ORDER = [
   'together',
   'deepseek',
   'perplexity',
+  'agnes',
   'opencode',
 ]
 

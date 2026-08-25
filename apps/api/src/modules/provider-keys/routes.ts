@@ -1,11 +1,10 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import { AppError } from '../../plugins/error.js'
-import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
 import { encryptSecret, decryptSecret, getEncryptionKey } from '../../services/encryption.js'
 import { z } from 'zod'
 
-const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'opencode']
+const SUPPORTED_PROVIDERS = ['openai', 'anthropic', 'google', 'groq', 'openrouter', 'mistral', 'together', 'deepseek', 'perplexity', 'agnes', 'opencode']
 
 // Models-list endpoints used to validate a stored key. 404 = endpoint unknown,
 // reported as "cannot verify" instead of a hard failure. ponytail: single fetch per provider,
@@ -20,6 +19,7 @@ const TEST_ENDPOINTS: Record<string, string> = {
   together: 'https://api.together.xyz/v1/models',
   deepseek: 'https://api.deepseek.com/v1/models',
   perplexity: 'https://api.perplexity.ai/models',
+  agnes: 'https://apihub.agnes-ai.com/v1/models',
   opencode: 'https://opencode.ai/zen/v1/models',
 }
 
@@ -110,12 +110,6 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
       },
     })
 
-    emitDomainEvent(NOTIFICATION_EVENTS.API_KEY_GENERATED, {
-      organizationId: orgId,
-      userId: request.userId,
-      entityName: provider,
-    })
-
     return { data: { id: key.id, provider: key.provider, keyPreview: key.keyPreview, label: key.label, createdAt: key.createdAt } }
   })
 
@@ -171,12 +165,6 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
     if (!existing) throw new AppError(404, 'Provider key not found')
 
     await prisma.providerKey.delete({ where: { id: keyId } })
-
-    emitDomainEvent(NOTIFICATION_EVENTS.API_KEY_REVOKED, {
-      organizationId: orgId,
-      userId: request.userId,
-      entityName: existing.provider,
-    })
 
     reply.code(204).send()
   })

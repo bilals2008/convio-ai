@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Settings, Trash2, Plus, RefreshCw, Bot, FileText } from 'lucide-react'
+import { ArrowRight, Settings, Trash2, Plus, RefreshCw, Bot } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout, DocFeatureCard, DocCardGrid, DocNextStepCard } from '@/components/docs'
 
 export default function ManagingKnowledgeBasesPage() {
@@ -120,13 +120,6 @@ export default function ManagingKnowledgeBasesPage() {
 
       <h2 id="next-steps">Next Steps</h2>
       <DocCardGrid columns={2}>
-        <DocNextStepCard
-          icon={FileText}
-          iconBg="bg-primary/10"
-          iconColor="text-primary"
-          title="Knowledge Base Templates"
-          href="/docs/knowledge-base-templates"
-        />
         <DocNextStepCard
           icon={Settings}
           iconBg="bg-primary/10"

@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminRevenue, type RevenuePeriod, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant, type AdminTicketDetail } from '@/admin/services/admin-api'
+import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminRevenue, type RevenuePeriod, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant } from '@/admin/services/admin-api'
 
 export function invalidateAdminUsers(queryClient: ReturnType<typeof useQueryClient>) {
   return queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -332,26 +332,4 @@ export function useAdminTicketStats() {
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: ['admin', 'tickets', 'stats'] })
   return { ...query, refetch }
-}
-
-export function useAdminTicket(id: string | undefined) {
-  return useQuery<AdminTicketDetail>({
-    queryKey: ['admin', 'tickets', id],
-    queryFn: async () => {
-      const res = await adminApi.ticket(id!)
-      return res.data.data
-    },
-    enabled: !!id,
-  })
-}
-
-export function useAdminUpdateTicketStatus(onSuccess?: () => void) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => adminApi.updateTicketStatus(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets'] })
-      onSuccess?.()
-    },
-  })
 }

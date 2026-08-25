@@ -2,6 +2,7 @@ import { webSearch } from './web-search.js'
 import { calculate } from './calculator.js'
 import { fetchUrl } from './url-fetcher.js'
 import { getCurrentTime } from './current-time.js'
+import { assertSafeUrl } from '../ssrf.js'
 
 interface DbToolRecord {
   id: string
@@ -121,6 +122,8 @@ export function createDbToolHandler(tool: DbToolRecord): { execute(args: Record<
         },
         async execute(args) {
           try {
+            await assertSafeUrl(apiUrl)
+
             const fetchOptions: RequestInit = {
               method,
               headers: {
@@ -182,6 +185,8 @@ export function createDbToolHandler(tool: DbToolRecord): { execute(args: Record<
         },
         async execute(args) {
           try {
+            await assertSafeUrl(webhookUrl)
+
             const controller = new AbortController()
             const timeout = setTimeout(() => controller.abort(), 30000)
             const res = await fetch(webhookUrl, {

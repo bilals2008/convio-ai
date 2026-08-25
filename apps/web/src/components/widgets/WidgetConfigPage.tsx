@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Code2, Layout, Monitor, Palette, Smartphone, Wand2 } from 'lucide-react'
+import { Code2, Layout, Monitor, Smartphone, Palette, Wand2 } from 'lucide-react'
 import { ChatWidget } from '@/components/widget'
 import { PageContainer } from '@/components/shared/page-container'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -35,7 +35,6 @@ export default function WidgetConfigPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [showPreview, setShowPreview] = useState(true)
-  const [previewThemeMode, setPreviewThemeMode] = useState<'auto' | 'light' | 'dark'>('auto')
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop')
 
   const {
@@ -44,60 +43,11 @@ export default function WidgetConfigPage() {
     name,
     domainInput,
     setDomainInput,
-    position,
-    setPosition,
-    primaryColor,
-    setPrimaryColor,
-    backgroundColor,
-    setBackgroundColor,
-    textColor,
-    setTextColor,
-    promptBgColor,
-    setPromptBgColor,
-    headerGradientStart,
-    setHeaderGradientStart,
-    headerGradientEnd,
-    setHeaderGradientEnd,
-    headerGradientDirection,
-    setHeaderGradientDirection,
-    headerGradient,
-    setHeaderGradient,
-    borderColor,
-    setBorderColor,
-    inputBgColor,
-    setInputBgColor,
-    sendBtnColor,
-    setSendBtnColor,
-    footerBgColor,
-    setFooterBgColor,
-    widgetHeight,
-    setWidgetHeight,
-    widgetWidth,
-    setWidgetWidth,
-    launcherSize,
-    setLauncherSize,
-    borderRadius,
-    setBorderRadius,
-    agentName,
-    setAgentName,
-    agentAvatar,
-    setAgentAvatar,
-    themeMode,
-    setThemeMode,
-    headerTitle,
-    setHeaderTitle,
-    headerSubtitle,
-    setHeaderSubtitle,
-    showOnlineIndicator,
-    setShowOnlineIndicator,
-    launcherLabel,
-    setLauncherLabel,
-    placeholderText,
-    setPlaceholderText,
-    showPoweredBy,
-    setShowPoweredBy,
-    quickReplies,
-    setQuickReplies,
+    domains,
+    addDomain,
+    removeDomain,
+    config,
+    setConfig,
     copied,
     activeTab,
     setActiveTab,
@@ -105,12 +55,9 @@ export default function WidgetConfigPage() {
     deleteOpen,
     setDeleteOpen,
     isDirty,
-    domains,
     save,
     deleteWidget,
     copyEmbed,
-    addDomain,
-    removeDomain,
     embedSnippet,
   } = useWidgetForm(id!)
 
@@ -159,7 +106,7 @@ export default function WidgetConfigPage() {
     )
   }
 
-  const previewTextColor = isLightColor(backgroundColor) ? '#1f2937' : textColor
+  const previewTextColor = isLightColor(config.backgroundColor ?? '') ? '#1f2937' : config.textColor
 
   return (
     <PageContainer>
@@ -168,7 +115,7 @@ export default function WidgetConfigPage() {
         name={name}
         isDirty={isDirty}
         copied={copied}
-        position={position}
+        position={config.position ?? 'bottom-right'}
         savePending={save.isPending}
         showPreview={showPreview}
         onTogglePreview={() => setShowPreview((v) => !v)}
@@ -206,67 +153,11 @@ export default function WidgetConfigPage() {
 
           {/* Tab content */}
           {activeTab === 'appearance' && (
-            <AppearanceTab
-              agentName={agentName}
-              onAgentNameChange={setAgentName}
-              agentAvatar={agentAvatar}
-              onAgentAvatarChange={setAgentAvatar}
-              primaryColor={primaryColor}
-              onPrimaryColorChange={setPrimaryColor}
-              backgroundColor={backgroundColor}
-              onBackgroundColorChange={setBackgroundColor}
-              textColor={textColor}
-              onTextColorChange={setTextColor}
-              promptBgColor={promptBgColor}
-              onPromptBgColorChange={setPromptBgColor}
-              headerGradientStart={headerGradientStart}
-              onHeaderGradientStartChange={setHeaderGradientStart}
-              headerGradientEnd={headerGradientEnd}
-              onHeaderGradientEndChange={setHeaderGradientEnd}
-              headerGradientDirection={headerGradientDirection}
-              onHeaderGradientDirectionChange={setHeaderGradientDirection}
-              headerGradient={headerGradient}
-              onHeaderGradientChange={setHeaderGradient}
-              borderColor={borderColor}
-              onBorderColorChange={setBorderColor}
-              inputBgColor={inputBgColor}
-              onInputBgColorChange={setInputBgColor}
-              sendBtnColor={sendBtnColor}
-              onSendBtnColorChange={setSendBtnColor}
-              footerBgColor={footerBgColor}
-              onFooterBgColorChange={setFooterBgColor}
-              themeMode={themeMode}
-              onThemeModeChange={setThemeMode}
-              headerTitle={headerTitle}
-              onHeaderTitleChange={setHeaderTitle}
-              headerSubtitle={headerSubtitle}
-              onHeaderSubtitleChange={setHeaderSubtitle}
-              showOnlineIndicator={showOnlineIndicator}
-              onShowOnlineIndicatorChange={setShowOnlineIndicator}
-              placeholderText={placeholderText}
-              onPlaceholderTextChange={setPlaceholderText}
-              showPoweredBy={showPoweredBy}
-              onShowPoweredByChange={setShowPoweredBy}
-              quickReplies={quickReplies}
-              onQuickRepliesChange={setQuickReplies}
-              launcherLabel={launcherLabel}
-              onLauncherLabelChange={setLauncherLabel}
-            />
+            <AppearanceTab config={config} onChange={setConfig} />
           )}
 
           {activeTab === 'layout' && (
-            <LayoutTab
-              position={position}
-              onPositionChange={setPosition}
-              widgetHeight={widgetHeight}
-              onWidgetHeightChange={setWidgetHeight}
-              widgetWidth={widgetWidth}
-              onWidgetWidthChange={setWidgetWidth}
-              launcherSize={launcherSize}
-              onLauncherSizeChange={setLauncherSize}
-              borderRadius={borderRadius}
-              onBorderRadiusChange={setBorderRadius}
-            />
+            <LayoutTab config={config} onChange={setConfig} />
           )}
 
           {activeTab === 'design' && (
@@ -281,7 +172,7 @@ export default function WidgetConfigPage() {
               onAddDomain={addDomain}
               onRemoveDomain={removeDomain}
               publicKey={widget.publicKey}
-              position={position}
+              position={config.position ?? 'bottom-right'}
               snippet={embedSnippet ?? ''}
             />
           )}
@@ -328,31 +219,31 @@ export default function WidgetConfigPage() {
                   data-widget-preview
                   className={cn(
                     'relative h-[520px]',
-                    (previewThemeMode === 'auto' ? themeMode : previewThemeMode) === 'dark' ? 'bg-muted/30' : 'bg-background',
+                    config.themeMode === 'dark' ? 'bg-muted/30' : 'bg-background',
                   )}
                 >
                   <WidgetPreviewPanel
-                    primaryColor={primaryColor}
-                    backgroundColor={backgroundColor}
+                    primaryColor={config.primaryColor}
+                    backgroundColor={config.backgroundColor}
                     textColor={previewTextColor}
-                    promptBgColor={promptBgColor}
-                    headerGradientStart={headerGradientStart}
-                    headerGradientEnd={headerGradientEnd}
-                    headerGradientDirection={headerGradientDirection}
-                    borderColor={borderColor}
-                    inputBgColor={inputBgColor}
-                    sendBtnColor={sendBtnColor}
-                    footerBgColor={footerBgColor}
-                    agentName={agentName || widget.agent.name}
-                    agentAvatar={agentAvatar || undefined}
-                    headerTitle={headerTitle || undefined}
-                    headerSubtitle={headerSubtitle || undefined}
-                    showOnlineIndicator={showOnlineIndicator}
-                    placeholderText={placeholderText || undefined}
-                    showPoweredBy={showPoweredBy}
-                    quickReplies={quickReplies.length > 0 ? quickReplies : undefined}
-                    headerGradient={headerGradient}
-                    previewThemeMode={previewThemeMode === 'auto' ? themeMode : previewThemeMode}
+                    promptBgColor={config.promptBgColor}
+                    headerGradientStart={config.headerGradientStart}
+                    headerGradientEnd={config.headerGradientEnd}
+                    headerGradientDirection={config.headerGradientDirection}
+                    borderColor={config.borderColor}
+                    inputBgColor={config.inputBgColor}
+                    sendBtnColor={config.sendBtnColor}
+                    footerBgColor={config.footerBgColor}
+                    agentName={config.agentName || widget.agent.name}
+                    agentAvatar={config.agentAvatar || undefined}
+                    headerTitle={config.headerTitle || undefined}
+                    headerSubtitle={config.headerSubtitle || undefined}
+                    showOnlineIndicator={config.showOnlineIndicator}
+                    placeholderText={config.placeholderText || undefined}
+                    showPoweredBy={config.showPoweredBy}
+                    quickReplies={(config.quickReplies?.length ?? 0) > 0 ? config.quickReplies : undefined}
+                    headerGradient={config.headerGradient}
+                    previewThemeMode={config.themeMode ?? 'auto'}
                   />
                 </div>
               </div>
@@ -386,39 +277,47 @@ export default function WidgetConfigPage() {
 
       {widget && (
         <ChatWidget
-          key={`${agentName}-${primaryColor}-${backgroundColor}-${textColor}-${position}-${headerTitle}-${headerSubtitle}-${launcherLabel}-${footerBgColor}-${quickReplies.join(',')}`}
+          key={JSON.stringify([config.agentName, config.primaryColor, config.backgroundColor, config.textColor, config.position, config.headerTitle, config.headerSubtitle, config.launcherLabel, config.footerBgColor, config.quickReplies, config.widgetWidth, config.widgetHeight, config.launcherSize, config.borderRadius, config.launcherShape, config.customWidth, config.customHeight, config.launcherOffset, config.teaserMessage, config.teaserDelay, config.showPoweredBy, config.themeMode])}
           agentId={widget.agent.id}
           publicKey={widget.publicKey}
-          position={position}
+          position={config.position}
           greeting={widget.config.greeting || 'Hi'}
-          agentName={agentName || widget.agent.name}
-          agentAvatar={agentAvatar || undefined}
-          themeMode={themeMode}
-          widgetWidth={widgetWidth}
-          launcherSize={launcherSize}
-          borderRadius={borderRadius}
-          headerGradient={headerGradient}
-          headerTitle={headerTitle || undefined}
-          headerSubtitle={headerSubtitle || undefined}
-          showOnlineIndicator={showOnlineIndicator}
-          launcherLabel={launcherLabel || undefined}
-          placeholderText={placeholderText || undefined}
-          showPoweredBy={showPoweredBy}
-          widgetHeight={widgetHeight}
-          quickReplies={quickReplies.length > 0 ? quickReplies : undefined}
+          agentName={config.agentName || widget.agent.name}
+          agentAvatar={config.agentAvatar || undefined}
+          themeMode={config.themeMode}
+          widgetWidth={config.widgetWidth}
+          launcherSize={config.launcherSize}
+          borderRadius={config.borderRadius}
+          headerGradient={config.headerGradient}
+          headerTitle={config.headerTitle || undefined}
+          headerSubtitle={config.headerSubtitle || undefined}
+          showOnlineIndicator={config.showOnlineIndicator}
+          launcherLabel={config.launcherLabel || undefined}
+          placeholderText={config.placeholderText || undefined}
+          showPoweredBy={config.showPoweredBy}
+          widgetHeight={config.widgetHeight}
+          quickReplies={(config.quickReplies?.length ?? 0) > 0 ? config.quickReplies : undefined}
+          mobileBehavior={config.mobileBehavior}
+          launcherShape={config.launcherShape}
+          customWidth={config.customWidth}
+          customHeight={config.customHeight}
+          launcherOffset={config.launcherOffset}
+          teaserMessage={config.teaserMessage}
+          teaserDelay={config.teaserDelay}
+          hiddenPages={config.hiddenPages}
           preview
           theme={{
-            primaryColor,
-            backgroundColor,
-            textColor: textColor || '#f3f4f6',
-            promptBgColor: promptBgColor || '#2a2a2a',
-            headerGradientStart: headerGradientStart || '#1cca4a',
-            headerGradientEnd: headerGradientEnd || '#0d7a34',
-            headerGradientDirection: `${headerGradientDirection ?? 135}deg`,
-            borderColor: borderColor || '',
-            inputBgColor: inputBgColor || '',
-            sendBtnColor: sendBtnColor || '',
-            footerBgColor: footerBgColor || '',
+            primaryColor: config.primaryColor ?? '#1cca4a',
+            backgroundColor: config.backgroundColor ?? '#1c1c1c',
+            textColor: config.textColor || '#f3f4f6',
+            promptBgColor: config.promptBgColor || '#2a2a2a',
+            headerGradientStart: config.headerGradientStart || '#1cca4a',
+            headerGradientEnd: config.headerGradientEnd || '#0d7a34',
+            headerGradientDirection: `${config.headerGradientDirection ?? 135}deg`,
+            borderColor: config.borderColor || '',
+            inputBgColor: config.inputBgColor || '',
+            sendBtnColor: config.sendBtnColor || '',
+            footerBgColor: config.footerBgColor || '',
           }}
         />
       )}

@@ -57,6 +57,11 @@ import { initDiscordGateway, shutdownDiscordGateway } from './services/discord-g
 async function buildServer() {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL ?? 'info' },
+    // Trust X-Forwarded-For so request.ip is the real client IP behind the
+    // hosting proxy — otherwise per-IP rate limits bucket everyone together.
+    // ponytail: assumes the API is only reachable through the platform proxy
+    // (Railway/Vercel); if exposed directly, lock this to specific proxy IPs.
+    trustProxy: true,
   })
 
   // Plugins

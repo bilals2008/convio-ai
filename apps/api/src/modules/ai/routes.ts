@@ -8,6 +8,7 @@ import { retrieveContext } from '../../services/processor.js'
 import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import { z } from 'zod'
 import type { AIProvider, Message } from '@convio/ai'
+import { createRequestSignal } from '../../services/concurrency.js'
 
 const isDev = process.env.NODE_ENV !== 'production'
 
@@ -206,6 +207,8 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       ...sanitizedMessages,
     ]
 
+    const signal = createRequestSignal((cb) => request.raw.once('close', cb))
+
     try {
       const stream = provider.stream({
         model: agent.model,
@@ -213,6 +216,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
         temperature: agent.temperature ?? 0.7,
         maxTokens: agent.maxTokens ?? 2048,
         apiKey,
+        signal,
         reasoningEffort: reasoningEffort || undefined,
       })
 

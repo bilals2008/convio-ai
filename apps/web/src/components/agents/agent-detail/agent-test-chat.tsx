@@ -24,6 +24,7 @@ import {
   PanelLeftOpen,
   X,
   AlertCircle,
+  Square,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -37,6 +38,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
@@ -75,6 +86,7 @@ interface AgentTestChatProps {
     tools?: string[]
     mcpServerIds?: string[]
     avatar?: string | null
+    guardrails?: { enabled: boolean; blockedWords: string[]; restrictedTopics: string[] }
   }
   agentId: string
 }
@@ -131,39 +143,57 @@ function formatTimestamp(date: string): string {
 function ConversationItem({
   conversation,
   isActive,
+  deleting,
   onClick,
+  onDelete,
 }: {
   conversation: Conversation
   isActive: boolean
+  deleting?: boolean
   onClick: () => void
+  onDelete: () => void
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150',
-        isActive
-          ? 'bg-primary/10 shadow-sm'
-          : 'hover:bg-muted/50'
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p
-          className={cn(
-            'text-sm font-medium truncate',
-            isActive ? 'text-primary' : 'text-foreground'
-          )}
-        >
-          {conversation.title}
+    <div className="group relative">
+      <button
+        onClick={onClick}
+        className={cn(
+          'w-full text-left px-3 py-2.5 pr-8 rounded-lg transition-all duration-150',
+          isActive
+            ? 'bg-primary/10 shadow-sm'
+            : 'hover:bg-muted/50'
+        )}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p
+            className={cn(
+              'text-sm font-medium truncate',
+              isActive ? 'text-primary' : 'text-foreground'
+            )}
+          >
+            {conversation.title}
+          </p>
+          <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap shrink-0">
+            {conversation.timestamp}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground truncate mt-0.5">
+          {conversation.preview}
         </p>
-        <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap shrink-0">
-          {conversation.timestamp}
-        </span>
-      </div>
-      <p className="text-xs text-muted-foreground truncate mt-0.5">
-        {conversation.preview}
-      </p>
-    </button>
+      </button>
+      <button
+        type="button"
+        aria-label="Delete conversation"
+        onClick={(e) => {
+          e.stopPropagation()
+          onDelete()
+        }}
+        disabled={deleting}
+        className="absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+      >
+        {deleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+      </button>
+    </div>
   )
 }
 
@@ -267,6 +297,8 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [clearDialogOpen, setClearDialogOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -312,38 +344,42 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     enabled: !!activeConvId && !activeConvId.startsWith('temp-') && !isLocalConv,
   })
 
-  const createConv = useMutation({
-    mutationFn: () => conversationsApi.create(agentId!, { channel: 'api' }),
-    onMutate: async () => {
-      const tempConv: Conversation = {
-        id: `temp-${crypto.randomUUID()}`,
-        title: 'Conversation',
-        preview: 'Start a new chat...',
-        timestamp: 'Just now',
-        messages: [],
+  // A "New chat" starts as a local draft; the DB row is created only when the
+  // first message is actually sent, so page visits and abandoned new-chats
+  // never leave junk conversations behind.
+  const startDraft = useCallback(() => {
+    const tempId = `temp-${crypto.randomUUID()}`
+    setConversations((prev) => [
+      { id: tempId, title: 'Conversation', preview: 'Start a new chat...', timestamp: 'Just now', messages: [] },
+      ...prev.filter((c) => !(c.id.startsWith('temp-') && c.messages.length === 0)),
+    ])
+    setActiveConvId(tempId)
+  }, [])
+
+  const ensureRealConv = useCallback(async (): Promise<string> => {
+    if (activeConvId && !activeConvId.startsWith('temp-')) return activeConvId
+    const res = await conversationsApi.create(agentId!, { channel: 'api' })
+    const realId = ((res.data.data ?? {}) as Record<string, unknown>).id as string
+    setConversations((prev) => {
+      const idx = prev.findIndex((c) => c.id === activeConvId)
+      if (idx >= 0) {
+        return prev.map((c) => (c.id === activeConvId ? { ...c, id: realId } : c))
       }
-      setConversations((prev) => [tempConv, ...prev])
-      setActiveConvId(tempConv.id)
-      return tempConv
-    },
-    onSuccess: (res, _vars, tempConv) => {
-      if (!tempConv) return
-      const realConv = res.data.data as Record<string, unknown>
-      setConversations((prev) =>
-        prev.map((c) => (c.id === tempConv.id ? { ...c, id: realConv.id as string } : c))
-      )
-      setActiveConvId((prev) => (prev === tempConv.id ? (realConv.id as string) : prev))
-      queryClient.invalidateQueries({ queryKey: ['conversations', agentId] })
-    },
-    onError: (_err, _vars, tempConv) => {
-      if (tempConv) {
-        setConversations((prev) => prev.filter((c) => c.id !== tempConv.id))
-      }
-    },
-  })
+      return [{ id: realId, title: 'Conversation', preview: '', timestamp: 'Just now', messages: [] }, ...prev]
+    })
+    setActiveConvId((prev) => (prev === activeConvId ? realId : prev))
+    queryClient.invalidateQueries({ queryKey: ['conversations', agentId] })
+    return realId
+  }, [activeConvId, agentId, queryClient])
 
   const deleteConv = useMutation({
     mutationFn: (id: string) => conversationsApi.delete(id),
+    onSuccess: (_res, id) => {
+      setConversations((prev) => prev.filter((c) => c.id !== id))
+      if (activeConvId === id) startDraft()
+      queryClient.invalidateQueries({ queryKey: ['conversations', agentId] })
+    },
+    onSettled: () => setDeletingId(null),
   })
 
   useEffect(() => {
@@ -352,13 +388,18 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
   const serverConvs = useMemo(() => convsData.map(mapDbConv), [convsData])
 
-  // Auto-create conversation on first load
+  // On first load, open the most recent conversation; only fall back to a
+  // local draft (no DB write) when none exist.
   useEffect(() => {
-    if (!convsLoading && !autoCreated.current && !activeConvId && agentConfig.systemPrompt && agentConfig.model) {
-      autoCreated.current = true
-      createConv.mutate()
+    if (convsLoading || autoCreated.current || activeConvId) return
+    autoCreated.current = true
+    const latest = convsData[0]
+    if (latest) {
+      setActiveConvId(latest.id as string)
+    } else {
+      startDraft()
     }
-  }, [convsLoading, activeConvId, agentConfig.systemPrompt, agentConfig.model, createConv])
+  }, [convsLoading, activeConvId, convsData, startDraft])
 
   // Focus input when a conversation becomes active
   useEffect(() => {
@@ -450,26 +491,35 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
         if (idx >= 0) {
           return prev.map((c) => (c.id === activeConvId ? updater(c) : c))
         }
-        const serverConv = allConvs.find((c) => c.id === activeConvId)
-        if (serverConv) {
-          return [...prev, updater(serverConv)]
-        }
-        return prev
+        if (!activeConversation) return prev
+        // Seed the local copy with the messages currently shown (fetched
+        // detail), otherwise appending here would wipe the visible history.
+        return [...prev, updater({ ...activeConversation, messages })]
       })
     },
-    [activeConvId, allConvs]
+    [activeConvId, activeConversation, messages]
   )
 
   const contentRef = useRef('')
   const reasoningRef = useRef('')
+  const stoppedRef = useRef(false)
+  const flushRafRef = useRef<number | null>(null)
 
   const streamAssistant = useCallback(async (
     prompt: string,
     history: Array<{ role: 'user' | 'assistant'; content: string }>,
+    convIdArg?: string | null | Promise<string | null>,
   ) => {
     const cfg = configRef.current
     if (!cfg.systemPrompt || !cfg.model) return
 
+    // Resolve the conversation id (may still be being created) before it is
+    // needed for persistence — never blocks the stream itself.
+    const convId = convIdArg && typeof (convIdArg as Promise<unknown>).then === 'function'
+      ? await (convIdArg as Promise<string | null>)
+      : (convIdArg as string | null) ?? null
+
+    flushRafRef.current = null
     setError('')
     setStreaming(true)
     setStreamingContent('')
@@ -477,10 +527,10 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     setToolCalls([])
     contentRef.current = ''
     reasoningRef.current = ''
+    stoppedRef.current = false
 
     requestAnimationFrame(() => scrollToBottom('auto'))
 
-    const convId = activeConvId
     const controller = new AbortController()
     abortRef.current = controller
     const streamStartTime = Date.now()
@@ -497,6 +547,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
         knowledgeBaseId: useKnowledge ? cfg.knowledgeBaseId : null,
         tools: useTools && toolsAllowed ? cfg.tools : [],
         mcpServerIds: cfg.mcpServerIds,
+        guardrails: cfg.guardrails,
         history,
         signal: controller.signal,
       })
@@ -516,20 +567,26 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
       // Flush accumulated text to state once per animation frame instead of
       // once per token, so AiResponse doesn't re-parse markdown every chunk.
-      let flushRaf: number | null = null
       const scheduleFlush = () => {
-        if (flushRaf !== null) return
-        flushRaf = requestAnimationFrame(() => {
-          flushRaf = null
+        if (flushRafRef.current !== null) return
+        flushRafRef.current = requestAnimationFrame(() => {
+          flushRafRef.current = null
           setStreamingContent(contentRef.current)
         })
       }
 
       while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+        let readRes: Awaited<ReturnType<typeof reader.read>>
+        try {
+          readRes = await reader.read()
+        } catch (e) {
+          // Stop pressed mid-read — exit the loop and save what we have.
+          if (!stoppedRef.current) throw e
+          break
+        }
+        if (readRes.done) break
 
-        buffer += decoder.decode(value, { stream: true })
+        buffer += decoder.decode(readRes.value, { stream: true })
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
 
@@ -573,14 +630,18 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
       const finalContent = contentRef.current
       const finalReasoning = reasoningRef.current
+      const stopped = stoppedRef.current
 
       setStreaming(false)
 
       if (finalContent || completedToolCalls.length > 0) {
+        const savedContent = finalContent
+          ? `${finalContent}${stopped ? '\n\n_(stopped)_' : ''}`
+          : 'I used the available tools to look that up.'
         const assistantMessage: MessageItem = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: finalContent || 'I used the available tools to look that up.',
+          content: savedContent,
           reasoning: finalReasoning || undefined,
           usage: finalUsage,
           toolActivity: completedToolCalls.length > 0 ? [...toolCalls] : undefined,
@@ -593,7 +654,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
 
         if (convId && !convId.startsWith('temp-')) {
           try {
-            await messagesApi.send(convId, finalContent || 'I used the available tools to look that up.', 'assistant', {
+            await messagesApi.send(convId, savedContent, 'assistant', {
               ...(finalUsage ? { inputTokens: finalUsage.promptTokens, outputTokens: finalUsage.completionTokens } : {}),
               responseTimeMs: Date.now() - streamStartTime,
             })
@@ -601,17 +662,20 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
         }
       }
     } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      const msg = err instanceof Error ? err.message : 'An unexpected error occurred'
-      setError(msg)
+      // Abort before the stream started (or during fetch): nothing to save.
+      if (!(err instanceof DOMException && err.name === 'AbortError')) {
+        const msg = err instanceof Error ? err.message : 'An unexpected error occurred'
+        setError(msg)
+      }
     } finally {
-      if (flushRaf !== null) cancelAnimationFrame(flushRaf)
+      if (flushRafRef.current !== null) cancelAnimationFrame(flushRafRef.current)
+      flushRafRef.current = null
       setStreaming(false)
       setStreamingContent('')
       setToolCalls([])
       abortRef.current = null
     }
-  }, [updateActiveConversation, reasoningOverride, activeConvId, useKnowledge, useTools, toolsAllowed])
+  }, [updateActiveConversation, reasoningOverride, useKnowledge, useTools, toolsAllowed])
 
   const handleSendMessage = useCallback(async () => {
     const trimmed = inputValue.trim()
@@ -620,6 +684,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     if (!cfg.systemPrompt || !cfg.model) return
 
     setInputValue('')
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
     const userMessage: MessageItem = {
       id: crypto.randomUUID(),
@@ -640,15 +705,15 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     scrollToBottom('auto')
     requestAnimationFrame(() => scrollToBottom('auto'))
 
-    // Persist the user message without blocking the AI stream from starting.
-    // Streaming state is turned on inside streamAssistant, exactly when the
-    // generation request begins, so the loader only ever appears once.
-    if (activeConvId && !activeConvId.startsWith('temp-')) {
-      messagesApi.send(activeConvId, trimmed, 'user').catch(() => {})
-    }
+    // Stream starts immediately; DB conversation is created in parallel so a
+    // fresh chat doesn't sit idle during the round-trip.
+    const convIdPromise = ensureRealConv().catch(() => null)
+    void convIdPromise.then((id) => {
+      if (id) messagesApi.send(id, trimmed, 'user').catch(() => {})
+    })
 
-    await streamAssistant(trimmed, history)
-  }, [inputValue, streaming, messages, updateActiveConversation, activeConvId, streamAssistant, scrollToBottom])
+    await streamAssistant(trimmed, history, convIdPromise)
+  }, [inputValue, streaming, messages, updateActiveConversation, activeConvId, ensureRealConv, streamAssistant, scrollToBottom])
 
   const handleRegenerate = useCallback(async () => {
     if (streaming) return
@@ -663,8 +728,9 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       messages: conv.messages.slice(0, idx + 1),
     }))
 
-    await streamAssistant(prompt, history)
-  }, [streaming, messages, updateActiveConversation, streamAssistant])
+    const convId = activeConvId && !activeConvId.startsWith('temp-') ? activeConvId : null
+    await streamAssistant(prompt, history, convId)
+  }, [streaming, messages, updateActiveConversation, activeConvId, streamAssistant])
 
   const handleEditResend = useCallback(async (messageId: string, newContent: string) => {
     if (streaming) return
@@ -683,14 +749,15 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
       timestamp: 'Just now',
     }))
 
-    if (activeConvId && !activeConvId.startsWith('temp-')) {
+    const convId = activeConvId && !activeConvId.startsWith('temp-') ? activeConvId : null
+    if (convId) {
       try {
-        await messagesApi.send(activeConvId, trimmed, 'user')
+        await messagesApi.send(convId, trimmed, 'user')
       } catch { /* non-blocking */ }
     }
 
     setEditingId(null)
-    await streamAssistant(trimmed, history)
+    await streamAssistant(trimmed, history, convId)
   }, [streaming, messages, updateActiveConversation, activeConvId, streamAssistant])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -701,9 +768,16 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
   }
 
   const handleNewConversation = useCallback(() => {
-    createConv.mutate()
+    if (abortRef.current) abortRef.current.abort()
+    setStreaming(false)
     setError('')
-  }, [createConv])
+    startDraft()
+  }, [startDraft])
+
+  const handleStopStreaming = useCallback(() => {
+    stoppedRef.current = true
+    abortRef.current?.abort()
+  }, [])
 
   const handleClearConversations = useCallback(() => {
     if (abortRef.current) abortRef.current.abort()
@@ -713,13 +787,14 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     setToolCalls([])
     setError('')
     setConversations([])
+    startDraft()
 
     for (const conv of allConvs) {
       if (!conv.id.startsWith('temp-')) {
         deleteConv.mutate(conv.id)
       }
     }
-  }, [allConvs, deleteConv])
+  }, [allConvs, deleteConv, startDraft])
 
   const handleResetChat = useCallback(() => {
     if (abortRef.current) abortRef.current.abort()
@@ -744,7 +819,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
     setTimeout(() => setCopiedId(null), 1600)
   }, [])
 
-  const canSend = !!(agentConfig.systemPrompt && agentConfig.model && !convsLoading && activeConvId)
+  const canSend = !!(agentConfig.systemPrompt && agentConfig.model && !convsLoading && activeConvId && !convDetailLoading)
 
   const reasoningOptions = useMemo(
     () => getReasoningEfforts({ id: agentConfig.model || '' }),
@@ -913,9 +988,14 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                       variant="destructive"
                       size="sm"
                       className="w-full"
-                      onClick={handleClearConversations}
+                      disabled={deleteConv.isPending}
+                      onClick={() => setClearDialogOpen(true)}
                     >
-                      <Trash2 className="size-3.5 mr-1.5" />
+                      {deleteConv.isPending ? (
+                        <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-3.5 mr-1.5" />
+                      )}
                       Clear Conversations
                     </Button>
                   </div>
@@ -988,7 +1068,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                         </div>
                       </MessageAvatar>
                       <MessageContent>
-                        <Bubble variant={isUser ? 'default' : 'muted'}>
+                        <Bubble variant={isUser ? 'tinted' : 'muted'}>
                           {!isUser && showReasoning && msg.reasoning && (
                             <details className="px-3 pt-2 pb-1 text-xs text-muted-foreground border-b border-border/40 mb-2">
                               <summary className="cursor-pointer select-none font-medium text-foreground/60 hover:text-foreground transition-colors">
@@ -1198,12 +1278,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                               {toolCalls.some((tc) => tc.status === 'done') ? (
                                 <p className="text-xs text-muted-foreground/70">Generating final response…</p>
                               ) : (
-                                <>
-                                  {!showReasoning && streamingReasoning && (
-                                    <p className="text-xs text-muted-foreground/60">Thinking…</p>
-                                  )}
-                                  <TypingIndicator />
-                                </>
+                                <TypingIndicator />
                               )}
                             </div>
                           )}
@@ -1227,7 +1302,7 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
             </ScrollArea>
 
         {/* Sticky Composer */}
-        <div className="shrink-0 border-t border-border/40 bg-card/80 backdrop-blur-xl px-4 py-3">
+        <div className="shrink-0 border-t border-border/40 bg-card/80 backdrop-blur-xl px-4 py-2">
             <div className="max-w-3xl mx-auto">
               <div className="rounded-xl border border-border bg-muted/30 shadow-sm transition-all focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
                 <textarea
@@ -1240,15 +1315,15 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder={canSend ? 'Message the agent…' : 'Configure agent to start'}
-                  disabled={streaming || !canSend}
+                  disabled={!canSend}
                   rows={1}
                   className={cn(
-                    'block w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-foreground outline-none',
+                    'block w-full resize-none bg-transparent px-3.5 py-2.5 text-sm leading-6 text-foreground outline-none',
                     'placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50',
-                    'min-h-[44px] max-h-[140px]'
+                    'min-h-[38px] max-h-[140px]'
                   )}
                 />
-                <div className="flex items-center justify-between gap-2 px-3 pb-2.5">
+                <div className="flex items-center justify-between gap-2 px-2.5 pb-2">
                   <div className="flex min-w-0 items-center gap-1.5">
                     <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-muted/70 px-2 py-0.5 text-[11px] font-medium text-foreground/80">
                       <Bot className="size-3 shrink-0 text-primary/70" />
@@ -1279,24 +1354,29 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                       </span>
                     )}
                   </div>
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!inputValue.trim() || streaming || !canSend}
-                    size="icon-sm"
-                    className="shrink-0 rounded-lg"
-                    aria-label="Send message"
-                  >
-                    {streaming ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
+                  {streaming ? (
+                    <Button
+                      onClick={handleStopStreaming}
+                      size="icon-sm"
+                      variant="outline"
+                      className="shrink-0 rounded-lg border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
+                      aria-label="Stop generating"
+                    >
+                      <Square className="size-3 fill-current" />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!inputValue.trim() || !canSend}
+                      size="icon-sm"
+                      className="shrink-0 rounded-lg"
+                      aria-label="Send message"
+                    >
                       <Send className="size-4" />
-                    )}
-                  </Button>
+                    </Button>
+                  )}
                 </div>
               </div>
-              <p className="text-[11px] text-muted-foreground/50 text-center mt-2">
-                Press Enter to send, Shift+Enter for new line
-              </p>
             </div>
           </div>
       </div>
@@ -1366,6 +1446,17 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                         conversation={conv}
                         isActive={conv.id === activeConvId}
                         onClick={() => { setActiveConvId(conv.id); setSidebarOpen(false) }}
+                        deleting={deletingId === conv.id}
+                        onDelete={() => {
+                          setDeletingId(conv.id)
+                          if (conv.id.startsWith('temp-')) {
+                            setConversations((prev) => prev.filter((c) => c.id !== conv.id))
+                            if (activeConvId === conv.id) startDraft()
+                            setDeletingId(null)
+                          } else {
+                            deleteConv.mutate(conv.id)
+                          }
+                        }}
                       />
                     ))}
                     {hasNextPage && (
@@ -1391,15 +1482,44 @@ export function AgentTestChat({ agentConfig, agentId }: AgentTestChatProps) {
                 variant="ghost"
                 size="sm"
                 className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
-                onClick={() => { handleClearConversations(); setSidebarOpen(false) }}
+                disabled={deleteConv.isPending}
+                onClick={() => setClearDialogOpen(true)}
               >
-                <Trash2 className="size-3.5 mr-1.5" />
+                {deleteConv.isPending ? (
+                  <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Trash2 className="size-3.5 mr-1.5" />
+                )}
                 Clear Conversations
               </Button>
             </div>
           </div>
         </div>
       )}
+      {/* Clear all confirm */}
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Conversations</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes every conversation with this agent. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                setClearDialogOpen(false)
+                setSidebarOpen(false)
+                handleClearConversations()
+              }}
+            >
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   )
 }

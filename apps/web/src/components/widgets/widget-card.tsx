@@ -148,7 +148,7 @@ export function WidgetCard({ widget, onCopyEmbed, onDelete, onToggleStatus, isSe
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation()
-                  window.open(`/widget/demo?embed=true&widgetKey=${widget.publicKey}&preview=true`, '_blank')
+                  window.open(`/widget-entry.html?embed=true&widgetKey=${widget.publicKey}&preview=true`, '_blank')
                 }}
               >
                 <Eye className="size-4" />

@@ -45,6 +45,7 @@ const LOGO_LABELS: Record<string, string> = {
   together: "Together",
   deepseek: "DeepSeek",
   perplexity: "Perplexity",
+  agnes: "Agnes AI",
   meta: "Meta",
   xai: "xAI",
   local: "Local",

@@ -45,6 +45,14 @@ const widgetConfigFields = {
   widgetWidth: z.enum(['narrow', 'default', 'wide']).optional(),
   launcherSize: z.enum(['small', 'default', 'large']).optional(),
   borderRadius: z.enum(['none', 'default', 'full']).optional(),
+  mobileBehavior: z.enum(['default', 'fullscreen']).optional(),
+  launcherShape: z.enum(['circle', 'pill', 'square']).optional(),
+  customWidth: z.number().min(0).max(800).optional(),
+  customHeight: z.number().min(0).max(1200).optional(),
+  launcherOffset: z.number().min(0).max(200).optional(),
+  teaserMessage: z.string().trim().max(80).optional(),
+  teaserDelay: z.number().min(1).max(60).optional(),
+  hiddenPages: z.array(z.string().trim().max(200)).max(20).optional(),
 } as const
 
 const widgetConfigSchema = z.object(widgetConfigFields)
@@ -255,6 +263,9 @@ export default async function widgetsRoutes(fastify: FastifyInstance) {
         agentId: widget.agentId,
         userId: visitorId ?? null,
         channel: 'web',
+        // Binds the conversation to this widget so the message endpoints can
+        // verify the caller's signed token was issued for the same widget.
+        metadata: { widgetPublicKey: publicKey },
       },
     })
     reply.headers(getWidgetCorsHeaders(widget.allowedDomains, request))
