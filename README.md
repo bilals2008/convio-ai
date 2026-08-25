@@ -79,3 +79,7 @@ convio/
 ## License
 
 MIT
+
+---
+
+Built by **Muhammad Bilal Hassan** ([@bilals2008](https://github.com/bilals2008))
