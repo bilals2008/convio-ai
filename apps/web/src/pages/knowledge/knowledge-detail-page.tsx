@@ -556,9 +556,9 @@ export default function KnowledgeDetailPage() {
             <TabsTrigger key={t.value} value={t.value} id={t.value === 'test' ? 'tab-test' : undefined}>
               <t.icon className="size-4" />
               {t.label}
-              {t.value === 'sources' && detail.documentCount > 0 && (
+              {t.value === 'sources' && documents.length > 0 && (
                  <span className="ml-1 rounded bg-muted px-1.5 text-[10px] tabular-nums text-muted-foreground">
-                  {detail.documentCount}
+                  {documents.length}
                 </span>
               )}
             </TabsTrigger>

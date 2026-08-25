@@ -77,7 +77,8 @@ export function AgentKnowledge({
     queryKey: ['knowledge-base-documents', activeKbId],
     queryFn: async () => {
       const res = await knowledgeApi.getDocuments(activeKbId)
-      return (res.data.data || []) as DocumentItem[]
+      const raw = res.data.data
+      return (Array.isArray(raw) ? raw : []) as DocumentItem[]
     },
     enabled: !!activeKbId,
     refetchInterval: (query) => {
