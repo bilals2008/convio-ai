@@ -40,6 +40,7 @@ const AdminKnowledgeDocumentDetailPage = lazyLoad(() => import('@/admin/pages/kn
 const AdminAccessPage = lazyLoad(() => import('@/admin/pages/admin-access-page'))
 const AdminAssistantPage = lazyLoad(() => import('@/admin/pages/assistant-page'))
 const AdminTicketsPage = lazyLoad(() => import('@/admin/pages/tickets-page'))
+const AdminTicketDetailPage = lazyLoad(() => import('@/admin/pages/ticket-detail-page'))
 const AdminPlaygroundPage = lazyLoad(() => import('@/admin/pages/playground-page'))
 
 const Landing = lazyLoad(() => import('@/pages/landing'))
@@ -75,6 +76,7 @@ const McpTemplatesPage = lazyLoad(() => import('@/pages/settings/mcp-templates-p
 const SettingsAuditLogsPage = lazyLoad(() => import('@/pages/settings/audit-logs-page'))
 const NotificationPreferencesPage = lazyLoad(() => import('@/pages/settings/notification-preferences-page'))
 const SupportTicketsPage = lazyLoad(() => import('@/pages/support/support-tickets-page'))
+const SupportTicketDetailPage = lazyLoad(() => import('@/pages/support/ticket-detail-page'))
 const NotificationsPage = lazyLoad(() => import('@/pages/notifications-page'))
 const HelpIndexPage = lazyLoad(() => import('@/pages/docs/help-index'))
 const WhatIsConvioPage = lazyLoad(() => import('@/pages/docs/what-is-convio'))
@@ -577,7 +579,7 @@ export function App() {
                 </Route>
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/support" element={<SupportTicketsPage />} />
-              <Route path="/support/:ticketId" element={<ComingSoonPage />} />
+              <Route path="/support/:ticketId" element={<SupportTicketDetailPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
             <Route element={<AdminGuard />}>
@@ -606,7 +608,7 @@ export function App() {
                 <Route path="/admin/assistant" element={<AdminAssistantPage />} />
                 <Route path="/admin/playground" element={<AdminPlaygroundPage />} />
                 <Route path="/admin/tickets" element={<AdminTicketsPage />} />
-                <Route path="/admin/tickets/:ticketId" element={<ComingSoonPage />} />
+                <Route path="/admin/tickets/:ticketId" element={<AdminTicketDetailPage />} />
               </Route>
             </Route>
           </Routes>

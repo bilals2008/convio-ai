@@ -323,6 +323,12 @@ export const tickets = {
     api.get(`/organizations/${orgId}/tickets`, { params }),
   create: (orgId: string, data: { title: string; description: string; category: string; priority: string }) =>
     api.post(`/organizations/${orgId}/tickets`, data),
+  detail: (orgId: string, ticketId: string) =>
+    api.get(`/organizations/${orgId}/tickets/${ticketId}`),
+  sendMessage: (orgId: string, ticketId: string, data: { content: string }) =>
+    api.post(`/organizations/${orgId}/tickets/${ticketId}/messages`, data),
+  update: (orgId: string, ticketId: string, data: { status?: string; priority?: string }) =>
+    api.patch(`/organizations/${orgId}/tickets/${ticketId}`, data),
 }
 
 export const publicApi = axios.create({

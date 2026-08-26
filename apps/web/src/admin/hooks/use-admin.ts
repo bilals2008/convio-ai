@@ -1,4 +1,7 @@
+import { useEffect } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
+import { toast } from '@/lib/toast'
 import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminRevenue, type RevenuePeriod, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant } from '@/admin/services/admin-api'
 
 export function invalidateAdminUsers(queryClient: ReturnType<typeof useQueryClient>) {
@@ -332,4 +335,76 @@ export function useAdminTicketStats() {
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: ['admin', 'tickets', 'stats'] })
   return { ...query, refetch }
+}
+
+const adminTicketKeys = {
+  detail: (id: string) => ['admin', 'tickets', 'detail', id] as const,
+}
+
+export function useAdminTicketDetail(id: string | undefined) {
+  return useQuery({
+    queryKey: adminTicketKeys.detail(id ?? 'none'),
+    queryFn: async () => {
+      const res = await adminApi.ticketDetail(id!)
+      return res.data.data
+    },
+    enabled: !!id,
+  })
+}
+
+export function useAdminTicketRealtime(ticketId: string | undefined) {
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!ticketId) return
+    const channel = supabase.channel(`ticket:${ticketId}`, {
+      config: { broadcast: { self: false } },
+    })
+    channel.on('broadcast', { event: 'message' }, () => {
+      queryClient.invalidateQueries({ queryKey: adminTicketKeys.detail(ticketId) })
+    })
+    channel.on('broadcast', { event: 'changed' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets'] })
+      queryClient.invalidateQueries({ queryKey: adminTicketKeys.detail(ticketId) })
+    })
+    channel.subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [ticketId, queryClient])
+}
+
+export function broadcastTicketEvent(ticketId: string, event: 'message' | 'changed') {
+  try {
+    supabase.channel(`ticket:${ticketId}`).send({ type: 'broadcast', event, payload: {} })
+  } catch {}
+}
+
+export function useAdminReplyTicket(ticketId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { content: string; isInternalNote?: boolean }) => adminApi.replyTicket(ticketId, data),
+    onSuccess: (_res, vars) => {
+      queryClient.invalidateQueries({ queryKey: adminTicketKeys.detail(ticketId) })
+      // internal notes don't bump ticket.updatedAt server-side, but the
+      // reporter's open thread still needs to hear about public replies
+      if (!vars.isInternalNote) {
+        broadcastTicketEvent(ticketId, 'message')
+        queryClient.invalidateQueries({ queryKey: ['admin', 'tickets'] })
+      }
+    },
+    onError: () => toast.error('Failed to send reply'),
+  })
+}
+
+export function useAdminUpdateTicket(ticketId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { status?: string; priority?: string }) => adminApi.updateTicket(ticketId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets'] })
+      queryClient.invalidateQueries({ queryKey: adminTicketKeys.detail(ticketId) })
+      broadcastTicketEvent(ticketId, 'changed')
+    },
+    onError: () => toast.error('Failed to update ticket'),
+  })
 }

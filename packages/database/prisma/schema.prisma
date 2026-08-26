@@ -822,11 +822,12 @@ model SupportTicket {
 }
 
 model SupportTicketMessage {
-  id          String        @id @default(uuid())
-  ticketId    String
-  authorId    String
-  content     String
-  attachments Json          @default("[]")
+  id             String        @id @default(uuid())
+  ticketId       String
+  authorId       String
+  content        String
+  isInternalNote Boolean       @default(false)
+  attachments    Json          @default("[]")
   createdAt   DateTime      @default(now()) @db.Timestamptz(6)
   ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   author      Profile       @relation(fields: [authorId], references: [id], onDelete: Cascade)

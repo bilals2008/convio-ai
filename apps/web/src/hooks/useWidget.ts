@@ -85,6 +85,9 @@ export function useWidget(config: WidgetConfig) {
   const theme = { ...defaultTheme, ...config.theme }
 
   const CONV_KEY = `convio:conv:${config.publicKey}`
+  const CONV_TS_KEY = `convio:conv_ts:${config.publicKey}`
+  // ponytail: 4-hour stale window — visitor gets a fresh welcome on return.
+  const CONV_MAX_AGE_MS = 4 * 60 * 60 * 1000
 
   const authHeaders = useCallback(async (): Promise<Record<string, string> | undefined> => {
     if (!config.preview) return undefined
@@ -109,7 +112,10 @@ export function useWidget(config: WidgetConfig) {
       const conversation = data.data || data
       setConversationId(conversation.id)
       if (!config.preview) {
-        try { localStorage.setItem(CONV_KEY, conversation.id) } catch { /* storage unavailable */ }
+        try {
+          localStorage.setItem(CONV_KEY, conversation.id)
+          localStorage.setItem(CONV_TS_KEY, String(Date.now()))
+        } catch { /* storage unavailable */ }
       }
       return conversation.id
     } catch {
@@ -118,7 +124,7 @@ export function useWidget(config: WidgetConfig) {
     } finally {
       setIsCreatingConversation(false)
     }
-  }, [config.publicKey, config.preview, config.visitorId, authHeaders, publicHeaders, CONV_KEY])
+  }, [config.publicKey, config.preview, config.visitorId, authHeaders, publicHeaders, CONV_KEY, CONV_TS_KEY])
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -378,7 +384,10 @@ export function useWidget(config: WidgetConfig) {
     setIsTyping(false)
     setUnreadCount(0)
     if (!config.preview) {
-      try { localStorage.removeItem(CONV_KEY) } catch { /* storage unavailable */ }
+      try {
+        localStorage.removeItem(CONV_KEY)
+        localStorage.removeItem(CONV_TS_KEY)
+      } catch { /* storage unavailable */ }
     }
   }, [config.preview, CONV_KEY])
 
@@ -393,6 +402,16 @@ export function useWidget(config: WidgetConfig) {
       try {
         const storedId = localStorage.getItem(CONV_KEY)
         if (!storedId) return
+
+        // Expire stale conversations (older than CONV_MAX_AGE_MS).
+        const storedTs = localStorage.getItem(CONV_TS_KEY)
+        if (storedTs && Date.now() - Number(storedTs) > CONV_MAX_AGE_MS) {
+          try {
+            localStorage.removeItem(CONV_KEY)
+            localStorage.removeItem(CONV_TS_KEY)
+          } catch { /* ignore */ }
+          return
+        }
         const extraHeaders = await authHeaders()
         const response = await api.get(`/widget/conversations/${storedId}/messages?limit=50`, {
           headers: { ...publicHeaders(), ...(extraHeaders ?? {}) },
@@ -409,16 +428,20 @@ export function useWidget(config: WidgetConfig) {
           })))
         } else {
           localStorage.removeItem(CONV_KEY)
+          localStorage.removeItem(CONV_TS_KEY)
         }
       } catch {
-        try { localStorage.removeItem(CONV_KEY) } catch { /* ignore */ }
+        try {
+          localStorage.removeItem(CONV_KEY)
+          localStorage.removeItem(CONV_TS_KEY)
+        } catch { /* ignore */ }
       } finally {
         if (!cancelled) setHistoryLoaded(true)
       }
     }
     resume()
     return () => { cancelled = true }
-  }, [config.preview, CONV_KEY, authHeaders, publicHeaders])
+  }, [config.preview, CONV_KEY, CONV_TS_KEY, authHeaders, publicHeaders])
 
   useEffect(() => {
     if (historyLoaded && config.greeting && messages.length === 0 && !(config.quickReplies?.length)) {

@@ -89,7 +89,6 @@
         iframe.style.maxHeight = 'none'
         iframe.style.borderRadius = '0'
         iframe.style.boxShadow = 'none'
-        iframe.style.background = '#fff'
         return
       }
       iframe.style.bottom = (20 + (event.data.offset || 0)) + 'px'
@@ -101,10 +100,8 @@
       setPosition(event.data.position)
       if (event.data.open) {
         iframe.style.boxShadow = '0 4px 24px rgba(0,0,0,0.16)'
-        iframe.style.background = '#fff'
       } else {
         iframe.style.boxShadow = 'none'
-        iframe.style.background = 'transparent'
       }
     }
   })

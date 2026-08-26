@@ -92,7 +92,7 @@ export function WidgetWelcome() {
                 key={reply}
                 type="button"
                 onClick={() => onSendMessage(reply)}
-                className="rounded-full border border-[hsl(var(--widget-primary)_/_0.3)] bg-[hsl(var(--widget-primary)_/_0.06)] px-4 py-2 text-[12px] font-medium text-[hsl(var(--widget-primary))] hover:bg-[hsl(var(--widget-primary)_/_0.12)] hover:border-[hsl(var(--widget-primary)_/_0.5)] transition-all duration-150"
+                className="rounded border border-[hsl(var(--widget-primary)_/_0.3)] bg-[hsl(var(--widget-primary)_/_0.06)] px-4 py-2 text-[12px] font-medium text-[hsl(var(--widget-primary))] hover:bg-[hsl(var(--widget-primary)_/_0.12)] hover:border-[hsl(var(--widget-primary)_/_0.5)] transition-all duration-150"
               >
                 {reply}
               </button>

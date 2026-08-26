@@ -553,6 +553,14 @@ export const adminApi = {
 
   ticketStats: () => api.get<{ data: { total: number; open: number; inProgress: number } }>('/admin/tickets/stats'),
 
+  ticketDetail: (id: string) => api.get<{ data: AdminTicketDetail }>(`/admin/tickets/${id}`),
+
+  replyTicket: (id: string, data: { content: string; isInternalNote?: boolean }) =>
+    api.post(`/admin/tickets/${id}/messages`, data),
+
+  updateTicket: (id: string, data: { status?: string; priority?: string }) =>
+    api.patch(`/admin/tickets/${id}`, data),
+
   assistant: {
     conversations: () => api.get<{ data: AdminConversation[] }>('/admin/assistant/conversations'),
     createConversation: () => api.post<{ data: AdminConversation }>('/admin/assistant/conversations'),
@@ -597,4 +605,16 @@ export interface AdminTicket {
   reporter: { id: string; name: string | null; email: string; avatar: string | null }
   organization: { id: string; name: string; slug: string }
   messageCount: number
+}
+
+export interface AdminTicketDetail extends Omit<AdminTicket, 'messageCount'> {
+  description: string
+  messages: {
+    id: string
+    authorId: string
+    content: string
+    isInternalNote: boolean
+    createdAt: string
+    author: { id: string; name: string | null; email: string; avatar: string | null }
+  }[]
 }

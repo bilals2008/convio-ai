@@ -1,5 +1,7 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { tickets as ticketsApi } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/toast'
 
 export interface TicketSummary {
@@ -15,8 +17,41 @@ export interface TicketSummary {
   messageCount: number
 }
 
+export interface TicketPerson {
+  id: string
+  name: string | null
+  email: string
+  avatar: string | null
+}
+
+export interface TicketMessage {
+  id: string
+  authorId: string
+  content: string
+  isInternalNote: boolean
+  createdAt: string
+  author: TicketPerson
+}
+
+export interface TicketDetail {
+  id: string
+  title: string
+  description: string
+  category: string
+  priority: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  resolvedAt: string | null
+  isReporter?: boolean
+  reporter: TicketPerson
+  organization?: { id: string; name: string; slug: string }
+  messages: TicketMessage[]
+}
+
 export const ticketKeys = {
   list: (orgId: string, filters: Record<string, unknown> = {}) => ['tickets', orgId, filters] as const,
+  detail: (ticketId: string) => ['tickets', 'detail', ticketId] as const,
 }
 
 export function useTickets(orgId: string | undefined, filters: { status?: string } = {}) {
@@ -42,5 +77,71 @@ export function useCreateTicket(orgId: string | undefined) {
       toast.success('Ticket created')
     },
     onError: (err: { friendlyMessage?: string }) => toast.error(err.friendlyMessage || 'Failed to create ticket'),
+  })
+}
+
+export function useTicket(orgId: string | undefined, ticketId: string | undefined) {
+  return useQuery({
+    queryKey: ticketKeys.detail(ticketId ?? 'none'),
+    queryFn: async () => {
+      const res = await ticketsApi.detail(orgId!, ticketId!)
+      return res.data.data as TicketDetail
+    },
+    enabled: !!orgId && !!ticketId,
+  })
+}
+
+export function useTicketRealtime(ticketId: string | undefined) {
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!ticketId) return
+    const channel = supabase.channel(`ticket:${ticketId}`, {
+      config: { broadcast: { self: false } },
+    })
+    channel.on('broadcast', { event: 'message' }, () => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) })
+    })
+    channel.on('broadcast', { event: 'changed' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) })
+    })
+    channel.subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [ticketId, queryClient])
+}
+
+function broadcastTicket(ticketId: string, event: 'message' | 'changed') {
+  try {
+    supabase.channel(`ticket:${ticketId}`).send({ type: 'broadcast', event, payload: {} })
+  } catch {}
+}
+
+export function useSendTicketMessage(orgId: string | undefined, ticketId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (content: string) =>
+      ticketsApi.sendMessage(orgId!, ticketId, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) })
+      broadcastTicket(ticketId, 'message')
+    },
+    onError: (err: { friendlyMessage?: string }) => toast.error(err.friendlyMessage || 'Failed to send message'),
+  })
+}
+
+export function useUpdateTicket(orgId: string | undefined, ticketId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { status?: string; priority?: string }) =>
+      ticketsApi.update(orgId!, ticketId, data),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) })
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      broadcastTicket(ticketId, 'changed')
+      toast.success(`Status: ${res.data.data.status}`)
+    },
+    onError: (err: { friendlyMessage?: string }) => toast.error(err.friendlyMessage || 'Failed to update ticket'),
   })
 }
