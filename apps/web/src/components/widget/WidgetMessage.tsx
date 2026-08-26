@@ -6,10 +6,11 @@ import { WidgetMarkdown } from './WidgetMarkdown'
 
 interface WidgetMessageProps {
   message: WidgetMessageType
+  /** @deprecated avatar now renders on every assistant message */
   showAvatar?: boolean
 }
 
-export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProps) {
+export function WidgetMessage({ message }: WidgetMessageProps) {
   const { agentAvatar, agentName } = useWidgetState()
   const isUser = message.role === 'user'
 
@@ -20,12 +21,12 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
   return (
     <div
       className={cn(
-        'convio-msg flex gap-2 mb-1.5 animate-in fade-in slide-in-from-bottom-1 duration-300',
+        'convio-msg flex gap-2 mb-3 animate-in fade-in slide-in-from-bottom-1 duration-300',
         isUser ? 'justify-end' : 'justify-start'
       )}
     >
-      {!isUser && showAvatar && (
-        <div className="mt-1 shrink-0">
+      {!isUser && (
+        <div className="mt-0.5 shrink-0">
           {agentAvatar ? (
             <img
               src={agentAvatar}
@@ -46,11 +47,10 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
       )}
       <div
         className={cn(
-          'group relative max-w-[88%] px-3.5 py-2.5 text-[13px] leading-relaxed',
+          'group relative max-w-[85%] min-w-0 text-[13px] leading-relaxed',
           isUser
-            ? 'rounded-2xl rounded-br-md text-white'
-            : 'rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-prompt-bg))]',
-          !isUser && !showAvatar && 'ml-9'
+            ? 'rounded-2xl rounded-br-md px-3.5 py-2.5 text-white'
+            : 'pt-1 text-[hsl(var(--widget-text))]',
         )}
         style={
           isUser
@@ -67,8 +67,8 @@ export function WidgetMessage({ message, showAvatar = false }: WidgetMessageProp
         )}
         <span
           className={cn(
-            'absolute -bottom-5 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-[hsl(var(--widget-muted-foreground))]',
-            isUser ? 'right-0' : 'left-0'
+            'absolute -bottom-4.5 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-[hsl(var(--widget-muted-foreground))]',
+            isUser ? 'right-0' : 'left-9'
           )}
         >
           {formatRelativeTime(message.timestamp)}

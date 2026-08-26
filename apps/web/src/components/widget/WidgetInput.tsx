@@ -38,7 +38,7 @@ export function WidgetInput() {
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 112)}px`
+    el.style.height = `${Math.min(el.scrollHeight, 96)}px`
   }, [])
 
   const handleSend = useCallback(() => {
@@ -71,34 +71,36 @@ export function WidgetInput() {
 
   return (
     <div className="convio-input shrink-0 border-t border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-footer-bg))] sm:rounded-b-2xl">
-      <div className="flex items-end gap-2 p-3">
-        <div className="relative" ref={emojiRef}>
-          <button
-            type="button"
-            onClick={() => setShowEmoji((v) => !v)}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full text-[hsl(var(--widget-muted-foreground))] hover:text-[hsl(var(--widget-primary))] hover:bg-[hsl(var(--widget-primary)_/_0.08)] transition-colors"
-            aria-label="Emoji"
-          >
-            <Smile className="size-5" />
-          </button>
-          {showEmoji && (
-            <div className="absolute bottom-full left-0 mb-2 z-50 w-[280px] max-h-[200px] overflow-y-auto rounded-xl border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] p-2 shadow-xl">
-              <div className="grid grid-cols-8 gap-0.5">
-                {EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => insertEmoji(emoji)}
-                    className="flex size-8 items-center justify-center rounded-md text-lg hover:bg-[hsl(var(--widget-muted))] transition-colors"
-                  >
-                    {emoji}
-                  </button>
-                ))}
+      <div className="p-2.5">
+        <div
+          className="flex items-end gap-1 rounded-sm border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-input-bg))] p-1 transition-all duration-200 focus-within:border-[hsl(var(--widget-primary)_/_0.5)]"
+        >
+          <div className="relative" ref={emojiRef}>
+            <button
+              type="button"
+              onClick={() => setShowEmoji((v) => !v)}
+              className="flex size-7 shrink-0 items-center justify-center rounded text-[hsl(var(--widget-muted-foreground))] hover:text-[hsl(var(--widget-primary))] hover:bg-[hsl(var(--widget-primary)_/_0.08)] transition-colors"
+              aria-label="Emoji"
+            >
+              <Smile className="size-4" />
+            </button>
+            {showEmoji && (
+              <div className="absolute bottom-full left-0 mb-2 z-50 w-[280px] max-h-[200px] overflow-y-auto rounded border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] p-2 shadow-xl">
+                <div className="grid grid-cols-8 gap-0.5">
+                  {EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => insertEmoji(emoji)}
+                      className="flex size-8 items-center justify-center rounded text-lg hover:bg-[hsl(var(--widget-muted))] transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-        <div className="flex-1 rounded-xl bg-[hsl(var(--widget-input-bg))] px-3.5 py-2 transition-all duration-200">
+            )}
+          </div>
           <textarea
             ref={textareaRef}
             value={value}
@@ -110,29 +112,29 @@ export function WidgetInput() {
             placeholder={placeholderText || "Enter your message..."}
             disabled={isTyping}
             rows={1}
-            className="w-full resize-none bg-transparent py-0 text-[13px] leading-relaxed text-[hsl(var(--widget-text))] placeholder:text-[hsl(var(--widget-muted-foreground))]/50 outline-none disabled:opacity-40"
+            className="min-h-[28px] w-full flex-1 resize-none bg-transparent py-1.5 text-[13px] leading-relaxed text-[hsl(var(--widget-text))] placeholder:text-[hsl(var(--widget-muted-foreground))]/50 outline-none disabled:opacity-40"
           />
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!canSend}
+            className={cn(
+              'mb-0.5 flex size-7 shrink-0 items-center justify-center rounded transition-all duration-200',
+              canSend
+                ? 'text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95'
+                : 'bg-[hsl(var(--widget-muted))] text-[hsl(var(--widget-muted-foreground))] cursor-not-allowed'
+            )}
+            style={
+              canSend
+                ? {
+                    background: `hsl(var(--widget-send-btn))`,
+                  }
+                : undefined
+            }
+          >
+            <Send className={cn('size-3.5 transition-transform', canSend && '-rotate-45')} />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={!canSend}
-          className={cn(
-            'flex size-9 shrink-0 items-center justify-center rounded-full transition-all duration-200',
-            canSend
-              ? 'text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95'
-              : 'bg-[hsl(var(--widget-muted))] text-[hsl(var(--widget-muted-foreground))] cursor-not-allowed'
-          )}
-          style={
-            canSend
-              ? {
-                  background: `hsl(var(--widget-send-btn))`,
-                }
-              : undefined
-          }
-        >
-          <Send className={cn('size-4 transition-transform', canSend && '-rotate-45')} />
-        </button>
       </div>
       {showPoweredBy !== false && (
         <p className="text-center text-[10px] text-[hsl(var(--widget-muted-foreground))]/40 pb-2.5 font-medium">

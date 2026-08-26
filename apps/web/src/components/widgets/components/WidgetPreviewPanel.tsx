@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Zap, Send, Smile, X, ChevronDown } from 'lucide-react'
 import { getWidgetCSSVariables } from '@/components/widget/WidgetStyles'
 
@@ -34,8 +35,28 @@ export function WidgetPreviewPanel({
   showOnlineIndicator, placeholderText, showPoweredBy, quickReplies,
   headerGradient, previewThemeMode,
 }: WidgetPreviewPanelProps) {
-  const isDark = previewThemeMode === 'dark'
-  const theme = { primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, borderColor, inputBgColor, sendBtnColor }
+  // 'auto' must resolve like the real widget does (OS preference), otherwise
+  // dark-themed widgets preview with light-mode vars — washed out and unreadable.
+  const [isDark, setIsDark] = useState(
+    () =>
+      previewThemeMode === 'auto'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        : previewThemeMode === 'dark',
+  )
+
+  useEffect(() => {
+    if (previewThemeMode !== 'auto') {
+      setIsDark(previewThemeMode === 'dark')
+      return
+    }
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    setIsDark(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setIsDark(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [previewThemeMode])
+
+  const theme = { primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, borderColor, inputBgColor, sendBtnColor, footerBgColor }
   const vars = getWidgetCSSVariables(theme, isDark)
 
   const initials = agentName
@@ -129,7 +150,7 @@ export function WidgetPreviewPanel({
               <button
                 key={reply}
                 type="button"
-                className="rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-all duration-150"
+                className="rounded border px-3 py-1.5 text-[11px] font-medium transition-all duration-150"
                 style={{
                   borderColor: `hsl(var(--widget-primary) / 0.2)`,
                   backgroundColor: `hsl(var(--widget-primary) / 0.04)`,
@@ -145,22 +166,25 @@ export function WidgetPreviewPanel({
 
       {/* Input area */}
       <div className="shrink-0 border-t" style={{ borderColor: `hsl(var(--widget-border))`, backgroundColor: footerBgColor ? footerBgColor : `hsl(var(--widget-bg))` }}>
-        <div className="flex items-end gap-1.5 p-2.5">
-          <button type="button" className="flex size-7 shrink-0 items-center justify-center rounded-full transition-colors" style={{ color: `hsl(var(--widget-muted-foreground))` }}>
-            <Smile className="size-4" />
-          </button>
-          <div className="flex-1 rounded-lg px-3 py-1.5" style={{ backgroundColor: `hsl(var(--widget-input-bg))` }}>
-            <p className="text-[12px] leading-relaxed" style={{ color: `hsl(var(--widget-muted-foreground))`, opacity: 0.4 }}>
+        <div className="p-2.5">
+          <div
+            className="flex items-end gap-1 rounded-sm border p-1"
+            style={{ borderColor: `hsl(var(--widget-border))`, backgroundColor: `hsl(var(--widget-input-bg))` }}
+          >
+            <button type="button" className="flex size-7 shrink-0 items-center justify-center rounded transition-colors" style={{ color: `hsl(var(--widget-muted-foreground))` }}>
+              <Smile className="size-4" />
+            </button>
+            <p className="min-h-[28px] flex-1 py-1.5 text-[12px] leading-relaxed" style={{ color: `hsl(var(--widget-muted-foreground))`, opacity: 0.5 }}>
               {placeholderText || 'Enter your message...'}
             </p>
+            <button
+              type="button"
+              className="mb-0.5 flex size-7 shrink-0 items-center justify-center rounded"
+              style={{ backgroundColor: `hsl(var(--widget-send-btn))`, color: `hsl(var(--widget-muted-foreground))` }}
+            >
+              <Send className="size-3.5" />
+            </button>
           </div>
-          <button
-            type="button"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full cursor-not-allowed"
-            style={{ backgroundColor: `hsl(var(--widget-send-btn))`, color: `hsl(var(--widget-muted-foreground))` }}
-          >
-            <Send className="size-3.5" />
-          </button>
         </div>
         {showPoweredBy !== false && (
           <p className="text-center text-[9px] pb-2 font-medium" style={{ color: `hsl(var(--widget-muted-foreground))`, opacity: 0.35 }}>

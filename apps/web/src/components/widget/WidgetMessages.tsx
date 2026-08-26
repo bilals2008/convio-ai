@@ -84,7 +84,7 @@ export function WidgetMessages() {
       ))}
       {streamingContent ? (
         <div className="convio-msg flex gap-2 mb-3 animate-in fade-in duration-300 justify-start">
-          <div className="mt-1 shrink-0">
+          <div className="mt-0.5 shrink-0">
             {agentAvatar ? (
               <img src={agentAvatar} alt={agentName} className="size-7 rounded-full object-cover" />
             ) : (
@@ -98,9 +98,7 @@ export function WidgetMessages() {
               </div>
             )}
           </div>
-          <div
-            className="group relative max-w-[88%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-prompt-bg))]"
-          >
+          <div className="max-w-[85%] min-w-0 pt-1 text-[13px] leading-relaxed text-[hsl(var(--widget-text))]">
             <WidgetMarkdown content={streamingContent} />
             <span className="ml-0.5 inline-block h-3.5 w-[3px] rounded-full bg-[hsl(var(--widget-primary))] align-text-bottom animate-typing-dot" />
           </div>
