@@ -165,6 +165,12 @@ export function ChatView() {
     setStreamingContent('')
     setError(null)
 
+    // Optimistic user message — visible instantly, replaced by the refetch
+    // (which returns the real persisted row) after the stream ends.
+    queryClient.setQueryData<ConversationDetail>(['conversation', id], (old) =>
+      old ? { ...old, messages: [...(old.messages ?? []), { id: `temp-user-${Date.now()}`, role: 'user' as const, content, status: 'sent' as const, createdAt: new Date().toISOString() }] } : old,
+    )
+
     try {
       await messagesApi.send(id, content)
 
@@ -224,6 +230,14 @@ export function ChatView() {
       if (streamError) {
         setError(streamError)
         toast.error(streamError)
+      }
+
+      // Optimistic assistant message — the streamed response stays visible
+      // while the refetch swaps in the persisted row, so nothing blanks out.
+      if (fullContent) {
+        queryClient.setQueryData<ConversationDetail>(['conversation', id], (old) =>
+          old ? { ...old, messages: [...(old.messages ?? []), { id: `temp-assistant-${Date.now()}`, role: 'assistant' as const, content: fullContent, reasoning: fullReasoning || undefined, status: 'sent' as const, createdAt: new Date().toISOString() }] } : old,
+        )
       }
 
       queryClient.invalidateQueries({ queryKey: ['conversation', id] })

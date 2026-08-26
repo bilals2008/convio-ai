@@ -1,5 +1,4 @@
-import { Bot, User, AlertCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { AlertCircle, Loader2 } from 'lucide-react'
 import { AiResponse } from '@/components/shared/ai-response'
 
 type MessageRole = 'user' | 'assistant' | 'system'
@@ -15,8 +14,7 @@ interface MessageItem {
 }
 
 function formatTime(date: string): string {
-  const d = new Date(date)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatFullDate(date: string): string {
@@ -28,12 +26,9 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
-  const isUser = message.role === 'user'
-  const isSystem = message.role === 'system'
-
-  if (isSystem) {
+  if (message.role === 'system') {
     return (
-      <div className="flex justify-center py-2">
+      <div className="flex justify-center py-1">
         <div className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
           {message.content}
         </div>
@@ -41,54 +36,41 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     )
   }
 
-  return (
-    <div className={cn('flex gap-2', isUser ? 'flex-row-reverse' : 'flex-row')}>
-      <div
-        className={cn(
-          'flex size-8 items-center justify-center rounded-full shrink-0',
-          isUser ? 'bg-primary/10' : 'bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20'
-        )}
-      >
-        {isUser ? (
-          <User className="size-4 text-primary" />
-        ) : (
-          <Bot className="size-4 text-primary" />
-        )}
-      </div>
-
-      <div className={cn('max-w-[70%] space-y-1', isUser && 'items-end')}>
-        <div
-          className={cn(
-            'rounded-xl px-3 py-2 text-sm',
-            isUser
-              ? 'bg-primary text-primary-foreground rounded-tr-sm'
-              : 'bg-muted rounded-tl-sm'
-          )}
-        >
-          {isUser ? (
-            <span className="whitespace-pre-wrap">{message.content}</span>
-          ) : (
+  if (message.role === 'user') {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-sm text-primary-foreground">
+          {message.content}
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
+          <span title={formatFullDate(message.createdAt)}>{formatTime(message.createdAt)}</span>
+          {message.status === 'sending' && <Loader2 className="size-3 animate-spin" role="status" aria-label="Sending" />}
+          {message.status === 'error' && (
             <>
-              {message.reasoning && (
-                <details className="px-0 pt-0 pb-2 text-xs text-muted-foreground border-b border-border/40 mb-2">
-                  <summary className="cursor-pointer select-none font-medium text-foreground/60 hover:text-foreground transition-colors">
-                    Show reasoning
-                  </summary>
-                  <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80 leading-relaxed">
-                    {message.reasoning}
-                  </div>
-                </details>
-              )}
-              <AiResponse content={message.content} />
+              <AlertCircle className="size-3 text-destructive" aria-label="Failed to send" />
+              <span className="text-destructive">Failed</span>
             </>
           )}
         </div>
-        <div className={cn('flex items-center gap-1.5 text-xs text-muted-foreground', isUser && 'justify-end')}>
-          <span title={formatFullDate(message.createdAt)}>{formatTime(message.createdAt)}</span>
-          {message.status === 'error' && (
-            <AlertCircle className="size-3 text-destructive" />
-          )}
-        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      {message.reasoning && (
+        <details className="rounded-lg border border-border/60 px-3 py-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer select-none font-medium text-foreground/60 transition-colors hover:text-foreground">
+            Reasoning
+          </summary>
+          <div className="mt-1.5 max-h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+            {message.reasoning}
+          </div>
+        </details>
+      )}
+      <AiResponse content={message.content} showActions />
+      <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+        <span title={formatFullDate(message.createdAt)}>{formatTime(message.createdAt)}</span>
       </div>
     </div>
   )

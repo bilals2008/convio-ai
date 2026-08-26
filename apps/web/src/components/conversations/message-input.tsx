@@ -1,7 +1,11 @@
 import { useState } from 'react'
-import { Send, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { ArrowUp, Loader2 } from 'lucide-react'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from '@/components/ui/input-group'
 
 interface MessageInputProps {
   onSend: (message: string) => void
@@ -27,46 +31,53 @@ export function MessageInput({
     setValue('')
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value)
-    onInputChange?.()
-  }
-
   return (
-    <div className="flex items-end gap-2 px-4 py-3">
-      <textarea
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        disabled={disabled || loading}
-        rows={1}
-        aria-label="Message input"
-        className={cn(
-          'flex-1 resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm',
-          'placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
-          'disabled:cursor-not-allowed disabled:opacity-50 min-h-[40px] max-h-[120px]'
-        )}
-      />
-      <Button
-        onClick={handleSend}
-        disabled={!value.trim() || loading || disabled}
-        size="icon"
-        className="shrink-0"
-      >
-        {loading ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <Send className="size-4" />
-        )}
-      </Button>
+    <div className="mx-auto w-full max-w-3xl px-4 pb-3 pt-1 sm:px-6">
+      <InputGroup>
+        <InputGroupTextarea
+          placeholder={placeholder}
+          className="min-h-[44px] px-3.5 py-3"
+          rows={1}
+          value={value}
+          disabled={disabled || loading}
+          aria-label="Message input"
+          onChange={(e) => {
+            setValue(e.target.value)
+            onInputChange?.()
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              handleSend()
+            }
+          }}
+        />
+        <InputGroupAddon align="block-end">
+          {loading ? (
+            <InputGroupButton
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              disabled
+              aria-label="Sending message"
+              className="ml-auto"
+            >
+              <Loader2 className="animate-spin" />
+            </InputGroupButton>
+          ) : (
+            <InputGroupButton
+              size="icon-sm"
+              variant="default"
+              aria-label="Send message"
+              className="ml-auto"
+              disabled={!value.trim() || disabled}
+              onClick={handleSend}
+            >
+              <ArrowUp />
+            </InputGroupButton>
+          )}
+        </InputGroupAddon>
+      </InputGroup>
     </div>
   )
 }

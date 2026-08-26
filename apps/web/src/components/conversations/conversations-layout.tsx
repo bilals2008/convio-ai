@@ -255,23 +255,23 @@ export function ConversationsLayout() {
   }
 
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024
-  const showList = !id || !isMobileView
   const showChat = id
 
   return (
     <>
-    <div className="flex h-full overflow-hidden">
+    {/* Full-bleed: cancel the dashboard main padding so the list hugs the sidebar */}
+    <div className="flex h-[calc(100%+2rem)] w-[calc(100%+2rem)] overflow-hidden -m-4 md:h-[calc(100%+3rem)] md:w-[calc(100%+3rem)] md:-m-6">
       {/* Left Panel - Conversation List */}
       <div
         className={cn(
           'flex flex-col border-r',
-          'w-full lg:w-[340px] lg:min-w-[340px]',
+          'w-full lg:w-[300px] lg:min-w-[300px]',
           showChat && isMobileView ? 'hidden' : 'flex'
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3">
-          <h2 className="text-base font-semibold">Chats</h2>
+        <div className="flex items-center justify-between px-3 py-2.5">
+          <h2 className="text-sm font-semibold">Chats</h2>
           {bulk.selectionMode ? (
             <BulkActionBar
               onExitSelectionMode={bulk.exitSelectionMode}
@@ -301,12 +301,12 @@ export function ConversationsLayout() {
 
         {/* Search */}
         <TooltipProvider>
-        <div className="flex items-center gap-1.5 px-4 pb-3">
+        <div className="flex items-center gap-1.5 px-3 pb-2">
           <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="Search chats..."
-            className="h-9 flex-1 text-sm"
+            className="h-8 flex-1 text-sm"
           />
           <div className="flex shrink-0 items-center gap-0.5">
           <Tooltip>
@@ -314,7 +314,7 @@ export function ConversationsLayout() {
               aria-label="Delete all conversations"
               disabled={conversations.length === 0 || isLoading || deleteMany.isPending}
               onClick={() => setDeleteAllOpen(true)}
-              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-9 shrink-0 text-muted-foreground')}
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-8 shrink-0 text-muted-foreground')}
             >
               {deleteMany.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
             </TooltipTrigger>
@@ -325,7 +325,7 @@ export function ConversationsLayout() {
               aria-label="Select conversations"
               disabled={filteredConvs.length === 0}
               onClick={bulk.enterSelectionMode}
-              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-9 shrink-0 text-muted-foreground')}
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-8 shrink-0 text-muted-foreground')}
             >
               <CheckSquare className="size-4" />
             </TooltipTrigger>
@@ -348,7 +348,7 @@ export function ConversationsLayout() {
             <span className="text-xs text-muted-foreground">{bulk.selectedCount} selected</span>
           </div>
         ) : (
-          <div className="flex px-4 pb-3 gap-1.5">
+          <div className="flex px-3 pb-2 gap-1">
           {[
             { value: 'all', label: 'All' },
             { value: 'active', label: 'Active' },
@@ -415,7 +415,7 @@ export function ConversationsLayout() {
                 }
               }}
               className={cn(
-                'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer',
+                'w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer',
                 bulk.selectionMode && bulk.isSelected(conv.id)
                   ? 'bg-primary/10'
                   : selectedId === conv.id
@@ -431,7 +431,7 @@ export function ConversationsLayout() {
                   className="size-4 shrink-0"
                 />
               )}
-              <Avatar size="lg" className="shrink-0">
+              <Avatar className="size-9 shrink-0">
                 <AvatarFallback className={cn(
                   'text-xs font-semibold',
                   selectedId === conv.id ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary/80'
@@ -444,7 +444,7 @@ export function ConversationsLayout() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
                   <span className={cn(
-                    'text-sm font-medium truncate',
+                    'text-[13px] font-medium truncate',
                     selectedId === conv.id && 'text-primary'
                   )}>
                     {conv.userName || 'Anonymous'}
@@ -453,8 +453,8 @@ export function ConversationsLayout() {
                     {formatRelativeTime(conv.updatedAt)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground truncate">
                     {getLastMessage(conv)}
                   </p>
                   <ConversationStatusBadge status={conv.status} />
