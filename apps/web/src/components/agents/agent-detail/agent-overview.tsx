@@ -1,7 +1,21 @@
-import { Bot, BookOpen, CheckCircle2, Clock3, KeyRound, MessageSquareText, Settings2, Wrench, Cpu, Calendar, RefreshCw, type LucideIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+  BookOpen,
+  Bot,
+  CheckCircle2,
+  ChevronRight,
+  Circle,
+  Cpu,
+  KeyRound,
+  MessageSquareText,
+  PenLine,
+  Server,
+  Wrench,
+} from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 
 interface AgentOverviewProps {
@@ -30,8 +44,12 @@ function formatModelName(model: string): string {
   return part.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').replace(/ free$/i, '').trim()
 }
 
+const focusRing =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-ring'
+
 export function AgentOverview({
   agentName,
+  agentAvatar,
   agentDescription,
   agentModel,
   agentCreatedAt,
@@ -44,121 +62,253 @@ export function AgentOverview({
   mcpServersCount = 0,
   onNavigateToTab,
 }: AgentOverviewProps) {
-  const promptPreview = systemPrompt?.trim() || 'No instructions have been added yet.'
+  const promptPreview = systemPrompt?.trim() || ''
+
   const readiness = [
-    { label: 'Instructions', complete: Boolean(systemPrompt?.trim()), tab: 'builder', icon: Settings2 as LucideIcon },
+    { label: 'Operating instructions', complete: Boolean(promptPreview), tab: 'builder', icon: Wrench },
     { label: 'Knowledge source', complete: hasKnowledgeBase, tab: 'knowledge', icon: BookOpen },
     { label: 'Provider key', complete: hasProviderKey, tab: 'settings', icon: KeyRound },
   ]
+  const completedCount = readiness.filter((r) => r.complete).length
+  const isReady = completedCount === readiness.length
+  const progressPercent = Math.round((completedCount / readiness.length) * 100)
 
-  const stats = [
-    { icon: Cpu, label: 'Model', value: agentModel ? formatModelName(agentModel) : 'Not selected', color: 'bg-primary/10 text-primary' as const },
-    { icon: BookOpen, label: 'Knowledge', value: hasKnowledgeBase ? 'Connected' : 'Not connected', color: hasKnowledgeBase ? ('bg-emerald-500/10 text-emerald-500' as const) : ('bg-muted text-muted-foreground' as const) },
-    { icon: Calendar, label: 'Created', value: formatDate(agentCreatedAt), color: 'bg-info/10 text-info' as const },
-    { icon: RefreshCw, label: 'Updated', value: formatDate(agentUpdatedAt), color: 'bg-warning/10 text-warning' as const },
-  ]
-
-  const miniStats = [
-    { label: 'Knowledge Bases', value: knowledgeBaseCount, tab: 'knowledge', color: 'text-emerald-500' as const },
-    { label: 'Tools Enabled', value: toolsEnabledCount, tab: 'builder', color: 'text-primary' as const },
-    { label: 'MCP Servers', value: mcpServersCount, tab: 'builder', color: 'text-info' as const },
+  const configRows = [
+    {
+      icon: Cpu,
+      label: 'Model',
+      value: agentModel ? formatModelName(agentModel) : undefined,
+      detail: agentModel,
+      tab: 'builder',
+    },
+    {
+      icon: BookOpen,
+      label: 'Knowledge base',
+      value: hasKnowledgeBase
+        ? knowledgeBaseCount === 1
+          ? 'Connected'
+          : `${knowledgeBaseCount} connected`
+        : undefined,
+      detail: hasKnowledgeBase ? undefined : 'Connect a source',
+      tab: 'knowledge',
+    },
+    {
+      icon: Wrench,
+      label: 'Tools',
+      value: toolsEnabledCount > 0 ? `${toolsEnabledCount} enabled` : undefined,
+      detail: toolsEnabledCount === 0 ? 'None enabled' : undefined,
+      tab: 'builder',
+    },
+    {
+      icon: Server,
+      label: 'MCP servers',
+      value: mcpServersCount > 0 ? `${mcpServersCount} connected` : undefined,
+      detail: mcpServersCount === 0 ? 'None connected' : undefined,
+      tab: 'builder',
+    },
+    {
+      icon: KeyRound,
+      label: 'Provider key',
+      value: hasProviderKey ? 'Connected' : undefined,
+      detail: hasProviderKey ? undefined : 'Not configured',
+      tab: 'settings',
+    },
   ]
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4">
+      {/* Identity */}
       <Card>
-        <CardContent>
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Bot className="size-4" /></span>
-                <Badge variant="secondary" className="font-medium">Agent overview</Badge>
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight">{agentName || 'Your agent'}</h2>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{agentDescription || "Add a description so your team understands this agent's role."}</p>
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <Avatar className="size-14 border border-border/60">
+                {agentAvatar ? <AvatarImage src={agentAvatar} alt={agentName || 'Agent avatar'} /> : null}
+                <AvatarFallback className="rounded-full bg-primary/10 text-primary">
+                  <Bot className="size-6" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="truncate text-lg font-semibold tracking-tight text-foreground">
+                    {agentName || 'Your agent'}
+                  </h2>
+                  <Badge variant={isReady ? 'active' : 'draft'}>
+                    <span className={cn('size-1.5 rounded-full', isReady ? 'bg-success' : 'bg-warning')} />
+                    {isReady ? 'Live' : 'Draft'}
+                  </Badge>
+                </div>
+                {agentDescription ? (
+                  <p className="line-clamp-2 max-w-xl text-sm leading-6 text-muted-foreground">{agentDescription}</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToTab('builder')}
+                    className={cn(
+                      'w-fit text-left text-sm text-muted-foreground underline-offset-4 transition-colors duration-150 hover:text-foreground hover:underline',
+                      focusRing,
+                      'rounded'
+                    )}
+                  >
+                    No description yet — add one so your team knows this agent's role.
+                  </button>
+                )}
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-0.5 text-xs text-muted-foreground">
+                  {agentModel ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+                      <Cpu className="size-3 text-muted-foreground" />
+                      {agentModel}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToTab('builder')}
+                      className={cn(
+                        'rounded font-medium text-warning underline-offset-4 transition-colors duration-150 hover:underline',
+                        focusRing
+                      )}
+                    >
+                      Select a model
+                    </button>
+                  )}
+                  <span>Created {formatDate(agentCreatedAt)}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>Updated {formatDate(agentUpdatedAt)}</span>
+                </div>
               </div>
             </div>
-            <Button onClick={() => onNavigateToTab('test-chat')} className="shrink-0">
+            <Button onClick={() => onNavigateToTab('test-chat')} className="shrink-0 max-sm:w-full">
               <MessageSquareText className="size-4" /> Test agent
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', s.color)}>
-                <s.icon className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{s.label}</p>
-                <p className="text-sm font-semibold leading-none tracking-tight text-foreground">{s.value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        {miniStats.map((s) => (
-          <button
-            key={s.label}
-            type="button"
-            onClick={() => onNavigateToTab(s.tab)}
-            className="group flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-left transition-all hover:border-border hover:shadow-sm"
-          >
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{s.label}</p>
-              <p className={cn('text-2xl font-bold leading-none tracking-tight', s.color)}>{s.value}</p>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Setup progress */}
         <Card>
           <CardHeader>
-            <CardTitle>Operating instructions</CardTitle>
-            <CardDescription>The core guidance sent with every conversation.</CardDescription>
+            <CardTitle>Setup</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="line-clamp-5 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{promptPreview}</p>
-            <Button variant="outline" size="sm" onClick={() => onNavigateToTab('builder')}>
-              <Settings2 className="size-4" /> Edit instructions
-            </Button>
+            <Progress value={progressPercent} aria-label={`Setup ${completedCount} of ${readiness.length} complete`}>
+              <span className="w-full text-xs text-muted-foreground tabular-nums">
+                {completedCount} of {readiness.length} complete
+              </span>
+            </Progress>
+            <div className="space-y-2">
+              {readiness.map(({ label, complete, tab, icon: Icon }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => onNavigateToTab(tab)}
+                  className={cn(
+                    'group flex min-h-10 w-full items-center gap-3 rounded-lg border border-border/60 bg-background px-3 py-2 text-left transition-colors duration-150 hover:border-border hover:bg-muted/40',
+                    focusRing
+                  )}
+                >
+                  {complete ? (
+                    <CheckCircle2 className="size-4 shrink-0 text-success" />
+                  ) : (
+                    <Icon className="size-4 shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{label}</span>
+                  <span
+                    className={cn(
+                      'shrink-0 text-xs font-medium',
+                      complete ? 'text-success' : 'text-muted-foreground'
+                    )}
+                  >
+                    {complete ? 'Ready' : 'Set up'}
+                    {!complete && (
+                      <ChevronRight className="ml-0.5 inline size-3 transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none" />
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {isReady && (
+              <p className="flex items-center gap-2 text-xs text-success">
+                <Circle className="size-1.5 fill-current" />
+                All set — this agent is ready to go live.
+              </p>
+            )}
           </CardContent>
         </Card>
 
+        {/* Configuration summary */}
         <Card>
           <CardHeader>
-            <CardTitle>Readiness</CardTitle>
-            <CardDescription>Complete these steps to get better answers.</CardDescription>
+            <CardTitle>Configuration</CardTitle>
           </CardHeader>
-          <CardContent className="divide-y divide-border/60 p-0">
-            {readiness.map(({ label, complete, tab, icon: Icon }) => (
-              <button key={label} type="button" onClick={() => onNavigateToTab(tab)} className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-muted/30">
-                <span className={complete ? 'text-success' : 'text-muted-foreground'}>{complete ? <CheckCircle2 className="size-4" /> : <Icon className="size-4" />}</span>
-                <span className="flex-1 text-sm font-medium text-foreground">{label}</span>
-                <span className="text-xs text-muted-foreground">{complete ? 'Ready' : 'Set up'}</span>
-              </button>
-            ))}
+          <CardContent className="p-0">
+            <div className="divide-y divide-border/60">
+              {configRows.map(({ icon: Icon, label, value, detail, tab }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => onNavigateToTab(tab)}
+                  aria-label={`${value || detail || 'Not set'} — edit ${label.toLowerCase()}`}
+                  className={cn(
+                    'group flex min-h-11 w-full items-center gap-3 px-5 text-left transition-colors duration-150 first:rounded-t-xl last:rounded-b-xl hover:bg-muted/40',
+                    focusRing
+                  )}
+                >
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Icon className="size-3.5" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{label}</span>
+                  <span
+                    className={cn(
+                      'max-w-[45%] truncate text-xs',
+                      value ? 'text-muted-foreground' : 'font-medium text-warning'
+                    )}
+                  >
+                    {value || detail}
+                  </span>
+                  <ChevronRight
+                    className={cn(
+                      'size-4 shrink-0 text-muted-foreground/40 transition-all duration-150',
+                      'group-hover:translate-x-0.5 group-hover:text-muted-foreground motion-reduce:transition-none',
+                      !value && 'text-warning/60 group-hover:text-warning'
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Operating instructions */}
       <Card>
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Clock3 className="size-4" /></span>
-            <div>
-              <p className="text-sm font-medium text-foreground">Ready to validate the experience?</p>
-              <p className="text-sm text-muted-foreground">Run a live conversation with this agent's current configuration.</p>
+        <CardHeader>
+          <CardTitle>Operating instructions</CardTitle>
+          <CardDescription>The core guidance sent with every conversation.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {promptPreview ? (
+            <div className="rounded-lg border border-border/60 bg-muted/40 p-4">
+              <pre className="line-clamp-6 whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-muted-foreground">
+                {promptPreview}
+              </pre>
             </div>
-          </div>
-          <Button variant="outline" onClick={() => onNavigateToTab('test-chat')}><Wrench className="size-4" /> Open test chat</Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No instructions yet —{' '}
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('builder')}
+                className={cn('rounded font-medium text-primary underline-offset-4 transition-colors duration-150 hover:underline', focusRing)}
+              >
+                write your first prompt
+              </button>{' '}
+              to shape how this agent responds.
+            </p>
+          )}
+          <Button variant="outline" size="sm" onClick={() => onNavigateToTab('builder')} className="min-h-9">
+            <PenLine className="size-4" /> {promptPreview ? 'Edit instructions' : 'Write instructions'}
+          </Button>
         </CardContent>
       </Card>
     </div>
