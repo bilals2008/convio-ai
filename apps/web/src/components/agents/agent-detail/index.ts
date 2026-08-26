@@ -1,6 +1,5 @@
 export { AgentOverview } from './agent-overview'
 export { AgentBuilder } from './agent-builder'
 export { AgentKnowledge } from './agent-knowledge'
-export { AgentTestChat } from './agent-test-chat'
 export { AgentAnalytics } from './agent-analytics'
 export { AgentSettings } from './agent-settings'

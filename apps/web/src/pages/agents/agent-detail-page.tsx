@@ -11,7 +11,6 @@ import {
   Settings,
   BookOpen,
   Wrench,
-  MessageSquare,
   BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -34,7 +33,6 @@ import {
   AgentOverview,
   AgentBuilder,
   AgentKnowledge,
-  AgentTestChat,
   AgentAnalytics,
   AgentSettings,
 } from '@/components/agents/agent-detail'
@@ -304,6 +302,7 @@ export default function AgentDetailPage() {
         onSave={handleSave}
         onCopyLink={() => navigator.clipboard.writeText(window.location.href)}
         shareUrl={shareUrl}
+        playgroundHref={`/agents/${id}/playground`}
         onDelete={() => setDeleteDialogOpen(true)}
         tabs={
           <TabsList variant="line" className="!h-11 flex-nowrap whitespace-nowrap md:!h-10 w-max">
@@ -318,10 +317,6 @@ export default function AgentDetailPage() {
             <TabsTrigger value="knowledge">
               <BookOpen className="size-4" />
               Knowledge
-            </TabsTrigger>
-            <TabsTrigger value="test-chat">
-              <MessageSquare className="size-4" />
-              Test Chat
             </TabsTrigger>
             <TabsTrigger value="analytics">
               <BarChart3 className="size-4" />
@@ -348,7 +343,13 @@ export default function AgentDetailPage() {
             knowledgeBaseCount={agent.knowledgeBaseId ? 1 : 0}
             toolsEnabledCount={tools.filter((t) => t.enabled).length}
             mcpServersCount={linkedMcpServerIds.length}
-            onNavigateToTab={setActiveTab}
+            onNavigateToTab={(tab) => {
+              if (tab === 'test-chat') {
+                navigate(`/agents/${id}/playground`)
+                return
+              }
+              setActiveTab(tab)
+            }}
           />
         </TabsContent>
 
@@ -377,26 +378,6 @@ export default function AgentDetailPage() {
             agentId={id!}
             knowledgeBaseId={agent.knowledgeBaseId}
             disabled={updateMutation.isPending}
-          />
-        </TabsContent>
-
-        <TabsContent value="test-chat" className="flex flex-1 min-h-0 flex-col">
-          <AgentTestChat
-            agentId={id!}
-            agentConfig={{
-              name: values.name,
-              model: values.model,
-              systemPrompt: values.systemPrompt,
-              temperature: values.temperature,
-              maxTokens: values.maxTokens,
-              reasoningEffort: values.reasoningEffort,
-              providerKeyId: agent.providerKeyId || undefined,
-              knowledgeBaseId: agent.knowledgeBaseId || null,
-              tools: tools.filter((t) => t.enabled).map((t) => t.id),
-              mcpServerIds: linkedMcpServerIds,
-              guardrails,
-              avatar: agent.avatar,
-            }}
           />
         </TabsContent>
 

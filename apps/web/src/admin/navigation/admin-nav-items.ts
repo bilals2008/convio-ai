@@ -17,6 +17,7 @@ import {
   Bell,
   Bot,
   LifeBuoy,
+  FlaskConical,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -68,6 +69,7 @@ export const adminNavGroups: NavGroup[] = [
       { icon: Brain, label: 'Agents', href: '/admin/agents', permission: 'admin.agents.read' },
       { icon: Activity, label: 'System Health', href: '/admin/system', permission: 'admin.system.read' },
       { icon: Bot, label: 'AI Assistant', href: '/admin/assistant', permission: 'admin.assistant.read' },
+      { icon: FlaskConical, label: 'Playground', href: '/admin/playground', permission: 'admin.access' },
       { icon: BookOpen, label: 'Knowledge Bases', href: '/admin/knowledge-bases', permission: 'admin.knowledge.read' },
       { icon: LifeBuoy, label: 'Support Tickets', href: '/admin/tickets', permission: 'admin.tickets.read' },
       { icon: Flag, label: 'Moderation', href: '/admin/moderation', permission: 'admin.moderation.read' },
