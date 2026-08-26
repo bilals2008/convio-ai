@@ -123,102 +123,20 @@ export function DesignAiTab({ onApplyAiDraft, disabled }: DesignAiTabProps) {
           {generating ? 'Generating…' : 'Generate design'}
         </Button>
 
-        {generating && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="relative overflow-hidden rounded-xl border border-border/40 bg-muted/20 p-4 space-y-3"
-          >
-            {/* Spinning conic ring + wand */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex size-9 shrink-0 items-center justify-center">
-                <motion.span
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background: 'conic-gradient(from 0deg, transparent 0%, var(--primary) 35%, transparent 65%)',
-                    WebkitMaskImage: 'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
-                    maskImage: 'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
-                  }}
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-                />
-                <motion.span
-                  animate={{ scale: [1, 1.15, 1] }}
-                  transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
-                >
-                  <Wand2 className="size-3.5 text-primary" />
-                </motion.span>
-              </div>
-
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={phase}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.22 }}
-                    className="text-xs font-medium text-foreground truncate"
-                  >
-                    {GENERATING_PHASES[phase]}
-                  </motion.p>
-                </AnimatePresence>
-                <div className="h-1 overflow-hidden rounded-full bg-muted-foreground/10">
-                  <motion.div
-                    className="h-full w-2/5 rounded-full bg-gradient-to-r from-transparent via-primary/50 to-transparent"
-                    animate={{ x: ['-120%', '280%'] }}
-                    transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Shimmer skeleton rows */}
-            <div className="space-y-2 pt-1">
-              {['w-3/4', 'w-1/2', 'w-2/3'].map((w, i) => (
-                <div key={i} className={`relative h-2 overflow-hidden rounded-full bg-muted-foreground/10 ${w}`}>
-                  <motion.div
-                    className="absolute inset-y-0 w-1/2 rounded-full bg-gradient-to-r from-transparent via-foreground/15 to-transparent"
-                    animate={{ x: ['-150%', '260%'] }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut', delay: i * 0.25 }}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Palette chips materializing */}
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { label: 'Primary', c: 'bg-primary' },
-                { label: 'Background', c: 'bg-card' },
-                { label: 'Header', c: 'bg-gradient-to-r from-primary to-accent' },
-                { label: 'Border', c: 'bg-border' },
-              ].map((s, i) => (
-                <motion.span
-                  key={s.label}
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3 + i * 0.12, type: 'spring', stiffness: 300, damping: 20 }}
-                  className="flex items-center gap-1.5 rounded-lg bg-card/60 px-2 py-1 text-[11px] text-muted-foreground/70 ring-1 ring-border/20"
-                >
-                  <motion.span
-                    className={`size-2.5 rounded-full ring-1 ring-border/30 ${s.c}`}
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut', delay: i * 0.15 }}
-                  />
-                  {s.label}
-                </motion.span>
-              ))}
-            </div>
-
-            <motion.div
-              className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"
-              animate={{ x: ['-100%', '100%'] }}
-              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-            />
-          </motion.div>
-        )}
+        <AnimatePresence mode="wait">
+          {generating && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              key={phase}
+              className="flex items-center gap-2 text-xs text-muted-foreground"
+            >
+              <Loader2 className="size-3.5 animate-spin" />
+              {GENERATING_PHASES[phase]}
+            </motion.p>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {draft && (

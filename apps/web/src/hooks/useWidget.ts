@@ -169,6 +169,16 @@ export function useWidget(config: WidgetConfig) {
         let fullContent = ''
         let streamError: string | null = null
         let streamDone = false
+        // Flush streamed text once per animation frame instead of once per
+        // token, so the markdown bubble doesn't re-parse on every chunk.
+        let rafHandle: number | null = null
+        const scheduleFlush = () => {
+          if (rafHandle !== null) return
+          rafHandle = requestAnimationFrame(() => {
+            rafHandle = null
+            setStreamingContent(fullContent)
+          })
+        }
 
         while (!streamDone) {
           const { done, value } = await reader.read()
@@ -191,15 +201,15 @@ export function useWidget(config: WidgetConfig) {
                   streamError = parsed.error
                 } else if (parsed.content) {
                   fullContent += parsed.content
-                  setStreamingContent(fullContent)
+                  scheduleFlush()
                 }
               } catch (e) { console.warn('Malformed SSE chunk:', data, e) }
             }
           }
         }
 
+        if (rafHandle !== null) cancelAnimationFrame(rafHandle)
         setIsTyping(false)
-        setStreamingContent('')
 
         if (streamError) {
           setError(streamError)
@@ -217,6 +227,9 @@ export function useWidget(config: WidgetConfig) {
             timestamp: new Date(),
           }])
         }
+        // Same-commit swap: final message replaces the streaming bubble with
+        // no blank frame in between.
+        setStreamingContent('')
       } catch {
         setIsTyping(false)
         setStreamingContent('')

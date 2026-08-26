@@ -30,15 +30,15 @@ export function WidgetTyping() {
       <div className="rounded-2xl rounded-bl-md bg-[hsl(var(--widget-prompt-bg))] px-4 py-3 shadow-sm">
         <div className="flex items-center gap-1.5">
           <span
-            className="size-2 rounded-full bg-[hsl(var(--widget-muted-foreground))]/50 animate-typing-dot"
+            className="size-1.5 rounded-full bg-[hsl(var(--widget-primary))]/70 animate-typing-dot"
             style={{ animationDelay: '0ms' }}
           />
           <span
-            className="size-2 rounded-full bg-[hsl(var(--widget-muted-foreground))]/50 animate-typing-dot"
+            className="size-1.5 rounded-full bg-[hsl(var(--widget-primary))]/70 animate-typing-dot"
             style={{ animationDelay: '200ms' }}
           />
           <span
-            className="size-2 rounded-full bg-[hsl(var(--widget-muted-foreground))]/50 animate-typing-dot"
+            className="size-1.5 rounded-full bg-[hsl(var(--widget-primary))]/70 animate-typing-dot"
             style={{ animationDelay: '400ms' }}
           />
         </div>

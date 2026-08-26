@@ -45,7 +45,8 @@ export function WidgetMessages() {
   useEffect(() => {
     if (streamingContent.length > prevStreamingLength.current) {
       prevStreamingLength.current = streamingContent.length
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      // 'auto' while streaming — smooth-scrolling every frame fights itself
+      bottomRef.current?.scrollIntoView({ behavior: 'auto' })
     }
   }, [streamingContent])
 
@@ -101,7 +102,7 @@ export function WidgetMessages() {
             className="group relative max-w-[88%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-2xl rounded-bl-md text-[hsl(var(--widget-text))] bg-[hsl(var(--widget-prompt-bg))]"
           >
             <WidgetMarkdown content={streamingContent} />
-            <span className="inline-block w-1.5 h-4 ml-0.5 bg-[hsl(var(--widget-primary))] animate-pulse align-text-bottom" />
+            <span className="ml-0.5 inline-block h-3.5 w-[3px] rounded-full bg-[hsl(var(--widget-primary))] align-text-bottom animate-typing-dot" />
           </div>
         </div>
       ) : isTyping && <WidgetTyping />}

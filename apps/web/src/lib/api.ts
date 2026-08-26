@@ -201,7 +201,7 @@ export const widgets = {
   delete: (id: string) => api.delete(`/widgets/${id}`),
   getEmbed: (id: string) => api.get(`/widgets/${id}/embed`),
   generateDraft: (description: string, model?: string) =>
-    api.post(`/widgets/generate`, { description, model }),
+    api.post(`/widgets/generate`, { description, model }, { timeout: 120000 }),
 }
 
 export const deployments = {
