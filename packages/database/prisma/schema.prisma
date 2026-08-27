@@ -809,6 +809,7 @@ model SupportTicket {
   createdAt      DateTime               @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime               @updatedAt @db.Timestamptz(6)
   resolvedAt     DateTime?              @db.Timestamptz(6)
+  deletedAt      DateTime?              @db.Timestamptz(6)
   organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   reporter       Profile                @relation("TicketReporter", fields: [reporterId], references: [id], onDelete: Cascade)
   messages       SupportTicketMessage[]
@@ -818,6 +819,7 @@ model SupportTicket {
   @@index([organizationId, status, updatedAt(sort: Desc)])
   @@index([reporterId])
   @@index([status])
+  @@index([deletedAt])
   @@map("support_tickets")
 }
 

@@ -314,7 +314,7 @@ export function useAdminTickets(params?: { status?: string; search?: string; cur
     queryKey: ['admin', 'tickets', params],
     queryFn: async ({ pageParam }) => {
       const res = await adminApi.tickets({ ...params, cursor: pageParam ?? undefined, limit: 25 })
-      return res.data
+      return res.data ?? { data: [], nextCursor: null }
     },
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     initialPageParam: undefined as string | undefined,
@@ -327,7 +327,7 @@ export function useAdminTicketStats() {
     queryKey: ['admin', 'tickets', 'stats'],
     queryFn: async () => {
       const res = await adminApi.ticketStats()
-      return res.data.data
+      return res.data?.data ?? { total: 0, open: 0, inProgress: 0 }
     },
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
@@ -426,5 +426,44 @@ export function useAdminUpdateTicket(ticketId: string) {
       broadcastTicketEvent(ticketId, 'changed')
     },
     onError: () => toast.error('Failed to update ticket'),
+  })
+}
+
+export function useAdminDeleteTicket(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deleteTicket(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets', 'stats'] })
+      onSuccess?.()
+    },
+    onError: () => toast.error('Failed to delete ticket'),
+  })
+}
+
+export function useAdminRestoreTicket(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => adminApi.restoreTicket(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets', 'stats'] })
+      onSuccess?.()
+    },
+    onError: () => toast.error('Failed to restore ticket'),
+  })
+}
+
+export function useAdminBulkTickets(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { ids: string[]; action: 'delete' | 'restore' }) => adminApi.bulkTickets(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tickets', 'stats'] })
+      onSuccess?.()
+    },
+    onError: () => toast.error('Failed to apply bulk action'),
   })
 }

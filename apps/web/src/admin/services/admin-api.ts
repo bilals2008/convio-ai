@@ -548,7 +548,7 @@ export const adminApi = {
 
   deleteAdminGrant: (id: string) => api.delete(`/admin/grants/${id}`),
 
-  tickets: (params?: { status?: string; search?: string; cursor?: string; limit?: number }) =>
+  tickets: (params?: { status?: string; search?: string; cursor?: string; limit?: number; deleted?: 'true' | 'false' }) =>
     api.get<PaginatedResponse<AdminTicket>>('/admin/tickets', { params }),
 
   ticketStats: () => api.get<{ data: { total: number; open: number; inProgress: number } }>('/admin/tickets/stats'),
@@ -560,6 +560,13 @@ export const adminApi = {
 
   updateTicket: (id: string, data: { status?: string; priority?: string }) =>
     api.patch(`/admin/tickets/${id}`, data),
+
+  deleteTicket: (id: string) => api.delete(`/admin/tickets/${id}`),
+
+  restoreTicket: (id: string) => api.post(`/admin/tickets/${id}/restore`),
+
+  bulkTickets: (body: { ids: string[]; action: 'delete' | 'restore' }) =>
+    api.post<{ data: { processed: number; action: string } }>('/admin/tickets/bulk', body),
 
   assistant: {
     conversations: () => api.get<{ data: AdminConversation[] }>('/admin/assistant/conversations'),

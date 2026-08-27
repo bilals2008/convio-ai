@@ -2,6 +2,7 @@
 import { prisma } from '@convio/database'
 import { z } from 'zod'
 import { validate } from '../../plugins/validate.js'
+import { AppError } from '../../plugins/error.js'
 
 const TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'] as const
 const TICKET_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const
@@ -11,6 +12,7 @@ const adminTicketsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
   search: z.string().max(200).optional(),
   status: z.enum(TICKET_STATUSES).optional(),
+  deleted: z.enum(['true', 'false']).optional(),
 })
 
 const adminMessageSchema = z.object({
@@ -23,6 +25,11 @@ const adminUpdateTicketSchema = z.object({
   priority: z.enum(TICKET_PRIORITIES).optional(),
 }).refine((d) => d.status !== undefined || d.priority !== undefined, {
   message: 'Nothing to update',
+})
+
+const adminBulkTicketSchema = z.object({
+  ids: z.array(z.string()).min(1).max(100),
+  action: z.enum(['delete', 'restore']),
 })
 
 const ticketMessageSelect = {
@@ -39,9 +46,9 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
     preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin],
   }, async () => {
     const [total, open, inProgress] = await Promise.all([
-      prisma.supportTicket.count(),
-      prisma.supportTicket.count({ where: { status: 'open' } }),
-      prisma.supportTicket.count({ where: { status: 'in_progress' } }),
+      prisma.supportTicket.count({ where: { deletedAt: null } }),
+      prisma.supportTicket.count({ where: { deletedAt: null, status: 'open' } }),
+      prisma.supportTicket.count({ where: { deletedAt: null, status: 'in_progress' } }),
     ])
     return { data: { total, open, inProgress } }
   })
@@ -49,11 +56,12 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
   fastify.get('/admin/tickets', {
     preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: adminTicketsQuerySchema })],
   }, async (request) => {
-    const { cursor, limit, search, status } = request.query as {
-      cursor?: string; limit: number; search?: string; status?: string
+    const { cursor, limit, search, status, deleted } = request.query as {
+      cursor?: string; limit: number; search?: string; status?: string; deleted?: 'true' | 'false'
     }
 
     const where: Record<string, unknown> = {}
+    where.deletedAt = deleted === 'true' ? { not: null } : null
     if (status) where.status = status
     if (search) {
       where.OR = [
@@ -185,5 +193,65 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
     })
 
     return { data: { id: updated.id, status: updated.status, priority: updated.priority } }
+  })
+
+  fastify.delete('/admin/tickets/:ticketId', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin],
+  }, async (request, reply) => {
+    const { ticketId } = request.params as { ticketId: string }
+    const existing = await prisma.supportTicket.findUnique({ where: { id: ticketId } })
+    if (!existing) return reply.code(404).send({ error: 'Ticket not found' })
+    await prisma.supportTicket.update({ where: { id: ticketId }, data: { deletedAt: new Date() } })
+    return { data: { id: ticketId, deleted: true } }
+  })
+
+  fastify.post('/admin/tickets/:ticketId/restore', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin],
+  }, async (request, reply) => {
+    const { ticketId } = request.params as { ticketId: string }
+    const existing = await prisma.supportTicket.findUnique({ where: { id: ticketId } })
+    if (!existing) return reply.code(404).send({ error: 'Ticket not found' })
+    await prisma.supportTicket.update({ where: { id: ticketId }, data: { deletedAt: null } })
+    return { data: { id: ticketId, deleted: false } }
+  })
+
+  fastify.post('/admin/tickets/bulk', {
+    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: adminBulkTicketSchema })],
+  }, async (request) => {
+    const { ids, action } = request.body as z.infer<typeof adminBulkTicketSchema>
+    const result = await prisma.supportTicket.updateMany({
+      where: { id: { in: ids } },
+      data: action === 'delete' ? { deletedAt: new Date() } : { deletedAt: null },
+    })
+    return { data: { processed: result.count, action } }
+  })
+
+  // ponytail: soft-delete closed or unreplied tickets older than 7 days. Cron-guarded; call from a scheduler.
+  fastify.post('/admin/tickets/cleanup', async (request, reply) => {
+    const secret = process.env.CRON_SECRET
+    if (secret && request.headers['x-cron-secret'] !== secret) {
+      throw new AppError(403, 'Unauthorized', 'FORBIDDEN')
+    }
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const closed = await prisma.$executeRaw`
+      UPDATE support_tickets
+      SET "deletedAt" = NOW()
+      WHERE "deletedAt" IS NULL
+        AND "status" = 'closed'
+        AND "updatedAt" < ${cutoff}
+    `
+    const noReply = await prisma.$executeRaw`
+      UPDATE support_tickets
+      SET "deletedAt" = NOW()
+      WHERE "deletedAt" IS NULL
+        AND "status" IN ('open', 'in_progress')
+        AND "updatedAt" < ${cutoff}
+        AND NOT EXISTS (
+          SELECT 1 FROM support_ticket_messages m
+          WHERE m."ticketId" = support_tickets.id
+            AND m."authorId" <> support_tickets."reporterId"
+        )
+    `
+    return { data: { closed, noReply } }
   })
 }

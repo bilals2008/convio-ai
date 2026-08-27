@@ -1,15 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-  flexRender,
-  createColumnHelper,
-  type SortingState,
-} from '@/lib/table'
-import { LifeBuoy, RefreshCw, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock, MessageSquare } from 'lucide-react'
+import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, flexRender, createColumnHelper, type SortingState } from '@/lib/table'
+import type { RowSelectionState } from '@tanstack/react-table'
+import { LifeBuoy, RefreshCw, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock, MessageSquare, Trash2, RotateCcw, Loader2 } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -19,8 +12,24 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useAdminTickets } from '@/admin/hooks/use-admin'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  useAdminTickets,
+  useAdminDeleteTicket,
+  useAdminRestoreTicket,
+  useAdminBulkTickets,
+} from '@/admin/hooks/use-admin'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import type { AdminTicket } from '@/admin/services/admin-api'
 
@@ -43,11 +52,21 @@ export default function AdminTicketsPage() {
   const [status, setStatus] = useState('all')
   const [search, setSearch] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+
+  const isDeletedView = status === 'deleted'
 
   const query = useAdminTickets({
-    status: status === 'all' ? undefined : status,
+    deleted: isDeletedView ? 'true' : 'false',
+    status: status === 'all' || isDeletedView ? undefined : status,
     search: search.trim() || undefined,
   })
+
+  useEffect(() => {
+    setRowSelection({})
+  }, [status, search])
 
   const tickets = useMemo(
     () => query.data?.pages.flatMap((p) => p.data) ?? [],
@@ -56,9 +75,48 @@ export default function AdminTicketsPage() {
   const loading = query.isLoading
   const isError = query.isError
 
+  const selectedIds = useMemo(
+    () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
+    [rowSelection],
+  )
+
+  const deleteMutation = useAdminDeleteTicket(() => setPendingDelete(null))
+  const restoreMutation = useAdminRestoreTicket()
+  const bulkMutation = useAdminBulkTickets(() => {
+    setBulkConfirmOpen(false)
+    setRowSelection({})
+  })
+
   const columnHelper = createColumnHelper<AdminTicket>()
 
   const columns = useMemo(() => [
+    columnHelper.display({
+      id: 'select',
+      header: ({ table }) => (
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+          <Checkbox
+            checked={
+              table.getIsAllRowsSelected()
+                ? true
+                : table.getIsSomeRowsSelected()
+                  ? 'indeterminate'
+                  : false
+            }
+            onCheckedChange={(v) => table.toggleAllRowsSelected(!!v)}
+            aria-label="Select all"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(v) => row.toggleSelected(!!v)}
+            aria-label="Select row"
+          />
+        </div>
+      ),
+    }),
     columnHelper.accessor('title', {
       header: ({ column }) => (
         <button
@@ -154,13 +212,48 @@ export default function AdminTicketsPage() {
       ),
       sortingFn: 'datetime',
     }),
-  ], [columnHelper])
+    columnHelper.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      cell: ({ row }) => (
+        <div onClick={(e) => e.stopPropagation()} className="flex justify-end">
+          {isDeletedView ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => restoreMutation.mutate(row.original.id)}
+              disabled={restoreMutation.isPending}
+              aria-label="Restore ticket"
+            >
+              {restoreMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setPendingDelete(row.original.id)}
+              aria-label="Delete ticket"
+            >
+              {deleteMutation.isPending && pendingDelete === row.original.id ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+            </Button>
+          )}
+        </div>
+      ),
+    }),
+  ], [columnHelper, isDeletedView, restoreMutation.isPending])
 
   const table = useReactTable({
     data: tickets,
     columns,
-    state: { sorting },
+    getRowId: (row) => row.id,
+    state: { sorting, rowSelection },
+    enableRowSelection: true,
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -181,10 +274,67 @@ export default function AdminTicketsPage() {
             <Button variant="outline" size="sm" onClick={() => query.refetch()} disabled={query.isFetching}>
               <RefreshCw className={`size-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />
               Refresh
-              </Button>
+            </Button>
           </div>
         }
       />
+
+      {selectedIds.length > 0 && (
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+          {isDeletedView ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => bulkMutation.mutate({ ids: selectedIds, action: 'restore' })}
+                disabled={bulkMutation.isPending}
+              >
+                {bulkMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                Restore
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkConfirmOpen(true)}
+                disabled={bulkMutation.isPending}
+              >
+                {bulkMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                Delete
+              </Button>
+              <AlertDialog open={bulkConfirmOpen} onOpenChange={(open) => {
+                if (!bulkMutation.isPending) setBulkConfirmOpen(open)
+              }}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {selectedIds.length} ticket(s)?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      They will be hidden (soft-deleted) and restorable from the Deleted filter.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={bulkMutation.isPending}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={bulkMutation.isPending}
+                      onClick={() => {
+                        bulkMutation.mutate({ ids: selectedIds, action: 'delete' })
+                      }}
+                    >
+                      {bulkMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setRowSelection({})}>
+            Clear
+          </Button>
+          <span className="ml-auto text-xs font-medium text-muted-foreground">{selectedIds.length} selected</span>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="flex-1">
@@ -203,6 +353,7 @@ export default function AdminTicketsPage() {
             {STATUS_VARIANTS.map((s) => (
               <SelectItem key={s} value={s}>{STATUS_META[s].label}</SelectItem>
             ))}
+            <SelectItem value="deleted">Deleted</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -341,6 +492,31 @@ export default function AdminTicketsPage() {
               )}
         </div>
       )}
+
+      <AlertDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this ticket?</AlertDialogTitle>
+            <AlertDialogDescription>
+              It will be hidden (soft-deleted) and restorable from the Deleted filter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteMutation.isPending}
+              onClick={() => pendingDelete && deleteMutation.mutate(pendingDelete)}
+            >
+              {deleteMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   )
 }
