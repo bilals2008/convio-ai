@@ -5,7 +5,6 @@ import {
   RefreshCw,
   Share,
   MoreVertical,
-  FlaskConical,
 } from 'lucide-react'
 import { ShareDialog } from '@/components/agents/share-dialog'
 import {
@@ -81,7 +80,6 @@ interface AgentDetailLayoutProps {
   onOpenWidget?: () => void
   onDelete?: () => void
   shareUrl?: string
-  playgroundHref?: string
   tabs: ReactNode
   children: ReactNode
 }
@@ -96,15 +94,29 @@ export function AgentDetailLayout({
   onOpenWidget,
   onDelete,
   shareUrl,
-  playgroundHref,
   tabs,
   children,
 }: AgentDetailLayoutProps) {
   const navigate = useNavigate()
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [isCompact, setIsCompact] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onScroll = () => setIsCompact(el.scrollTop > 50)
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden">
       <div className="px-6 pt-2 pb-0">
-        <div className="overflow-hidden transition-all duration-300 ease-out max-h-10 opacity-100">
+        <div
+          className="overflow-hidden transition-all duration-200 ease-out"
+          style={{ maxHeight: isCompact ? 0 : 40, opacity: isCompact ? 0 : 1 }}
+        >
           <Breadcrumb className="mb-5">
             <BreadcrumbList className="text-sm text-muted-foreground">
               <BreadcrumbItem>
@@ -125,15 +137,15 @@ export function AgentDetailLayout({
           </Breadcrumb>
         </div>
 
-        <div className="flex items-center justify-between gap-2 transition-all duration-300 ease-out mb-4">
+        <div className="flex items-center justify-between gap-2 transition-all duration-200 ease-out mb-4">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <Avatar className="size-9 sm:size-12 shrink-0 transition-all duration-300">
+            <Avatar className="shrink-0 transition-all duration-200" style={{ width: isCompact ? 32 : undefined, height: isCompact ? 32 : undefined }}>
               {agentAvatar && <AvatarImage src={agentAvatar} alt={agentName} />}
               <AvatarFallback className="text-sm sm:text-base">{agentName.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2.5">
-                <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate transition-all duration-300">
+                <h1 className="font-bold tracking-tight text-foreground truncate transition-all duration-200" style={{ fontSize: isCompact ? '1rem' : undefined }}>
                   {agentName}
                 </h1>
                 <Badge
@@ -144,24 +156,13 @@ export function AgentDetailLayout({
                   Live
                 </Badge>
               </div>
-              <p className="hidden sm:block text-sm text-muted-foreground mt-0.5 line-clamp-1">
+              <p className="hidden sm:block text-sm text-muted-foreground mt-0.5 line-clamp-1 transition-all duration-200" style={{ maxHeight: isCompact ? 0 : 20, opacity: isCompact ? 0 : 1, overflow: 'hidden' }}>
                 {agentDescription || 'No description'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {playgroundHref && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => navigate(playgroundHref)}
-              >
-                <FlaskConical className="size-3.5" />
-                Test
-              </Button>
-            )}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {onSave && (
               <Button
                 variant="outline"
@@ -178,15 +179,9 @@ export function AgentDetailLayout({
                 )}
               </Button>
             )}
-            <ShareDialog shareUrl={shareUrl} agentName={agentName}>
-              <Button variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5">
-                <Share className="size-3.5" />
-                Share
-              </Button>
-            </ShareDialog>
             <Button
               size="sm"
-              className="hidden sm:inline-flex gap-1.5"
+              className="hidden sm:inline-flex gap-1.5 shrink-0 whitespace-nowrap"
               onClick={onSave}
               disabled={isSaving}
             >
@@ -202,19 +197,11 @@ export function AgentDetailLayout({
                 <MoreVertical className="size-4 text-muted-foreground" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
-                {/* Mobile-only quick actions (buttons hidden below sm) */}
-                {shareUrl && (
-                  <DropdownMenuItem
-                    className="sm:hidden"
-                    onClick={() => navigator.clipboard.writeText(shareUrl)}
-                  >
-                    <Share className="size-3.5" />
-                    Copy share link
-                  </DropdownMenuItem>
-                )}
-                {shareUrl && (
-                  <DropdownMenuSeparator className="sm:hidden" />
-                )}
+                <DropdownMenuItem onClick={() => setShareDialogOpen(true)}>
+                  <Share className="size-3.5" />
+                  Share
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {onCopyLink && (
                   <DropdownMenuItem onClick={onCopyLink}>
                     Copy Link
@@ -244,9 +231,15 @@ export function AgentDetailLayout({
       <ScrollableTabs>{tabs}</ScrollableTabs>
       <Separator className="shrink-0" />
 
-      <div className="flex-1 min-h-0 overflow-auto px-6 py-5">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto px-6 py-5">
         {children}
       </div>
+      <ShareDialog
+        shareUrl={shareUrl}
+        agentName={agentName}
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+      />
     </div>
   )
 }

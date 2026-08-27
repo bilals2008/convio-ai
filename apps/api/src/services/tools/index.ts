@@ -114,6 +114,38 @@ export function getToolHandler(name: string): ToolHandler | undefined {
   return toolRegistry[normalized]
 }
 
+// ponytail: ask_user is a client-handled tool — defined here for schema consistency
+// but never executed server-side. The backend sends tool_requires_input and stops.
+export const ASK_USER_TOOL = {
+  name: 'ask_user',
+  description: 'Ask the user clarifying questions when their request is ambiguous. Provide one or more questions, each with exactly 3 short, distinct answer choices. The user can also answer in their own words.',
+  parameters: {
+    type: 'object',
+    properties: {
+      questions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            question: { type: 'string', description: 'The question to ask' },
+            choices: {
+              type: 'array',
+              items: { type: 'string' },
+              minItems: 3,
+              maxItems: 3,
+              description: 'Exactly three short answer choices',
+            },
+          },
+          required: ['question', 'choices'],
+        },
+        minItems: 1,
+        description: 'The questions to ask the user',
+      },
+    },
+    required: ['questions'],
+  },
+}
+
 export function listTools(): ToolHandler['schema'][] {
   return Object.values(toolRegistry).map((t) => t.schema)
 }

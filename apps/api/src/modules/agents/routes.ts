@@ -10,7 +10,7 @@ import { resolveProviderKey } from '../../services/provider-key.js'
 import { decryptSecret, getEncryptionKey } from '../../services/encryption.js'
 import { getTemplate, listTemplates } from './templates.js'
 import { AGENT_GENERATION_PROMPT, resolveGenerationProvider, parseAgentDraft } from './agent-generator.js'
-import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers } from '../../services/tools/index.js'
+import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers, ASK_USER_TOOL } from '../../services/tools/index.js'
 import { getOrgPlan } from '../../services/billing.js'
 import { guardrailInputRefusal, guardrailPrompt } from '../../services/guardrails.js'
 import { NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
@@ -59,6 +59,24 @@ const testStreamSchema = z.object({
   toolIds: z.array(z.string().uuid()).optional().default([]),
   mcpServerIds: z.array(z.string().uuid()).optional().default([]),
   guardrails: agentGuardrailsSchema.optional(),
+})
+
+// ponytail: resume schema for ask_user tool output
+const testStreamResumeSchema = z.object({
+  model: z.string().min(1),
+  systemPrompt: z.string().min(1),
+  message: z.string().min(1).max(12000),
+  temperature: z.number().min(0).max(2).default(0.7),
+  maxTokens: z.number().min(1).max(512000).default(2048),
+  reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
+  providerKeyId: z.string().uuid().optional(),
+  knowledgeBaseId: z.string().uuid().optional().nullable(),
+  history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(12000) })).max(30).optional().default([]),
+  guardrails: agentGuardrailsSchema.optional(),
+  toolCallId: z.string().min(1),
+  toolName: z.string().min(1),
+  toolOutput: z.array(z.object({ question: z.string(), answer: z.string() })),
+  assistantText: z.string().optional().default(''),
 })
 
 const createAgentBodySchema = createAgentSchema.extend({
@@ -594,6 +612,15 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         parameters: h.schema.parameters,
       }))
 
+    // ponytail: add ask_user tool when any tools are enabled — it's client-handled
+    if (effectiveToolNames.length > 0) {
+      toolDefs.push({
+        name: ASK_USER_TOOL.name,
+        description: ASK_USER_TOOL.description,
+        parameters: ASK_USER_TOOL.parameters,
+      })
+    }
+
     // DB tools by ID must belong to one of the caller's organizations
     const dbToolHandlers = toolIds.length > 0
       ? await loadDbToolHandlers(prisma, toolIds, {
@@ -723,6 +750,24 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
       // Execute tools from native tool calls and make second AI call for summarization
       if (toolCallsFromStream.length > 0) {
+        // ponytail: check for ask_user first — client-handled, sends tool_requires_input
+        const askUserCall = toolCallsFromStream.find((tc) => tc.tool === 'ask_user')
+        if (askUserCall) {
+          const toolCallId = `tc-${Date.now()}`
+          reply.raw.write(`data: ${JSON.stringify({
+            type: 'tool_requires_input',
+            toolCallId,
+            tool: 'ask_user',
+            args: askUserCall.args,
+          })}\n\n`)
+          if (finalUsage) {
+            reply.raw.write(`data: ${JSON.stringify({ type: 'usage', usage: finalUsage })}\n\n`)
+          }
+          reply.raw.write('data: [DONE]\n\n')
+          reply.raw.end()
+          return
+        }
+
         const results: { tool: string; result: unknown }[] = []
         for (const tc of toolCallsFromStream) {
           const handler = getToolHandler(tc.tool) || dbToolHandlers[tc.tool] || mcpToolHandlers[tc.tool]
@@ -757,6 +802,170 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
           if (chunk.type === 'done' && chunk.usage) {
             finalUsage = chunk.usage
           }
+        }
+      }
+
+      if (finalUsage) {
+        reply.raw.write(`data: ${JSON.stringify({ type: 'usage', usage: finalUsage })}\n\n`)
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Stream generation failed'
+      reply.raw.write(`data: ${JSON.stringify({ error: msg })}\n\n`)
+    }
+
+    if (!clientDisconnected) {
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+    }
+  })
+
+  // ponytail: resume endpoint for ask_user tool output
+  fastify.post('/agents/test-stream-resume', {
+    preHandler: [
+      fastify.authenticate,
+      validate({ body: testStreamResumeSchema }),
+    ],
+  }, async (request, reply) => {
+    const {
+      model,
+      systemPrompt,
+      message,
+      temperature,
+      maxTokens,
+      reasoningEffort,
+      providerKeyId,
+      knowledgeBaseId,
+      history,
+      guardrails,
+      toolCallId,
+      toolName,
+      toolOutput,
+      assistantText,
+    } = request.body as z.infer<typeof testStreamResumeSchema>
+
+    const providerKey = providerKeyId
+      ? await prisma.providerKey.findFirst({
+          where: {
+            id: providerKeyId,
+            organization: { memberships: { some: { userId: request.userId! } } },
+          },
+          select: { apiKey: true, provider: true },
+        })
+      : null
+    let apiKey = providerKey ? decryptSecret(providerKey.apiKey, getEncryptionKey()) : undefined
+
+    if (!providerKey && !apiKey) {
+      const org = await prisma.membership.findFirst({
+        where: { userId: request.userId! },
+        orderBy: { createdAt: 'asc' },
+        select: { organizationId: true },
+      })
+      if (org) {
+        const resolved = await resolveProviderKey({
+          organizationId: org.organizationId,
+          model,
+          providerKeyId: null,
+        })
+        if (resolved.apiKey) {
+          apiKey = resolved.apiKey
+        }
+      }
+    }
+
+    const corsHeaders = getCorsHeaders(fastify.config.CORS_ORIGIN, request)
+
+    reply.hijack()
+
+    let provider
+    try {
+      provider = getProviderForModel(model, providerKey?.provider)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown provider error'
+      reply.raw.writeHead(400, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        ...corsHeaders,
+      })
+      reply.raw.write(`data: ${JSON.stringify({ error: msg })}\n\n`)
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+      return
+    }
+
+    let systemContext = systemPrompt
+    systemContext += guardrailPrompt(guardrails)
+
+    const guardrailRefusal = guardrailInputRefusal(message, guardrails)
+    if (guardrailRefusal) {
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        ...corsHeaders,
+      })
+      reply.raw.write(`data: ${JSON.stringify({ type: 'text', content: guardrailRefusal })}\n\n`)
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+      return
+    }
+
+    if (knowledgeBaseId) {
+      const context = await retrieveContext(message, knowledgeBaseId).catch(() => null)
+      if (context) {
+        systemContext +=
+          '\n\n## Retrieved knowledge (RAG)\n' +
+          'Use the following source excerpts to answer. Prefer this context over general knowledge when relevant. ' +
+          'If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n' +
+          context
+      }
+    }
+
+    const toolOutputSummary = toolOutput
+      .map((a) => `Q: ${a.question}\nA: ${a.answer}`)
+      .join('\n\n')
+
+    const messages = [
+      { role: 'system' as const, content: systemContext },
+      ...history.map((h) => ({ role: h.role as 'user' | 'assistant' | 'system', content: h.content })),
+      { role: 'user' as const, content: message },
+      { role: 'assistant' as const, content: assistantText || 'Let me ask you a few questions to clarify.' },
+      { role: 'user' as const, content: `User answered the questions:\n\n${toolOutputSummary}\n\nPlease continue and provide a helpful response based on these answers. Do NOT use any tools or ask more questions.` },
+    ]
+
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      ...corsHeaders,
+    })
+    reply.raw.flushHeaders()
+
+    let clientDisconnected = false
+    request.raw.once('close', () => {
+      clientDisconnected = true
+    })
+
+    try {
+      const stream = provider.stream({
+        model,
+        messages,
+        temperature,
+        maxTokens,
+        reasoningEffort: reasoningEffort || undefined,
+        apiKey,
+      })
+
+      let finalUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined
+
+      for await (const chunk of stream) {
+        if (clientDisconnected) break
+        if (chunk.type === 'reasoning') {
+          reply.raw.write(`data: ${JSON.stringify({ type: 'reasoning', content: chunk.content })}\n\n`)
+        } else if (chunk.type === 'text' && chunk.content) {
+          reply.raw.write(`data: ${JSON.stringify({ type: 'text', content: chunk.content })}\n\n`)
+        } else if (chunk.type === 'done') {
+          finalUsage = chunk.usage
+          break
         }
       }
 

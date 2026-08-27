@@ -110,6 +110,38 @@ export const agents = {
   },
   addTool: (id: string, toolId: string) => api.post(`/agents/${id}/tools`, { toolId }),
   removeTool: (id: string, toolId: string) => api.delete(`/agents/${id}/tools/${toolId}`),
+  // ponytail: resume stream after ask_user tool output
+  testStreamResume: async (config: {
+    model: string
+    systemPrompt: string
+    message: string
+    temperature: number
+    maxTokens: number
+    reasoningEffort?: string
+    providerKeyId?: string
+    knowledgeBaseId?: string | null
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>
+    guardrails?: { enabled: boolean; blockedWords: string[]; restrictedTopics: string[] }
+    toolCallId: string
+    toolName: string
+    toolOutput: Array<{ question: string; answer: string }>
+    assistantText?: string
+    signal?: AbortSignal
+  }) => {
+    const { signal, ...body } = config
+    const { data: { session } } = await supabase.auth.getSession()
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+    const response = await fetch(`${baseURL}/agents/test-stream-resume`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify(body),
+      signal,
+    })
+    return response
+  },
   templates: (orgId: string) => api.get(`/organizations/${orgId}/agent-templates`),
   createFromTemplate: (orgId: string, template: string, overrides?: Record<string, unknown>) =>
     api.post(`/agents/from-template`, { organizationId: orgId, template, ...(overrides || {}) }),

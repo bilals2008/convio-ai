@@ -15,6 +15,7 @@ export interface PlaygroundMessage {
   reasoning?: string
   toolActivity?: ToolCallEntry[]
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
+  sourceUrls?: string[]
 }
 
 export interface PlaygroundConfig {
@@ -28,6 +29,16 @@ export interface PlaygroundConfig {
   tools?: string[]
   mcpServerIds?: string[]
   guardrails?: { enabled: boolean; blockedWords: string[]; restrictedTopics: string[] }
+}
+
+export interface PendingToolInput {
+  toolCallId: string
+  tool: string
+  questions: Array<{ question: string; choices: string[] }>
+  assistantText: string
+  config: PlaygroundConfig
+  userMessage: string
+  history: Array<{ role: 'user' | 'assistant'; content: string }>
 }
 
 let counter = 0
@@ -76,6 +87,7 @@ export function usePlaygroundChat() {
   const [messages, setMessages] = useState<PlaygroundMessage[]>([])
   const [status, setStatus] = useState<'idle' | 'streaming'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [pendingToolInput, setPendingToolInput] = useState<PendingToolInput | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const stop = useCallback(() => {
@@ -89,6 +101,7 @@ export function usePlaygroundChat() {
     setMessages([])
     setError(null)
     setStatus('idle')
+    setPendingToolInput(null)
   }, [])
 
   const send = useCallback(
@@ -142,14 +155,15 @@ export function usePlaygroundChat() {
         const decoder = new TextDecoder()
         let buffer = ''
         let reasoning = ''
+        let assistantText = ''
         const toolCalls: ToolCallEntry[] = []
+        let toolInputPending = false
 
         while (true) {
           let readRes: Awaited<ReturnType<typeof reader.read>>
           try {
             readRes = await reader.read()
           } catch (e) {
-            // Stop pressed mid-read — keep what we have.
             if (abortRef.current === controller) throw e
             break
           }
@@ -168,6 +182,7 @@ export function usePlaygroundChat() {
               content?: string
               error?: string
               tool?: string
+              toolCallId?: string
               args?: Record<string, unknown>
               result?: unknown
               usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
@@ -176,7 +191,10 @@ export function usePlaygroundChat() {
             if (chunk.type === 'error') {
               throw new Error(toFriendlyStreamError(chunk.content || 'Generation failed'))
             }
-            if (chunk.type === 'text' && chunk.content) appendChunk(chunk.content)
+            if (chunk.type === 'text' && chunk.content) {
+              assistantText += chunk.content
+              appendChunk(chunk.content)
+            }
             if (chunk.type === 'reasoning' && chunk.content) {
               reasoning += chunk.content
               patchAssistant({ reasoning })
@@ -194,8 +212,26 @@ export function usePlaygroundChat() {
               }
               patchAssistant({ toolActivity: [...toolCalls] })
             }
+            // ponytail: handle ask_user — show questionnaire, pause stream
+            if (chunk.type === 'tool_requires_input' && chunk.tool === 'ask_user') {
+              const args = chunk.args as { questions?: Array<{ question: string; choices: string[] }> }
+              if (args.questions?.length) {
+                toolInputPending = true
+                setPendingToolInput({
+                  toolCallId: chunk.toolCallId || `tc-${Date.now()}`,
+                  tool: 'ask_user',
+                  questions: args.questions,
+                  assistantText,
+                  config,
+                  userMessage: trimmed,
+                  history,
+                })
+              }
+              break
+            }
             if (chunk.type === 'usage' && chunk.usage) patchAssistant({ usage: chunk.usage })
           }
+          if (toolInputPending) break
         }
       } catch (err) {
         if (!(err instanceof DOMException && err.name === 'AbortError')) {
@@ -210,5 +246,106 @@ export function usePlaygroundChat() {
     [messages],
   )
 
-  return { messages, status, error, send, stop, reset }
+  const answerToolInput = useCallback(
+    async (answers: Array<{ question: string; answer: string }>) => {
+      if (!pendingToolInput) return
+      const pi = pendingToolInput
+      setPendingToolInput(null)
+
+      const assistantId = nextId()
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantId, role: 'assistant', content: '' },
+      ])
+
+      const controller = new AbortController()
+      abortRef.current = controller
+      setStatus('streaming')
+
+      const appendChunk = (chunk: string) =>
+        setMessages((prev) =>
+          prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + chunk } : m)),
+        )
+      const patchAssistant = (patch: Partial<PlaygroundMessage>) =>
+        setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)))
+
+      try {
+        const response = await agents.testStreamResume({
+          model: pi.config.model,
+          systemPrompt: pi.config.systemPrompt,
+          message: pi.userMessage,
+          temperature: pi.config.temperature ?? 0.7,
+          maxTokens: pi.config.maxTokens ?? 2048,
+          reasoningEffort: pi.config.reasoningEffort,
+          providerKeyId: pi.config.providerKeyId,
+          knowledgeBaseId: pi.config.knowledgeBaseId ?? null,
+          history: pi.history,
+          guardrails: pi.config.guardrails,
+          toolCallId: pi.toolCallId,
+          toolName: pi.tool,
+          toolOutput: answers,
+          assistantText: pi.assistantText,
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error(toFriendlyStreamError(await readStreamError(response)))
+        }
+        if (!response.body) throw new Error('No response body')
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let reasoning = ''
+
+        while (true) {
+          let readRes: Awaited<ReturnType<typeof reader.read>>
+          try {
+            readRes = await reader.read()
+          } catch (e) {
+            if (abortRef.current === controller) throw e
+            break
+          }
+          if (readRes.done) break
+
+          buffer += decoder.decode(readRes.value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const payload = line.slice(6)
+            if (payload === '[DONE]') continue
+            const chunk = JSON.parse(payload) as {
+              type?: string
+              content?: string
+              error?: string
+              usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
+            }
+            if (chunk.error) throw new Error(toFriendlyStreamError(chunk.error))
+            if (chunk.type === 'error') {
+              throw new Error(toFriendlyStreamError(chunk.content || 'Generation failed'))
+            }
+            if (chunk.type === 'text' && chunk.content) appendChunk(chunk.content)
+            if (chunk.type === 'reasoning' && chunk.content) {
+              reasoning += chunk.content
+              patchAssistant({ reasoning })
+            }
+            if (chunk.type === 'usage' && chunk.usage) patchAssistant({ usage: chunk.usage })
+          }
+        }
+      } catch (err) {
+        if (!(err instanceof DOMException && err.name === 'AbortError')) {
+          setError(err instanceof Error ? err.message : 'Something went wrong')
+        }
+      } finally {
+        abortRef.current = null
+        setStatus('idle')
+        setMessages((prev) => prev.filter((m) => m.id !== assistantId || m.content))
+      }
+    },
+    [pendingToolInput],
+  )
+
+  return { messages, status, error, pendingToolInput, send, stop, reset, answerToolInput }
 }

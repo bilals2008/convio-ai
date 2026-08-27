@@ -16,6 +16,7 @@ import {
   Plus,
   Settings2,
   Square,
+  Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -58,6 +59,8 @@ import { agents as agentsApi, mcpServers as mcpApi } from '@/lib/api'
 import { usePlaygroundChat } from '@/lib/hooks/use-playground-chat'
 import { usePlan } from '@/lib/hooks/use-billing'
 import { getReasoningEfforts } from '@/components/agents/reasoning'
+import { QuestionCard } from '@/components/agents/question-card'
+import { SourcesDrawer } from '@/components/agents/sources-drawer'
 import { cn, formatTokenCount } from '@/lib/utils'
 
 interface Agent {
@@ -80,6 +83,7 @@ const toolIcons: Record<string, React.ElementType> = {
   'url-fetcher': ExternalLink,
   calculator: Calculator,
   'current-time': Clock,
+  ask_user: Plug,
 }
 
 function formatModelLabel(id: string): string {
@@ -93,6 +97,22 @@ function formatModelLabel(id: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function getSourceUrlsFromToolActivity(toolActivity?: Array<{ tool: string; result?: unknown }>): string[] {
+  if (!toolActivity) return []
+  const urls: string[] = []
+  for (const tc of toolActivity) {
+    if (tc.tool === 'web-search' && tc.result && typeof tc.result === 'object') {
+      const result = tc.result as { results?: Array<{ url: string }> }
+      if (Array.isArray(result.results)) {
+        for (const r of result.results) {
+          if (r.url) urls.push(r.url)
+        }
+      }
+    }
+  }
+  return urls
+}
+
 const SUGGESTIONS = [
   { label: 'Introduce yourself', prompt: 'Introduce yourself and explain what you can help with.' },
   { label: 'Test knowledge base', prompt: 'What can you tell me from your knowledge base?' },
@@ -101,7 +121,7 @@ const SUGGESTIONS = [
 
 export default function AgentPlaygroundPage() {
   const { id } = useParams<{ id: string }>()
-  const { messages, status, error, send, stop, reset } = usePlaygroundChat()
+  const { messages, status, error, pendingToolInput, send, stop, reset, answerToolInput } = usePlaygroundChat()
 
   const [inputValue, setInputValue] = useState('')
   const [showReasoning, setShowReasoning] = useState(false)
@@ -343,21 +363,30 @@ export default function AgentPlaygroundPage() {
                           <div className="flex flex-wrap gap-1.5">
                             {message.toolActivity.map((tc, i) => {
                               const Icon = toolIcons[tc.tool] ?? Plug
+                              const isWebSearch = tc.tool === 'web-search'
                               return (
                                 <span
                                   key={`${tc.tool}-${i}`}
                                   className={cn(
-                                    'inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 text-[11px] text-emerald-600',
+                                    'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px]',
+                                    isWebSearch
+                                      ? 'border-blue-500/20 bg-blue-500/5 text-blue-600'
+                                      : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-600',
                                     tc.status === 'calling' && 'animate-pulse',
                                   )}
                                 >
                                   {tc.status === 'done' ? (
                                     <Check className="size-2.5" />
+                                  ) : isWebSearch ? (
+                                    <Search className="size-2.5 animate-spin" />
                                   ) : (
                                     <Loader2 className="size-2.5 animate-spin" />
                                   )}
                                   <Icon className="size-2.5" />
-                                  {tc.tool.replace(/-/g, ' ')}
+                                  {isWebSearch
+                                    ? (tc.status === 'done' ? 'Searched the web' : 'Searching the web…')
+                                    : tc.tool.replace(/-/g, ' ')
+                                  }
                                 </span>
                               )
                             })}
@@ -373,6 +402,10 @@ export default function AgentPlaygroundPage() {
                                 </span>
                               )}
                             </div>
+                            {(() => {
+                              const sourceUrls = getSourceUrlsFromToolActivity(message.toolActivity)
+                              return sourceUrls.length > 0 ? <SourcesDrawer urls={sourceUrls} /> : null
+                            })()}
                           </>
                         ) : (
                           <span className="flex items-center gap-2 px-3 text-sm text-muted-foreground">
@@ -388,6 +421,11 @@ export default function AgentPlaygroundPage() {
             </MessageScrollerViewport>
           </MessageScroller>
         </MessageScrollerProvider>
+      )}
+
+      {/* Questionnaire — sticky at bottom when AI asks questions */}
+      {pendingToolInput && (
+        <QuestionCard pending={pendingToolInput} onAnswer={answerToolInput} />
       )}
 
       {/* Composer */}

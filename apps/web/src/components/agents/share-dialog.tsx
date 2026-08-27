@@ -12,10 +12,12 @@ import {
 interface ShareDialogProps {
   shareUrl?: string
   agentName?: string
-  children: React.ReactNode
+  children?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function ShareDialog({ shareUrl, agentName, children }: ShareDialogProps) {
+export function ShareDialog({ shareUrl, agentName, children, open, onOpenChange }: ShareDialogProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -57,13 +59,15 @@ export function ShareDialog({ shareUrl, agentName, children }: ShareDialogProps)
   ]
 
   return (
-    <Dialog>
-      <DialogTrigger
-        render={<div />}
-        className="inline-flex items-center justify-center gap-1.5 rounded-md bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {children}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {children && (
+        <DialogTrigger
+          render={<div />}
+          className="inline-flex items-center justify-center gap-1.5 rounded-md bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {children}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-5 pb-3">
           <DialogTitle className="text-base font-semibold flex items-center justify-between">
