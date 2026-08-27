@@ -12,6 +12,7 @@ import {
   BookOpen,
   Wrench,
   BarChart3,
+  FlaskConical,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -302,7 +303,6 @@ export default function AgentDetailPage() {
         onSave={handleSave}
         onCopyLink={() => navigator.clipboard.writeText(window.location.href)}
         shareUrl={shareUrl}
-        playgroundHref={`/agents/${id}/playground`}
         onDelete={() => setDeleteDialogOpen(true)}
         tabs={
           <TabsList variant="line" className="!h-11 flex-nowrap whitespace-nowrap md:!h-10 w-max">
@@ -313,6 +313,13 @@ export default function AgentDetailPage() {
             <TabsTrigger value="builder">
               <Wrench className="size-4" />
               Configuration
+            </TabsTrigger>
+            <TabsTrigger
+              value="playground"
+              onClick={() => navigate(`/agents/${id}/playground`)}
+            >
+              <FlaskConical className="size-4" />
+              Playground
             </TabsTrigger>
             <TabsTrigger value="knowledge">
               <BookOpen className="size-4" />
