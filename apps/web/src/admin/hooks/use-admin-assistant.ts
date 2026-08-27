@@ -68,7 +68,7 @@ export function useAdminAssistantStream() {
   const abortRef = useRef<AbortController | null>(null)
 
   const stream = useCallback(
-    async (body: { content: string; conversationId?: string }, opts?: StreamOptions) => {
+    async (body: { content: string; conversationId?: string; model?: string }, opts?: StreamOptions) => {
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller

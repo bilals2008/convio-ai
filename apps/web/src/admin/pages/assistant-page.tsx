@@ -1,4 +1,4 @@
-import { PanelLeftOpen, ScrollText, X } from 'lucide-react'
+import { ArrowUpIcon, ScrollText, SquareIcon, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,38 @@ import {
 } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from '@/components/ui/input-group'
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from '@/components/ui/message-scroller'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { AiResponse } from '@/components/shared/ai-response'
+import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import type { AdminAssistantStreamChunk } from '@/admin/services/admin-api'
 import {
   useAdminConversations,
@@ -20,8 +52,10 @@ import {
   useDeleteAdminConversation,
 } from '@/admin/hooks/use-admin-assistant'
 import { ConversationList } from '@/admin/components/assistant/conversation-list'
-import { AssistantChat, type ChatMessage } from '@/admin/components/assistant/assistant-chat'
-import type { ToolCallChipItem } from '@/admin/components/assistant/tool-call-chip'
+import { ToolCallChip, type ToolCallChipItem } from '@/admin/components/assistant/tool-call-chip'
+import { ChartBlock } from '@/admin/components/assistant/chart-block'
+import { SuggestedQuestions } from '@/admin/components/assistant/suggested-questions'
+import type { AdminChartSpec } from '@/admin/services/admin-api'
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime()
@@ -84,18 +118,36 @@ function LogsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open:
   )
 }
 
+interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  toolCalls?: ToolCallChipItem[]
+  charts?: AdminChartSpec[]
+  error?: string | null
+  streaming?: boolean
+}
+
 export default function AdminAssistantPage() {
   const queryClient = useQueryClient()
+  const { data: models = [], isLoading: modelsLoading } = useAvailableModels()
   const { data: conversations, isLoading: conversationsLoading } = useAdminConversations()
   const { stream, abort, isStreaming } = useAdminAssistantStream()
   const deleteMutation = useDeleteAdminConversation()
 
+  const [model, setModel] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [logsOpen, setLogsOpen] = useState(false)
   const { data: history } = useAdminMessages(activeId)
   const hydratedConvRef = useRef<string | null>(null)
+
+  const resolvedModel = models.some((m) => m.id === model) ? model : (models[0]?.id ?? '')
+
+  useEffect(() => {
+    if (!model && models.length > 0) setModel(models[0].id)
+  }, [models, model])
 
   useEffect(() => {
     if (activeId && history && messages.length === 0 && hydratedConvRef.current !== activeId) {
@@ -156,7 +208,7 @@ export default function AdminAssistantPage() {
 
     try {
       await stream(
-        { content, conversationId: baseId ?? undefined },
+        { content, conversationId: baseId ?? undefined, model: resolvedModel || undefined },
         {
           onChunk: (chunk: AdminAssistantStreamChunk) => {
             if (chunk.type === 'text' && chunk.content) {
@@ -210,19 +262,9 @@ export default function AdminAssistantPage() {
     }
   }
 
-  const historyPanel = (
-    <ConversationList
-      conversations={conversations}
-      isLoading={conversationsLoading}
-      activeId={activeId}
-      onSelect={selectConversation}
-      onDelete={handleDelete}
-      onNew={handleNew}
-    />
-  )
-
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-2.5 py-1.5">
         <div className="flex items-center gap-1.5">
           <Tooltip>
@@ -236,7 +278,7 @@ export default function AdminAssistantPage() {
                 />
               }
             >
-              <PanelLeftOpen className="size-4" />
+              <PanelLeftOpenIcon />
             </TooltipTrigger>
             <TooltipContent>History</TooltipContent>
           </Tooltip>
@@ -253,15 +295,143 @@ export default function AdminAssistantPage() {
         </Button>
       </div>
 
+      {/* Chat area */}
       <div className="min-h-0 flex-1">
-        <AssistantChat
-          messages={messages}
-          isStreaming={isStreaming}
-          onSend={(q) => void handleSend(q)}
-          onStop={abort}
-        />
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col">
+          {messages.length === 0 ? (
+            <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>What can I help with?</EmptyTitle>
+                  <EmptyDescription>
+                    Ask about revenue, users, organizations, agents, tickets, usage limits, and system health across Convio.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <SuggestedQuestions onSend={(q) => void handleSend(q)} />
+                </EmptyContent>
+              </Empty>
+            </div>
+          ) : (
+            <MessageScrollerProvider>
+              <MessageScroller className="min-h-0 flex-1">
+                <MessageScrollerViewport>
+                  <MessageScrollerContent className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-6">
+                    {messages.map((message) => (
+                      <MessageScrollerItem key={message.id} messageId={message.id} scrollAnchor={message.role === 'user'}>
+                        {message.role === 'user' ? (
+                          <div className="flex justify-end">
+                            <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-sm text-primary-foreground">
+                              {message.content}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex min-w-0 flex-col gap-1">
+                            {message.toolCalls && message.toolCalls.length > 0 && (
+                              <div className="mb-1.5 flex flex-wrap gap-1">
+                                {message.toolCalls.map((tc, i) => (
+                                  <ToolCallChip key={i} item={tc} />
+                                ))}
+                              </div>
+                            )}
+                            {message.charts && message.charts.length > 0 && (
+                              <div className="mb-1.5 space-y-1.5">
+                                {message.charts.map((c, i) => (
+                                  <ChartBlock key={i} spec={c} />
+                                ))}
+                              </div>
+                            )}
+                            {message.error ? (
+                              <p className="rounded-md bg-destructive/10 px-2.5 py-1.5 text-sm text-destructive">
+                                Failed: {message.error}
+                              </p>
+                            ) : message.content ? (
+                              <AiResponse content={message.content} showActions={false} />
+                            ) : (
+                              <span className="flex items-center gap-2 px-3 text-sm text-muted-foreground">
+                                <Spinner className="size-3.5" /> Thinking…
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </MessageScrollerItem>
+                    ))}
+                  </MessageScrollerContent>
+                </MessageScrollerViewport>
+                <MessageScrollerButton />
+              </MessageScroller>
+            </MessageScrollerProvider>
+          )}
+
+          {/* Composer */}
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 pb-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const input = e.currentTarget.elements.namedItem('prompt') as HTMLTextAreaElement
+                const text = input.value.trim()
+                if (!text || isStreaming) return
+                void handleSend(text)
+                input.value = ''
+              }}
+            >
+              <InputGroup>
+                <InputGroupTextarea
+                  name="prompt"
+                  placeholder={resolvedModel ? 'Ask about the platform…' : modelsLoading ? 'Loading models…' : 'No models available'}
+                  className="p-3.5"
+                  disabled={!resolvedModel || isStreaming}
+                />
+                <InputGroupAddon align="block-end">
+                  <Select
+                    items={models.map((m) => ({ label: m.name, value: m.id }))}
+                    value={resolvedModel}
+                    onValueChange={(next) => { if (typeof next === 'string') setModel(next) }}
+                  >
+                    <SelectTrigger aria-label="Model" className="bg-background" size="sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        {models.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  {isStreaming ? (
+                    <InputGroupButton
+                      type="button"
+                      size="icon-sm"
+                      variant="outline"
+                      aria-label="Stop generating"
+                      className="ml-auto"
+                      onClick={abort}
+                    >
+                      <SquareIcon />
+                    </InputGroupButton>
+                  ) : (
+                    <InputGroupButton
+                      type="submit"
+                      size="icon-sm"
+                      variant="default"
+                      aria-label="Send message"
+                      className="ml-auto"
+                      disabled={!resolvedModel || modelsLoading}
+                    >
+                      <ArrowUpIcon />
+                    </InputGroupButton>
+                  )}
+                </InputGroupAddon>
+              </InputGroup>
+            </form>
+          </div>
+        </div>
       </div>
 
+      {/* History slide-over */}
       {historyOpen && (
         <div className="fixed inset-0 z-[100] flex">
           <div
@@ -280,12 +450,30 @@ export default function AdminAssistantPage() {
                 <X className="size-4" />
               </Button>
             </div>
-            <div className="min-h-0 flex-1">{historyPanel}</div>
+            <div className="min-h-0 flex-1">
+              <ConversationList
+                conversations={conversations}
+                isLoading={conversationsLoading}
+                activeId={activeId}
+                onSelect={selectConversation}
+                onDelete={handleDelete}
+                onNew={handleNew}
+              />
+            </div>
           </div>
         </div>
       )}
 
       <LogsSheet open={logsOpen} onOpenChange={setLogsOpen} />
     </div>
+  )
+}
+
+function PanelLeftOpenIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+    </svg>
   )
 }

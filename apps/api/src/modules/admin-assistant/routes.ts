@@ -21,6 +21,7 @@ import type { AdminChartSpec } from './tools.js'
 const streamBodySchema = z.object({
   content: z.string().min(1).max(2000),
   conversationId: z.string().uuid().optional(),
+  model: z.string().optional(),
 })
 
 const conversationParamsSchema = z.object({ id: z.string().uuid() })
@@ -137,7 +138,7 @@ export default async function adminAssistantRoutes(fastify: FastifyInstance) {
       config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const { content, conversationId } = request.body as { content: string; conversationId?: string }
+      const { content, conversationId, model: requestedModel } = request.body as { content: string; conversationId?: string; model?: string }
       const adminId = request.userId!
       const startedAt = Date.now()
 
@@ -170,7 +171,7 @@ export default async function adminAssistantRoutes(fastify: FastifyInstance) {
       let model: string
       let apiKey: string | undefined
       try {
-        const resolved = resolveAssistantModel()
+        const resolved = resolveAssistantModel(requestedModel)
         provider = resolved.provider
         model = resolved.model
         apiKey = resolved.apiKey

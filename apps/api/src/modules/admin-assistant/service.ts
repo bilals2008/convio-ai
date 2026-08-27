@@ -23,8 +23,8 @@ const FALLBACK_MODELS = [
   'gemini-1.5-flash',
 ]
 
-export function resolveAssistantModel(): { provider: AIProvider; model: string; apiKey?: string } {
-  const preferred = process.env.ADMIN_ASSISTANT_MODEL
+export function resolveAssistantModel(preferredModel?: string): { provider: AIProvider; model: string; apiKey?: string } {
+  const preferred = preferredModel || process.env.ADMIN_ASSISTANT_MODEL
   const candidates = preferred ? [preferred, ...FALLBACK_MODELS] : FALLBACK_MODELS
 
   for (const model of candidates) {
