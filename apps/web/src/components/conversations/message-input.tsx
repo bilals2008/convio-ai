@@ -26,7 +26,7 @@ export function MessageInput({
 
   const handleSend = () => {
     const trimmed = value.trim()
-    if (!trimmed || loading || disabled) return
+    if (!trimmed || disabled) return
     onSend(trimmed)
     setValue('')
   }
@@ -39,7 +39,7 @@ export function MessageInput({
           className="min-h-[44px] px-3.5 py-3"
           rows={1}
           value={value}
-          disabled={disabled || loading}
+          disabled={disabled}
           aria-label="Message input"
           onChange={(e) => {
             setValue(e.target.value)
@@ -53,29 +53,19 @@ export function MessageInput({
           }}
         />
         <InputGroupAddon align="block-end">
-          {loading ? (
-            <InputGroupButton
-              type="button"
-              size="icon-sm"
-              variant="outline"
-              disabled
-              aria-label="Sending message"
-              className="ml-auto"
-            >
-              <Loader2 className="animate-spin" />
-            </InputGroupButton>
-          ) : (
-            <InputGroupButton
-              size="icon-sm"
-              variant="default"
-              aria-label="Send message"
-              className="ml-auto"
-              disabled={!value.trim() || disabled}
-              onClick={handleSend}
-            >
-              <ArrowUp />
-            </InputGroupButton>
+          {loading && (
+            <Loader2 className="size-4 animate-spin text-muted-foreground" />
           )}
+          <InputGroupButton
+            size="icon-sm"
+            variant="default"
+            aria-label="Send message"
+            className="ml-auto"
+            disabled={!value.trim() || disabled}
+            onClick={handleSend}
+          >
+            <ArrowUp />
+          </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
     </div>

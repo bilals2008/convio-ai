@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, LifeBuoy } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { TicketStatusBadge } from './ticket-status'
@@ -14,6 +15,7 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
+
 import { MessageInput } from '@/components/conversations/message-input'
 import { useOrg } from '@/lib/org-context'
 import { useSession } from '@/lib/hooks/useAuth'
@@ -34,7 +36,7 @@ export default function TicketDetailPage() {
   const ticketQuery = useTicket(orgId ?? undefined, ticketId)
   useTicketRealtime(ticketId)
 
-  const sendMutation = useSendTicketMessage(orgId ?? undefined, ticketId ?? '')
+  const sendMutation = useSendTicketMessage(orgId ?? undefined, ticketId ?? '', session?.user)
   const updateMutation = useUpdateTicket(orgId ?? undefined, ticketId ?? '')
 
   const ticket = ticketQuery.data
@@ -86,7 +88,7 @@ export default function TicketDetailPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
       {/* ── Header ── */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-3 px-4 py-3">
         <Button variant="ghost" size="icon-sm" render={<Link to="/support" aria-label="Back to tickets" />}>
           <ArrowLeft className="size-4" />
         </Button>
@@ -109,6 +111,7 @@ export default function TicketDetailPage() {
           </Button>
         </div>
       </div>
+      <Separator />
 
       {/* ── Thread ── */}
       <MessageScrollerProvider>
@@ -125,7 +128,8 @@ export default function TicketDetailPage() {
       </MessageScrollerProvider>
 
       {/* ── Composer ── */}
-      <div className="border-t border-border">
+      <Separator />
+      <div>
         <MessageInput
           onSend={(content) => sendMutation.mutate(content)}
           loading={sendMutation.isPending}

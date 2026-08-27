@@ -379,20 +379,40 @@ export function broadcastTicketEvent(ticketId: string, event: 'message' | 'chang
   } catch {}
 }
 
-export function useAdminReplyTicket(ticketId: string) {
+export function useAdminReplyTicket(ticketId: string, currentUser?: { id: string; name: string | null; email: string; avatar: string | null }) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (data: { content: string; isInternalNote?: boolean }) => adminApi.replyTicket(ticketId, data),
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: adminTicketKeys.detail(ticketId) })
+      const prev = queryClient.getQueryData(adminTicketKeys.detail(ticketId)) as any
+      if (prev) {
+        const optimistic = {
+          id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          authorId: currentUser?.id ?? '',
+          content: vars.content,
+          isInternalNote: vars.isInternalNote ?? false,
+          createdAt: new Date().toISOString(),
+          author: currentUser ?? { id: '', name: 'You', email: '', avatar: null },
+        }
+        queryClient.setQueryData(adminTicketKeys.detail(ticketId), {
+          ...prev,
+          messages: [...prev.messages, optimistic],
+        })
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(adminTicketKeys.detail(ticketId), ctx.prev)
+      toast.error('Failed to send reply')
+    },
     onSuccess: (_res, vars) => {
       queryClient.invalidateQueries({ queryKey: adminTicketKeys.detail(ticketId) })
-      // internal notes don't bump ticket.updatedAt server-side, but the
-      // reporter's open thread still needs to hear about public replies
       if (!vars.isInternalNote) {
         broadcastTicketEvent(ticketId, 'message')
         queryClient.invalidateQueries({ queryKey: ['admin', 'tickets'] })
       }
     },
-    onError: () => toast.error('Failed to send reply'),
   })
 }
 

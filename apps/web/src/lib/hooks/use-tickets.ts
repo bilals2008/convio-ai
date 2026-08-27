@@ -118,16 +118,38 @@ function broadcastTicket(ticketId: string, event: 'message' | 'changed') {
   } catch {}
 }
 
-export function useSendTicketMessage(orgId: string | undefined, ticketId: string) {
+export function useSendTicketMessage(orgId: string | undefined, ticketId: string, currentUser?: TicketPerson) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (content: string) =>
       ticketsApi.sendMessage(orgId!, ticketId, { content }),
+    onMutate: async (content) => {
+      await queryClient.cancelQueries({ queryKey: ticketKeys.detail(ticketId) })
+      const prev = queryClient.getQueryData<TicketDetail>(ticketKeys.detail(ticketId))
+      if (prev) {
+        const optimistic: TicketMessage = {
+          id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          authorId: currentUser?.id ?? '',
+          content,
+          isInternalNote: false,
+          createdAt: new Date().toISOString(),
+          author: currentUser ?? { id: '', name: 'You', email: '', avatar: null },
+        }
+        queryClient.setQueryData<TicketDetail>(ticketKeys.detail(ticketId), {
+          ...prev,
+          messages: [...prev.messages, optimistic],
+        })
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(ticketKeys.detail(ticketId), ctx.prev)
+      toast.error('Failed to send message')
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) })
       broadcastTicket(ticketId, 'message')
     },
-    onError: (err: { friendlyMessage?: string }) => toast.error(err.friendlyMessage || 'Failed to send message'),
   })
 }
 

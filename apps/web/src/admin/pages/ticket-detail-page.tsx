@@ -1,10 +1,18 @@
 import { useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, LifeBuoy, Lock, ArrowUp } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from '@/components/ui/input-group'
+import { TicketThread } from '@/components/shared/ticket-thread'
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -13,13 +21,6 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupTextarea,
-} from '@/components/ui/input-group'
-import { TicketThread } from '@/components/shared/ticket-thread'
 import { useSession } from '@/lib/hooks/useAuth'
 import {
   useAdminTicketDetail,
@@ -45,7 +46,7 @@ export default function AdminTicketDetailPage() {
 
   const query = useAdminTicketDetail(ticketId)
   useAdminTicketRealtime(ticketId)
-  const replyMutation = useAdminReplyTicket(id)
+  const replyMutation = useAdminReplyTicket(id, session?.user)
   const updateMutation = useAdminUpdateTicket(id)
 
   const [noteMode, setNoteMode] = useState(false)
@@ -105,53 +106,55 @@ export default function AdminTicketDetailPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-          <Button variant="ghost" size="icon-sm" render={<Link to="/admin/tickets" aria-label="Back to tickets" />}>
-            <ArrowLeft className="size-4" />
-          </Button>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <Button variant="ghost" size="icon-sm" render={<Link to="/admin/tickets" aria-label="Back to tickets" />}>
+          <ArrowLeft className="size-4" />
+        </Button>
 
-          <h1 className="min-w-0 truncate text-sm font-semibold">{ticket.title}</h1>
+        <h1 className="min-w-0 truncate text-sm font-semibold">{ticket.title}</h1>
 
-          <Badge variant="secondary" className="shrink-0">{ticket.category}</Badge>
+        <Badge variant="secondary" className="shrink-0">{ticket.category}</Badge>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
-            <Select value={ticket.status} onValueChange={(s) => updateMutation.mutate({ status: s })}>
-              <SelectTrigger size="sm" className="h-7 w-[130px] text-xs" aria-label="Status">
-                <SelectValue>{STATUS_LABELS[ticket.status]}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={ticket.priority} onValueChange={(p) => updateMutation.mutate({ priority: p })}>
-              <SelectTrigger size="sm" className="h-7 w-[100px] text-xs" aria-label="Priority">
-                <SelectValue>{ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {PRIORITIES.map((p) => (
-                  <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <Select value={ticket.status} onValueChange={(s) => updateMutation.mutate({ status: s })}>
+            <SelectTrigger size="sm" className="h-7 w-[130px] text-xs" aria-label="Status">
+              <SelectValue>{STATUS_LABELS[ticket.status]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={ticket.priority} onValueChange={(p) => updateMutation.mutate({ priority: p })}>
+            <SelectTrigger size="sm" className="h-7 w-[100px] text-xs" aria-label="Priority">
+              <SelectValue>{ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {PRIORITIES.map((p) => (
+                <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      </div>
+      <Separator />
 
-        <MessageScrollerProvider>
-          <MessageScroller className="min-h-0 flex-1">
-            <MessageScrollerViewport>
-              <MessageScrollerContent className="gap-0 py-0">
-                <MessageScrollerItem messageId="thread" scrollAnchor>
-                  <TicketThread messages={messages} currentUserId={currentUserId} />
-                </MessageScrollerItem>
-              </MessageScrollerContent>
-              <MessageScrollerButton />
-            </MessageScrollerViewport>
-          </MessageScroller>
-        </MessageScrollerProvider>
+      <MessageScrollerProvider>
+        <MessageScroller className="min-h-0 flex-1">
+          <MessageScrollerViewport>
+            <MessageScrollerContent className="gap-0 py-0">
+              <MessageScrollerItem messageId="thread" scrollAnchor>
+                <TicketThread messages={messages} currentUserId={currentUserId} />
+              </MessageScrollerItem>
+            </MessageScrollerContent>
+            <MessageScrollerButton />
+          </MessageScrollerViewport>
+        </MessageScroller>
+      </MessageScrollerProvider>
 
-      <div className="border-t border-border">
+      <Separator />
+      <div>
         <div className="mx-auto w-full max-w-3xl px-4 pb-3 pt-1 sm:px-6">
           <form onSubmit={(e) => { e.preventDefault(); handleSend() }}>
             <InputGroup>
