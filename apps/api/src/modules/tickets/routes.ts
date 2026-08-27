@@ -51,6 +51,7 @@ export default async function ticketRoutes(fastify: FastifyInstance) {
     const tickets = await prisma.supportTicket.findMany({
       where: {
         organizationId: orgId,
+        deletedAt: null,
         ...(status ? { status } : {}),
         ...(isAdmin ? {} : { reporterId: request.userId }),
       },
@@ -114,7 +115,7 @@ export default async function ticketRoutes(fastify: FastifyInstance) {
     const isAdmin = membership.role === 'owner' || membership.role === 'admin'
 
     const ticket = await prisma.supportTicket.findFirst({
-      where: { id: ticketId, organizationId: orgId },
+      where: { id: ticketId, organizationId: orgId, deletedAt: null },
       include: {
         reporter: { select: { id: true, name: true, email: true, avatar: true } },
         messages: {
@@ -160,7 +161,7 @@ export default async function ticketRoutes(fastify: FastifyInstance) {
     const membership = await fastify.getMembership(request.userId!, orgId)
     const isAdmin = membership.role === 'owner' || membership.role === 'admin'
 
-    const ticket = await prisma.supportTicket.findFirst({ where: { id: ticketId, organizationId: orgId } })
+    const ticket = await prisma.supportTicket.findFirst({ where: { id: ticketId, organizationId: orgId, deletedAt: null } })
     if (!ticket) return reply.code(404).send({ error: 'Ticket not found' })
     if (ticket.reporterId !== request.userId && !isAdmin) return reply.code(403).send({ error: 'Forbidden' })
 
@@ -184,7 +185,7 @@ export default async function ticketRoutes(fastify: FastifyInstance) {
     const membership = await fastify.getMembership(request.userId!, orgId)
     const isAdmin = membership.role === 'owner' || membership.role === 'admin'
 
-    const ticket = await prisma.supportTicket.findFirst({ where: { id: ticketId, organizationId: orgId } })
+    const ticket = await prisma.supportTicket.findFirst({ where: { id: ticketId, organizationId: orgId, deletedAt: null } })
     if (!ticket) return reply.code(404).send({ error: 'Ticket not found' })
 
     // ponytail: reporters may only open/close their own tickets; priority and
