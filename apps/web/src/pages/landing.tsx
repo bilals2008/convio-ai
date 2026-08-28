@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Navbar, HeroSection, TrustedBySection, ChannelsSection, EverythingSection, Pricing, CTA, Footer } from '@/components/landing'
+import { Navbar, HeroSection, TrustedBySection, EverythingSection, Pricing, CTA, Footer } from '@/components/landing'
 import { ChatWidget } from '@/components/widget'
-import { BetaNotice } from '@/components/landing/beta-notice'
 import { publicApi } from '@/lib/api'
 
 const LANDING_WIDGET_KEY = import.meta.env.VITE_LANDING_WIDGET_KEY || ''
@@ -19,12 +18,10 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <BetaNotice />
       <Navbar />
       <main>
         <HeroSection />
         <TrustedBySection />
-        <ChannelsSection />
         <EverythingSection />
         <Pricing />
         <CTA />

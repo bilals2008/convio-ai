@@ -43,9 +43,9 @@ export function HeroSection() {
           </a>
 
           <h1 className="mt-6 max-w-[16ch] font-heading text-[clamp(34px,5.6vw,66px)] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground">
-            Ship AI agents that{' '}
+            AI agents for every{' '}
             <span className="relative whitespace-nowrap text-primary">
-              drive revenue
+              channel
               <svg
                 className="absolute -bottom-1 left-0 w-full text-primary/40"
                 viewBox="0 0 300 12"
@@ -59,7 +59,7 @@ export function HeroSection() {
           </h1>
 
           <p className="mt-5 max-w-[520px] text-[clamp(15px,1.5vw,18px)] leading-[1.6] text-muted-foreground">
-            Deploy intelligent AI agents across every customer touchpoint to automate support, qualify leads, and scale revenue on autopilot.
+            Build AI agents with knowledge bases, deploy them to WhatsApp, Telegram, Discord, Slack, and your website.
           </p>
 
           <div className="mt-8 flex items-center gap-3">
@@ -74,16 +74,6 @@ export function HeroSection() {
                 View demo
               </Button>
             </a>
-          </div>
-
-          <div className="mt-5 flex items-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Check className="size-3.5 text-primary" /> Free forever plan
-            </span>
-
-            <span className="inline-flex items-center gap-1">
-              <Check className="size-3.5 text-primary" /> No credit card
-            </span>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-muted-foreground">

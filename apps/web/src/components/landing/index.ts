@@ -1,7 +1,6 @@
 export { Navbar } from './navbar'
 export { HeroSection } from './hero-section'
 export { TrustedBySection } from './trusted-by-section'
-export { ChannelsSection } from './channels-section'
 export { EverythingSection } from './everything-section'
 export { Pricing } from './pricing'
 export { CTA } from './cta'

@@ -1,115 +1,138 @@
-import { useRef } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { SectionHeading } from './section-heading'
 import { ScrollReveal } from './scroll-reveal'
-import { Check } from 'lucide-react'
+import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { cn } from '@/lib/utils'
+import {
+  Bot,
+  Globe,
+  Database,
+  MessageSquare,
+  Puzzle,
+  BarChart3,
+  Shield,
+  Key,
+  CreditCard,
+  Settings,
+} from 'lucide-react'
 
 const FEATURES = [
   {
+    id: 'agents',
+    title: 'AI Agents',
+    icon: Bot,
+    description: 'Configure AI agents with custom prompts, tools, and knowledge bases. Each agent is fully customizable for your specific use case.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=AI+Agents',
+  },
+  {
+    id: 'channels',
+    title: 'Multi-Channel',
+    icon: Globe,
+    description: 'Deploy your agents to WhatsApp, Telegram, Discord, Slack, and embed them on any website with a single script tag.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Multi+Channel',
+  },
+  {
+    id: 'knowledge',
     title: 'Knowledge Base',
-    description:
-      'Upload docs, connect APIs, or paste URLs. Your agent learns from your data.',
-    bullets: [
-      'Supports PDF, DOCX, CSV, and web pages',
-      'Automatic chunking and embeddings',
-      'Version control for knowledge updates',
-      'Multi-source retrieval with RAG',
-    ],
-    bgImage: '/features/brand-bg.svg',
-    cubeImage: '/features/cube-brand.webp',
+    icon: Database,
+    description: 'Upload documents, connect APIs, or paste URLs. Your agents learn from your data with RAG-powered retrieval.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Knowledge+Base',
   },
   {
-    title: 'AI Models',
-    description:
-      'Choose from leading models or fine-tune your own. Deploy the best performer.',
-    bullets: [
-      'GPT-4o, Claude, Gemini, and open models',
-      'A/B testing between model variants',
-      'Custom fine-tuning on your data',
-      'Automatic fallback and load balancing',
-    ],
-    bgImage: '/features/sales-bg.svg',
-    cubeImage: '/features/cube-sales.webp',
+    id: 'chat',
+    title: 'Real-time Chat',
+    icon: MessageSquare,
+    description: 'Streaming AI responses with SSE. Watch your agents think and respond in real-time across all channels.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Real+time+Chat',
   },
   {
-    title: 'Tools & Integrations',
-    description:
-      'Connect your stack. Give agents access to databases, CRMs, and APIs.',
-    bullets: [
-      'Native integrations with 50+ services',
-      'Custom function calling and webhooks',
-      'Stripe, Salesforce, HubSpot connectors',
-      'REST and GraphQL API support',
-    ],
-    bgImage: '/features/support-bg.svg',
-    cubeImage: '/features/cube-support.webp',
+    id: 'tools',
+    title: 'Custom Tools',
+    icon: Puzzle,
+    description: 'Extend agent capabilities with web search, calculators, HTTP tools, and custom function calling.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Custom+Tools',
+  },
+  {
+    id: 'analytics',
+    title: 'Analytics',
+    icon: BarChart3,
+    description: 'Track conversations, messages, success rate, response time, and token usage across all your agents.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Analytics',
+  },
+  {
+    id: 'teams',
+    title: 'Team Collaboration',
+    icon: Shield,
+    description: 'Multi-tenant organizations with role-based access control. Manage your team with owner, admin, member, and viewer roles.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Team+Collaboration',
+  },
+  {
+    id: 'byok',
+    title: 'BYOK',
+    icon: Key,
+    description: 'Bring your own API keys. Use your own OpenAI, Anthropic, or Google keys — stored securely and encrypted at rest.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=BYOK',
+  },
+  {
+    id: 'billing',
+    title: 'Billing',
+    icon: CreditCard,
+    description: 'Subscription plans via Creem. Free, Pro, Business, and Enterprise tiers to match your growth.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Billing',
+  },
+  {
+    id: 'admin',
+    title: 'Admin Panel',
+    icon: Settings,
+    description: 'Platform-wide management: users, organizations, tickets, billing, and audit logs — all in one place.',
+    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Admin+Panel',
   },
 ]
 
-const TRUST_ITEMS = ['Enterprise Ready', 'Secure & Private', 'Built for Scale']
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-  },
-}
-
-function FeatureRow({ feature, index }: { feature: (typeof FEATURES)[number]; index: number }) {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-80px' })
-  const reversed = index % 2 === 1
-
-  return (
-    <motion.article
-      ref={ref}
-      initial="hidden"
-      animate={inView ? 'visible' : 'hidden'}
-      variants={fadeUp}
-      className="grid items-center gap-10 border-t border-border py-16 md:py-20 lg:grid-cols-2 lg:gap-16"
-    >
-      <div className={cn(reversed && 'lg:order-2')}>
-        <span className="font-mono text-xs text-muted-foreground/70">
-          {String(index + 1).padStart(2, '0')}
-        </span>
-        <h3 className="mt-3 font-heading text-2xl font-semibold tracking-[-0.02em] text-foreground md:text-[32px] md:leading-[1.15]">
-          {feature.title}
-        </h3>
-        <p className="mt-3 max-w-md text-[15px] leading-[1.7] text-muted-foreground">
-          {feature.description}
-        </p>
-        <ul className="mt-6 space-y-2.5">
-          {feature.bullets.map((bullet) => (
-            <li key={bullet} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-              <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span>{bullet}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className={cn('group', reversed && 'lg:order-1')}>
-        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-secondary/20">
-          <img
-            src={feature.bgImage}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-          <img
-            src={feature.cubeImage}
-            alt=""
-            className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 object-contain transition-transform duration-500 group-hover:scale-110 md:h-40 md:w-40"
-          />
-        </div>
-      </div>
-    </motion.article>
-  )
-}
+const INTERVAL = 5000
 
 export function EverythingSection() {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const activeFeature = FEATURES[activeIndex]
+  const isHovered = useRef(false)
+  const rafRef = useRef<number>(0)
+  const startTime = useRef<number>(0)
+
+  const animate = useCallback((timestamp: number) => {
+    if (!startTime.current) startTime.current = timestamp
+    const elapsed = timestamp - startTime.current
+    const pct = Math.min(elapsed / INTERVAL, 1)
+
+    if (pct >= 1) {
+      if (!isHovered.current) {
+        setActiveIndex((prev) => (prev + 1) % FEATURES.length)
+      }
+      startTime.current = timestamp
+    }
+
+    rafRef.current = requestAnimationFrame(animate)
+  }, [])
+
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [animate])
+
+  const handleTabClick = (index: number) => {
+    setActiveIndex(index)
+    startTime.current = 0
+  }
+
+  const handleMouseEnter = () => {
+    isHovered.current = true
+  }
+
+  const handleMouseLeave = () => {
+    isHovered.current = false
+    startTime.current = 0
+  }
+
   return (
     <section id="everything" className="border-b border-border bg-background">
       <div className="mx-auto max-w-[1160px] px-5 md:px-10 py-20 md:py-28">
@@ -122,18 +145,71 @@ export function EverythingSection() {
         </ScrollReveal>
 
         <div className="mt-10 md:mt-14">
-          {FEATURES.map((feature, i) => (
-            <FeatureRow key={feature.title} feature={feature} index={i} />
-          ))}
-        </div>
+          {/* Tabs */}
+          <div
+            className="relative flex gap-2 overflow-x-auto pb-2 scrollbar-none"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            {FEATURES.map((feature, index) => {
+              const Icon = feature.icon
+              const isActive = activeIndex === index
+              return (
+                <button
+                  key={feature.id}
+                  onClick={() => handleTabClick(index)}
+                  className={cn(
+                    'relative flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute inset-0 rounded-lg bg-primary/10"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <Icon className="relative size-4 shrink-0" />
+                  <span className="relative">{feature.title}</span>
+                </button>
+              )
+            })}
+          </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-border pt-8 text-sm font-medium text-muted-foreground">
-          {TRUST_ITEMS.map((item, i) => (
-            <span key={item} className="inline-flex items-center gap-8">
-              {i > 0 && <span className="text-primary/40">·</span>}
-              {item}
-            </span>
-          ))}
+          {/* Content */}
+          <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeFeature.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="p-6"
+              >
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <h3 className="font-heading text-2xl font-semibold tracking-[-0.02em] text-foreground">
+                      {activeFeature.title}
+                    </h3>
+                    <p className="mt-2 max-w-lg text-[15px] leading-[1.7] text-muted-foreground">
+                      {activeFeature.description}
+                    </p>
+                  </div>
+                  <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl bg-secondary/20">
+                    <img
+                      src={activeFeature.image}
+                      alt={activeFeature.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </AspectRatio>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </section>
