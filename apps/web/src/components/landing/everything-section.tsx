@@ -11,10 +11,11 @@ import {
   MessageSquare,
   Puzzle,
   BarChart3,
-  Shield,
   Key,
-  CreditCard,
-  Settings,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
 } from 'lucide-react'
 
 const FEATURES = [
@@ -23,77 +24,59 @@ const FEATURES = [
     title: 'AI Agents',
     icon: Bot,
     description: 'Configure AI agents with custom prompts, tools, and knowledge bases. Each agent is fully customizable for your specific use case.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=AI+Agents',
+    image: 'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/agent-deatils-overview-tab-ss.avif',
   },
   {
     id: 'channels',
     title: 'Multi-Channel',
     icon: Globe,
     description: 'Deploy your agents to WhatsApp, Telegram, Discord, Slack, and embed them on any website with a single script tag.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Multi+Channel',
+    image: 'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/deploymnet.avif',
   },
   {
     id: 'knowledge',
     title: 'Knowledge Base',
     icon: Database,
     description: 'Upload documents, connect APIs, or paste URLs. Your agents learn from your data with RAG-powered retrieval.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Knowledge+Base',
+    image: 'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/kb-list-view.avif',
   },
   {
     id: 'chat',
     title: 'Real-time Chat',
     icon: MessageSquare,
     description: 'Streaming AI responses with SSE. Watch your agents think and respond in real-time across all channels.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Real+time+Chat',
+    image: 'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/agent-playground-chatting.avif',
   },
   {
     id: 'tools',
     title: 'Custom Tools',
     icon: Puzzle,
     description: 'Extend agent capabilities with web search, calculators, HTTP tools, and custom function calling.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Custom+Tools',
+    image: 'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/mcp-uses-notion.avif',
   },
   {
     id: 'analytics',
     title: 'Analytics',
     icon: BarChart3,
     description: 'Track conversations, messages, success rate, response time, and token usage across all your agents.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Analytics',
-  },
-  {
-    id: 'teams',
-    title: 'Team Collaboration',
-    icon: Shield,
-    description: 'Multi-tenant organizations with role-based access control. Manage your team with owner, admin, member, and viewer roles.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Team+Collaboration',
+    image: 'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/dashboard.avif',
   },
   {
     id: 'byok',
     title: 'BYOK',
     icon: Key,
     description: 'Bring your own API keys. Use your own OpenAI, Anthropic, or Google keys — stored securely and encrypted at rest.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=BYOK',
+    image: 'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/byok.avif',
   },
-  {
-    id: 'billing',
-    title: 'Billing',
-    icon: CreditCard,
-    description: 'Subscription plans via Creem. Free, Pro, Business, and Enterprise tiers to match your growth.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Billing',
-  },
-  {
-    id: 'admin',
-    title: 'Admin Panel',
-    icon: Settings,
-    description: 'Platform-wide management: users, organizations, tickets, billing, and audit logs — all in one place.',
-    image: 'https://placehold.co/800x500/1c1c1c/1cca4a?text=Admin+Panel',
-  },
-]
+] as const
+
+type Feature = (typeof FEATURES)[number]
 
 const INTERVAL = 5000
 
 export function EverythingSection() {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const activeFeature = FEATURES[activeIndex]
   const isHovered = useRef(false)
   const startTime = useRef<number>(0)
@@ -106,7 +89,7 @@ export function EverythingSection() {
       const pct = Math.min(elapsed / INTERVAL, 1)
 
       if (pct >= 1) {
-        if (!isHovered.current) {
+        if (!isHovered.current && lightboxIndex === null) {
           setActiveIndex((prev) => (prev + 1) % FEATURES.length)
         }
         startTime.current = timestamp
@@ -117,7 +100,7 @@ export function EverythingSection() {
 
     raf = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(raf)
-  }, [])
+  }, [lightboxIndex])
 
   const handleTabClick = (index: number) => {
     setActiveIndex(index)
@@ -131,6 +114,16 @@ export function EverythingSection() {
   const handleMouseLeave = () => {
     isHovered.current = false
     startTime.current = 0
+  }
+
+  const closeLightbox = () => {
+    setLightboxIndex((idx) => {
+      if (idx !== null) {
+        setActiveIndex(idx)
+        startTime.current = 0
+      }
+      return null
+    })
   }
 
   return (
@@ -147,7 +140,7 @@ export function EverythingSection() {
         <div className="mt-10 md:mt-14">
           {/* Tabs */}
           <div
-            className="relative flex gap-2 overflow-x-auto pb-2 scrollbar-none"
+            className="relative flex gap-2 overflow-x-auto pb-2 scrollbar-none md:flex-wrap md:overflow-visible md:pb-0"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
@@ -181,15 +174,13 @@ export function EverythingSection() {
 
           {/* Content */}
           <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-card">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeFeature.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="p-6"
-              >
+            <motion.div
+              key={activeFeature.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="p-6"
+            >
                 <div className="flex flex-col gap-4">
                   <div>
                     <h3 className="font-heading text-2xl font-semibold tracking-[-0.02em] text-foreground">
@@ -199,19 +190,164 @@ export function EverythingSection() {
                       {activeFeature.description}
                     </p>
                   </div>
-                  <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl bg-secondary/20">
-                    <img
-                      src={activeFeature.image}
-                      alt={activeFeature.title}
-                      className="h-full w-full object-cover"
-                    />
-                  </AspectRatio>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxIndex(activeIndex)}
+                    aria-label={`Zoom ${activeFeature.title} screenshot`}
+                    className="group relative block w-full cursor-zoom-in overflow-hidden rounded-xl"
+                  >
+                    <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl bg-secondary/20">
+                      <img
+                        src={activeFeature.image}
+                        alt={activeFeature.title}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      />
+                    </AspectRatio>
+                    <span className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-xs font-medium text-foreground opacity-0 backdrop-blur transition-opacity duration-300 group-hover:opacity-100">
+                      <ZoomIn className="size-3.5" />
+                      Zoom
+                    </span>
+                  </button>
                 </div>
               </motion.div>
-            </AnimatePresence>
           </div>
         </div>
       </div>
+
+      <FeatureLightbox
+        features={FEATURES}
+        index={lightboxIndex}
+        onClose={closeLightbox}
+        onNavigate={setLightboxIndex}
+      />
     </section>
+  )
+}
+
+function FeatureLightbox({
+  features,
+  index,
+  onClose,
+  onNavigate,
+}: {
+  features: readonly Feature[]
+  index: number | null
+  onClose: () => void
+  onNavigate: (i: number) => void
+}) {
+  const open = index !== null
+  const current = index !== null ? features[index] : null
+
+  const go = (dir: 1 | -1) => {
+    if (index === null) return
+    onNavigate((index + dir + features.length) % features.length)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowRight') go(1)
+      if (e.key === 'ArrowLeft') go(-1)
+    }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, index, onClose])
+
+  return (
+    <AnimatePresence>
+      {open && current && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${current.title} screenshot`}
+          className="fixed inset-0 z-[999] flex flex-col bg-background/95 backdrop-blur-xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.24 }}
+          onClick={onClose}
+        >
+          <div
+            className="relative flex min-h-0 flex-1 items-center justify-center px-4 pt-24 pb-2 sm:px-16 sm:pt-28"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <motion.img
+              key={current.image}
+              src={current.image}
+              alt={current.title}
+              draggable={false}
+              initial={{ opacity: 0, scale: 0.97, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 12 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="max-h-[calc(100vh-13rem)] max-w-full rounded-2xl border border-border/40 object-contain shadow-[0_32px_100px_-20px_rgb(0_0_0/0.5)] sm:max-h-[calc(100vh-14rem)]"
+            />
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="absolute right-4 top-4 grid size-9 place-items-center rounded-full border border-border/60 bg-background/80 text-foreground backdrop-blur transition-colors hover:bg-foreground/10"
+            >
+              <X className="size-4" />
+            </button>
+
+            {features.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => go(-1)}
+                  aria-label="Previous"
+                  className="absolute left-3 grid size-10 place-items-center rounded-full border border-border/60 bg-background/80 text-foreground backdrop-blur transition-colors hover:bg-foreground/10 sm:left-6"
+                >
+                  <ChevronLeft className="size-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => go(1)}
+                  aria-label="Next"
+                  className="absolute right-3 grid size-10 place-items-center rounded-full border border-border/60 bg-background/80 text-foreground backdrop-blur transition-colors hover:bg-foreground/10 sm:right-6"
+                >
+                  <ChevronRight className="size-5" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {features.length > 1 && (
+            <div
+              className="flex flex-wrap items-center justify-center gap-2 pb-5 pt-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {features.map((f, i) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-label={`View ${f.title}`}
+                  aria-current={i === index}
+                  onClick={() => onNavigate(i)}
+                  className={cn(
+                    'size-12 overflow-hidden rounded-md border transition-all duration-300 sm:size-14',
+                    i === index
+                      ? 'border-primary opacity-100'
+                      : 'border-border opacity-45 hover:opacity-90'
+                  )}
+                >
+                  <img src={f.image} alt="" draggable={false} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
