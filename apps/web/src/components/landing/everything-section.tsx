@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SectionHeading } from './section-heading'
 import { ScrollReveal } from './scroll-reveal'
@@ -96,28 +96,28 @@ export function EverythingSection() {
   const [activeIndex, setActiveIndex] = useState(0)
   const activeFeature = FEATURES[activeIndex]
   const isHovered = useRef(false)
-  const rafRef = useRef<number>(0)
   const startTime = useRef<number>(0)
 
-  const animate = useCallback((timestamp: number) => {
-    if (!startTime.current) startTime.current = timestamp
-    const elapsed = timestamp - startTime.current
-    const pct = Math.min(elapsed / INTERVAL, 1)
+  useEffect(() => {
+    let raf = 0
+    const animate = (timestamp: number) => {
+      if (!startTime.current) startTime.current = timestamp
+      const elapsed = timestamp - startTime.current
+      const pct = Math.min(elapsed / INTERVAL, 1)
 
-    if (pct >= 1) {
-      if (!isHovered.current) {
-        setActiveIndex((prev) => (prev + 1) % FEATURES.length)
+      if (pct >= 1) {
+        if (!isHovered.current) {
+          setActiveIndex((prev) => (prev + 1) % FEATURES.length)
+        }
+        startTime.current = timestamp
       }
-      startTime.current = timestamp
+
+      raf = requestAnimationFrame(animate)
     }
 
-    rafRef.current = requestAnimationFrame(animate)
+    raf = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(raf)
   }, [])
-
-  useEffect(() => {
-    rafRef.current = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [animate])
 
   const handleTabClick = (index: number) => {
     setActiveIndex(index)
