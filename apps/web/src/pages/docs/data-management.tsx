@@ -1,4 +1,4 @@
-import { Database, Download, Trash2, AlertTriangle, Shield, FileText } from 'lucide-react'
+import { Database, Download, Trash2, AlertTriangle, Shield, FileText, Clock } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout, DocFeatureCard, DocCardGrid, DocNextStepCard } from '@/components/docs'
 
 export default function DataManagementPage() {

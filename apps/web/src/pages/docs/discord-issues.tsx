@@ -1,4 +1,4 @@
-import { AlertTriangle, Shield, Settings, RefreshCw, Wifi, Key } from 'lucide-react'
+import { AlertTriangle, Shield, Settings, RefreshCw, Wifi, Key, Bot } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout, DocFeatureCard, DocCardGrid, DocNextStepCard } from '@/components/docs'
 import { DiscordIcon } from '@/components/docs/brand-icons'
 

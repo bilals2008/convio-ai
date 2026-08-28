@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { TestTube, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react'
+import { TestTube, CheckCircle2, AlertTriangle, ArrowRight, MessageCircle } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout, DocFeatureCard, DocCardGrid, DocNextStepCard } from '@/components/docs'
 import { WhatsAppIcon, TelegramIcon, DiscordIcon, SlackIcon } from '@/components/docs/brand-icons'
 

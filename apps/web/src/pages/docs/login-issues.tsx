@@ -1,4 +1,4 @@
-import { AlertTriangle, Lock, Mail, Shield, RefreshCw, Key, LogIn, ArrowRight } from 'lucide-react'
+import { AlertTriangle, Lock, Mail, Shield, RefreshCw, Key, LogIn, ArrowRight, Clock } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout, DocFeatureCard, DocCardGrid, DocNextStepCard } from '@/components/docs'
 
 export default function LoginIssuesPage() {

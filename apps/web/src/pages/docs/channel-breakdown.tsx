@@ -1,4 +1,4 @@
-import { Smartphone, Globe, ArrowRight, TrendingUp, Users, Clock } from 'lucide-react'
+import { Smartphone, Globe, ArrowRight, TrendingUp, Users, Clock, MessageCircle } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout, DocFeatureCard, DocCardGrid, DocNextStepCard } from '@/components/docs'
 import { WhatsAppIcon, TelegramIcon, DiscordIcon, SlackIcon } from '@/components/docs/brand-icons'
 

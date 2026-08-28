@@ -31,7 +31,7 @@ const docGroups: DocGroup[] = [
     items: [
       { title: 'Overview', href: '/docs', description: 'Platform overview and core concepts', icon: BookOpen },
       { title: 'What is Convio?', href: '/docs/what-is-convio', description: 'Platform overview and core concepts', icon: BookOpen },
-      { title: 'Quick Start', href: '/docs/what-is-convio', description: 'Sign up, verify email, set up profile', icon: BookOpen },
+      { title: 'Quick Start', href: '/docs/creating-account', description: 'Sign up, verify email, set up profile', icon: BookOpen },
       { title: 'Create Your First Agent', href: '/docs/creating-agent', description: 'Create and set up your first AI agent', icon: Bot },
     ],
   },

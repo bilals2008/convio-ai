@@ -1,4 +1,4 @@
-import { Webhook, Play, RefreshCw } from 'lucide-react'
+import { Webhook, Play, RefreshCw, Shield } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout, DocFeatureCard, DocCardGrid, DocNextStepCard } from '@/components/docs'
 
 export default function TestingWebhooksPage() {
