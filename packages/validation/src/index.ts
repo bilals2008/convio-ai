@@ -144,7 +144,7 @@ export const createAgentSchema = agentSchema.omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  guardrails: agentGuardrailsSchema.optional(),
+  guardrails: agentGuardrailsSchema.nullish(),
 })
 
 export const createAgentFullSchema = createAgentSchema.extend({

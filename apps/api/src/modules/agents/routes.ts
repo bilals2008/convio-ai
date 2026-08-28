@@ -58,7 +58,7 @@ const testStreamSchema = z.object({
   tools: z.array(z.string()).optional().default([]),
   toolIds: z.array(z.string().uuid()).optional().default([]),
   mcpServerIds: z.array(z.string().uuid()).optional().default([]),
-  guardrails: agentGuardrailsSchema.optional(),
+  guardrails: agentGuardrailsSchema.nullish(),
 })
 
 // ponytail: resume schema for ask_user tool output
@@ -72,7 +72,7 @@ const testStreamResumeSchema = z.object({
   providerKeyId: z.string().uuid().optional(),
   knowledgeBaseId: z.string().uuid().optional().nullable(),
   history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(12000) })).max(30).optional().default([]),
-  guardrails: agentGuardrailsSchema.optional(),
+  guardrails: agentGuardrailsSchema.nullish(),
   toolCallId: z.string().min(1),
   toolName: z.string().min(1),
   toolOutput: z.array(z.object({ question: z.string(), answer: z.string() })),
