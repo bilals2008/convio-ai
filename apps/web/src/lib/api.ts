@@ -272,6 +272,17 @@ export const chat = {
   models: () => api.get('/chat/models'),
 }
 
+export const image = {
+  generate: (data: {
+    model: string
+    prompt: string
+    size?: string
+    images?: string[]
+    responseFormat?: 'url' | 'b64_json'
+    providerKeyId?: string
+  }) => api.post('/images/generate', data, { timeout: 120000 }),
+}
+
 export const providerKeys = {
   list: (orgId: string) => api.get(`/organizations/${orgId}/provider-keys`),
   create: (orgId: string, data: { provider: string; apiKey: string; label?: string }) =>

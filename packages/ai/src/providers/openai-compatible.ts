@@ -1,6 +1,6 @@
 import { generateText, streamText, jsonSchema } from 'ai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult } from '../index.js'
+import type { AIProvider, GenerateParams, GenerateResult, StreamChunk, Model, ModerationResult, ImageGenerateParams, ImageGenerateResult } from '../index.js'
 import { toProviderError } from './errors.js'
 import { fetchOpenAICompatibleModels, getCachedModels, modelCacheKey } from './model-cache.js'
 
@@ -107,6 +107,50 @@ export class OpenAICompatibleProvider implements AIProvider {
       }
     } catch (error) {
       throw toProviderError(error, this.name)
+    }
+  }
+
+  async generateImage(params: ImageGenerateParams): Promise<ImageGenerateResult> {
+    const apiKey = params.apiKey || process.env[this.envKey]
+    if (!apiKey) throw new Error(`${this.name} requires an API key for image generation`)
+
+    const body: Record<string, unknown> = {
+      model: params.model,
+      prompt: params.prompt,
+      size: params.size,
+    }
+    if (params.images?.length) {
+      body.image = params.images
+    }
+    if (params.responseFormat) {
+      body.response_format = params.responseFormat
+    }
+
+    const response = await fetch(`${this.baseURL}/images/generations`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: params.signal,
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`${this.name} image generation failed (${response.status}): ${text}`)
+    }
+
+    const data = await response.json() as {
+      data?: Array<{ url?: string; b64_json?: string; revised_prompt?: string }>
+    }
+    const first = data.data?.[0]
+    if (!first) throw new Error(`${this.name} returned no images`)
+
+    return {
+      url: first.url ?? undefined,
+      b64Json: first.b64_json ?? undefined,
+      revisedPrompt: first.revised_prompt ?? undefined,
     }
   }
 

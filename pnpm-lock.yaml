@@ -228,6 +228,9 @@ importers:
       framer-motion:
         specifier: ^12.42.2
         version: 12.42.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      gsap:
+        specifier: ^3.15.0
+        version: 3.15.0
       highlight.js:
         specifier: ^11.11.1
         version: 11.11.1
@@ -3486,6 +3489,9 @@ packages:
 
   graphmatch@1.1.1:
     resolution: {integrity: sha512-5ykVn/EXM1hF0XCaWh05VbYvEiOL2lY1kBxZtaYsyvjp7cmWOU1XsAdfQBwClraEofXDT197lFbXOEVMHpvQOg==}
+
+  gsap@3.15.0:
+    resolution: {integrity: sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==}
 
   guid-typescript@1.0.9:
     resolution: {integrity: sha512-Y8T4vYhEfwJOTbouREvG+3XDsjr8E3kIr7uf+JZ0BYloFsttiHU0WfvANVsR7TxNUJa/WpCnw/Ino/p+DeBhBQ==}
@@ -8366,6 +8372,8 @@ snapshots:
   grammex@3.1.12: {}
 
   graphmatch@1.1.1: {}
+
+  gsap@3.15.0: {}
 
   guid-typescript@1.0.9: {}
 

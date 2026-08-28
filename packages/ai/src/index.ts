@@ -4,6 +4,7 @@ export interface AIProvider {
   name: string
   generate(params: GenerateParams): Promise<GenerateResult>
   stream(params: GenerateParams): AsyncIterable<StreamChunk>
+  generateImage?(params: ImageGenerateParams): Promise<ImageGenerateResult>
   embed(text: string): Promise<number[]>
   moderate(text: string): Promise<ModerationResult>
   listModels(apiKey?: string): Promise<Model[]>
@@ -71,6 +72,23 @@ export interface Model {
 export interface ModerationResult {
   flagged: boolean
   categories: Record<string, boolean>
+}
+
+// Image generation types
+export interface ImageGenerateParams {
+  model: string
+  prompt: string
+  size: string
+  images?: string[]
+  responseFormat?: 'url' | 'b64_json'
+  apiKey?: string
+  signal?: AbortSignal
+}
+
+export interface ImageGenerateResult {
+  url?: string
+  b64Json?: string
+  revisedPrompt?: string
 }
 
 // Provider registry
