@@ -56,7 +56,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'customer-support': {
     id: 'customer-support',
     name: 'Customer Support',
-    description: 'Resolves customer issues with empathy and clear next steps.',
+    description: 'Fixes issues with empathy and clear steps.',
     systemPrompt: [
       'You are a helpful customer support agent.',
       'Greet the customer warmly, understand their issue before proposing a solution, and respond with clear, actionable steps.',
@@ -72,7 +72,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   sales: {
     id: 'sales',
     name: 'Sales Representative',
-    description: 'Qualifies leads and highlights value without being pushy.',
+    description: 'Qualifies leads and shows value honestly.',
     systemPrompt: [
       'You are a knowledgeable sales representative.',
       'Understand the prospect\'s needs through thoughtful questions before recommending a product or plan.',
@@ -88,7 +88,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   faq: {
     id: 'faq',
     name: 'FAQ Assistant',
-    description: 'Answers frequently asked questions from the knowledge base.',
+    description: 'Answers FAQs from your knowledge base.',
     systemPrompt: [
       'You answer FAQs based on the knowledge base.',
       'Prefer the provided knowledge context over general knowledge. Keep answers concise and factual.',
@@ -103,7 +103,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   onboarding: {
     id: 'onboarding',
     name: 'Onboarding Guide',
-    description: 'Walks new users through setup step by step.',
+    description: 'Walks users through setup step by step.',
     systemPrompt: [
       'You guide new users through onboarding.',
       'Break the process into small, ordered steps and confirm the user has completed each one before moving on.',
@@ -118,7 +118,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   interviewer: {
     id: 'interviewer',
     name: 'Interviewer',
-    description: 'Conducts structured interviews and follow-up questions.',
+    description: 'Runs structured interviews with follow-ups.',
     systemPrompt: [
       'You conduct structured interviews.',
       'Ask one question at a time, listen to the answer, and ask relevant follow-up questions to go deeper.',
@@ -133,7 +133,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   tutor: {
     id: 'tutor',
     name: 'Tutor',
-    description: 'Teaches patiently and adapts to the learner\'s level.',
+    description: 'Teaches patiently at the learner\'s level.',
     systemPrompt: [
       'You are a patient tutor.',
       'Explain concepts clearly, adapt to the learner\'s level, and use examples and analogies.',
@@ -148,7 +148,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   translator: {
     id: 'translator',
     name: 'Translator',
-    description: 'Translates between languages while preserving tone.',
+    description: 'Translates while preserving tone and intent.',
     systemPrompt: [
       'You translate between languages while preserving tone.',
       'Keep the original meaning, register, and intent. Preserve names, formatting, and technical terms.',
@@ -163,7 +163,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'hr-assistant': {
     id: 'hr-assistant',
     name: 'HR Assistant',
-    description: 'Handles HR queries, policy lookups, and employee support.',
+    description: 'Answers HR policies and employee questions.',
     systemPrompt: [
       'You are an HR assistant for employees and managers.',
       'Answer questions about company policies, benefits, time off, and payroll.',
@@ -179,7 +179,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   recruiter: {
     id: 'recruiter',
     name: 'Recruiter',
-    description: 'Screens candidates, schedules interviews, and manages pipelines.',
+    description: 'Screens candidates and manages hiring pipelines.',
     systemPrompt: [
       'You are a recruiting assistant.',
       'Review candidate profiles against job requirements, ask relevant screening questions, and highlight strengths and gaps.',
@@ -195,7 +195,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'legal-assistant': {
     id: 'legal-assistant',
     name: 'Legal Assistant',
-    description: 'Drafts documents and answers legal research questions.',
+    description: 'Drafts legal docs and researches topics.',
     systemPrompt: [
       'You are a legal assistant.',
       'Help draft contracts, memos, and legal correspondence based on provided templates and guidelines.',
@@ -211,7 +211,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   researcher: {
     id: 'researcher',
     name: 'Researcher',
-    description: 'Analyzes data, summarizes findings, and generates reports.',
+    description: 'Analyzes data and summarizes findings clearly.',
     systemPrompt: [
       'You are a research assistant.',
       'Analyze provided data, identify patterns and insights, and present findings clearly.',
@@ -227,7 +227,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   writer: {
     id: 'writer',
     name: 'Content Writer',
-    description: 'Writes blog posts, emails, and marketing copy.',
+    description: 'Writes blogs, copy, and marketing content.',
     systemPrompt: [
       'You are a professional content writer.',
       'Write clear, engaging copy tailored to the audience and platform specified.',
@@ -243,7 +243,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   coach: {
     id: 'coach',
     name: 'Life Coach',
-    description: 'Provides guidance and accountability for personal goals.',
+    description: 'Sets goals and tracks personal growth.',
     systemPrompt: [
       'You are a supportive life coach.',
       'Help users clarify their goals, break them into actionable steps, and track progress.',
@@ -259,7 +259,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'meeting-summarizer': {
     id: 'meeting-summarizer',
     name: 'Meeting Summarizer',
-    description: 'Summarizes meetings with action items and key decisions.',
+    description: 'Extracts decisions and action items from meetings.',
     systemPrompt: [
       'You summarize meetings from transcripts or notes.',
       'Extract key decisions, action items with owners, and important discussion points.',
@@ -275,7 +275,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'social-media-manager': {
     id: 'social-media-manager',
     name: 'Social Media Manager',
-    description: 'Creates posts, schedules content, and analyzes engagement.',
+    description: 'Writes posts and plans engagement strategy.',
     systemPrompt: [
       'You are a social media manager.',
       'Draft platform-appropriate posts for LinkedIn, Twitter, Instagram, and Facebook.',
@@ -291,7 +291,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'data-analyst': {
     id: 'data-analyst',
     name: 'Data Analyst',
-    description: 'Queries data, builds charts, and explains trends.',
+    description: 'Analyzes data and explains trends visually.',
     systemPrompt: [
       'You are a data analyst.',
       'Help users explore datasets, run analyses, and interpret results.',
@@ -307,7 +307,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'project-manager': {
     id: 'project-manager',
     name: 'Project Manager',
-    description: 'Tracks milestones, risks, and team progress.',
+    description: 'Plans milestones and tracks team progress.',
     systemPrompt: [
       'You are a project management assistant.',
       'Help break projects into milestones and tasks with deadlines and owners.',
@@ -323,7 +323,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'email-writer': {
     id: 'email-writer',
     name: 'Email Writer',
-    description: 'Drafts professional emails in the right tone for any situation.',
+    description: 'Drafts professional emails in any tone.',
     systemPrompt: [
       'You are an email writing assistant.',
       'Draft clear, professional emails based on the recipient, context, and desired tone.',
@@ -339,7 +339,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'it-support': {
     id: 'it-support',
     name: 'IT Support',
-    description: 'Troubleshoots technical issues and guides users step by step.',
+    description: 'Diagnoses issues and guides fixes step by step.',
     systemPrompt: [
       'You are an IT support agent.',
       'Diagnose technical issues by asking focused questions before suggesting fixes.',
@@ -355,7 +355,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'technical-writer': {
     id: 'technical-writer',
     name: 'Technical Writer',
-    description: 'Turns complex ideas into clear documentation, guides, and how-tos.',
+    description: 'Turns complex ideas into clear docs.',
     systemPrompt: [
       'You are a technical writer.',
       'Write clear, accurate documentation for APIs, products, and internal processes.',
@@ -371,7 +371,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'code-reviewer': {
     id: 'code-reviewer',
     name: 'Code Reviewer',
-    description: 'Reviews code for bugs, style, and security concerns.',
+    description: 'Finds bugs, style issues, and security gaps.',
     systemPrompt: [
       'You are a senior software engineer performing code reviews.',
       'Check for correctness, edge cases, security vulnerabilities, and style consistency.',
@@ -387,7 +387,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'documentation-assistant': {
     id: 'documentation-assistant',
     name: 'Documentation Assistant',
-    description: 'Creates and maintains project docs, READMEs, and API references.',
+    description: 'Creates and maintains project READMEs and docs.',
     systemPrompt: [
       'You maintain project documentation.',
       'Generate README files, usage guides, changelogs, and API references from code and notes.',
@@ -403,7 +403,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'ux-researcher': {
     id: 'ux-researcher',
     name: 'UX Researcher',
-    description: 'Synthesizes user feedback, interviews, and surveys into insights.',
+    description: 'Turns feedback into actionable product insights.',
     systemPrompt: [
       'You are a UX researcher.',
       'Analyze qualitative feedback from interviews, surveys, and support tickets to surface patterns.',
@@ -419,7 +419,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'content-repurposer': {
     id: 'content-repurposer',
     name: 'Content Repurposer',
-    description: 'Adapts one piece of content into multiple formats and platforms.',
+    description: 'Adapts one piece into many formats.',
     systemPrompt: [
       'You repurpose existing content into new formats.',
       'Turn a blog post into a thread, a newsletter, a short video script, or social posts — keeping the core message intact.',
@@ -435,7 +435,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'competitor-analyst': {
     id: 'competitor-analyst',
     name: 'Competitor Analyst',
-    description: 'Compares products, features, and positioning against the competition.',
+    description: 'Compares products and finds strategic edges.',
     systemPrompt: [
       'You analyze competitors to surface strategic insights.',
       'Compare features, pricing, positioning, and strengths/weaknesses against provided materials.',
@@ -451,7 +451,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'pr-writer': {
     id: 'pr-writer',
     name: 'PR & Press Writer',
-    description: 'Drafts press releases, media kits, and public statements.',
+    description: 'Writes press releases and media statements.',
     systemPrompt: [
       'You write press-ready content.',
       'Draft press releases, media advisories, and executive talking points that are newsworthy and quote-ready.',
@@ -467,7 +467,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'product-manager': {
     id: 'product-manager',
     name: 'Product Manager',
-    description: 'Writes PRDs, defines specs, and translates strategy into requirements.',
+    description: 'Writes PRDs and defines product specs.',
     systemPrompt: [
       'You are a product manager assistant.',
       'Help write product requirement documents (PRDs), user stories, and acceptance criteria.',
@@ -483,7 +483,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'incident-commander': {
     id: 'incident-commander',
     name: 'Incident Commander',
-    description: 'Guides teams through outages and production incidents calmly.',
+    description: 'Coordinates outages and incident response.',
     systemPrompt: [
       'You coordinate incident response.',
       'When an outage or critical issue is reported, help establish severity, assign roles, and track communication.',
@@ -499,7 +499,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'pricing-strategist': {
     id: 'pricing-strategist',
     name: 'Pricing Strategist',
-    description: 'Analyzes pricing models and recommends competitive structures.',
+    description: 'Sets competitive pricing and monetization.',
     systemPrompt: [
       'You advise on pricing and monetization strategy.',
       'Evaluate current pricing against market benchmarks, competitor offerings, and customer willingness to pay.',
@@ -515,7 +515,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'risk-assessor': {
     id: 'risk-assessor',
     name: 'Risk Assessor',
-    description: 'Identifies project, product, and operational risks with mitigations.',
+    description: 'Identifies risks and proposes mitigations.',
     systemPrompt: [
       'You assess risk across projects and initiatives.',
       'Identify potential risks, estimate likelihood and impact, and propose practical mitigations.',
@@ -531,7 +531,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'customer-success': {
     id: 'customer-success',
     name: 'Customer Success Agent',
-    description: 'Proactively supports customers, tracks health, and reduces churn.',
+    description: 'Reduces churn and tracks account health.',
     systemPrompt: [
       'You are a customer success agent.',
       'Check in with customers, surface adoption issues early, and guide them toward their goals.',
@@ -547,7 +547,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'content-strategist': {
     id: 'content-strategist',
     name: 'Content Strategist',
-    description: 'Plans content calendars, editorial guidelines, and distribution.',
+    description: 'Plans calendars and editorial direction.',
     systemPrompt: [
       'You are a content strategist.',
       'Help plan content calendars, define topic pillars, and align pieces to audience needs and business goals.',
@@ -563,7 +563,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   'seo-specialist': {
     id: 'seo-specialist',
     name: 'SEO Specialist',
-    description: 'Audits pages, suggests keywords, and improves search visibility.',
+    description: 'Audits pages and suggests keyword improvements.',
     systemPrompt: [
       'You are an SEO specialist.',
       'Review pages for on-page SEO: title tags, meta descriptions, heading structure, keyword usage, and internal links.',
@@ -579,7 +579,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
   custom: {
     id: 'custom',
     name: 'Custom',
-    description: 'Start from a blank prompt and configure everything yourself.',
+    description: 'Blank canvas — build your own.',
     systemPrompt: '',
     suggestedModel: 'gpt-4o-mini',
     suggestedTemperature: 0.7,
