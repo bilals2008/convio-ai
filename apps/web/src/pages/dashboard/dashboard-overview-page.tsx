@@ -1,20 +1,32 @@
 import { useState } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { Building2, MessageSquare, Bot, Zap, Star, Plus, BookOpen, MessageCircle, BarChart3 } from 'lucide-react'
+import {
+  Building2,
+  MessageSquare,
+  Bot,
+  Zap,
+  Star,
+  Plus,
+  BookOpen,
+  MessageCircle,
+  BarChart3,
+  CreditCard,
+  ArrowUpRight,
+  LifeBuoy,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { PageContainer } from '@/components/shared/page-container'
 import { OverviewSkeleton } from '@/components/dashboard/overview-skeleton'
-import { ChannelChart } from '@/components/dashboard/channel-chart'
+import { KPICard, ProgressCard } from '@/components/dashboard/stats-card'
 import { ActivityChart } from '@/components/dashboard/activity-chart'
-import { TopAgentsTable } from '@/components/dashboard/top-agents-table'
-import { RecentConversations } from '@/components/dashboard/recent-conversations'
 import { EmptyState } from '@/components/shared/empty-state'
 import { analytics as analyticsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
 import { useAuth } from '@/lib/auth-context'
+import { usePlan, useUsage } from '@/lib/hooks/use-billing'
 import { cn } from '@/lib/utils'
-import { Skeleton } from '@/components/ui/skeleton'
 import { formatResponseTime } from '@/lib/analytics'
 
 const dateRanges = [
@@ -60,7 +72,7 @@ export default function DashboardOverviewPage() {
   const [dateRange, setDateRange] = useState<string>('30d')
   const { from, to } = getDateRange(dateRange)
 
-  const { data: overview, isLoading, isFetching, isError, error } = useQuery({
+  const { data: overview, isFetching } = useQuery({
     queryKey: ['dashboard', orgId, dateRange],
     queryFn: async () => {
       const res = await analyticsApi.overview(orgId!, { from, to })
@@ -70,6 +82,9 @@ export default function DashboardOverviewPage() {
     retry: false,
     placeholderData: keepPreviousData,
   })
+
+  const { data: plan, isLoading: planLoading, isError: planError } = usePlan()
+  const { data: usage, isLoading: usageLoading, isError: usageError } = useUsage()
 
   if (orgLoading) return <OverviewSkeleton />
 
@@ -85,82 +100,32 @@ export default function DashboardOverviewPage() {
     )
   }
 
-  if (isLoading) return <OverviewSkeleton />
-
-  if (isError) {
-    return (
-      <PageContainer>
-        <EmptyState
-          icon={Building2}
-          title="Failed to load dashboard"
-          description={(error as Error)?.message || 'Something went wrong. Please try again.'}
-        />
-      </PageContainer>
-    )
-  }
-
-  const chartData = (overview?.dailyBreakdown || []).map(
-    (d: { date: string; totalConversations: number; totalMessages: number }) => ({
-      date: d.date,
-      conversations: d.totalConversations,
-      messages: d.totalMessages,
-    }),
-  )
-
-  function trendOf(val: number): { trend: 'up' | 'down' | 'flat'; change: string } {
-    if (val > 0) return { trend: 'up', change: `+${val}%` }
-    if (val < 0) return { trend: 'down', change: `${val}%` }
-    return { trend: 'flat', change: '0%' }
-  }
+  if (!overview) return <OverviewSkeleton />
 
   const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'there'
 
-  const kpiMetrics = [
-    {
-      icon: MessageSquare,
-      label: 'Conversations',
-      value: (overview?.totalConversations || 0).toLocaleString(),
-      ...trendOf(overview?.conversationsChange ?? 0),
-      period: 'vs last period',
-      color: 'bg-primary/10 text-primary' as const,
-    },
-    {
-      icon: Bot,
-      label: 'AI Success',
-      value: `${overview?.successRate ?? 0}%`,
-      change: `${overview?.successRate ? '+' : ''}${overview?.successRate ?? 0}%`,
-      trend: 'up' as const,
-      period: 'success rate',
-      color: 'bg-emerald-500/10 text-emerald-500' as const,
-    },
-    {
-      icon: Zap,
-      label: 'Avg Response',
-      value: formatResponseTime(overview?.avgResponseTime ?? 0),
-      ...trendOf(overview?.responseTimeChange ?? 0),
-      period: 'vs last period',
-      color: 'bg-info/10 text-info' as const,
-    },
-    {
-      icon: Star,
-      label: 'Resolution Rate',
-      value: `${overview?.resolutionRate ?? 0}%`,
-      change: `${overview?.resolutionRate ? '+' : ''}${overview?.resolutionRate ?? 0}%`,
-      trend: 'up' as const,
-      period: 'resolved rate',
-      color: 'bg-warning/10 text-warning' as const,
-    },
-  ]
+  function trendOf(val: number) {
+    if (val > 0) return { trend: 'up' as const, change: `+${val}%` }
+    if (val < 0) return { trend: 'down' as const, change: `${val}%` }
+    return { trend: 'flat' as const, change: '0%' }
+  }
+
+  const usagePercent = usage ? Math.min(usage.messagesPercent, 100) : 0
+  const usageDescription = usage
+    ? `${usage.messages.toLocaleString()} / ${usage.limit.toLocaleString()} messages used this month`
+    : undefined
 
   return (
     <PageContainer className="space-y-4">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold tracking-tight">
             {getGreeting()}, {firstName}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Here&apos;s what&apos;s happening with your agents.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Here&apos;s what&apos;s happening with your agents.
+          </p>
         </div>
         <div className="flex gap-0.5 sm:gap-1 rounded-lg bg-muted p-0.5 sm:p-1 overflow-x-auto">
           {dateRanges.map((range) => (
@@ -181,47 +146,45 @@ export default function DashboardOverviewPage() {
         </div>
       </div>
 
-      {/* ── KPI Cards ──────────────────────────────────────────────────── */}
+      {/* KPI Cards */}
       <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {kpiMetrics.map((m) => (
-          <div
-            key={m.label}
-            className="group flex items-start justify-between gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5 sm:px-4 sm:py-3 transition-all duration-200 hover:border-border hover:shadow-sm"
-          >
-            <div className="flex min-w-0 flex-col gap-0.5 sm:gap-1">
-              <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-widest text-muted-foreground truncate">{m.label}</span>
-              {isFetching ? (
-                <Skeleton className="h-6 w-16" />
-              ) : (
-                <span className="text-lg sm:text-xl font-semibold leading-none tracking-tight text-foreground">{m.value}</span>
-              )}
-              <span className="mt-0.5 flex items-center gap-1 text-[11px] sm:text-xs">
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-0.5 font-medium',
-                    m.trend === 'up' && 'text-emerald-500',
-                    m.trend === 'down' && 'text-destructive',
-                    m.trend === 'flat' && 'text-muted-foreground',
-                  )}
-                >
-                  {m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : '—'} {m.change}
-                </span>
-                <span className="text-muted-foreground hidden sm:inline">{m.period}</span>
-              </span>
-            </div>
-            <div
-              className={cn(
-                'flex size-7 sm:size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105',
-                m.color,
-              )}
-            >
-              <m.icon className="size-3.5 sm:size-4" />
-            </div>
-          </div>
-        ))}
+        <KPICard
+          icon={MessageSquare}
+          label="Conversations"
+          value={(overview.totalConversations || 0).toLocaleString()}
+          iconClassName="bg-primary/10 text-primary"
+          {...trendOf(overview.conversationsChange ?? 0)}
+          period="vs last period"
+        />
+        <KPICard
+          icon={Bot}
+          label="AI Success"
+          value={`${overview.successRate ?? 0}%`}
+          iconClassName="bg-emerald-500/10 text-emerald-500"
+          change={`${overview.successRate ? '+' : ''}${overview.successRate ?? 0}%`}
+          trend="up"
+          period="success rate"
+        />
+        <KPICard
+          icon={Zap}
+          label="Avg Response"
+          value={formatResponseTime(overview.avgResponseTime ?? 0)}
+          iconClassName="bg-info/10 text-info"
+          {...trendOf(overview.responseTimeChange ?? 0)}
+          period="vs last period"
+        />
+        <KPICard
+          icon={Star}
+          label="Resolution Rate"
+          value={`${overview.resolutionRate ?? 0}%`}
+          iconClassName="bg-warning/10 text-warning"
+          change={`${overview.resolutionRate ? '+' : ''}${overview.resolutionRate ?? 0}%`}
+          trend="up"
+          period="resolved rate"
+        />
       </div>
 
-      {/* ── Quick Actions ─────────────────────────────────────────────── */}
+      {/* Quick Actions */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">Quick Actions</h2>
         <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -272,17 +235,97 @@ export default function DashboardOverviewPage() {
         </div>
       </div>
 
-      {/* ── Chart ─────────────────────────────────────────────────────── */}
+      {/* Plan & Usage */}
       <div className="grid gap-2 sm:gap-3 lg:grid-cols-2">
-        <ChannelChart data={chartData} loading={isFetching} />
-        <ActivityChart data={chartData} loading={isFetching} />
+        {planLoading || usageLoading ? (
+          <>
+            <Skeleton className="h-[120px] rounded-xl" />
+            <Skeleton className="h-[120px] rounded-xl" />
+          </>
+        ) : planError || usageError ? (
+          <>
+            <div className="rounded-xl border border-border/60 bg-card px-5 py-4">
+              <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Plan Usage</span>
+              <p className="mt-2 text-xs text-muted-foreground">Unable to load plan data.</p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-card px-5 py-4">
+              <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Limits</span>
+              <p className="mt-2 text-xs text-muted-foreground">Unable to load limits.</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <ProgressCard
+              icon={CreditCard}
+              label="Plan Usage"
+              value={`${plan?.label || 'Free'} Plan`}
+              progress={usagePercent}
+              iconClassName="bg-violet-500/10 text-violet-500"
+              barClassName="bg-violet-500"
+              description={usageDescription}
+            />
+            {plan?.limits && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-5 py-4 transition-all duration-200 hover:border-border hover:shadow-sm">
+                <div className="flex min-w-0 flex-col gap-2">
+                  <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                    Limits
+                  </span>
+                  <span className="text-2xl font-semibold leading-none tracking-tight text-foreground">
+                    {plan.limits.agents} agents
+                  </span>
+                  <span className="mt-0.5 text-xs text-muted-foreground">
+                    {plan.limits.messagesPerMonth.toLocaleString()} messages/mo &middot; {plan.limits.knowledgeBases} KBs
+                  </span>
+                </div>
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-info/10 text-info transition-transform duration-200 group-hover:scale-105">
+                  <Zap className="size-5" />
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* ── Top Agents ────────────────────────────────────────────────── */}
-      <TopAgentsTable />
+      {/* Upgrade CTA */}
+      {plan?.name === 'free' && (
+        <Link
+          to="/settings/billing"
+          className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-5 py-4 transition-all duration-200 hover:border-primary/50 hover:bg-primary/10"
+        >
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-sm font-semibold text-foreground">Upgrade your plan</span>
+            <span className="text-xs text-muted-foreground">
+              Unlock more agents, messages, and priority support.
+            </span>
+          </div>
+          <ArrowUpRight className="size-4 shrink-0 text-primary" />
+        </Link>
+      )}
 
-      {/* ── Recent Conversations ─────────────────────────────────────── */}
-      <RecentConversations />
+      {/* Activity Chart */}
+      <ActivityChart
+        data={(overview?.dailyBreakdown || []).map(
+          (d: { date: string; totalConversations: number; totalMessages: number }) => ({
+            date: d.date,
+            conversations: d.totalConversations,
+            messages: d.totalMessages,
+          }),
+        )}
+        loading={isFetching}
+      />
+
+      {/* Help Tip */}
+      <div className="flex justify-center py-4">
+        <a
+          href="/docs"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
+        >
+          <LifeBuoy className="size-3.5" />
+          Need help? Check out our docs
+        </a>
+      </div>
     </PageContainer>
   )
 }
