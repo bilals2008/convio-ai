@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/chart'
-import { ChartTooltipContent, ChartLegendContent } from '@/components/application/charts/charts-base'
-import { Area, AreaChart, Line, ComposedChart, CartesianGrid, XAxis, YAxis, Bar, Legend } from 'recharts'
+import { ChartTooltipContent } from '@/components/application/charts/charts-base'
+import { Area, Line, ComposedChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Zap } from 'lucide-react'
 
@@ -39,8 +39,22 @@ export function TokenCostChart({ data, loading }: TokenCostChartProps) {
   return (
     <Card className="col-span-full">
       <CardHeader className="flex items-center gap-2 space-y-0 border-b py-4">
-        <div className="grid flex-1 gap-1">
+        <div className="flex w-full items-center justify-between">
           <CardTitle className="text-base">Token Usage & Response Time</CardTitle>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <div className="size-2 shrink-0 rounded-full" style={{ backgroundColor: 'hsl(27, 96%, 61%)' }} />
+              <span>Avg Response (s)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="size-2 shrink-0 rounded-full" style={{ backgroundColor: 'hsl(217, 91%, 60%)' }} />
+              <span>Input Tokens</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="size-2 shrink-0 rounded-full" style={{ backgroundColor: 'hsl(142, 71%, 45%)' }} />
+              <span>Output Tokens</span>
+            </div>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
@@ -94,7 +108,6 @@ export function TokenCostChart({ data, loading }: TokenCostChartProps) {
                   />
                 }
               />
-              <Legend content={<ChartLegendContent />} />
               <Area
                 yAxisId="tokens"
                 dataKey="inputTokens"

@@ -72,7 +72,7 @@ export default function CreatingAgentPage() {
 
       <h2 id="from-template">Creating from a Template</h2>
       <p>
-        Convio ships with 17 templates covering the most common agent use cases. Each template comes with a pre-configured system prompt, suggested tools, and recommended model settings.
+        Convio ships with 35 templates covering the most common agent use cases. Each template comes with a pre-configured system prompt, suggested tools, and recommended model settings.
       </p>
 
       <h3 id="template-categories">Template Categories</h3>
