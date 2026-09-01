@@ -48,9 +48,11 @@ interface AgentToolPickerProps {
   tools: BuiltInTool[]
   onToggle: (id: string, enabled: boolean) => void
   disabled?: boolean
+  onSeeAll?: () => void
+  totalCount?: number
 }
 
-export function AgentToolPicker({ tools, onToggle, disabled }: AgentToolPickerProps) {
+export function AgentToolPicker({ tools, onToggle, disabled, onSeeAll, totalCount }: AgentToolPickerProps) {
   return (
     <div className="space-y-0.5">
       {tools.map((tool) => (
@@ -81,6 +83,15 @@ export function AgentToolPicker({ tools, onToggle, disabled }: AgentToolPickerPr
           />
         </div>
       ))}
+      {onSeeAll && (
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="w-full text-center text-xs text-primary hover:underline py-1.5"
+        >
+          {totalCount ? `See all ${totalCount} tools` : 'See all tools'}
+        </button>
+      )}
     </div>
   )
 }

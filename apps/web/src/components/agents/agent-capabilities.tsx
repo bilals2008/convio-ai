@@ -15,6 +15,8 @@ interface AgentCapabilitiesProps {
   capabilities: Capability[]
   onToggle: (id: string, enabled: boolean) => void
   disabled?: boolean
+  onSeeAll?: () => void
+  totalCount?: number
 }
 
 const defaultCapabilities: Capability[] = [
@@ -63,6 +65,8 @@ export function AgentCapabilities({
   capabilities = defaultCapabilities,
   onToggle,
   disabled,
+  onSeeAll,
+  totalCount,
 }: AgentCapabilitiesProps) {
   return (
     <div className="space-y-0.5">
@@ -94,6 +98,15 @@ export function AgentCapabilities({
           </div>
         )
       })}
+      {onSeeAll && (
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="w-full text-center text-xs text-primary hover:underline py-1.5"
+        >
+          {totalCount ? `See all ${totalCount} capabilities` : 'See all capabilities'}
+        </button>
+      )}
     </div>
   )
 }

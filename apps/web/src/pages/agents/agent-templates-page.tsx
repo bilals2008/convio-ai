@@ -12,8 +12,36 @@ import {
   ArrowLeft,
   Wrench,
   ArrowRight,
-  Loader2,
+  Flame,
+  TrendingUp,
+  HelpCircle,
+  LogIn,
+  UserSearch,
+  BookOpen,
+  Languages,
+  Users,
+  ClipboardList,
+  Scale,
+  PenTool,
+  Heart,
+  BarChart3,
+  MessageSquare,
+  Megaphone,
+  Mail,
+  ShieldCheck,
+  Bug,
+  Copy,
+  GitCompare,
+  Newspaper,
+  Clipboard,
+  AlertTriangle,
+  DollarSign,
+  AlertOctagon,
+  Handshake,
+  Layout,
+  FileText,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,11 +67,48 @@ const categoryColors: Record<string, string> = {
   custom: 'bg-muted text-muted-foreground',
 }
 
-const categoryIcons: Record<string, typeof Headphones> = {
+const categoryIcons: Record<string, LucideIcon> = {
   support: Headphones,
   business: Briefcase,
   education: GraduationCap,
   productivity: Zap,
+  custom: SlidersHorizontal,
+}
+
+const templateIcons: Record<string, LucideIcon> = {
+  'customer-support': Headphones,
+  sales: TrendingUp,
+  faq: HelpCircle,
+  onboarding: LogIn,
+  interviewer: UserSearch,
+  tutor: BookOpen,
+  translator: Languages,
+  'hr-assistant': Users,
+  recruiter: ClipboardList,
+  'legal-assistant': Scale,
+  researcher: GraduationCap,
+  writer: PenTool,
+  coach: Heart,
+  'data-analyst': BarChart3,
+  'project-manager': Briefcase,
+  'meeting-summarizer': MessageSquare,
+  'social-media-manager': Megaphone,
+  'email-writer': Mail,
+  'it-support': ShieldCheck,
+  'technical-writer': FileText,
+  'code-reviewer': Bug,
+  'documentation-assistant': FileText,
+  'ux-researcher': Search,
+  'content-repurposer': Copy,
+  'competitor-analyst': GitCompare,
+  'pr-writer': Newspaper,
+  'product-manager': Clipboard,
+  'incident-commander': AlertTriangle,
+  'pricing-strategist': DollarSign,
+  'risk-assessor': AlertOctagon,
+  'customer-success': Handshake,
+  'content-strategist': Layout,
+  'seo-specialist': Search,
   custom: SlidersHorizontal,
 }
 
@@ -98,7 +163,7 @@ export default function AgentTemplatesPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Templates</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Pick a ready-made template. It pre-fills the agent's prompt and settings — customize freely.
+            Start from a template. Customize as you go.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -189,18 +254,30 @@ export default function AgentTemplatesPage() {
       {!isLoading && !isError && filtered.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((template) => {
+            const specificIcon = templateIcons[template.id]
             const CatIcon = categoryIcons[template.category] || SlidersHorizontal
+            const popScore = template.popularity
+            const isPopular = (popScore ?? 0) >= 70
+            const IconToUse = specificIcon || CatIcon
             return (
               <div
                 key={template.id}
                 className="group relative flex flex-col items-start gap-3 rounded-xl border border-border/60 p-4 text-left transition-all hover:border-primary/40 hover:shadow-md"
               >
+                {/* Popularity badge */}
+                {isPopular && (
+                  <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500">
+                    <Flame className="size-3 fill-current" />
+                    {popScore}
+                  </span>
+                )}
+
                 <div className="flex items-center gap-2">
                   <span className={cn(
                     'flex size-8 items-center justify-center rounded-lg',
                     categoryColors[template.category] || 'bg-muted text-muted-foreground'
                   )}>
-                    <CatIcon className="size-4" />
+                    <IconToUse className="size-4" />
                   </span>
                   <span className={cn(
                     'rounded-md px-1.5 py-0.5 text-[10px] font-medium capitalize',
@@ -215,12 +292,26 @@ export default function AgentTemplatesPage() {
                   <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-3">{template.description}</p>
                 </div>
 
-                {template.suggestedTools.length > 0 && (
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Wrench className="size-3" />
-                    {template.suggestedTools.length} tool{template.suggestedTools.length > 1 ? 's' : ''} suggested
-                  </div>
-                )}
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  {template.suggestedTools.length > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Wrench className="size-3" />
+                      {template.suggestedTools.length} tool{template.suggestedTools.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {template.suggestedTools.length > 0 && template.popularity && (
+                    <span className="size-1 rounded-full bg-border" />
+                  )}
+                  {template.popularity && (
+                    <span className={cn(
+                      'flex items-center gap-1',
+                      isPopular ? 'text-amber-500' : 'text-muted-foreground'
+                    )}>
+                      <Flame className="size-3" />
+                      {template.popularity}
+                    </span>
+                  )}
+                </div>
 
                 <Button
                   size="sm"
@@ -235,13 +326,6 @@ export default function AgentTemplatesPage() {
           })}
         </div>
       )}
-
-      {/* More templates coming soon */}
-      <div className="flex items-center justify-center pt-8">
-        <p className="text-center text-xs text-muted-foreground">
-          More templates coming soon — stay tuned.
-        </p>
-      </div>
     </PageContainer>
   )
 }

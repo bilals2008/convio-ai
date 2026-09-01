@@ -49,6 +49,7 @@ export interface AgentTemplate {
   suggestedTemperature: number
   category: AgentTemplateCategory
   suggestedTools: string[]
+  popularity?: number
 }
 
 const templates: Record<AgentTemplateType, AgentTemplate> = {
@@ -66,6 +67,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.4,
     category: 'support',
     suggestedTools: ['knowledge-search'],
+    popularity: 95,
   },
   sales: {
     id: 'sales',
@@ -81,6 +83,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.7,
     category: 'business',
     suggestedTools: ['generate-leads'],
+    popularity: 75,
   },
   faq: {
     id: 'faq',
@@ -95,6 +98,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.2,
     category: 'support',
     suggestedTools: ['knowledge-search'],
+    popularity: 88,
   },
   onboarding: {
     id: 'onboarding',
@@ -109,6 +113,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.5,
     category: 'productivity',
     suggestedTools: [],
+    popularity: 62,
   },
   interviewer: {
     id: 'interviewer',
@@ -123,6 +128,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.6,
     category: 'business',
     suggestedTools: [],
+    popularity: 55,
   },
   tutor: {
     id: 'tutor',
@@ -137,6 +143,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.5,
     category: 'education',
     suggestedTools: ['knowledge-search'],
+    popularity: 58,
   },
   translator: {
     id: 'translator',
@@ -151,6 +158,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.3,
     category: 'productivity',
     suggestedTools: [],
+    popularity: 50,
   },
   'hr-assistant': {
     id: 'hr-assistant',
@@ -166,6 +174,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.4,
     category: 'business',
     suggestedTools: ['knowledge-search'],
+    popularity: 48,
   },
   recruiter: {
     id: 'recruiter',
@@ -181,6 +190,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.5,
     category: 'business',
     suggestedTools: [],
+    popularity: 44,
   },
   'legal-assistant': {
     id: 'legal-assistant',
@@ -196,6 +206,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.3,
     category: 'business',
     suggestedTools: ['knowledge-search'],
+    popularity: 38,
   },
   researcher: {
     id: 'researcher',
@@ -211,6 +222,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.3,
     category: 'education',
     suggestedTools: ['knowledge-search', 'url-fetcher'],
+    popularity: 55,
   },
   writer: {
     id: 'writer',
@@ -226,6 +238,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.7,
     category: 'productivity',
     suggestedTools: ['url-fetcher'],
+    popularity: 65,
   },
   coach: {
     id: 'coach',
@@ -241,6 +254,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.6,
     category: 'education',
     suggestedTools: [],
+    popularity: 32,
   },
   'meeting-summarizer': {
     id: 'meeting-summarizer',
@@ -256,6 +270,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.2,
     category: 'productivity',
     suggestedTools: [],
+    popularity: 72,
   },
   'social-media-manager': {
     id: 'social-media-manager',
@@ -271,6 +286,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.6,
     category: 'support',
     suggestedTools: [],
+    popularity: 42,
   },
   'data-analyst': {
     id: 'data-analyst',
@@ -286,6 +302,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.3,
     category: 'productivity',
     suggestedTools: ['knowledge-search'],
+    popularity: 60,
   },
   'project-manager': {
     id: 'project-manager',
@@ -301,6 +318,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.4,
     category: 'business',
     suggestedTools: [],
+    popularity: 52,
   },
   'email-writer': {
     id: 'email-writer',
@@ -316,6 +334,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.5,
     category: 'productivity',
     suggestedTools: [],
+    popularity: 70,
   },
   'it-support': {
     id: 'it-support',
@@ -331,6 +350,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.3,
     category: 'support',
     suggestedTools: ['knowledge-search'],
+    popularity: 80,
   },
   'technical-writer': {
     id: 'technical-writer',
@@ -346,6 +366,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.4,
     category: 'productivity',
     suggestedTools: ['url-fetcher'],
+    popularity: 35,
   },
   'code-reviewer': {
     id: 'code-reviewer',
@@ -361,6 +382,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.2,
     category: 'productivity',
     suggestedTools: [],
+    popularity: 33,
   },
   'documentation-assistant': {
     id: 'documentation-assistant',
@@ -376,6 +398,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.3,
     category: 'productivity',
     suggestedTools: ['url-fetcher', 'knowledge-search'],
+    popularity: 28,
   },
   'ux-researcher': {
     id: 'ux-researcher',
@@ -391,6 +414,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.4,
     category: 'business',
     suggestedTools: ['knowledge-search'],
+    popularity: 25,
   },
   'content-repurposer': {
     id: 'content-repurposer',
@@ -406,6 +430,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.7,
     category: 'productivity',
     suggestedTools: ['url-fetcher'],
+    popularity: 22,
   },
   'competitor-analyst': {
     id: 'competitor-analyst',
@@ -421,6 +446,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.3,
     category: 'business',
     suggestedTools: ['url-fetcher', 'knowledge-search'],
+    popularity: 20,
   },
   'pr-writer': {
     id: 'pr-writer',
@@ -436,6 +462,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.5,
     category: 'business',
     suggestedTools: [],
+    popularity: 18,
   },
   'product-manager': {
     id: 'product-manager',
@@ -451,6 +478,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.5,
     category: 'business',
     suggestedTools: ['knowledge-search'],
+    popularity: 45,
   },
   'incident-commander': {
     id: 'incident-commander',
@@ -466,6 +494,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.2,
     category: 'support',
     suggestedTools: ['knowledge-search'],
+    popularity: 12,
   },
   'pricing-strategist': {
     id: 'pricing-strategist',
@@ -481,6 +510,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.4,
     category: 'business',
     suggestedTools: ['knowledge-search'],
+    popularity: 10,
   },
   'risk-assessor': {
     id: 'risk-assessor',
@@ -496,6 +526,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.3,
     category: 'business',
     suggestedTools: ['knowledge-search'],
+    popularity: 8,
   },
   'customer-success': {
     id: 'customer-success',
@@ -511,6 +542,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.5,
     category: 'support',
     suggestedTools: ['knowledge-search'],
+    popularity: 30,
   },
   'content-strategist': {
     id: 'content-strategist',
@@ -526,6 +558,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.6,
     category: 'business',
     suggestedTools: ['url-fetcher'],
+    popularity: 15,
   },
   'seo-specialist': {
     id: 'seo-specialist',
@@ -541,6 +574,7 @@ const templates: Record<AgentTemplateType, AgentTemplate> = {
     suggestedTemperature: 0.4,
     category: 'business',
     suggestedTools: ['url-fetcher'],
+    popularity: 5,
   },
   custom: {
     id: 'custom',

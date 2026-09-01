@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { AgentBasicInfo } from '@/components/agents/agent-basic-info'
-import { defaultCapabilities } from '@/components/agents/agent-capabilities'
+import { defaultCapabilities, AgentCapabilities } from '@/components/agents/agent-capabilities'
 import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
 import { AgentKnowledgeSources } from '@/components/agents/agent-knowledge-sources'
 import { AgentGuardrails, defaultGuardrails, type AgentGuardrailsValue } from '@/components/agents/agent-guardrails'
@@ -74,6 +74,8 @@ export default function CreateAgentPage() {
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] = useState<string>('')
   const [guardrails, setGuardrails] = useState<AgentGuardrailsValue>(defaultGuardrails)
   const [mcpModalOpen, setMcpModalOpen] = useState(false)
+  const [toolModalOpen, setToolModalOpen] = useState(false)
+  const [capabilitiesModalOpen, setCapabilitiesModalOpen] = useState(false)
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const [aiModalOpen, setAiModalOpen] = useState(false)
 
@@ -400,6 +402,8 @@ export default function CreateAgentPage() {
                     tools={tools}
                     onToggle={handleToolToggle}
                     disabled={saving}
+                    onSeeAll={() => setToolModalOpen(true)}
+                    totalCount={builtInTools.length}
                   />
                 </CardContent>
               </Card>
@@ -475,30 +479,13 @@ export default function CreateAgentPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-0.5">
-                    {capabilities.filter((c) => c.enabled || c.id === 'answer-questions' || c.id === 'knowledge-search').map((capability) => (
-                      <div
-                        key={capability.id}
-                        className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={cn('flex size-7 shrink-0 items-center justify-center rounded-md', capability.enabled ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground')}>
-                            {capability.icon}
-                          </div>
-                          <div className="min-w-0">
-                            <Label className="text-xs font-medium leading-tight">{capability.label}</Label>
-                            <p className="text-[11px] text-muted-foreground leading-tight">{capability.description}</p>
-                          </div>
-                        </div>
-                        <Switch
-                          size="sm"
-                          checked={capability.enabled}
-                          onCheckedChange={(checked) => setCapabilities((c) => c.map((x) => x.id === capability.id ? { ...x, enabled: checked } : x))}
-                          disabled={saving}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                  <AgentCapabilities
+                    capabilities={capabilities}
+                    onToggle={(id, enabled) => setCapabilities((c) => c.map((x) => x.id === id ? { ...x, enabled } : x))}
+                    disabled={saving}
+                    onSeeAll={() => setCapabilitiesModalOpen(true)}
+                    totalCount={defaultCapabilities.length}
+                  />
                 </CardContent>
               </Card>
 
@@ -613,6 +600,81 @@ export default function CreateAgentPage() {
         onApply={applyAiDraft}
         disabled={saving}
       />
+
+      <Dialog open={toolModalOpen} onOpenChange={setToolModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tools</DialogTitle>
+            <DialogDescription>Built-in tools your agent can use.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-0.5 max-h-80 overflow-y-auto">
+            {builtInTools.map((tool) => {
+              const current = tools.find((t) => t.id === tool.id) ?? tool
+              return (
+                <div
+                  key={tool.id}
+                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={cn(
+                      "flex size-7 shrink-0 items-center justify-center rounded-md",
+                      current.enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                    )}>
+                      {current.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <Label className="text-xs font-medium leading-tight">{current.label}</Label>
+                      <p className="text-[11px] text-muted-foreground leading-tight">{current.description}</p>
+                    </div>
+                  </div>
+                  <Switch
+                    size="sm"
+                    checked={current.enabled}
+                    onCheckedChange={(checked) => handleToolToggle(tool.id, checked)}
+                    disabled={saving}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={capabilitiesModalOpen} onOpenChange={setCapabilitiesModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Capabilities</DialogTitle>
+            <DialogDescription>Choose what your agent can do.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-0.5 max-h-80 overflow-y-auto">
+            {defaultCapabilities.map((capability) => {
+              const current = capabilities.find((c) => c.id === capability.id) ?? capability
+              return (
+                <div
+                  key={capability.id}
+                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      {current.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <Label className="text-xs font-medium leading-tight">{current.label}</Label>
+                      <p className="text-[11px] text-muted-foreground leading-tight">{current.description}</p>
+                    </div>
+                  </div>
+                  <Switch
+                    size="sm"
+                    checked={current.enabled}
+                    onCheckedChange={(checked) => setCapabilities((c) => c.map((x) => x.id === capability.id ? { ...x, enabled: checked } : x))}
+                    disabled={saving}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   )
 }

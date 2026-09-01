@@ -18,6 +18,7 @@ export interface AgentTemplate {
   suggestedTemperature: number
   category: 'support' | 'business' | 'education' | 'productivity' | 'custom'
   suggestedTools: string[]
+  popularity?: number
 }
 
 interface AgentTemplateModalProps {
