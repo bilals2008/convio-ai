@@ -208,8 +208,8 @@ export default function AgentTemplatesPage() {
         </div>
       </div>
 
-      {/* Error */}
-      {isError && (
+      {/* Error / Loading / Empty / Grid */}
+      {isError ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-16 text-center">
           <p className="text-sm font-medium">Failed to load templates</p>
           <p className="mt-1 text-xs text-muted-foreground">Something went wrong while fetching templates.</p>
@@ -217,10 +217,7 @@ export default function AgentTemplatesPage() {
             Try again
           </Button>
         </div>
-      )}
-
-      {/* Loading */}
-      {!isError && isLoading && (
+      ) : isLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }, (_, i) => (
             <div key={i} className="flex flex-col gap-3 rounded-xl border border-border/60 p-4">
@@ -236,10 +233,7 @@ export default function AgentTemplatesPage() {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Empty */}
-      {!isLoading && !isError && filtered.length === 0 && (
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-16 text-center">
           <p className="text-sm font-medium">
             {search ? `No templates matching "${search}"` : 'No templates available.'}
@@ -248,10 +242,7 @@ export default function AgentTemplatesPage() {
             Clear filters
           </Button>
         </div>
-      )}
-
-      {/* Grid */}
-      {!isLoading && !isError && filtered.length > 0 && (
+      ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((template) => {
             const specificIcon = templateIcons[template.id]
