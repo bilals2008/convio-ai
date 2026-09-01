@@ -28,7 +28,6 @@ import { cn } from '@/lib/utils'
 import { formatResponseTime } from '@/lib/analytics'
 
 const dateRanges = [
-  { label: 'Today', value: 'today' },
   { label: '7 days', value: '7d' },
   { label: '30 days', value: '30d' },
   { label: '90 days', value: '90d' },
@@ -40,9 +39,6 @@ function getDateRange(range: string) {
   let from: string
 
   switch (range) {
-    case 'today':
-      from = to
-      break
     case '7d':
       from = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10)
       break
