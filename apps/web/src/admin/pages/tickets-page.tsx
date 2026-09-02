@@ -29,9 +29,12 @@ import {
   useAdminDeleteTicket,
   useAdminRestoreTicket,
   useAdminBulkTickets,
+  useAdminTicketStats,
 } from '@/admin/hooks/use-admin'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import type { AdminTicket } from '@/admin/services/admin-api'
+import { StatsBox } from '@/components/admin/stats-box'
+import { LifeBuoy, Clock, CheckCircle2, MessageSquare, Loader2, RotateCcw, Trash2, RefreshCw, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const STATUS_META: Record<string, { label: string; variant: string }> = {
   open: { label: 'Open', variant: 'pending' },
@@ -57,6 +60,8 @@ export default function AdminTicketsPage() {
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
 
   const isDeletedView = status === 'deleted'
+
+  const { data: stats, isLoading: statsLoading } = useAdminTicketStats()
 
   const query = useAdminTickets({
     deleted: isDeletedView ? 'true' : 'false',
@@ -278,6 +283,39 @@ export default function AdminTicketsPage() {
           </div>
         }
       />
+
+      <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
+        <StatsBox
+          icon={LifeBuoy}
+          label="Total Tickets"
+          value={(stats?.total ?? 0).toLocaleString()}
+          iconBg="bg-primary/10 text-primary"
+          loading={statsLoading}
+        />
+        <StatsBox
+          icon={Clock}
+          label="Open Tickets"
+          value={(stats?.open ?? 0).toLocaleString()}
+          sub={`${(stats?.inProgress ?? 0)} in progress`}
+          subColor="text-amber-500"
+          iconBg="bg-amber-500/10 text-amber-500"
+          loading={statsLoading}
+        />
+        <StatsBox
+          icon={MessageSquare}
+          label="In Progress"
+          value={(stats?.inProgress ?? 0).toLocaleString()}
+          iconBg="bg-blue-500/10 text-blue-500"
+          loading={statsLoading}
+        />
+        <StatsBox
+          icon={CheckCircle2}
+          label="Resolved"
+          value={Math.max(0, (stats?.total ?? 0) - (stats?.open ?? 0) - (stats?.inProgress ?? 0)).toLocaleString()}
+          iconBg="bg-emerald-500/10 text-emerald-500"
+          loading={statsLoading}
+        />
+      </div>
 
       {selectedIds.length > 0 && (
         <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
