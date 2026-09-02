@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   LayoutTemplate,
   Search,
+  Copy,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { PageContainer } from '@/components/shared/page-container'
@@ -72,6 +73,7 @@ import {
 } from '@/components/ui/tooltip'
 import { mcpServers as mcpApi } from '@/lib/api'
 import { mcpServerTemplates } from '@/lib/mcp-templates'
+import { CopyButton } from '@/components/shared/copy-button'
 import { McpHelpButton, McpHelpModal } from '@/components/mcp/mcp-help-modal'
 import { useOrg } from '@/lib/org-context'
 import { useOAuthStatuses } from '@/lib/hooks/use-mcp-oauth'
@@ -776,27 +778,40 @@ const pageLoading = orgLoading || isLoading
                         Enabled
                       </label>
                       <div className="flex items-center gap-0.5">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-7 text-muted-foreground hover:text-foreground"
-                                  onClick={() => handleTest(server)}
-                                  disabled={testingId !== null}
-                                >
-                                  {testingId === server.id ? (
-                                    <Loader2 className="size-3.5 animate-spin text-primary" />
-                                  ) : (
-                                    <Wifi className="size-3.5" />
-                                  )}
-                                </Button>
-                              }
-                            />
-                            <TooltipContent side="top" className="text-xs">Test connection</TooltipContent>
-                          </Tooltip>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                   <CopyButton
+                                     text={server.type === 'stdio' ? `${server.command} ${server.args.join(' ')}` : server.url ?? ''}
+                                     sizeClass="size-7"
+                                     className="text-muted-foreground hover:text-foreground"
+                                     onCopy={() => toast.success('Copied to clipboard')}
+                                   />
+                                }
+                              />
+                              <TooltipContent side="top" className="text-xs">Copy connection string</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7 text-muted-foreground hover:text-foreground"
+                                    onClick={() => handleTest(server)}
+                                    disabled={testingId !== null}
+                                  >
+                                    {testingId === server.id ? (
+                                      <Loader2 className="size-3.5 animate-spin text-primary" />
+                                    ) : (
+                                      <Wifi className="size-3.5" />
+                                    )}
+                                  </Button>
+                                }
+                              />
+                              <TooltipContent side="top" className="text-xs">Test connection</TooltipContent>
+                            </Tooltip>
                           {server.authType === 'oauth' && (
                             oauthAuthed ? (
                               <Tooltip>

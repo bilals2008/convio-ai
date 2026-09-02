@@ -6,15 +6,18 @@ import { cn } from '@/lib/utils'
 interface CopyButtonProps {
   text: string
   className?: string
+  sizeClass?: string
+  onCopy?: () => void
 }
 
-export function CopyButton({ text, className }: CopyButtonProps) {
+export function CopyButton({ text, className, sizeClass = 'size-8', onCopy }: CopyButtonProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
+      onCopy?.()
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
@@ -27,7 +30,7 @@ export function CopyButton({ text, className }: CopyButtonProps) {
       size="icon"
       onClick={handleCopy}
       aria-label="Copy code to clipboard"
-      className={cn('size-8', className)}
+      className={cn(sizeClass, className)}
     >
       {copied ? (
         <Check className="size-4 text-success" />
