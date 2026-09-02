@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
-import { Building2 } from 'lucide-react'
+import { Building2, Users, TrendingUp, CreditCard } from 'lucide-react'
 import { PageHeader } from '@/components/admin/page-header'
 import { SearchInput } from '@/components/admin/search-input'
 import { StatusBadge } from '@/components/admin/status-badge'
@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
-import { useAdminOrgs } from '@/admin/hooks/use-admin'
+import { StatsBox } from '@/components/admin/stats-box'
+import { useAdminOrgs, useAdminStats } from '@/admin/hooks/use-admin'
 import type { AdminOrg } from '@/admin/services/admin-api'
 
 export default function AdminOrgsPage() {
@@ -21,6 +22,7 @@ export default function AdminOrgsPage() {
   const [cursors, setCursors] = useState<string[]>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
+  const { data: stats, isLoading: statsLoading } = useAdminStats()
   const { data, isLoading } = useAdminOrgs({ cursor, search: search || undefined })
 
   const columns = useMemo<ColumnDef<AdminOrg>[]>(() => [
@@ -72,6 +74,40 @@ export default function AdminOrgsPage() {
         description="All organizations on the platform."
         actions={<SearchInput value={search} onChange={(v) => { setSearch(v); setCursor(undefined); setCursors([]) }} placeholder="Search organizations..." />}
       />
+
+      <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
+        <StatsBox
+          icon={Building2}
+          label="Total Organizations"
+          value={(stats?.totalOrgs ?? 0).toLocaleString()}
+          iconBg="bg-primary/10 text-primary"
+          loading={statsLoading}
+        />
+        <StatsBox
+          icon={Users}
+          label="Total Users"
+          value={(stats?.totalUsers ?? 0).toLocaleString()}
+          iconBg="bg-emerald-500/10 text-emerald-500"
+          loading={statsLoading}
+        />
+        <StatsBox
+          icon={TrendingUp}
+          label="New (30d)"
+          value={(stats?.newUsers30d ?? 0).toLocaleString()}
+          sub={`+${stats?.newUsers30d ?? 0} users`}
+          subColor="text-emerald-500"
+          iconBg="bg-blue-500/10 text-blue-500"
+          loading={statsLoading}
+        />
+        <StatsBox
+          icon={CreditCard}
+          label="Paying Users"
+          value={(stats?.payingUsers ?? 0).toLocaleString()}
+          iconBg="bg-amber-500/10 text-amber-500"
+          loading={statsLoading}
+        />
+      </div>
+
       <div className="rounded-xl border border-border/60 bg-card">
         <Table>
           <TableHeader>

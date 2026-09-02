@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
-import { Bot, MessageSquare } from 'lucide-react'
+import { Bot, MessageSquare, TrendingUp, CheckCircle2 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/page-header'
 import { SearchInput } from '@/components/admin/search-input'
 import { StatusBadge } from '@/components/admin/status-badge'
@@ -10,7 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
-import { useAdminAgents } from '@/admin/hooks/use-admin'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { StatsBox } from '@/components/admin/stats-box'
+import { useAdminAgents, useAdminStats } from '@/admin/hooks/use-admin'
 import type { AdminAgent } from '@/admin/services/admin-api'
 
 export default function AdminAgentsPage() {
@@ -19,6 +21,7 @@ export default function AdminAgentsPage() {
   const [cursors, setCursors] = useState<string[]>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
+  const { data: stats, isLoading: statsLoading } = useAdminStats()
   const { data, isLoading } = useAdminAgents({ cursor, search: search || undefined })
 
   const columns = useMemo<ColumnDef<AdminAgent>[]>(() => [
@@ -27,9 +30,12 @@ export default function AdminAgentsPage() {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Agent" />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2.5">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-            <Bot className="size-4" />
-          </div>
+          <Avatar className="size-8 shrink-0">
+            <AvatarImage src={row.original.avatar || undefined} />
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+              {row.original.name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{row.original.name}</p>
             <p className="text-xs text-muted-foreground">{row.original.organization.name}</p>
@@ -80,6 +86,38 @@ export default function AdminAgentsPage() {
         description="All agents across organizations."
         actions={<SearchInput value={search} onChange={(v) => { setSearch(v); setCursor(undefined); setCursors([]) }} placeholder="Search agents..." />}
       />
+
+      <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
+        <StatsBox
+          icon={Bot}
+          label="Total Agents"
+          value={(stats?.totalAgents ?? 0).toLocaleString()}
+          iconBg="bg-primary/10 text-primary"
+          loading={statsLoading}
+        />
+        <StatsBox
+          icon={MessageSquare}
+          label="Messages (24h)"
+          value={(stats?.messagesLast24h ?? 0).toLocaleString()}
+          iconBg="bg-emerald-500/10 text-emerald-500"
+          loading={statsLoading}
+        />
+        <StatsBox
+          icon={TrendingUp}
+          label="Conversations (24h)"
+          value={(stats?.conversationsLast24h ?? 0).toLocaleString()}
+          iconBg="bg-blue-500/10 text-blue-500"
+          loading={statsLoading}
+        />
+        <StatsBox
+          icon={CheckCircle2}
+          label="Active Users"
+          value={(stats?.activeUsers ?? 0).toLocaleString()}
+          iconBg="bg-cyan-500/10 text-cyan-500"
+          loading={statsLoading}
+        />
+      </div>
+
       <div className="rounded-xl border border-border/60 bg-card">
         <Table>
           <TableHeader>

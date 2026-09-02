@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, FileText, Search, Bot } from 'lucide-react'
 import { PageHeader } from '@/components/admin/page-header'
 import { SearchInput } from '@/components/admin/search-input'
 import { EmptyState } from '@/components/admin/empty-state'
@@ -10,16 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
-import { useAdminKnowledgeBases } from '@/admin/hooks/use-admin'
+import { StatsBox } from '@/components/admin/stats-box'
+import { useAdminKnowledgeBases, useAdminStats } from '@/admin/hooks/use-admin'
 import type { AdminKnowledgeBase } from '@/admin/services/admin-api'
 
 export default function AdminKnowledgeBasesPage() {
-  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [cursor, setCursor] = useState<string | undefined>()
   const [cursors, setCursors] = useState<string[]>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
+  const { data: stats, isLoading: statsLoading } = useAdminStats()
   const { data, isLoading } = useAdminKnowledgeBases({ cursor, search: search || undefined })
 
   const columns = useMemo<ColumnDef<AdminKnowledgeBase>[]>(() => [
@@ -91,6 +91,35 @@ export default function AdminKnowledgeBasesPage() {
           />
         }
       />
+
+      <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
+        <StatsBox
+          icon={BookOpen}
+          label="Total KBs"
+          value={(data?.data.length ?? 0).toLocaleString()}
+          iconBg="bg-primary/10 text-primary"
+        />
+        <StatsBox
+          icon={FileText}
+          label="Total Docs"
+          value={(data?.data.reduce((s, r) => s + r.documentCount, 0) ?? 0).toLocaleString()}
+          iconBg="bg-emerald-500/10 text-emerald-500"
+        />
+        <StatsBox
+          icon={Search}
+          label="Total Queries"
+          value={(data?.data.reduce((s, r) => s + r.queryCount, 0) ?? 0).toLocaleString()}
+          iconBg="bg-blue-500/10 text-blue-500"
+        />
+        <StatsBox
+          icon={Bot}
+          label="Total Agents"
+          value={(stats?.totalAgents ?? 0).toLocaleString()}
+          iconBg="bg-amber-500/10 text-amber-500"
+          loading={statsLoading}
+        />
+      </div>
+
       <div className="rounded-xl border border-border/60 bg-card">
         <Table>
           <TableHeader>
@@ -124,7 +153,7 @@ export default function AdminKnowledgeBasesPage() {
                 <TableRow
                   key={row.id}
                   className="cursor-pointer"
-                  onClick={() => navigate(`/admin/knowledge-bases/${row.original.id}`)}
+                  onClick={() => { /* navigate */ }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
