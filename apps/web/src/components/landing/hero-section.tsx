@@ -35,19 +35,22 @@ export function HeroSection() {
         <div className="flex flex-col items-center text-center">
           <a
             href="#channels"
-            className="group inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="group inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-4 py-1.5 text-[13px] font-medium text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground"
           >
-            <span className="text-primary">New —</span>
-            Bring your own AI keys (BYOK)
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/40 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+            </span>
+            New — BYOK: Bring your own API keys
             <ArrowUpRight className="size-3.5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </a>
 
-          <h1 className="mt-6 max-w-[16ch] font-heading text-[clamp(34px,5.6vw,66px)] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground">
-            AI agents for every{' '}
-            <span className="relative whitespace-nowrap text-primary">
-              channel
+          <h1 className="mt-8 max-w-[14ch] font-heading text-[clamp(40px,6vw,72px)] font-semibold leading-[1.05] tracking-[-0.035em] text-foreground">
+            AI agents that live{' '}
+            <span className="relative whitespace-nowrap text-success">
+              where your users are
               <svg
-                className="absolute -bottom-1 left-0 w-full text-primary/40"
+                className="absolute -bottom-1.5 left-0 w-full text-success/50"
                 viewBox="0 0 300 12"
                 fill="none"
                 preserveAspectRatio="none"
@@ -58,8 +61,8 @@ export function HeroSection() {
             </span>
           </h1>
 
-          <p className="mt-5 max-w-[520px] text-[clamp(15px,1.5vw,18px)] leading-[1.6] text-muted-foreground">
-            Build AI agents with knowledge bases, deploy them to WhatsApp, Telegram, Discord, Slack, and your website.
+          <p className="mt-5 max-w-[480px] text-[clamp(15px,1.5vw,18px)] leading-[1.6] text-muted-foreground">
+            Build RAG-powered agents, deploy across web, WhatsApp, Telegram, Discord & Slack.
           </p>
 
           <div className="mt-8 flex items-center gap-3">
