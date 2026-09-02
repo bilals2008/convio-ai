@@ -32,8 +32,8 @@ type RevenuePeriod = 'weekly' | 'monthly' | 'yearly'
 
 function buildRevenueBuckets(period: RevenuePeriod, now = new Date()) {
   const buckets: Array<{ start: Date; end: Date; label: string }> = []
-  let count = 0
   let windowStart: Date
+  let count: number
 
   if (period === 'weekly') {
     count = 12
@@ -1099,7 +1099,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get('/admin/moderation/violations', {
     preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: violationQuerySchema })],
   }, async (request) => {
-    const { search, limit, offset, severity, orgId } = request.query as {
+    const { limit, offset, severity, orgId } = request.query as {
       search?: string; limit: number; offset: number; severity?: string; orgId?: string
     }
 
