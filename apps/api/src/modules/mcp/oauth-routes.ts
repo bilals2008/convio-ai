@@ -36,7 +36,10 @@ export default async function mcpOauthRoutes(fastify: FastifyInstance) {
       throw new AppError(400, 'This server is not configured for OAuth')
     }
 
-    const provider = new DbOAuthClientProvider(server.id, callbackBaseUrl, fastify.config.MCP_OAUTH_ENCRYPTION_KEY)
+    const provider = new DbOAuthClientProvider(server.id, callbackBaseUrl, fastify.config.MCP_OAUTH_ENCRYPTION_KEY, {
+      clientId: server.clientId || undefined,
+      clientSecret: server.clientSecret || undefined,
+    })
     if (body.force) {
       await provider.invalidateCredentials('tokens')
     }
@@ -63,6 +66,10 @@ export default async function mcpOauthRoutes(fastify: FastifyInstance) {
       await client.disconnect().catch(() => {})
       return { data: { status: 'authorized' } }
     } catch (err) {
+      const msg = (err as Error).message
+      if (msg.includes('does not support dynamic client registration')) {
+        throw new AppError(400, 'This OAuth server does not support dynamic client registration. Register a client in your auth provider\'s dashboard and enter the Client ID and Client Secret in the server settings.')
+      }
       const url = client.authorizationUrl
       if (err instanceof Error && /[Uu]nauthorized/.test(err.message) && url) {
         return { data: { status: 'redirect', redirectUrl: url } }
@@ -87,7 +94,10 @@ export default async function mcpOauthRoutes(fastify: FastifyInstance) {
       return reply.redirect(`${feBase}/settings/mcp-servers?oauth=error&reason=unknown_state`)
     }
 
-    const provider = new DbOAuthClientProvider(server.id, callbackBaseUrl, fastify.config.MCP_OAUTH_ENCRYPTION_KEY)
+    const provider = new DbOAuthClientProvider(server.id, callbackBaseUrl, fastify.config.MCP_OAUTH_ENCRYPTION_KEY, {
+      clientId: server.clientId || undefined,
+      clientSecret: server.clientSecret || undefined,
+    })
     const client = new McpClient({
       id: server.id,
       name: server.name,
@@ -111,6 +121,40 @@ export default async function mcpOauthRoutes(fastify: FastifyInstance) {
       return reply.redirect(`${feBase}/settings/mcp-servers?oauth=success`)
     } catch (err) {
       const message = (err as Error).message
+      // If the SDK couldn't parse the token response, try a direct fetch to surface the real error
+      if (message.includes('access_token') && server.clientId) {
+        try {
+          const tokenBody = new URLSearchParams({
+            client_id: server.clientId,
+            client_secret: server.clientSecret || '',
+            code: query.code || '',
+            grant_type: 'authorization_code',
+            redirect_uri: `${callbackBaseUrl.replace(/\/$/, '')}/api/mcp/oauth/callback`,
+          }).toString()
+          // GitHub's OpenID discovery returns a stale token_endpoint (/access_token) that returns 404.
+          // Try both known endpoints to surface a useful error.
+          const tokenUrls = [
+            'https://github.com/login/oauth/access_token',
+            'https://github.com/login/oauth/token',
+          ]
+          for (const tokenUrl of tokenUrls) {
+            const tokenRes = await fetch(tokenUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+              body: tokenBody,
+            })
+            const tokenText = await tokenRes.text()
+            if (!tokenRes.ok || !tokenText.startsWith('{')) {
+              throw new Error(`Token endpoint ${tokenUrl} returned HTTP ${tokenRes.status} (not JSON)`)
+            }
+            const parsed = JSON.parse(tokenText)
+            throw new Error(`${message}\n\nGitHub OAuth error: ${parsed.error || 'unknown'} — ${parsed.error_description || tokenText.slice(0, 300)}`)
+          }
+        } catch (e) {
+          if (e instanceof Error && (e as Error).message.includes('GitHub OAuth error')) throw e
+          // re-throw original
+        }
+      }
       await provider.saveError(message).catch(() => {})
       await fastify.auditLog({
         organizationId: server.organizationId,
@@ -161,7 +205,10 @@ export default async function mcpOauthRoutes(fastify: FastifyInstance) {
     if (!server) throw new AppError(404, 'MCP server not found')
     await fastify.getMembership(request.userId!, server.organizationId)
 
-    const provider = new DbOAuthClientProvider(server.id, callbackBaseUrl, fastify.config.MCP_OAUTH_ENCRYPTION_KEY)
+    const provider = new DbOAuthClientProvider(server.id, callbackBaseUrl, fastify.config.MCP_OAUTH_ENCRYPTION_KEY, {
+      clientId: server.clientId || undefined,
+      clientSecret: server.clientSecret || undefined,
+    })
     const status = await provider.status().catch(() => ({ authorized: false, hasRefreshToken: false, tokenExpiresAt: undefined, lastError: undefined }))
 
     return {

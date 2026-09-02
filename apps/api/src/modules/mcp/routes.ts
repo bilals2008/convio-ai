@@ -32,7 +32,7 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
           organizationId: orgId,
         },
       })
-      return { data: server }
+      return { data: { ...server, clientSecret: undefined } }
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new AppError(409, 'An MCP server with this name already exists in this organization')
@@ -68,15 +68,15 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
 
     if (page) {
       const size = pageSize ?? 12
-      const [items, total] = await prisma.$transaction([
+      const [items, total] = await Promise.all([
         prisma.mcpServer.findMany({ where, orderBy, skip: (page - 1) * size, take: size }),
         prisma.mcpServer.count({ where }),
       ])
-      return { data: { items, total, page, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) } }
+      return { data: { items: items.map((s) => ({ ...s, clientSecret: undefined })), total, page, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) } }
     }
 
     const servers = await prisma.mcpServer.findMany({ where, orderBy })
-    return { data: servers }
+    return { data: servers.map((s) => ({ ...s, clientSecret: undefined })) }
   })
 
   // GET /api/mcp-servers/:id — Get MCP server
@@ -87,7 +87,7 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
     const server = await prisma.mcpServer.findUnique({ where: { id } })
     if (!server) throw new AppError(404, 'MCP server not found')
     await fastify.getMembership(request.userId!, server.organizationId)
-    return { data: server }
+    return { data: { ...server, clientSecret: undefined } }
   })
 
   // PATCH /api/mcp-servers/:id — Update MCP server
@@ -107,9 +107,10 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
           args: body.args !== undefined ? (body.args as any) : undefined,
           headers: body.headers !== undefined ? (body.headers as any) : undefined,
           oauthState: body.authType !== 'oauth' ? Prisma.DbNull : undefined,
+          clientSecret: body.clientSecret === '' ? null : undefined,
         },
       })
-      return { data: server }
+      return { data: { ...server, clientSecret: undefined } }
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new AppError(409, 'An MCP server with this name already exists in this organization')

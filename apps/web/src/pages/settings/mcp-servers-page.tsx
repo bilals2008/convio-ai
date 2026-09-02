@@ -88,6 +88,8 @@ interface McpServer {
   authType: string
   headers: Record<string, string>
   apiKey: string | null
+  clientId: string | null
+  clientSecret: string | null
   enabled: boolean
   oauthState: OAuthState | null
   lastTestResult: TestResult | null
@@ -209,6 +211,8 @@ export default function McpServersPage() {
   const [authType, setAuthType] = useState('none')
   const [headersText, setHeadersText] = useState('')
   const [apiKey, setApiKey] = useState('')
+  const [clientId, setClientId] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
 
   const [editServer, setEditServer] = useState<McpServer | null>(null)
   const [authorizingId, setAuthorizingId] = useState<string | null>(null)
@@ -225,6 +229,8 @@ export default function McpServersPage() {
     setAuthType('none')
     setHeadersText('')
     setApiKey('')
+    setClientId('')
+    setClientSecret('')
   }
 
   function headersFromText(): Record<string, string> {
@@ -295,6 +301,13 @@ export default function McpServersPage() {
           data.apiKey = undefined
           data.headers = undefined
         }
+        if (authType === 'oauth') {
+          data.clientId = clientId || undefined
+          data.clientSecret = clientSecret || undefined
+        } else {
+          data.clientId = undefined
+          data.clientSecret = undefined
+        }
       }
       return mcpApi.create(orgId, data)
     },
@@ -322,6 +335,13 @@ export default function McpServersPage() {
         } else {
           data.apiKey = undefined
           data.headers = undefined
+        }
+        if (authType === 'oauth') {
+          data.clientId = clientId || undefined
+          data.clientSecret = clientSecret || undefined
+        } else {
+          data.clientId = undefined
+          data.clientSecret = undefined
         }
       }
       return mcpApi.update(editServer.id, data)
@@ -431,6 +451,8 @@ export default function McpServersPage() {
     setAuthType(server.authType || 'none')
     setHeadersText(headersToText(server.headers))
     setApiKey(server.apiKey || '')
+    setClientId(server.clientId || '')
+    setClientSecret(server.clientSecret || '')
   }
 
   const headerHint = mcpServerTemplates.find(
@@ -545,9 +567,19 @@ const pageLoading = orgLoading || isLoading
                         </>
                       )}
                       {authType === 'oauth' && (
-                        <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                          Save the server, then use the Connect (shield) button to authorize via OAuth 2.0.
-                        </p>
+                        <>
+                          <div className="space-y-2">
+                            <Label>Client ID</Label>
+                            <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="e.g. Ivv1..." />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Client Secret</Label>
+                            <Input value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="e.g. abc123..." type="password" />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Leave blank if the provider supports dynamic registration (Notion, Linear, Slack). For GitHub Copilot and similar, create an OAuth app at the provider's developer console and paste the credentials here.
+                          </p>
+                        </>
                       )}
                     </>
                   )}
@@ -1003,9 +1035,19 @@ const pageLoading = orgLoading || isLoading
                   </>
                 )}
                 {authType === 'oauth' && (
-                  <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                    Use the Connect (shield) button in the table to authorize this server.
-                  </p>
+                  <>
+                    <div className="space-y-2">
+                      <Label>Client ID</Label>
+                      <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="e.g. Ivv1..." />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Client Secret</Label>
+                      <Input value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="e.g. abc123..." type="password" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Leave blank if the provider supports dynamic registration (Notion, Linear, Slack). For GitHub Copilot and similar, create an OAuth app at the provider's developer console and paste the credentials here.
+                    </p>
+                  </>
                 )}
               </>
             )}

@@ -85,8 +85,8 @@ export default function ConnectingMcpServerPage() {
 
       <h3 id="oauth-dcr">"Dynamic client registration not supported" (OAuth)</h3>
       <p>
-        Some providers — like <strong>GitHub Copilot</strong> — don't support dynamic client registration (DCR), so
-        the authorize step fails. Use a personal access token instead:
+        Some providers — like <strong>GitHub Copilot's remote MCP server</strong> — don't support custom OAuth apps.
+        They only accept a Personal Access Token:
       </p>
       <ol>
         <li>Switch the server's auth type from <code>oauth</code> to <code>header</code></li>
@@ -95,7 +95,7 @@ export default function ConnectingMcpServerPage() {
         <li>Test the connection — the token is sent as <code>Authorization: Bearer &lt;token&gt;</code></li>
       </ol>
       <p>
-        Alternatively, create your own GitHub OAuth App and register its client ID.
+        Other providers like <strong>Notion</strong> and <strong>Linear</strong> support OAuth out of the box — no client credentials needed.
       </p>
 
       <h3 id="no-tools-found">No Tools Found</h3>

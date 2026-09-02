@@ -37,11 +37,15 @@ export class DbOAuthClientProvider implements OAuthClientProvider {
   readonly callbackUrl: string
   private readonly encKey: Buffer | null
   pendingAuthUrl?: string
+  readonly clientId?: string
+  readonly clientSecret?: string
 
-  constructor(serverId: string, callbackBaseUrl: string, encryptionKey?: string) {
+  constructor(serverId: string, callbackBaseUrl: string, encryptionKey?: string, opts?: { clientId?: string; clientSecret?: string }) {
     this.serverId = serverId
     this.callbackUrl = `${callbackBaseUrl.replace(/\/$/, '')}${CALLBACK_PATH}`
     this.encKey = getEncryptionKey(encryptionKey)
+    this.clientId = opts?.clientId
+    this.clientSecret = opts?.clientSecret
   }
 
   get redirectUrl(): string {
@@ -73,7 +77,11 @@ export class DbOAuthClientProvider implements OAuthClientProvider {
 
   async clientInformation(): Promise<OAuthClientInformationMixed | undefined> {
     const state = await this.load()
-    return state.clientInformation
+    if (state.clientInformation) return state.clientInformation
+    if (this.clientId) {
+      return { client_id: this.clientId, client_secret: this.clientSecret }
+    }
+    return undefined
   }
 
   async saveClientInformation(clientInformation: OAuthClientInformationMixed): Promise<void> {

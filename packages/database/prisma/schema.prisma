@@ -325,6 +325,8 @@ model McpServer {
   headers        Json             @default("{}") // custom headers for http transports
   apiKey         String?
   oauthState     Json? // persisted OAuth provider state (tokens, client info, pkce)
+  clientId       String? // pre-registered OAuth client ID (for auth servers without DCR)
+  clientSecret   String? // pre-registered OAuth client secret (encrypted at rest)
   enabled        Boolean          @default(true)
   lastTestResult Json?
   lastTestedAt   DateTime?

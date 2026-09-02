@@ -50,7 +50,7 @@ const FAQ = [
   {
     icon: AlertTriangle,
     title: 'OAuth shows "dynamic client registration not supported"',
-    body: 'Some providers (GitHub Copilot) don’t support dynamic registration. Use the Header auth type with a Personal Access Token instead, or bring your own OAuth app.',
+    body: 'Some providers (GitHub Copilot remote server) don\'t support custom OAuth apps. Use Header auth with a Personal Access Token instead — create one at github.com/settings/tokens with the needed scopes.',
   },
   {
     icon: CheckCircle2,

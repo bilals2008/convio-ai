@@ -32,9 +32,10 @@ export const mcpServerTemplates: McpServerTemplate[] = [
     description: 'Manage repositories, issues, pull requests, and code reviews.',
     provider: 'github',
     url: 'https://api.githubcopilot.com/mcp/',
-    authType: 'oauth',
+    authType: 'header',
     type: 'streamable-http',
     category: 'devtools',
+    headerHint: 'Uses Authorization: Bearer — paste your GitHub PAT (scope: repo)',
   },
   {
     id: 'linear',
