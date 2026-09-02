@@ -18,6 +18,7 @@ import {
   Bot,
   LifeBuoy,
   FlaskConical,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -67,6 +68,7 @@ export const adminNavGroups: NavGroup[] = [
     group: 'Monitor',
     items: [
       { icon: Brain, label: 'Agents', href: '/admin/agents', permission: 'admin.agents.read' },
+      { icon: Zap, label: 'API Usage', href: '/admin/api-usage', permission: 'admin.analytics.read' },
       { icon: Activity, label: 'System Health', href: '/admin/system', permission: 'admin.system.read' },
       { icon: Bot, label: 'AI Assistant', href: '/admin/assistant', permission: 'admin.assistant.read' },
       { icon: FlaskConical, label: 'Playground', href: '/admin/playground', permission: 'admin.access' },

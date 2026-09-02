@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, flexRender, createColumnHelper, type SortingState } from '@/lib/table'
 import type { RowSelectionState } from '@tanstack/react-table'
-import { LifeBuoy, RefreshCw, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock, MessageSquare, Trash2, RotateCcw, Loader2 } from 'lucide-react'
+import { LifeBuoy, RefreshCw, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock, MessageSquare, Trash2, RotateCcw, Loader2, CheckCircle2 } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { PageHeader } from '@/components/shared/page-header'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -34,7 +34,6 @@ import {
 import { cn, formatRelativeTime } from '@/lib/utils'
 import type { AdminTicket } from '@/admin/services/admin-api'
 import { StatsBox } from '@/components/admin/stats-box'
-import { LifeBuoy, Clock, CheckCircle2, MessageSquare, Loader2, RotateCcw, Trash2, RefreshCw, ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const STATUS_META: Record<string, { label: string; variant: string }> = {
   open: { label: 'Open', variant: 'pending' },

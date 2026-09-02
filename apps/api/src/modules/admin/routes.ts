@@ -774,7 +774,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const days = Math.min(query.limit || 30, 90)
     const startDate = new Date(Date.now() - days * 86_400_000)
 
-    const [msgDays, convDays, orgDays, userDays, channelRows, statusRows, agentCount] = await Promise.all([
+    const [msgDays, convDays, orgDays, userDays, channelRows, statusRows, agentCount, tokenDays, uniqueUserDays, responseDays] = await Promise.all([
       prisma.$queryRaw<{ date: Date; count: number }[]>`
         SELECT DATE("createdAt") as date, COUNT(*)::int as count
         FROM "Message" WHERE "createdAt" >= ${startDate}
@@ -795,14 +795,29 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       prisma.$queryRaw<{ status: string; count: number }[]>`
         SELECT status, COUNT(*)::int as count FROM "Conversation" WHERE "createdAt" >= ${startDate} GROUP BY status`,
       prisma.agent.count(),
+      prisma.$queryRaw<{ date: Date; input_tokens: number; output_tokens: number }[]>`
+        SELECT DATE("createdAt") as date,
+               COALESCE(SUM("input_tokens"), 0)::bigint AS "input_tokens",
+               COALESCE(SUM("output_tokens"), 0)::bigint AS "output_tokens"
+        FROM "Message" WHERE "createdAt" >= ${startDate}
+        GROUP BY DATE("createdAt")`,
+      prisma.$queryRaw<{ date: Date; count: number }[]>`
+        SELECT DATE(m."createdAt") as date, COUNT(DISTINCT c."userId")::int as count
+        FROM "Message" m JOIN "Conversation" c ON c."id" = m."conversationId"
+        WHERE m."createdAt" >= ${startDate}
+        GROUP BY DATE(m."createdAt")`,
+      prisma.$queryRaw<{ date: Date; avg_ms: number }[]>`
+        SELECT DATE("createdAt") as date, AVG("response_time_ms")::float as avg_ms
+        FROM "Message" WHERE "createdAt" >= ${startDate} AND "response_time_ms" IS NOT NULL
+        GROUP BY DATE("createdAt")`,
     ])
 
-    const dayMap = new Map<string, { conversations: number; messages: number }>()
+    const dayMap = new Map<string, { conversations: number; messages: number; inputTokens: number; outputTokens: number; uniqueUsers: number; avgResponseTime: number }>()
     const orgDayMap = new Map<string, number>()
     const userDayMap = new Map<string, number>()
     for (let i = 0; i < days; i++) {
       const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
-      dayMap.set(d, { conversations: 0, messages: 0 })
+      dayMap.set(d, { conversations: 0, messages: 0, inputTokens: 0, outputTokens: 0, uniqueUsers: 0, avgResponseTime: 0 })
       orgDayMap.set(d, 0)
       userDayMap.set(d, 0)
     }
@@ -824,6 +839,22 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     for (const row of userDays) {
       const key = row.date.toISOString().slice(0, 10)
       if (userDayMap.has(key)) userDayMap.set(key, userDayMap.get(key)! + row.count)
+    }
+
+    for (const row of tokenDays) {
+      const key = row.date.toISOString().slice(0, 10)
+      const entry = dayMap.get(key)
+      if (entry) { entry.inputTokens = Number(row.input_tokens); entry.outputTokens = Number(row.output_tokens) }
+    }
+    for (const row of uniqueUserDays) {
+      const key = row.date.toISOString().slice(0, 10)
+      const entry = dayMap.get(key)
+      if (entry) entry.uniqueUsers = row.count
+    }
+    for (const row of responseDays) {
+      const key = row.date.toISOString().slice(0, 10)
+      const entry = dayMap.get(key)
+      if (entry) entry.avgResponseTime = Math.round(row.avg_ms ?? 0)
     }
 
     const chBreakdown: Record<string, number> = {}
@@ -850,10 +881,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         date,
         totalConversations: d.conversations,
         totalMessages: d.messages,
-        uniqueUsers: 0,
-        avgResponseTime: 0,
-        inputTokens: 0,
-        outputTokens: 0,
+        uniqueUsers: d.uniqueUsers,
+        avgResponseTime: d.avgResponseTime,
+        inputTokens: d.inputTokens,
+        outputTokens: d.outputTokens,
       }))
       .sort((a, b) => a.date.localeCompare(b.date))
 
