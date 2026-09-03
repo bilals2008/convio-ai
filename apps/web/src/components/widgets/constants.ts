@@ -75,7 +75,7 @@ export const STATUS_INDICATOR: Record<
   draft: { label: 'Draft', dot: 'bg-muted-foreground', pulse: false },
 }
 
-export const MAX_GREETING_LENGTH = 30
+export const MAX_GREETING_LENGTH = 200
 
 export const THEME_MODES = [
   { value: 'auto', label: 'Auto', description: 'Follow system setting' },
@@ -141,6 +141,7 @@ export const DEFAULT_WIDGET_CONFIG = {
   widgetWidth: 'default',
   launcherSize: 'default',
   borderRadius: 'default',
+  greeting: 'Hi there! How can I help you today?',
   agentName: '',
   agentAvatar: '',
   themeMode: 'auto',

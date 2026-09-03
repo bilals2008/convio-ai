@@ -15,19 +15,21 @@ export function WidgetButton() {
   if (isEmbed && isOpen) return null
   if (isOpen) return null
 
-  const offset = launcherOffset ?? 0
-  const posClass = position === 'bottom-left' ? 'left-5' : 'right-5'
+  const offset = isEmbed ? 0 : (launcherOffset ?? 0)
+  const posClass = isEmbed
+    ? (position === 'bottom-left' ? 'left-0' : 'right-0')
+    : (position === 'bottom-left' ? 'left-5' : 'right-5')
 
   return (
     <>
-      {/* Teaser bubble */}
       {teaserVisible && teaserMessage && (
         <div
           className={cn(
-            'fixed z-[9999] flex items-center gap-1.5 rounded-xl bg-background px-3 py-1.5 text-xs text-foreground shadow-lg border border-border/40 cursor-pointer transition-all duration-300',
-            position === 'bottom-left' ? 'left-5' : 'right-5',
+            'z-[9999] flex items-center gap-1.5 rounded-xl bg-background px-3 py-1.5 text-xs text-foreground shadow-lg border border-border/40 cursor-pointer transition-all duration-300',
+            isEmbed ? 'absolute' : 'fixed',
+            position === 'bottom-left' ? (isEmbed ? 'left-0' : 'left-5') : (isEmbed ? 'right-0' : 'right-5'),
           )}
-          style={{ bottom: `${20 + offset + 56 + 8}px` }}
+          style={isEmbed ? { top: 0 } : { bottom: `${20 + offset + 56 + 8}px` }}
           onClick={dismissTeaser}
           role="button"
           tabIndex={0}
@@ -41,20 +43,22 @@ export function WidgetButton() {
         type="button"
         onClick={onToggle}
         className={cn(
-          'convio-trigger group fixed z-[9999] flex shrink-0 items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 overflow-hidden',
+          'convio-trigger group z-[9999] flex shrink-0 items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 overflow-hidden',
+          isEmbed ? 'absolute' : 'fixed',
           SIZE_MAP[launcherSize],
           SHAPE_MAP[launcherShape ?? 'circle'],
           posClass,
         )}
         style={{
-          bottom: `${20 + offset}px`,
+          bottom: `${offset}px`,
           background: agentAvatar
-            ? `transparent`
+            ? 'transparent'
             : `linear-gradient(135deg, hsl(var(--widget-primary)), color-mix(in srgb, hsl(var(--widget-primary)) 85%, black))`,
-          boxShadow: agentAvatar ? 'none' : `0 4px 20px rgba(0,0,0,0.2)`,
-          border: agentAvatar ? `3px solid hsl(var(--widget-primary))` : 'none',
+          boxShadow: agentAvatar ? 'none' : '0 4px 20px rgba(0,0,0,0.2)',
+          border: agentAvatar ? '3px solid hsl(var(--widget-primary))' : 'none',
         }}
         aria-label={launcherLabel || (isOpen ? 'Close chat' : 'Open chat')}
+        title={launcherLabel || undefined}
       >
         <span
           className={cn(
@@ -63,14 +67,9 @@ export function WidgetButton() {
           )}
         >
           {agentAvatar ? (
-            <img src={agentAvatar} alt={agentName} className="size-full object-cover" style={{ borderRadius: launcherShape === 'circle' ? '50%' : launcherShape === 'pill' ? '16px' : '8px' }} />
+            <img src={agentAvatar} alt="" className="size-full object-cover" style={{ borderRadius: launcherShape === 'circle' ? '50%' : launcherShape === 'pill' ? '16px' : '8px' }} />
           ) : (
             <MessageCircle className="size-5 text-white" />
-          )}
-          {launcherLabel && (
-            <span className="absolute -top-8 text-nowrap text-[10px] font-medium text-muted-foreground bg-background px-2 py-0.5 rounded-full shadow-sm border border-border">
-              {launcherLabel}
-            </span>
           )}
         </span>
         <span

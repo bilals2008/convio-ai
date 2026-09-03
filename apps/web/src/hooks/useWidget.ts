@@ -33,6 +33,7 @@ export interface WidgetConfig {
   publicKey: string
   host?: string
   visitorId?: string
+  currentPath?: string
   widgetToken?: string
   preview?: boolean
   position: 'bottom-right' | 'bottom-left'
@@ -363,9 +364,7 @@ export function useWidget(config: WidgetConfig) {
   )
 
   const isEmbed = useRef(typeof window !== 'undefined' && window.parent !== window)
-  // Closed iframe size: must fit the 56px bubble + its inset + shadow so it
-  // isn't clipped by the iframe's overflow:hidden.
-  const BTN_SIZE = 80
+  const LAUNCHER_PX = { small: 48, default: 56, large: 64 } as const
   const OPEN_WIDTH_MAP: Record<string, number> = { narrow: 320, default: 400, wide: 440 }
   const OPEN_WIDTH = config.customWidth && config.customWidth > 0
     ? config.customWidth
@@ -380,12 +379,14 @@ export function useWidget(config: WidgetConfig) {
     if (config.preview) return false
     const pages = config.hiddenPages
     if (!pages || pages.length === 0) return false
-    const path = window.location.pathname
+    // Inside the embed iframe window.location is the widget's own URL, so use
+    // the embedding page's path passed in by widget.js (fall back for preview).
+    const path = config.currentPath || window.location.pathname
     return pages.some((pattern) => {
       if (pattern.endsWith('*')) return path.startsWith(pattern.slice(0, -1))
       return path === pattern
     })
-  }, [config.preview, config.hiddenPages])
+  }, [config.preview, config.hiddenPages, config.currentPath])
   const [isHidden, setIsHidden] = useState(isPathHidden)
   useEffect(() => {
     if (config.preview) return
@@ -422,6 +423,21 @@ export function useWidget(config: WidgetConfig) {
   const isFullscreen =
     !config.preview && config.mobileBehavior === 'fullscreen' && viewportWidth < 640
 
+  const launcherShape = config.launcherShape ?? 'circle'
+  const launcherPx = LAUNCHER_PX[config.launcherSize || 'default']
+  const teaserOpen = Boolean(teaserVisible && config.teaserMessage)
+  // Iframe must match the launcher button. Extra padding for labels painted a
+  // white rectangle around the avatar on host pages.
+  const closedWidth = teaserOpen ? Math.max(launcherPx, 220) : launcherPx
+  const closedHeight = teaserOpen ? launcherPx + 44 : launcherPx
+  const launcherRadius = teaserOpen
+    ? '16px'
+    : launcherShape === 'circle'
+      ? '50%'
+      : launcherShape === 'pill'
+        ? '16px'
+        : '8px'
+
   const sendResize = useCallback((w: number, h: number, open: boolean) => {
     if (!isEmbed.current) return
     window.parent.postMessage({
@@ -432,8 +448,9 @@ export function useWidget(config: WidgetConfig) {
       position: config.position,
       fullscreen: open && isFullscreen,
       offset: LAUNCHER_OFFSET,
+      launcherRadius,
     }, '*')
-  }, [config.position, isFullscreen, LAUNCHER_OFFSET])
+  }, [config.position, isFullscreen, LAUNCHER_OFFSET, launcherRadius])
 
   const openWidget = useCallback(() => {
     if (isHidden) return
@@ -456,13 +473,13 @@ export function useWidget(config: WidgetConfig) {
 
   const closeWidget = useCallback(() => {
     setExiting(true)
-    sendResize(BTN_SIZE, BTN_SIZE, false)
+    sendResize(closedWidth, closedHeight, false)
     setTimeout(() => {
       setIsOpen(false)
       setIsMinimized(false)
       setExiting(false)
     }, 200)
-  }, [sendResize])
+  }, [sendResize, closedWidth, closedHeight])
 
   const toggleWidget = useCallback(() => {
     if (isOpen) {
@@ -472,20 +489,21 @@ export function useWidget(config: WidgetConfig) {
     }
   }, [isOpen, openWidget, closeWidget])
 
-  // Keep the fullscreen window glued to the viewport across orientation changes.
+  // Keep the window sized to the viewport while fullscreen and, when the
+  // viewport grows past the fullscreen breakpoint (portrait -> landscape
+  // rotation), shrink it back to the configured window size — otherwise the
+  // iframe stays stuck fullscreen.
+  const prevFullscreenRef = useRef(isFullscreen)
   useEffect(() => {
-    if (isOpen && isFullscreen) sendResize(viewportWidth, window.innerHeight, true)
-  }, [isOpen, isFullscreen, viewportWidth, sendResize])
-
-  const addAgentMessage = useCallback((content: string) => {
-    const agentMessage: WidgetMessage = {
-      id: generateId(),
-      role: 'assistant',
-      content,
-      timestamp: new Date(),
-    }
-    setMessages((prev) => [...prev, agentMessage])
-  }, [])
+    if (!isOpen) return
+    if (prevFullscreenRef.current === isFullscreen) return
+    prevFullscreenRef.current = isFullscreen
+    sendResize(
+      isFullscreen ? viewportWidth : OPEN_WIDTH,
+      isFullscreen ? window.innerHeight : OPEN_HEIGHT,
+      true,
+    )
+  }, [isOpen, isFullscreen, viewportWidth, OPEN_WIDTH, OPEN_HEIGHT, sendResize])
 
   const clearChat = useCallback(() => {
     setMessages([])
@@ -502,8 +520,6 @@ export function useWidget(config: WidgetConfig) {
       } catch { /* storage unavailable */ }
     }
   }, [config.preview, CONV_KEY])
-
-  const [historyLoaded, setHistoryLoaded] = useState(() => !!config.preview)
 
   // Resume a returning visitor's conversation. The conversation id is stored
   // per widget, so the embedded widget reloads history on return visits.
@@ -547,28 +563,24 @@ export function useWidget(config: WidgetConfig) {
           localStorage.removeItem(CONV_KEY)
           localStorage.removeItem(CONV_TS_KEY)
         } catch { /* ignore */ }
-      } finally {
-        if (!cancelled) setHistoryLoaded(true)
       }
     }
     resume()
     return () => { cancelled = true }
   }, [config.preview, CONV_KEY, CONV_TS_KEY, authHeaders, publicHeaders])
 
-  useEffect(() => {
-    if (historyLoaded && config.greeting && messages.length === 0 && !(config.quickReplies?.length)) {
-      const timer = setTimeout(() => {
-        addAgentMessage(config.greeting)
-      }, 600)
-      return () => clearTimeout(timer)
-    }
-  }, [config.greeting, messages.length, addAgentMessage, config.quickReplies, historyLoaded])
+  // The welcome screen owns the greeting, so no assistant greeting message is
+  // auto-appended — that previously rendered the greeting twice (once in the
+  // welcome view, once as a chat bubble).
 
   useEffect(() => {
-    if (isEmbed.current) {
-      setTimeout(() => sendResize(BTN_SIZE, BTN_SIZE, false), 100)
+    if (!isEmbed.current || isOpen) return
+    if (isHidden) {
+      sendResize(0, 0, false)
+      return
     }
-  }, [sendResize])
+    sendResize(closedWidth, closedHeight, false)
+  }, [sendResize, isOpen, isHidden, closedWidth, closedHeight])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

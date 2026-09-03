@@ -139,6 +139,14 @@
   body {
     @apply bg-background text-foreground;
     }
+  html.convio-embed,
+  html.convio-embed body,
+  html.convio-embed #root {
+    background: transparent !important;
+    background-color: transparent !important;
+    min-height: 0 !important;
+    height: auto !important;
+    }
   html {
     @apply font-sans;
     }

@@ -15,9 +15,14 @@ const RADIUS_MAP = { none: 'rounded-none', default: 'rounded-2xl', full: 'rounde
 const DEFAULT_HEIGHT = 540
 
 export function WidgetWindow() {
-  const { isOpen, isMinimized, isEmbed, entering, exiting, position, error, dismissError, widgetWidth, borderRadius, widgetHeight } = useWidgetState()
+  const { isOpen, isMinimized, isEmbed, entering, exiting, position, error, dismissError, widgetWidth, borderRadius, widgetHeight, customWidth, customHeight } = useWidgetState()
 
   if (!isOpen && !exiting) return null
+
+  const widthPx = customWidth && customWidth > 0 ? customWidth : undefined
+  const heightPx = customHeight && customHeight > 0
+    ? Math.min(Math.max(customHeight, 300), 1200)
+    : (widgetHeight || DEFAULT_HEIGHT)
 
   return (
     <div
@@ -26,8 +31,8 @@ export function WidgetWindow() {
         isEmbed
           ? 'inset-0 w-full h-full rounded-none animate-widget-enter'
           : cn(
-              'bottom-20 h-[min(540px,calc(100dvh-90px))] max-w-[calc(100vw-24px)]',
-              WIDTH_MAP[widgetWidth],
+              'bottom-20 max-w-[calc(100vw-24px)]',
+              !widthPx && WIDTH_MAP[widgetWidth],
               position === 'bottom-left' ? 'left-3 sm:left-5' : 'right-3 sm:right-5',
             ),
         isMinimized && !isEmbed && '!h-auto',
@@ -37,7 +42,10 @@ export function WidgetWindow() {
       )}
       style={{
         backgroundColor: `hsl(var(--widget-bg))`,
-        ...(isEmbed || isMinimized ? {} : { height: widgetHeight ? `${widgetHeight}px` : `${DEFAULT_HEIGHT}px` }),
+        ...(isEmbed || isMinimized ? {} : {
+          height: `${heightPx}px`,
+          ...(widthPx ? { width: `${widthPx}px` } : {}),
+        }),
       }}
     >
       <WidgetHeader />

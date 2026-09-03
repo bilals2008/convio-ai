@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Zap, Send, Smile, X, ChevronDown } from 'lucide-react'
+import { Zap, Send, Smile, X, ChevronDown, MessageSquarePlus } from 'lucide-react'
 import { getWidgetCSSVariables } from '@/components/widget/WidgetStyles'
 
 interface WidgetPreviewPanelProps {
@@ -24,6 +24,7 @@ interface WidgetPreviewPanelProps {
   quickReplies?: string[]
   headerGradient: boolean
   previewThemeMode: 'auto' | 'light' | 'dark'
+  greeting?: string
 }
 
 export function WidgetPreviewPanel({
@@ -33,7 +34,7 @@ export function WidgetPreviewPanel({
   footerBgColor,
   agentName, agentAvatar, headerTitle, headerSubtitle,
   showOnlineIndicator, placeholderText, showPoweredBy, quickReplies,
-  headerGradient, previewThemeMode,
+  headerGradient, previewThemeMode, greeting,
 }: WidgetPreviewPanelProps) {
   // 'auto' must resolve like the real widget does (OS preference), otherwise
   // dark-themed widgets preview with light-mode vars — washed out and unreadable.
@@ -111,6 +112,9 @@ export function WidgetPreviewPanel({
             </div>
           </div>
           <div className="flex items-center gap-0.5">
+            <button type="button" className="flex size-7 items-center justify-center rounded-md text-white/40" aria-label="Start new chat">
+              <MessageSquarePlus className="size-3.5" />
+            </button>
             <button type="button" className="flex size-7 items-center justify-center rounded-md text-white/40 hover:bg-white/10 hover:text-white/80 transition-colors">
               <ChevronDown className="size-3.5" />
             </button>
@@ -143,7 +147,7 @@ export function WidgetPreviewPanel({
             {agentName || 'Assistant'}
           </h3>
           <p className="text-[11px] mb-4 leading-relaxed px-2" style={{ color: `hsl(var(--widget-muted-foreground))` }}>
-            {headerSubtitle || "Hi there! How can I help you today?"}
+            {greeting || "Hi there! How can I help you today?"}
           </p>
           <div className="flex flex-wrap gap-1.5 justify-center w-full">
             {replies.map((reply) => (

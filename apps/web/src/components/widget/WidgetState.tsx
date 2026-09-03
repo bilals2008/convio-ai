@@ -17,6 +17,7 @@ export interface WidgetStateValue {
   theme: WidgetTheme
   agentName: string
   agentAvatar?: string
+  greeting: string
   quickReplies: string[]
   streamingContent: string
   position: 'bottom-right' | 'bottom-left'
@@ -33,6 +34,8 @@ export interface WidgetStateValue {
   placeholderText?: string
   showPoweredBy?: boolean
   launcherShape?: 'circle' | 'pill' | 'square'
+  customWidth?: number
+  customHeight?: number
   launcherOffset?: number
   teaserMessage?: string
   teaserVisible?: boolean

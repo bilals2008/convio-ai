@@ -63,18 +63,16 @@ export function WidgetHeader() {
           </div>
         </div>
         <div className="relative z-10 flex items-center gap-0.5">
-          {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={onClearChat}
-              disabled={isTyping}
-              className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white/60"
-              aria-label="Start new chat"
-              title="Start new chat"
-            >
-              <MessageSquarePlus className="size-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onClearChat}
+            disabled={isTyping || messages.length === 0}
+            className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white/60"
+            aria-label="Start new chat"
+            title="Start new chat"
+          >
+            <MessageSquarePlus className="size-4" />
+          </button>
           {!isEmbed && (
             <button
               type="button"
