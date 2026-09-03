@@ -118,6 +118,8 @@ export function ChatWidget({
     entering: widget.entering,
     exiting: widget.exiting,
     messages: widget.messages,
+    pendingQuestions: widget.pendingQuestions,
+    onAnswerQuestions: widget.answerQuestions,
     isTyping: widget.isTyping,
     isCreatingConversation: widget.isCreatingConversation,
     unreadCount: widget.unreadCount,

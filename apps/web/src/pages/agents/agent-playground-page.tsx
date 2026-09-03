@@ -407,7 +407,7 @@ export default function AgentPlaygroundPage() {
                               return sourceUrls.length > 0 ? <SourcesDrawer urls={sourceUrls} /> : null
                             })()}
                           </>
-                        ) : (
+                        ) : message.toolActivity && message.toolActivity.length > 0 ? null : (
                           <span className="flex items-center gap-2 px-3 text-sm text-muted-foreground">
                             <Spinner className="size-3.5" /> Thinking…
                           </span>

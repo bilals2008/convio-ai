@@ -9,6 +9,11 @@ export interface WidgetMessage {
   timestamp: Date
 }
 
+export interface WidgetQuestion {
+  question: string
+  choices: string[]
+}
+
 export interface WidgetTheme {
   primaryColor: string
   backgroundColor: string
@@ -79,6 +84,7 @@ export function useWidget(config: WidgetConfig) {
   const [error, setError] = useState<string | null>(null)
   const [isCreatingConversation, setIsCreatingConversation] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [pendingQuestions, setPendingQuestions] = useState<{ questions: WidgetQuestion[] } | null>(null)
   const [entering, setEntering] = useState(false)
   const [exiting, setExiting] = useState(false)
 
@@ -126,12 +132,87 @@ export function useWidget(config: WidgetConfig) {
     }
   }, [config.publicKey, config.preview, config.visitorId, authHeaders, publicHeaders, CONV_KEY, CONV_TS_KEY])
 
+  // Shared SSE reader for both the message stream and the ask_user resume
+  // stream. Returns the accumulated text, an error, or the questions when the
+  // backend pauses for user input (ask_user).
+  const readAssistantStream = useCallback(async (
+    url: string,
+    headers: Record<string, string>,
+    body: Record<string, unknown>,
+    onFlush: (content: string) => void,
+  ): Promise<{ fullContent: string; error: string | null; questions: WidgetQuestion[] | null }> => {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) throw new Error('Stream request failed')
+
+    const reader = response.body?.getReader()
+    if (!reader) throw new Error('No response body')
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let fullContent = ''
+    let error: string | null = null
+    let questions: WidgetQuestion[] | null = null
+    let streamDone = false
+    // Flush streamed text once per animation frame instead of once per
+    // token, so the markdown bubble doesn't re-parse on every chunk.
+    let rafHandle: number | null = null
+    const scheduleFlush = () => {
+      if (rafHandle !== null) return
+      rafHandle = requestAnimationFrame(() => {
+        rafHandle = null
+        onFlush(fullContent)
+      })
+    }
+
+    while (!streamDone) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6)
+          if (data === '[DONE]') {
+            streamDone = true
+            break
+          }
+          try {
+            const parsed = JSON.parse(data)
+            if (parsed.error) {
+              error = parsed.error
+            } else if (parsed.type === 'tool_requires_input' && parsed.tool === 'ask_user') {
+              const rawQuestions = parsed.args?.questions
+              if (Array.isArray(rawQuestions)) {
+                questions = rawQuestions as WidgetQuestion[]
+              }
+            } else if (parsed.content) {
+              fullContent += parsed.content
+              scheduleFlush()
+            }
+          } catch (e) { console.warn('Malformed SSE chunk:', data, e) }
+        }
+      }
+    }
+
+    if (rafHandle !== null) cancelAnimationFrame(rafHandle)
+    return { fullContent, error, questions }
+  }, [])
+
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim()) return
 
       setError(null)
       setStreamingContent('')
+      setPendingQuestions(null)
       const userMessage: WidgetMessage = {
         id: generateId(),
         role: 'user',
@@ -155,81 +236,44 @@ export function useWidget(config: WidgetConfig) {
       try {
         const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
         const extraHeaders = await authHeaders()
-        const response = await fetch(`${baseURL}/widget/conversations/${activeConversationId}/messages/stream`, {
-          method: 'POST',
-          headers: {
+        const result = await readAssistantStream(
+          `${baseURL}/widget/conversations/${activeConversationId}/messages/stream`,
+          {
             'Content-Type': 'application/json',
             ...publicHeaders(),
             ...(extraHeaders ?? {}),
           },
-          body: JSON.stringify({ content: content.trim() }),
-        })
+          { content: content.trim() },
+          setStreamingContent,
+        )
 
-        if (!response.ok) throw new Error('Stream request failed')
-
-        const reader = response.body?.getReader()
-        if (!reader) throw new Error('No response body')
-
-        const decoder = new TextDecoder()
-        let buffer = ''
-        let fullContent = ''
-        let streamError: string | null = null
-        let streamDone = false
-        // Flush streamed text once per animation frame instead of once per
-        // token, so the markdown bubble doesn't re-parse on every chunk.
-        let rafHandle: number | null = null
-        const scheduleFlush = () => {
-          if (rafHandle !== null) return
-          rafHandle = requestAnimationFrame(() => {
-            rafHandle = null
-            setStreamingContent(fullContent)
-          })
-        }
-
-        while (!streamDone) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6)
-              if (data === '[DONE]') {
-                streamDone = true
-                break
-              }
-              try {
-                const parsed = JSON.parse(data)
-                if (parsed.error) {
-                  streamError = parsed.error
-                } else if (parsed.content) {
-                  fullContent += parsed.content
-                  scheduleFlush()
-                }
-              } catch (e) { console.warn('Malformed SSE chunk:', data, e) }
-            }
-          }
-        }
-
-        if (rafHandle !== null) cancelAnimationFrame(rafHandle)
         setIsTyping(false)
 
-        if (streamError) {
-          setError(streamError)
+        if (result.error) {
+          setError(result.error)
           setMessages((prev) => [...prev, {
             id: generateId(),
             role: 'assistant',
-            content: streamError,
+            content: result.error ?? 'Something went wrong',
             timestamp: new Date(),
           }])
-        } else if (fullContent) {
+        } else if (result.questions && result.questions.length > 0) {
+          // Backend paused for user input — keep any preamble text the model
+          // streamed before the questions, then show the question card.
+          if (result.fullContent) {
+            setMessages((prev) => [...prev, {
+              id: generateId(),
+              role: 'assistant',
+              content: result.fullContent,
+              timestamp: new Date(),
+            }])
+          }
+          setPendingQuestions({ questions: result.questions })
+        } else if (result.fullContent) {
           setMessages((prev) => [...prev, {
             id: generateId(),
             role: 'assistant',
-            content: fullContent,
+            content: result.fullContent,
             timestamp: new Date(),
           }])
         }
@@ -248,7 +292,74 @@ export function useWidget(config: WidgetConfig) {
         setError('Failed to send message')
       }
     },
-    [conversationId, createConversation, publicHeaders, authHeaders]
+    [conversationId, createConversation, publicHeaders, authHeaders, readAssistantStream]
+  )
+
+  // Continue after the visitor answers the ask_user questions.
+  const answerQuestions = useCallback(
+    async (answers: Array<{ question: string; answer: string }>) => {
+      if (!pendingQuestions || answers.length === 0) return
+      setPendingQuestions(null)
+      setError(null)
+      setStreamingContent('')
+      setIsTyping(true)
+
+      let activeConversationId = conversationId
+      if (!activeConversationId) {
+        activeConversationId = await createConversation()
+      }
+
+      if (!activeConversationId) {
+        setIsTyping(false)
+        return
+      }
+
+      try {
+        const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+        const extraHeaders = await authHeaders()
+        const result = await readAssistantStream(
+          `${baseURL}/widget/conversations/${activeConversationId}/messages/ask-user-resume`,
+          {
+            'Content-Type': 'application/json',
+            ...publicHeaders(),
+            ...(extraHeaders ?? {}),
+          },
+          { answers },
+          setStreamingContent,
+        )
+
+        setIsTyping(false)
+
+        if (result.error) {
+          setError(result.error)
+          setMessages((prev) => [...prev, {
+            id: generateId(),
+            role: 'assistant',
+            content: result.error ?? 'Something went wrong',
+            timestamp: new Date(),
+          }])
+        } else if (result.fullContent) {
+          setMessages((prev) => [...prev, {
+            id: generateId(),
+            role: 'assistant',
+            content: result.fullContent,
+            timestamp: new Date(),
+          }])
+        }
+        setStreamingContent('')
+      } catch {
+        setIsTyping(false)
+        setStreamingContent('')
+        setMessages((prev) => [...prev, {
+          id: generateId(),
+          role: 'assistant',
+          content: 'Sorry, something went wrong. Please try again.',
+          timestamp: new Date(),
+        }])
+        setError('Failed to send message')
+      }
+    },
+    [pendingQuestions, conversationId, createConversation, publicHeaders, authHeaders, readAssistantStream]
   )
 
   const isEmbed = useRef(typeof window !== 'undefined' && window.parent !== window)
@@ -380,6 +491,7 @@ export function useWidget(config: WidgetConfig) {
     setMessages([])
     setConversationId(null)
     setStreamingContent('')
+    setPendingQuestions(null)
     setError(null)
     setIsTyping(false)
     setUnreadCount(0)
@@ -485,7 +597,9 @@ export function useWidget(config: WidgetConfig) {
     entering,
     exiting,
     streamingContent,
+    pendingQuestions,
     sendMessage,
+    answerQuestions,
     clearChat,
     openWidget,
     closeWidget,

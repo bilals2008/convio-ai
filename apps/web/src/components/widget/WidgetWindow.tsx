@@ -3,6 +3,7 @@ import { useWidgetState } from './WidgetState'
 import { WidgetHeader } from './WidgetHeader'
 import { WidgetWelcome } from './WidgetWelcome'
 import { WidgetMessages } from './WidgetMessages'
+import { WidgetQuestions } from './WidgetQuestions'
 import { WidgetInput } from './WidgetInput'
 
 const WIDTH_MAP = {
@@ -50,6 +51,7 @@ export function WidgetWindow() {
         <>
           <WidgetWelcome />
           <WidgetMessages />
+          <WidgetQuestions />
           <WidgetInput />
         </>
       )}

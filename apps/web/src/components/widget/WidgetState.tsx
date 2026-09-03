@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import type { WidgetMessage, WidgetTheme } from '@/hooks/useWidget'
+import type { WidgetMessage, WidgetQuestion, WidgetTheme } from '@/hooks/useWidget'
 
 export interface WidgetStateValue {
   isOpen: boolean
@@ -8,6 +8,8 @@ export interface WidgetStateValue {
   entering: boolean
   exiting: boolean
   messages: WidgetMessage[]
+  pendingQuestions: { questions: WidgetQuestion[] } | null
+  onAnswerQuestions: (answers: Array<{ question: string; answer: string }>) => void
   isTyping: boolean
   isCreatingConversation: boolean
   unreadCount: number
