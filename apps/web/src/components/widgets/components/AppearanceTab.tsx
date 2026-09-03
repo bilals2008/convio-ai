@@ -13,6 +13,7 @@ import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { WidgetConfig } from '../types'
+import { AutoGrowTextarea } from './AutoGrowTextarea'
 import {
   primaryPresets,
   bgPresets,
@@ -25,6 +26,7 @@ import {
   sendBtnPresets,
   footerBgPresets,
   THEME_MODES,
+  MAX_GREETING_LENGTH,
   type ThemeMode,
 } from '../constants'
 
@@ -94,6 +96,7 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
   const showPoweredBy = config.showPoweredBy ?? true
   const quickReplies = config.quickReplies ?? []
   const launcherLabel = config.launcherLabel ?? ''
+  const greeting = config.greeting ?? ''
 
   const onAgentNameChange = (value: string) => onChange({ agentName: value })
   const onAgentAvatarChange = (value: string) => onChange({ agentAvatar: value })
@@ -117,6 +120,7 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
   const onShowPoweredByChange = (value: boolean) => onChange({ showPoweredBy: value })
   const onQuickRepliesChange = (value: string[]) => onChange({ quickReplies: value })
   const onLauncherLabelChange = (value: string) => onChange({ launcherLabel: value })
+  const onGreetingChange = (value: string) => onChange({ greeting: value })
 
   const { orgId } = useOrg()
   const { upload, isUploading, progress } = useAgentAvatarUpload()
@@ -207,6 +211,21 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
                     onChange={(e) => onAgentNameChange(e.target.value)}
                     placeholder="Assistant"
                     className="h-9 text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="greeting" className="text-xs font-medium text-foreground">
+                    Welcome message
+                  </Label>
+                  <AutoGrowTextarea
+                    id="greeting"
+                    value={greeting}
+                    onChange={onGreetingChange}
+                    placeholder="Hi there! How can I help you today?"
+                    rows={2}
+                    maxLength={MAX_GREETING_LENGTH}
+                    className="text-sm"
                   />
                 </div>
 

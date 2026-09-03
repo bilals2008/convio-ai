@@ -212,8 +212,16 @@ export function usePlaygroundChat() {
               }
               patchAssistant({ toolActivity: [...toolCalls] })
             }
-            // ponytail: handle ask_user — show questionnaire, pause stream
+            // ponytail: handle ask_user — show questionnaire, pause stream.
+            // The backend stops here without ever sending a tool_result for
+            // ask_user, so mark it done now to avoid an infinite spinner.
             if (chunk.type === 'tool_requires_input' && chunk.tool === 'ask_user') {
+              for (const tc of toolCalls) {
+                if (tc.tool === 'ask_user' && tc.status === 'calling') {
+                  tc.status = 'done'
+                }
+              }
+              patchAssistant({ toolActivity: [...toolCalls] })
               const args = chunk.args as { questions?: Array<{ question: string; choices: string[] }> }
               if (args.questions?.length) {
                 toolInputPending = true
@@ -240,7 +248,11 @@ export function usePlaygroundChat() {
       } finally {
         abortRef.current = null
         setStatus('idle')
-        setMessages((prev) => prev.filter((m) => m.id !== assistantId || m.content))
+        // Keep the message when it carries tool activity (e.g. a paused
+        // ask_user turn) even if no text was streamed yet.
+        setMessages((prev) =>
+          prev.filter((m) => m.id !== assistantId || m.content || (m.toolActivity && m.toolActivity.length > 0)),
+        )
       }
     },
     [messages],
@@ -251,6 +263,15 @@ export function usePlaygroundChat() {
       if (!pendingToolInput) return
       const pi = pendingToolInput
       setPendingToolInput(null)
+
+      // Mark the paused tool as done so the spinner clears immediately.
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.toolActivity
+            ? { ...m, toolActivity: m.toolActivity.map((tc) => tc.status === 'calling' ? { ...tc, status: 'done' as const } : tc) }
+            : m,
+        ),
+      )
 
       const assistantId = nextId()
       setMessages((prev) => [

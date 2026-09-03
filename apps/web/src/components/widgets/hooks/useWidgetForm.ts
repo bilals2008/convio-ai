@@ -87,8 +87,10 @@ export function useWidgetForm(widgetId: string) {
         name,
         status,
         allowedDomains: domains,
-        // greeting is not editable in this form — pass the stored value through
-        config: { ...config, greeting: widget?.config?.greeting || 'Hi there!' },
+        config: {
+          ...config,
+          greeting: config.greeting?.trim() || DEFAULT_WIDGET_CONFIG.greeting,
+        },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['widget', widgetId] })

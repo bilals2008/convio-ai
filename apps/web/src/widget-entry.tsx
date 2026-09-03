@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WidgetEmbedPage } from '@/pages/widget/WidgetDemo'
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+  defaultOptions: { queries: { staleTime: 0, gcTime: 0, retry: 1 } },
 })
 
 createRoot(document.getElementById('root')!).render(

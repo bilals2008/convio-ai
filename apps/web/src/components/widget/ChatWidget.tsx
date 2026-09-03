@@ -11,6 +11,7 @@ export interface ChatWidgetProps {
   publicKey: string
   host?: string
   visitorId?: string
+  currentPath?: string
   widgetToken?: string
   preview?: boolean
   position?: 'bottom-right' | 'bottom-left'
@@ -76,6 +77,7 @@ export function ChatWidget({
   publicKey,
   host,
   visitorId,
+  currentPath,
   widgetToken,
   preview,
   position = 'bottom-right',
@@ -107,7 +109,7 @@ export function ChatWidget({
   hiddenPages = [],
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, host, visitorId, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior, launcherShape, customWidth, customHeight, launcherOffset, teaserMessage, teaserDelay, hiddenPages })
+  const widget = useWidget({ agentId, publicKey, host, visitorId, currentPath, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior, launcherShape, customWidth, customHeight, launcherOffset, teaserMessage, teaserDelay, hiddenPages })
   // Fullscreen windows are edge-to-edge — sharp corners regardless of setting.
   const effectiveBorderRadius = widget.isFullscreen ? 'none' : borderRadius
 
@@ -118,6 +120,8 @@ export function ChatWidget({
     entering: widget.entering,
     exiting: widget.exiting,
     messages: widget.messages,
+    pendingQuestions: widget.pendingQuestions,
+    onAnswerQuestions: widget.answerQuestions,
     isTyping: widget.isTyping,
     isCreatingConversation: widget.isCreatingConversation,
     unreadCount: widget.unreadCount,
@@ -125,6 +129,7 @@ export function ChatWidget({
     theme,
     agentName,
     agentAvatar: agentAvatar,
+    greeting,
     quickReplies: quickReplies || [],
     streamingContent: widget.streamingContent,
     position,
@@ -132,7 +137,9 @@ export function ChatWidget({
     widgetWidth,
     launcherSize,
     borderRadius: effectiveBorderRadius,
-    launcherShape,
+    launcherShape: widget.launcherShape,
+    customWidth,
+    customHeight,
     headerGradient,
     headerTitle,
     headerSubtitle,
@@ -151,7 +158,6 @@ export function ChatWidget({
     teaserMessage,
     teaserVisible: widget.teaserVisible,
     dismissTeaser: widget.dismissTeaser,
-    launcherShape: widget.launcherShape,
     launcherOffset: widget.LAUNCHER_OFFSET,
   }
 

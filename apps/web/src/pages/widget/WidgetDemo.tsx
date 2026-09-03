@@ -1,23 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChatWidget } from '@/components/widget'
+import { ChatWidget, chatWidgetPropsFromConfig } from '@/components/widget'
 import { Navigate } from 'react-router-dom'
 import { publicApi } from '@/lib/api'
 
-type Position = 'bottom-right' | 'bottom-left'
-
 if (typeof document !== 'undefined') {
   const style = document.createElement('style')
-  style.textContent = 'html, body, #root { background: transparent !important; }'
+  style.textContent = 'html, body, #root { background: transparent !important; background-color: transparent !important; }'
   document.head.appendChild(style)
-}
-
-function isLightColor(hex: string): boolean {
-  const clean = hex.replace('#', '')
-  const r = parseInt(clean.substring(0, 2), 16)
-  const g = parseInt(clean.substring(2, 4), 16)
-  const b = parseInt(clean.substring(4, 6), 16)
-  return (r * 299 + g * 587 + b * 114) / 1000 > 128
 }
 
 export function WidgetEmbedPage() {
@@ -28,6 +18,7 @@ export function WidgetEmbedPage() {
   const preview = params.get('preview') === 'true'
 
   const [widgetToken, setWidgetToken] = useState<string | undefined>()
+  const [currentPath, setCurrentPath] = useState<string | undefined>(params.get('path') || undefined)
 
   useEffect(() => {
     if (window.parent === window) return
@@ -38,7 +29,12 @@ export function WidgetEmbedPage() {
       apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
     }, '*')
     const onMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'convio-token' && typeof event.data.token === 'string') {
+      if (!event.data) return
+      // Keep hiddenPages rules in sync with the embedding page's URL.
+      if (event.data.type === 'convio-path' && typeof event.data.path === 'string') {
+        setCurrentPath(event.data.path)
+      }
+      if (event.data.type === 'convio-token' && typeof event.data.token === 'string') {
         setWidgetToken(event.data.token)
       }
     }
@@ -59,6 +55,7 @@ export function WidgetEmbedPage() {
       el.style.setProperty('width', 'auto', 'important')
     }
     document.documentElement.style.setProperty('color-scheme', 'normal')
+    document.documentElement.classList.add('convio-embed')
     return () => {
       for (const el of targets) {
         el.style.removeProperty('background')
@@ -86,63 +83,39 @@ export function WidgetEmbedPage() {
       }
       return (await publicApi.get(`/public/widgets/${widgetKey}${preview ? '?preview=true' : ''}`, { headers })).data.data
     },
-    enabled: !!widgetKey,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    // Embedded widgets must wait for the signed domain token (posted back by
+    // widget.js) before fetching config. Without it the request is rejected in
+    // production — the iframe's own origin isn't in the widget's allowlist — so
+    // firing early just burns a 403 retry and delays first paint.
+    enabled: !!widgetKey && (preview || !host || !!widgetToken),
   })
 
   if (configLoading) {
+    // In the embedded frame this renders inside a launcher-sized viewport, so
+    // show nothing rather than a floating spinner on a painted canvas.
+    if (host) return null
     return <div className="flex h-dvh w-dvw items-center justify-center" style={{ background: 'transparent' }}>
       <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
     </div>
   }
 
   if (widgetConfig) {
-    const config = widgetConfig.config || {}
-    const position = (config.position as Position) || 'bottom-right'
-    const primaryColor = config.primaryColor || '#1cca4a'
-    const backgroundColor = config.backgroundColor || '#1c1c1c'
-    const greeting = config.greeting || "Hi there! How can I help you today?"
-    const agentName = config.agentName || widgetConfig.agent?.name || 'Assistant'
-    const agentAvatar = config.agentAvatar || widgetConfig.agent?.avatar
-    const quickReplies = (config.quickReplies || []).map((s: string) => s.trim()).filter(Boolean)
-
-    return <ChatWidget
-      agentId={widgetConfig.agent.id}
-      publicKey={widgetKey!}
-      host={host}
-      visitorId={visitorId}
-      widgetToken={widgetToken}
-      preview={preview}
-      position={position}
-      greeting={greeting}
-      agentName={agentName}
-      agentAvatar={agentAvatar}
-      quickReplies={quickReplies}
-      themeMode={config.themeMode || 'auto'}
-      widgetWidth={config.widgetWidth || 'default'}
-      launcherSize={config.launcherSize || 'default'}
-      borderRadius={config.borderRadius || 'default'}
-      headerGradient={config.headerGradient !== false}
-      headerTitle={config.headerTitle || undefined}
-      headerSubtitle={config.headerSubtitle || undefined}
-      showOnlineIndicator={config.showOnlineIndicator}
-      launcherLabel={config.launcherLabel || undefined}
-      placeholderText={config.placeholderText || undefined}
-      showPoweredBy={config.showPoweredBy}
-      widgetHeight={config.widgetHeight}
-      theme={{
-        primaryColor,
-        backgroundColor,
-        textColor: config.textColor || (isLightColor(backgroundColor) ? '#1f2937' : '#f3f4f6'),
-        promptBgColor: config.promptBgColor || '#2a2a2a',
-        headerGradientStart: config.headerGradientStart || '#1cca4a',
-        headerGradientEnd: config.headerGradientEnd || '#0d7a34',
-        headerGradientDirection: `${config.headerGradientDirection ?? 135}deg`,
-        borderColor: config.borderColor || '',
-        inputBgColor: config.inputBgColor || '',
-        sendBtnColor: config.sendBtnColor || '',
-        footerBgColor: config.footerBgColor || '',
-      }}
-    />
+    return (
+      <ChatWidget
+        {...chatWidgetPropsFromConfig(widgetConfig, {
+          agentId: widgetConfig.agent.id,
+          publicKey: widgetKey!,
+          host,
+          visitorId,
+          currentPath,
+          widgetToken,
+          preview,
+        })}
+      />
+    )
   }
 
   return null

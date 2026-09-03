@@ -22,8 +22,11 @@ const ICON_MAP: Record<string, string> = {
 }
 
 export function WidgetWelcome() {
-  const { agentName, agentAvatar, messages, onSendMessage, quickReplies, homeMenu, headerSubtitle } = useWidgetState()
+  const { agentName, agentAvatar, messages, onSendMessage, quickReplies, homeMenu, greeting } = useWidgetState()
 
+  // Show the welcome view only while the conversation is empty — the moment any
+  // message exists (history resumed, first user message) the chat takes over.
+  // The greeting lives here, not as a duplicate chat bubble.
   if (messages.length > 0) return null
 
   const replies = quickReplies.length > 0 ? quickReplies : defaultQuickReplies
@@ -63,7 +66,7 @@ export function WidgetWelcome() {
           {agentName || 'Assistant'}
         </h3>
         <p className="text-[12px] text-[hsl(var(--widget-muted-foreground))] mb-5 leading-relaxed px-2">
-          {headerSubtitle || "Hi there! How can I help you today?"}
+          {greeting || "Hi there! How can I help you today?"}
         </p>
 
         {homeMenu.length > 0 ? (

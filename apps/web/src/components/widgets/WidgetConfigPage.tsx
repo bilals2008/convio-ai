@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Code2, Layout, Monitor, Smartphone, Palette, Wand2 } from 'lucide-react'
-import { ChatWidget } from '@/components/widget'
+import { ChatWidget, chatWidgetPropsFromConfig } from '@/components/widget'
 import { PageContainer } from '@/components/shared/page-container'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WidgetHeader } from '@/components/widgets/components/WidgetHeader'
@@ -244,6 +244,7 @@ export default function WidgetConfigPage() {
                     quickReplies={(config.quickReplies?.length ?? 0) > 0 ? config.quickReplies : undefined}
                     headerGradient={config.headerGradient}
                     previewThemeMode={config.themeMode ?? 'auto'}
+                    greeting={config.greeting}
                   />
                 </div>
               </div>
@@ -277,48 +278,11 @@ export default function WidgetConfigPage() {
 
       {widget && (
         <ChatWidget
-          key={JSON.stringify([config.agentName, config.primaryColor, config.backgroundColor, config.textColor, config.position, config.headerTitle, config.headerSubtitle, config.launcherLabel, config.footerBgColor, config.quickReplies, config.widgetWidth, config.widgetHeight, config.launcherSize, config.borderRadius, config.launcherShape, config.customWidth, config.customHeight, config.launcherOffset, config.teaserMessage, config.teaserDelay, config.showPoweredBy, config.themeMode])}
-          agentId={widget.agent.id}
-          publicKey={widget.publicKey}
-          position={config.position}
-          greeting={widget.config.greeting || 'Hi'}
-          agentName={config.agentName || widget.agent.name}
-          agentAvatar={config.agentAvatar || undefined}
-          themeMode={config.themeMode}
-          widgetWidth={config.widgetWidth}
-          launcherSize={config.launcherSize}
-          borderRadius={config.borderRadius}
-          headerGradient={config.headerGradient}
-          headerTitle={config.headerTitle || undefined}
-          headerSubtitle={config.headerSubtitle || undefined}
-          showOnlineIndicator={config.showOnlineIndicator}
-          launcherLabel={config.launcherLabel || undefined}
-          placeholderText={config.placeholderText || undefined}
-          showPoweredBy={config.showPoweredBy}
-          widgetHeight={config.widgetHeight}
-          quickReplies={(config.quickReplies?.length ?? 0) > 0 ? config.quickReplies : undefined}
-          mobileBehavior={config.mobileBehavior}
-          launcherShape={config.launcherShape}
-          customWidth={config.customWidth}
-          customHeight={config.customHeight}
-          launcherOffset={config.launcherOffset}
-          teaserMessage={config.teaserMessage}
-          teaserDelay={config.teaserDelay}
-          hiddenPages={config.hiddenPages}
-          preview
-          theme={{
-            primaryColor: config.primaryColor ?? '#1cca4a',
-            backgroundColor: config.backgroundColor ?? '#1c1c1c',
-            textColor: config.textColor || '#f3f4f6',
-            promptBgColor: config.promptBgColor || '#2a2a2a',
-            headerGradientStart: config.headerGradientStart || '#1cca4a',
-            headerGradientEnd: config.headerGradientEnd || '#0d7a34',
-            headerGradientDirection: `${config.headerGradientDirection ?? 135}deg`,
-            borderColor: config.borderColor || '',
-            inputBgColor: config.inputBgColor || '',
-            sendBtnColor: config.sendBtnColor || '',
-            footerBgColor: config.footerBgColor || '',
-          }}
+          key={JSON.stringify([config.agentName, config.agentAvatar, config.greeting, config.primaryColor, config.backgroundColor, config.textColor, config.position, config.headerTitle, config.headerSubtitle, config.launcherLabel, config.footerBgColor, config.quickReplies, config.widgetWidth, config.widgetHeight, config.launcherSize, config.borderRadius, config.launcherShape, config.customWidth, config.customHeight, config.launcherOffset, config.teaserMessage, config.teaserDelay, config.showPoweredBy, config.themeMode, config.headerGradient, config.placeholderText, config.showOnlineIndicator])}
+          {...chatWidgetPropsFromConfig(
+            { config, agent: widget.agent },
+            { agentId: widget.agent.id, publicKey: widget.publicKey, preview: true },
+          )}
         />
       )}
     </PageContainer>

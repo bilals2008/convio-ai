@@ -1,5 +1,4 @@
 import { Globe, ExternalLink } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
   Sheet,
   SheetContent,
@@ -15,23 +14,28 @@ export function SourcesDrawer({ urls }: { urls: string[] }) {
 
   return (
     <Sheet>
-      <SheetTrigger
-        render={
-          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground" />
-        }
-      >
-        <Globe className="size-3" />
-        Searched {unique.length} website{unique.length !== 1 ? 's' : ''}
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 h-auto p-0 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Globe className="size-3" />
+          Searched {unique.length} website{unique.length !== 1 ? 's' : ''}
+        </button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-80 sm:w-96">
+      <SheetContent side="right" className="w-80 sm:w-[340px] flex flex-col">
         <SheetHeader>
           <SheetTitle>Sources</SheetTitle>
         </SheetHeader>
-        <div className="flex flex-col gap-1 overflow-y-auto px-4 pb-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 -mx-1">
           {unique.map((url) => {
-            let hostname = url
+            let hostname = ''
+            let path = ''
             try {
-              hostname = new URL(url).hostname
+              const u = new URL(url)
+              hostname = u.hostname
+              path = u.pathname.replace(/\/$/, '')
+              if (path.length > 40) path = path.slice(0, 40) + '…'
             } catch { /* not a valid URL */ }
             return (
               <a
@@ -39,13 +43,17 @@ export function SourcesDrawer({ urls }: { urls: string[] }) {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                className="flex flex-col gap-0.5 rounded-lg px-2 py-2.5 text-sm transition-colors hover:bg-muted group"
               >
-                <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate">{hostname}</span>
-                <span className="ml-auto shrink-0 truncate text-xs text-muted-foreground">
-                  {url}
+                <span className="flex items-center gap-1.5 text-foreground font-medium">
+                  <ExternalLink className="size-3 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  <span className="truncate">{hostname}</span>
                 </span>
+                {path && (
+                  <span className="truncate text-[11px] text-muted-foreground group-hover:text-muted-foreground/70">
+                    {path}
+                  </span>
+                )}
               </a>
             )
           })}

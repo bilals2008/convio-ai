@@ -8,7 +8,7 @@ import { retrieveContext, markDocumentQueriesSuccess } from '../../services/proc
 import { moderateForOrg, type ModerationFlag } from '../../services/moderation.js'
 import { checkMessageLimit } from '../../services/billing.js'
 import { resolveProviderKey } from '../../services/provider-key.js'
-import { loadAgentToolHandlers } from '../../services/tools/index.js'
+import { loadAgentToolHandlers, ASK_USER_TOOL } from '../../services/tools/index.js'
 import { computeCost } from '@convio/ai/pricing'
 import { getAgentWidgetDomains, assertConversationAccess } from '../widgets/access.js'
 import { runExclusive, createRequestSignal } from '../../services/concurrency.js'
@@ -82,6 +82,13 @@ const widgetMessageBodySchema = z.object({
   content: z.string().min(1).max(10000),
 })
 
+const widgetAskUserResumeSchema = z.object({
+  answers: z.array(z.object({
+    question: z.string().min(1),
+    answer: z.string().min(1),
+  })).min(1),
+})
+
 // Instructs the model to emit Markdown so widget responses render as proper
 // lists, clickable links, headings, and emphasis instead of plain paragraphs.
 const WIDGET_FORMAT_GUIDE = `\n\n## Response formatting guidelines
@@ -90,6 +97,15 @@ const WIDGET_FORMAT_GUIDE = `\n\n## Response formatting guidelines
 - Write URLs as clickable Markdown links with a descriptive label, e.g. [GitHub](https://github.com/example). Never output a bare URL.
 - Use **bold** for key terms, and headings (## / ###) to break up long answers.
 - Keep paragraphs short and scannable.`
+
+// Ask_user questions formatted as a plain-text assistant message so the
+// conversation history stays coherent after the widget pauses for answers.
+function formatWidgetQuestions(args: Record<string, unknown>): string {
+  const raw = args.questions
+  const questions = Array.isArray(raw) ? (raw as Array<{ question?: string }>) : []
+  if (questions.length === 0) return 'I have a few questions for you.'
+  return questions.map((q, i) => `${i + 1}. ${q.question || ''}`).join('\n')
+}
 
 async function getConversationOrgId(conversationId: string): Promise<string> {
   const conversation = await prisma.conversation.findUnique({
@@ -870,6 +886,15 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       parameters: h.schema.parameters,
     }))
 
+    // ponytail: offer ask_user whenever any tools are enabled — client-handled
+    if (toolHandlers.length > 0) {
+      toolDefs.push({
+        name: ASK_USER_TOOL.name,
+        description: ASK_USER_TOOL.description,
+        parameters: ASK_USER_TOOL.parameters,
+      })
+    }
+
     let clientDisconnected = false
     request.raw.once('close', () => { clientDisconnected = true })
     const signal = createRequestSignal((cb) => request.raw.once('close', cb))
@@ -916,40 +941,53 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
 
       // Execute tools and make second AI call for summarization
       if (toolCallsFromStream.length > 0) {
-        const results: { tool: string; result: unknown }[] = []
-        for (const tc of toolCallsFromStream) {
-          const handler = toolHandlers.find((h) => h.schema.name === tc.tool)
-          if (handler) {
-            const result = await handler.execute(tc.args)
-            results.push({ tool: tc.tool, result })
+        // ponytail: ask_user is client-handled — surface the questions and
+        // pause; the visitor answers and the resume endpoint continues.
+        const askUserCall = toolCallsFromStream.find((tc) => tc.tool === 'ask_user')
+        if (askUserCall) {
+          writeChunk({
+            type: 'tool_requires_input',
+            toolCallId: `tc-${Date.now()}`,
+            tool: 'ask_user',
+            args: askUserCall.args,
+          })
+          fullResponse = formatWidgetQuestions(askUserCall.args)
+        } else {
+          const results: { tool: string; result: unknown }[] = []
+          for (const tc of toolCallsFromStream) {
+            const handler = toolHandlers.find((h) => h.schema.name === tc.tool)
+            if (handler) {
+              const result = await handler.execute(tc.args)
+              results.push({ tool: tc.tool, result })
+            }
           }
-        }
 
-        const resultsSummary = results
-          .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
-          .join('\n\n')
+          const resultsSummary = results
+            .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
+            .join('\n\n')
 
-        const finalStream = provider!.stream({
-          model: agent.model!,
-          messages: [
-            ...aiMessages,
-            { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
-            { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
-          ],
-          temperature: agent.temperature ?? 0.7,
-          maxTokens: agent.maxTokens ?? 2048,
-          apiKey,
-          signal,
-        })
-        for await (const chunk of finalStream) {
-          if (clientDisconnected) break
-          if (chunk.type === 'text' && chunk.content) {
-            fullResponse += chunk.content
-            writeChunk({ content: chunk.content })
-          }
-          if (chunk.type === 'done' && chunk.usage) {
-            totalInputTokens += chunk.usage.promptTokens || 0
-            totalOutputTokens += chunk.usage.completionTokens || 0
+          const finalStream = provider!.stream({
+            model: agent.model!,
+            messages: [
+              ...aiMessages,
+              { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
+              { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
+            ],
+            temperature: agent.temperature ?? 0.7,
+            maxTokens: agent.maxTokens ?? 2048,
+            apiKey,
+            signal,
+          })
+          for await (const chunk of finalStream) {
+            if (clientDisconnected) break
+            if (chunk.type === 'text' && chunk.content) {
+              fullResponse += chunk.content
+              writeChunk({ content: chunk.content })
+            }
+            if (chunk.type === 'done' && chunk.usage) {
+              totalInputTokens += chunk.usage.promptTokens || 0
+              totalOutputTokens += chunk.usage.completionTokens || 0
+            }
           }
         }
       } else {
@@ -983,6 +1021,203 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         },
       })
     }
+    })
+
+    if (!clientDisconnected) {
+      finishStream()
+    }
+  })
+
+  // POST /api/widget/conversations/:id/messages/ask-user-resume — Continue after
+  // ask_user answers (public, rate-limited). Persists the answers as the user
+  // turn, then streams the continuation. History/streaming run under the same
+  // per-conversation lock as the stream route so the questions message that
+  // was persisted there is always visible.
+  fastify.post('/widget/conversations/:id/messages/ask-user-resume', {
+    preHandler: [validate({ params: convParamsSchema, body: widgetAskUserResumeSchema })],
+    config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { answers } = request.body as z.infer<typeof widgetAskUserResumeSchema>
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id },
+      select: {
+        userId: true,
+        metadata: true,
+        agent: {
+          select: {
+            id: true,
+            organizationId: true,
+            status: true,
+            model: true,
+            systemPrompt: true,
+            temperature: true,
+            maxTokens: true,
+            providerKeyId: true,
+            knowledgeBaseId: true,
+            widgetConfig: true,
+            guardrails: true,
+          },
+        },
+      },
+    })
+
+    if (!conversation || conversation.agent.status === 'archived') {
+      throw new AppError(404, 'Conversation not found or agent is unavailable')
+    }
+
+    const widgetDomains = await getAgentWidgetDomains(conversation.agent.id)
+    if (widgetDomains === null) {
+      throw new AppError(403, 'This agent has no active widget', 'FORBIDDEN')
+    }
+    assertConversationAccess(request, widgetDomains, conversation)
+
+    const agent = conversation.agent
+    const answersText = answers.map((a) => `Q: ${a.question}\nA: ${a.answer}`).join('\n\n')
+
+    let earlyResponse: string | null = null
+
+    // Moderation + guardrails on the answers, mirroring the widget stream route.
+    const moderation = await moderateMessage(agent.organizationId, answersText)
+    if (!moderation.allowed) {
+      await logModerationViolation(fastify, {
+        organizationId: agent.organizationId,
+        conversationId: id,
+        channel: 'widget',
+        flags: moderation.result.flags,
+      })
+      earlyResponse = moderation.message
+    } else {
+      const guardrailRefusal = guardrailInputRefusal(answersText, agent.guardrails)
+      if (guardrailRefusal) {
+        earlyResponse = guardrailRefusal
+      }
+    }
+
+    if (!agent.model) earlyResponse = earlyResponse ?? 'I am not configured to respond yet.'
+
+    reply.hijack()
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      ...getCorsHeaders(fastify.config.CORS_ORIGIN, request),
+    })
+    reply.raw.flushHeaders()
+
+    const writeChunk = (payload: Record<string, unknown>) => {
+      reply.raw.write(`data: ${JSON.stringify(payload)}\n\n`)
+    }
+    const finishStream = () => {
+      if (reply.raw.writableEnded) return
+      reply.raw.write('data: [DONE]\n\n')
+      reply.raw.end()
+    }
+
+    if (earlyResponse) {
+      writeChunk({ content: earlyResponse })
+      finishStream()
+      return
+    }
+
+    let clientDisconnected = false
+    request.raw.once('close', () => { clientDisconnected = true })
+    const signal = createRequestSignal((cb) => request.raw.once('close', cb))
+
+    await runExclusive(`conv:${id}`, async () => {
+      let fullResponse = ''
+      let totalInputTokens = 0
+      let totalOutputTokens = 0
+      let history: { role: string; content: string }[] = []
+
+      try {
+        // Persist the answers as the user turn so history stays coherent.
+        await prisma.message.create({ data: { conversationId: id, role: 'user', content: answersText, status: 'sent' } })
+        await prisma.conversation.update({ where: { id }, data: { status: 'active' } })
+
+        const historyPromise = prisma.message.findMany({
+          where: { conversationId: id },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+          select: { role: true, content: true },
+        })
+        const contextPromise = agent.knowledgeBaseId
+          ? retrieveContext(answersText, agent.knowledgeBaseId).catch(() => null)
+          : Promise.resolve(null)
+        const providerKeyPromise = resolveProviderKey({
+          organizationId: agent.organizationId,
+          model: agent.model!,
+          providerKeyId: agent.providerKeyId,
+        })
+
+        const [historyDesc, context, providerKey] = await Promise.all([
+          historyPromise,
+          contextPromise,
+          providerKeyPromise,
+        ])
+        history = historyDesc.reverse()
+        const apiKey = providerKey?.apiKey
+        const provider = getProviderForModel(agent.model!, providerKey?.provider)
+
+        const systemContext = (context
+          ? `${agent.systemPrompt}\n\n## Retrieved knowledge (RAG)\nUse the following source excerpts to answer. Prefer this context over general knowledge when relevant. If the context does not contain the answer, say you do not have that information in the knowledge base.\n\n${context}`
+          : agent.systemPrompt ?? '') + WIDGET_FORMAT_GUIDE + guardrailPrompt(agent.guardrails)
+
+        const aiMessages = [
+          { role: 'system' as const, content: systemContext },
+          ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        ]
+
+        const stream = provider.stream({
+          model: agent.model!,
+          messages: aiMessages,
+          temperature: agent.temperature ?? 0.7,
+          maxTokens: agent.maxTokens ?? 2048,
+          apiKey,
+          signal,
+        })
+
+        for await (const chunk of stream) {
+          if (clientDisconnected) break
+          if (chunk.type === 'text' && chunk.content) {
+            fullResponse += chunk.content
+            writeChunk({ content: chunk.content })
+          }
+          if (chunk.type === 'done' && chunk.usage) {
+            totalInputTokens += chunk.usage.promptTokens || 0
+            totalOutputTokens += chunk.usage.completionTokens || 0
+          }
+        }
+      } catch {
+        if (!clientDisconnected) {
+          writeChunk({ content: 'Sorry, something went wrong. Please try again.' })
+          return
+        }
+      }
+
+      if (fullResponse) {
+        const lastUserMsg = await prisma.message.findFirst({
+          where: { conversationId: id, role: 'user' },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        })
+        const responseTimeMs = lastUserMsg ? Date.now() - lastUserMsg.createdAt.getTime() : null
+
+        await prisma.message.create({
+          data: {
+            conversationId: id,
+            role: 'assistant',
+            content: fullResponse,
+            status: 'sent',
+            responseTimeMs,
+            inputTokens: totalInputTokens || null,
+            outputTokens: totalOutputTokens || null,
+            cost: computeCost(agent.model!, totalInputTokens || 0, totalOutputTokens || 0),
+          },
+        })
+      }
     })
 
     if (!clientDisconnected) {
