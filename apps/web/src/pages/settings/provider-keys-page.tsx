@@ -442,6 +442,7 @@ export default function ProviderKeysPage() {
                     {key.label}
                   </Badge>
                 )}
+                <ShieldCheck className="size-3.5 text-success" />
               </div>
               <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
                 {key.keyPreview}
@@ -454,12 +455,6 @@ export default function ProviderKeysPage() {
           />
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="size-3" />
-              Encrypted
-            </span>
-          </Badge>
           <span className="text-[11px] text-muted-foreground">
             Added {formatRelativeTime(key.createdAt)}
           </span>
