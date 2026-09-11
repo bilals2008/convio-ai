@@ -9,10 +9,11 @@ import { FloatingOrbs } from './floating-orbs'
 import { Check, Zap, Shield, Star, Crown } from 'lucide-react'
 import { pricingConfig } from '@/lib/pricing/config'
 import type { PlanConfig } from '@/lib/pricing/config'
+import { usePricingPlans } from '@/lib/pricing/use-pricing-config'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/lib/hooks/useAuth'
 
-const { plans, section } = pricingConfig
+const { section } = pricingConfig
 
 const PLAN_ICONS: Record<string, React.ReactNode> = {
   zap: <Zap className="size-5" />,
@@ -114,6 +115,8 @@ export function Pricing() {
   const [isYearly, setIsYearly] = useState(false)
   const navigate = useNavigate()
   const { data: session } = useSession()
+  const { data: remotePlans } = usePricingPlans()
+  const plans = remotePlans ?? pricingConfig.plans
 
   const handlePlanAction = useCallback((plan: PlanConfig) => {
     if (plan.key === 'enterprise') {
