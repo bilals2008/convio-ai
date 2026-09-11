@@ -13,7 +13,7 @@ interface UsageData {
 }
 
 interface PlanData {
-  name: 'free' | 'pro' | 'business' | 'enterprise'
+  name: 'free' | 'starter' | 'pro' | 'enterprise'
   label: string
   features: string[]
   limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }

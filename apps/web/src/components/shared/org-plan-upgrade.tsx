@@ -11,8 +11,8 @@ interface OrgPlanUpgradeProps {
 }
 
 const PLANS = [
-  { key: 'pro', name: 'Pro', orgs: 3, price: '$39/mo', icon: Zap, color: 'text-emerald-500', bg: 'bg-emerald-500/10', comingSoon: true },
-  { key: 'business', name: 'Business', orgs: 5, price: '$99/mo', icon: Crown, color: 'text-amber-500', bg: 'bg-amber-500/10', comingSoon: true },
+  { key: 'starter', name: 'Starter', orgs: 3, price: '$19/mo', icon: Zap, color: 'text-emerald-500', bg: 'bg-emerald-500/10', comingSoon: true },
+  { key: 'pro', name: 'Pro', orgs: 10, price: '$39/mo', icon: Crown, color: 'text-amber-500', bg: 'bg-amber-500/10', comingSoon: true },
   { key: 'enterprise', name: 'Enterprise', orgs: 'Unlimited', price: 'Custom', icon: Shield, color: 'text-violet-500', bg: 'bg-violet-500/10', comingSoon: true },
 ]
 
@@ -30,7 +30,7 @@ export function OrgPlanUpgrade({ currentOrgs, currentPlan, limit }: OrgPlanUpgra
             Organization limit reached
           </CardTitle>
           <CardDescription className="text-xs">
-            Your {currentPlan === 'free' ? 'Free' : currentPlan === 'pro' ? 'Pro' : 'Business'} plan allows {limit} organization{limit === 1 ? '' : 's'}. You currently have {currentOrgs}.
+            Your {currentPlan === 'free' ? 'Free' : currentPlan === 'starter' ? 'Starter' : 'Pro'} plan allows {limit} organization{limit === 1 ? '' : 's'}. You currently have {currentOrgs}.
           </CardDescription>
         </CardHeader>
         <CardContent>

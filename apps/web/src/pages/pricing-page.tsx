@@ -145,6 +145,9 @@ function PlanCard({ plan, isYearly, onAction }: { plan: PlanConfig; isYearly: bo
         >
           {plan.comingSoon ? 'Coming Soon' : plan.cta}
         </Button>
+        {plan.key !== 'free' && plan.key !== 'enterprise' && (
+          <p className="text-center text-[11px] text-muted-foreground mt-2">14-day free trial, no credit card required</p>
+        )}
       </div>
     </div>
   )

@@ -36,7 +36,7 @@ import {
 } from '@/lib/hooks/use-billing'
 
 interface PlanData {
-  name: 'free' | 'pro' | 'business' | 'enterprise'
+  name: 'free' | 'starter' | 'pro' | 'enterprise'
   label: string
   features: string[]
   limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
@@ -166,7 +166,7 @@ export default function BillingPage() {
   useEffect(() => {
     if (pendingPlan && orgId && !checkoutTriggered.current && !checkout.isPending) {
       checkoutTriggered.current = true
-      const paidPlans = ['pro', 'business', 'enterprise']
+      const paidPlans = ['starter', 'pro', 'enterprise']
       if (paidPlans.includes(pendingPlan)) {
         toast.info('Paid plans are coming soon!')
         setSearchParams({}, { replace: true })

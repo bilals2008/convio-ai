@@ -40,7 +40,7 @@ import {
 import { agents as agentsApi, widgets, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
-import { usePlan } from '@/lib/hooks/use-billing'
+import { usePlanFeatures } from '@/lib/hooks/use-plan-features'
 
 interface Agent {
   id: string
@@ -112,8 +112,7 @@ export default function AgentDetailPage() {
 
   const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
 
-  const { data: plan } = usePlan()
-  const toolsAllowed = !!plan && plan.name !== 'free'
+  const { features } = usePlanFeatures()
 
   const { data: agent, isLoading } = useQuery({
     queryKey: ['agent', id],
@@ -266,7 +265,7 @@ export default function AgentDetailPage() {
       temperature: data.temperature,
       reasoningEffort: data.reasoningEffort,
       maxTokens: data.maxTokens,
-      tools: toolsAllowed ? tools.filter((t) => t.enabled).map((t) => t.id) : [],
+        tools: features.tools ? tools.filter((t) => t.enabled).map((t) => t.id) : [],
       guardrails,
     })
   })
@@ -382,9 +381,9 @@ export default function AgentDetailPage() {
             modelsLoading={modelsLoading}
             modelsError={modelsError}
             modelsErrorMessage={modelsErrorObj instanceof Error ? modelsErrorObj.message : undefined}
-            tools={tools}
-            onToolToggle={handleToolToggle}
-            toolsDisabled={!toolsAllowed}
+             tools={tools}
+             onToolToggle={handleToolToggle}
+             toolsDisabled={!features.tools}
             mcpServers={mcpServers}
             linkedMcpServerIds={linkedMcpServerIds}
             onMcpServerToggle={handleMcpServerToggle}

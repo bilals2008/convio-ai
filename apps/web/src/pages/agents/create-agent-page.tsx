@@ -24,9 +24,9 @@ import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settin
 import { AgentTemplateModal, type AgentTemplate } from '@/components/agents/agent-template-modal'
 import { AgentAiModal, type AgentDraft } from '@/components/agents/agent-ai-modal'
 import { agents as agentsApi, mcpServers as mcpApi } from '@/lib/api'
+import { usePlanFeatures } from '@/lib/hooks/use-plan-features'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
-import { usePlan } from '@/lib/hooks/use-billing'
 import { cn } from '@/lib/utils'
 
 const createSchema = z.object({
@@ -68,8 +68,7 @@ export default function CreateAgentPage() {
   const queryClient = useQueryClient()
   const { orgId } = useOrg()
   const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
-  const { data: plan } = usePlan()
-  const toolsAllowed = !!plan && plan.name !== 'free'
+  const { features } = usePlanFeatures()
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
   const [deploymentOptions, setDeploymentOptions] = useState(DEFAULT_DEPLOYMENTS)
@@ -228,7 +227,7 @@ export default function CreateAgentPage() {
         maxTokens: 2048,
         organizationId: orgId,
         capabilities: capabilities.filter((c) => c.enabled).map((c) => c.id),
-        tools: toolsAllowed ? tools.filter((t) => t.enabled).map((t) => t.id) : [],
+        tools: features.tools ? tools.filter((t) => t.enabled).map((t) => t.id) : [],
         deployment: deploymentOptions.filter((o) => o.enabled).map((o) => o.id),
         settings: { toneOfVoice: data.toneOfVoice, language: data.language },
         guardrails: guardrails.enabled ? guardrails : undefined,
@@ -401,19 +400,19 @@ export default function CreateAgentPage() {
             <div className="lg:sticky lg:top-6 lg:space-y-6">
               {/* Tools */}
               <Card>
-                <CardHeader className="flex flex-row items-center gap-3">
+              <CardHeader className="flex flex-row items-center gap-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
                     <Wrench className="size-4.5" />
                   </div>
                   <div>
                   <div className="flex items-center gap-2">
                     <CardTitle>Tools</CardTitle>
-                    {!toolsAllowed && (
+                    {!features.tools && (
                       <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Pro</span>
                     )}
                   </div>
                   <CardDescription>
-                    {toolsAllowed ? 'Built-in tools your agent can use.' : 'Upgrade to Pro to enable tools'}
+                    {features.tools ? 'Built-in tools your agent can use.' : 'Upgrade to Pro to enable tools'}
                   </CardDescription>
                   </div>
                 </CardHeader>
@@ -421,7 +420,7 @@ export default function CreateAgentPage() {
                   <AgentToolPicker
                     tools={tools}
                     onToggle={handleToolToggle}
-                    disabled={saving || !toolsAllowed}
+                    disabled={saving || !features.tools}
                     onSeeAll={() => setToolModalOpen(true)}
                     totalCount={builtInTools.length}
                   />
@@ -510,56 +509,55 @@ export default function CreateAgentPage() {
               </Card>
 
               {/* Deployment */}
-              <Card>
-                <CardHeader className="flex flex-row items-center gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
-                    <Globe className="size-4.5" />
-                  </div>
-                  <div>
-                    <CardTitle>Deployment</CardTitle>
-                    <CardDescription>Where your agent will be available.</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-1">
-                    {DEFAULT_DEPLOYMENTS.map((opt) => {
-                      const enabled = deploymentOptions.find((o) => o.id === opt.id)?.enabled ?? opt.enabled
-                      const available = enabled || opt.id === 'web-chat-widget' || opt.id === 'whatsapp'
-                      const isBrand = opt.icon === 'whatsapp'
-                      return (
-                        <div
-                          key={opt.id}
-                          className={cn(
-                            'flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors',
-                            available ? 'hover:bg-muted/40' : 'opacity-50'
-                          )}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="flex size-7 shrink-0 items-center justify-center rounded-md">
-                              {isBrand ? (
-                                <span className={cn('flex items-center justify-center p-0.5 rounded', enabled ? 'bg-primary/10' : 'bg-muted')}>
-                                  <img src={`${CDN}/whatsapp/default.svg`} alt="WhatsApp" className="size-4" />
-                                </span>
-                              ) : (
-                                <span className={cn('flex items-center justify-center p-0.5 rounded', enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>
-                                  {opt.icon === 'link' ? <Link className="size-4" /> : <Globe className="size-4" />}
-                                </span>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <Label className="text-xs font-medium leading-tight">{opt.label}</Label>
-                              <p className="text-[11px] text-muted-foreground leading-tight">{opt.description}</p>
-                            </div>
-                          </div>
-                          <Switch
-                            size="sm"
-                            checked={enabled}
-                            onCheckedChange={(checked) => setDeploymentOptions((c) => c.map((x) => x.id === opt.id ? { ...x, enabled: checked } : x))}
-                            disabled={saving || !available}
-                          />
-                        </div>
-                      )
-                    })}
+               <Card>
+                 <CardHeader className="flex flex-row items-center gap-3">
+                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
+                     <Globe className="size-4.5" />
+                   </div>
+                   <div>
+                     <CardTitle>Deployment</CardTitle>
+                     <CardDescription>Where your agent will be available.</CardDescription>
+                   </div>
+                 </CardHeader>
+                 <CardContent>
+                   <div className="space-y-1">
+                      {DEFAULT_DEPLOYMENTS.filter((opt) => features.deploymentChannels.includes(opt.id)).map((opt) => {
+                        const enabled = deploymentOptions.find((o) => o.id === opt.id)?.enabled ?? opt.enabled
+                        const isBrand = opt.icon === 'whatsapp'
+                        return (
+                         <div
+                           key={opt.id}
+                           className={cn(
+                             'flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors',
+                             'hover:bg-muted/40'
+                           )}
+                         >
+                           <div className="flex items-center gap-2.5 min-w-0">
+                             <div className="flex size-7 shrink-0 items-center justify-center rounded-md">
+                               {isBrand ? (
+                                 <span className={cn('flex items-center justify-center p-0.5 rounded', enabled ? 'bg-primary/10' : 'bg-muted')}>
+                                   <img src={`${CDN}/whatsapp/default.svg`} alt="WhatsApp" className="size-4" />
+                                 </span>
+                               ) : (
+                                 <span className={cn('flex items-center justify-center p-0.5 rounded', enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>
+                                   {opt.icon === 'link' ? <Link className="size-4" /> : <Globe className="size-4" />}
+                                 </span>
+                               )}
+                             </div>
+                             <div className="min-w-0">
+                               <Label className="text-xs font-medium leading-tight">{opt.label}</Label>
+                               <p className="text-[11px] text-muted-foreground leading-tight">{opt.description}</p>
+                             </div>
+                           </div>
+                           <Switch
+                             size="sm"
+                             checked={enabled}
+                             onCheckedChange={(checked) => setDeploymentOptions((c) => c.map((x) => x.id === opt.id ? { ...x, enabled: checked } : x))}
+                             disabled={saving}
+                           />
+                         </div>
+                       )
+                     })}
                   </div>
                 </CardContent>
               </Card>
@@ -651,7 +649,7 @@ export default function CreateAgentPage() {
                     size="sm"
                     checked={current.enabled}
                     onCheckedChange={(checked) => handleToolToggle(tool.id, checked)}
-                    disabled={saving || !toolsAllowed}
+                    disabled={saving || !features.tools}
                   />
                 </div>
               )

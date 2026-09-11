@@ -1,48 +1,43 @@
-import { ArrowRight, CreditCard, CheckCircle, Zap, Building2, Crown } from 'lucide-react'
+import { ArrowRight, CreditCard, CheckCircle, Zap, Building2, Crown, Star } from 'lucide-react'
 import { DocContent, DocPageHeader, DocCallout, DocCardGrid, DocFeatureCard, DocNextStepCard } from '@/components/docs'
+import { pricingConfig } from '@/lib/pricing/config'
 
-const plans = [
-  {
-    icon: Zap,
-    name: 'Free',
-    price: '$0',
-    period: '/month',
-    description: 'Get started with Convio at no cost. Ideal for personal projects and exploration.',
-    color: 'text-muted-foreground',
-    bg: 'bg-muted',
-    features: ['1 agent', '100 messages/month', '1 team member', '1 knowledge base', 'Community support'],
-  },
-  {
-    icon: Crown,
-    name: 'Pro',
-    price: '$29',
-    period: '/month',
-    description: 'For growing teams that need more capacity, faster support, and advanced analytics.',
-    color: 'text-primary',
-    bg: 'bg-primary/10',
-    features: ['10 agents', '10,000 messages/month', '5 team members', '10 knowledge bases', 'Priority email support'],
-  },
-  {
-    icon: Building2,
-    name: 'Business',
-    price: '$99',
-    period: '/month',
-    description: 'Advanced features for scaling teams with full collaboration and analytics.',
-    color: 'text-info',
-    bg: 'bg-info/10',
-    features: ['50 agents', '50,000 messages/month', '20 team members', 'Unlimited knowledge bases', 'Priority support + Slack'],
-  },
-  {
-    icon: CreditCard,
-    name: 'Enterprise',
-    price: 'Custom',
-    period: '',
-    description: 'Tailored solutions with dedicated support, custom SLAs, and on-premise deployment.',
-    color: 'text-warning',
-    bg: 'bg-warning/10',
-    features: ['Unlimited agents', 'Custom message limits', 'Unlimited team members', 'Unlimited knowledge bases', 'Dedicated account manager'],
-  },
+const ICON_MAP: Record<string, typeof Zap> = { zap: Zap, star: Star, crown: Crown, shield: CreditCard }
+
+const COLOR_MAP: Record<string, { color: string; bg: string }> = {
+  'text-muted-foreground': { color: 'text-muted-foreground', bg: 'bg-muted' },
+  'text-info': { color: 'text-info', bg: 'bg-info/10' },
+  'text-primary': { color: 'text-primary', bg: 'bg-primary/10' },
+  'text-chart-4': { color: 'text-warning', bg: 'bg-warning/10' },
+}
+
+const docsFeatures: Record<string, string[]> = {
+  free: ['1 agent', '500 messages/month', '1 knowledge base', 'Web widget', 'Basic analytics', 'Community support'],
+  starter: ['3 agents', '5,000 messages/month', '3 knowledge bases', 'Web + WhatsApp', 'API access', '14-day free trial'],
+  pro: ['10 agents', '25,000 messages/month', '10 knowledge bases', 'All channels', 'Advanced analytics', 'API access', 'Priority support', '14-day free trial'],
+  enterprise: ['Unlimited agents', 'Unlimited messages', 'Unlimited knowledge bases', 'SSO / SAML', 'Dedicated onboarding', 'SLA guarantee'],
+}
+
+const comparisonRows = [
+  { label: 'Agents', free: '1', starter: '3', pro: '10', enterprise: 'Unlimited' },
+  { label: 'Messages / month', free: '500', starter: '5,000', pro: '25,000', enterprise: 'Unlimited' },
+  { label: 'Knowledge bases', free: '1', starter: '3', pro: '10', enterprise: 'Unlimited' },
+  { label: 'Channels', free: 'Web', starter: 'Web + WhatsApp', pro: 'All', enterprise: 'All' },
+  { label: 'Analytics', free: 'Basic', starter: 'Basic', pro: 'Advanced', enterprise: 'Custom dashboards' },
+  { label: 'Support', free: 'Community', starter: 'Community', pro: 'Priority', enterprise: 'Dedicated manager' },
 ]
+
+const plans = pricingConfig.plans.map((p) => {
+  const iconKey = p.icon ?? 'zap'
+  const colors = COLOR_MAP[p.iconColor ?? 'text-muted-foreground'] ?? COLOR_MAP['text-muted-foreground']
+  return {
+    ...p,
+    icon: ICON_MAP[iconKey] ?? Zap,
+    color: colors.color,
+    bg: colors.bg,
+    features: docsFeatures[p.key] ?? p.features.map((f) => f.text),
+  }
+})
 
 export default function PlansPage() {
   return (
@@ -82,82 +77,40 @@ export default function PlansPage() {
           <thead>
             <tr className="border-b border-border/60">
               <th className="text-left py-2 pr-4 font-heading font-semibold text-foreground">Feature</th>
-              <th className="text-center py-2 px-3 font-heading font-semibold text-foreground">Free</th>
-              <th className="text-center py-2 px-3 font-heading font-semibold text-foreground">Pro</th>
-              <th className="text-center py-2 px-3 font-heading font-semibold text-foreground">Business</th>
-              <th className="text-center py-2 px-3 font-heading font-semibold text-foreground">Enterprise</th>
+              {plans.map((p) => (
+                <th key={p.key} className="text-center py-2 px-3 font-heading font-semibold text-foreground">{p.name}</th>
+              ))}
             </tr>
           </thead>
           <tbody className="text-muted-foreground">
-            <tr className="border-b border-border/30">
-              <td className="py-2 pr-4 text-foreground">Agents</td>
-              <td className="text-center py-2 px-3">1</td>
-              <td className="text-center py-2 px-3">10</td>
-              <td className="text-center py-2 px-3">50</td>
-              <td className="text-center py-2 px-3">Unlimited</td>
-            </tr>
-            <tr className="border-b border-border/30">
-              <td className="py-2 pr-4 text-foreground">Messages / month</td>
-              <td className="text-center py-2 px-3">100</td>
-              <td className="text-center py-2 px-3">10,000</td>
-              <td className="text-center py-2 px-3">50,000</td>
-              <td className="text-center py-2 px-3">Custom</td>
-            </tr>
-            <tr className="border-b border-border/30">
-              <td className="py-2 pr-4 text-foreground">Team members</td>
-              <td className="text-center py-2 px-3">1</td>
-              <td className="text-center py-2 px-3">5</td>
-              <td className="text-center py-2 px-3">20</td>
-              <td className="text-center py-2 px-3">Unlimited</td>
-            </tr>
-            <tr className="border-b border-border/30">
-              <td className="py-2 pr-4 text-foreground">Knowledge bases</td>
-              <td className="text-center py-2 px-3">1</td>
-              <td className="text-center py-2 px-3">10</td>
-              <td className="text-center py-2 px-3">Unlimited</td>
-              <td className="text-center py-2 px-3">Unlimited</td>
-            </tr>
-            <tr className="border-b border-border/30">
-              <td className="py-2 pr-4 text-foreground">Channels</td>
-              <td className="text-center py-2 px-3">1</td>
-              <td className="text-center py-2 px-3">5</td>
-              <td className="text-center py-2 px-3">Unlimited</td>
-              <td className="text-center py-2 px-3">Unlimited</td>
-            </tr>
-            <tr className="border-b border-border/30">
-              <td className="py-2 pr-4 text-foreground">Analytics</td>
-              <td className="text-center py-2 px-3">Basic</td>
-              <td className="text-center py-2 px-3">Advanced</td>
-              <td className="text-center py-2 px-3">Advanced + Export</td>
-              <td className="text-center py-2 px-3">Custom dashboards</td>
-            </tr>
-            <tr>
-              <td className="py-2 pr-4 text-foreground">Support</td>
-              <td className="text-center py-2 px-3">Community</td>
-              <td className="text-center py-2 px-3">Priority email</td>
-              <td className="text-center py-2 px-3">Priority + Slack</td>
-              <td className="text-center py-2 px-3">Dedicated manager</td>
-            </tr>
+            {comparisonRows.map((row, i) => (
+              <tr key={row.label} className="border-b border-border/30">
+                <td className="py-2 pr-4 text-foreground">{row.label}</td>
+                {plans.map((p) => (
+                  <td key={p.key} className="text-center py-2 px-3">{row[p.key as keyof typeof row]}</td>
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
       <h2 id="free-plan">Free Plan</h2>
       <p>
-        The free plan is fully functional — you can create one agent, connect one channel, and send up to 100 messages per month. It's great for testing Convio, building a personal assistant, or exploring the platform before committing.
+        The free plan is fully functional — you can create one agent, connect one knowledge base, and send up to 500 messages per month. It's great for testing Convio, building a personal assistant, or exploring the platform before committing.
       </p>
       <DocCallout variant="info" icon={Zap} title="No credit card required">
         Sign up and start building immediately. Upgrade to a paid plan anytime when you need more capacity.
       </DocCallout>
 
-      <h2 id="pro-plan">Pro Plan</h2>
+      <h2 id="starter-plan">Starter Plan</h2>
       <p>
-        The Pro plan unlocks higher limits and priority support. Build up to 10 agents, send 10,000 messages per month, and invite up to 5 team members. Includes advanced analytics with conversation trends, satisfaction scores, and resolution metrics.
+        The Starter plan is for small businesses getting started with AI. Build up to 3 agents, send 5,000 messages per month, and connect WhatsApp alongside your web widget. Includes API access for custom integrations.
       </p>
 
-      <h2 id="business-plan">Business Plan</h2>
+      <h2 id="pro-plan">Pro Plan</h2>
       <p>
-        The Business plan is for teams scaling their AI operations. Get 50 agents, 50,000 messages per month, unlimited knowledge bases, and 20 team seats. Includes Slack-based priority support and advanced analytics with CSV export.
+        The Pro plan unlocks higher limits and priority support. Build up to 10 agents, send 25,000 messages per month, and connect all channels. Includes advanced analytics with conversation trends, satisfaction scores, and resolution metrics.
       </p>
 
       <h2 id="enterprise-plan">Enterprise Plan</h2>

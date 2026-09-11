@@ -74,7 +74,7 @@ import { AgentDeleteDialog } from '@/components/agents/agent-delete-dialog'
 import { ProviderLogo } from '@/components/agents/provider-logos'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
-import { usePlan } from '@/lib/hooks/use-billing'
+import { usePlanFeatures } from '@/lib/hooks/use-plan-features'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { cn, formatRelativeTime } from '@/lib/utils'
 
@@ -282,8 +282,8 @@ export default function AgentsListPage() {
 
   const agents = useMemo(() => agentsData ?? [], [agentsData])
 
-  const { data: plan } = usePlan()
-  const agentLimit = plan?.limits?.agents ?? 1
+  const { features } = usePlanFeatures()
+  const agentLimit = features.agents ?? 1
   const atLimit = agents.length >= agentLimit
 
   const statusOptions = useMemo(
