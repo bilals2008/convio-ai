@@ -229,8 +229,16 @@ export default function AgentDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       queryClient.invalidateQueries({ queryKey: ['agent', id] })
     },
-    onError: (error) => {
-      toast.error(error?.message || 'Failed to save agent')
+    onError: (error: { response?: { status?: number }; message?: string }) => {
+      const status = error?.response?.status
+      if (status === 402) {
+        toast.error('You have reached your plan limit. Upgrade to continue.', {
+          action: { label: 'Upgrade', onClick: () => navigate('/settings/billing') },
+          duration: 8000,
+        })
+      } else {
+        toast.error(error?.message || 'Failed to save agent')
+      }
     },
   })
 

@@ -191,7 +191,17 @@ export default function CreateAgentPage() {
       toast.success('Agent created')
       navigate('/agents')
     },
-    onError: (error: Error) => toast.error(error.message || 'Unable to create agent. Please try again.'),
+    onError: (error: { response?: { status?: number }; message?: string }) => {
+      const status = error?.response?.status
+      if (status === 402) {
+        toast.error('You have reached your plan limit. Upgrade to create more agents.', {
+          action: { label: 'Upgrade', onClick: () => navigate('/settings/billing') },
+          duration: 8000,
+        })
+      } else {
+        toast.error(error?.message || 'Unable to create agent. Please try again.')
+      }
+    },
   })
 
   const handleToolToggle = (id: string, enabled: boolean) => {

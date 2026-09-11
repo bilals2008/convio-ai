@@ -68,11 +68,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { toast as sonnerToast } from 'sonner'
 import { toast } from '@/lib/toast'
 import { AgentDeleteDialog } from '@/components/agents/agent-delete-dialog'
 import { ProviderLogo } from '@/components/agents/provider-logos'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
+import { usePlan } from '@/lib/hooks/use-billing'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { cn, formatRelativeTime } from '@/lib/utils'
 
@@ -279,6 +281,10 @@ export default function AgentsListPage() {
   })
 
   const agents = useMemo(() => agentsData ?? [], [agentsData])
+
+  const { data: plan } = usePlan()
+  const agentLimit = plan?.limits?.agents ?? 1
+  const atLimit = agents.length >= agentLimit
 
   const statusOptions = useMemo(
     () => ['all', ...Array.from(new Set(agents.map((a) => a.status).filter(Boolean)))],
@@ -556,7 +562,19 @@ export default function AgentsListPage() {
                 <LayoutTemplate className="size-4" />
                 Templates
               </Button>
-              <Button onClick={() => navigate('/agents/new')} className="shrink-0">
+              <Button
+                onClick={() => {
+                  if (atLimit) {
+                    sonnerToast.error(`You've reached your plan limit of ${agentLimit} agent${agentLimit !== 1 ? 's' : ''}. Upgrade to create more.`, {
+                      action: { label: 'Upgrade', onClick: () => navigate('/settings/billing') },
+                      duration: 8000,
+                    })
+                    return
+                  }
+                  navigate('/agents/new')
+                }}
+                className="shrink-0"
+              >
                 <Plus className="size-4" />
                 Create Agent
               </Button>
@@ -564,6 +582,22 @@ export default function AgentsListPage() {
           )}
         </div>
       </div>
+
+      {/* Plan limit banner */}
+      {!loading && !isError && atLimit && (
+        <div className="flex items-center justify-between rounded-xl border border-warning/30 bg-warning/5 px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="size-4 text-warning" />
+            <p className="text-sm text-foreground">
+              You've reached your limit of <span className="font-medium">{agentLimit}</span> agent{agentLimit !== 1 ? 's' : ''}.{' '}
+              <span className="text-muted-foreground">Upgrade your plan to create more.</span>
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/settings/billing')}>
+            Upgrade Plan
+          </Button>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
