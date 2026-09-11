@@ -60,6 +60,7 @@ export function chatWidgetPropsFromConfig(
     customWidth: config.customWidth,
     customHeight: config.customHeight,
     launcherOffset: config.launcherOffset,
+    showTeaser: config.showTeaser !== false,
     teaserMessage: config.teaserMessage || '',
     teaserDelay: config.teaserDelay,
     hiddenPages: config.hiddenPages,

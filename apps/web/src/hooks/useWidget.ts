@@ -53,6 +53,7 @@ export interface WidgetConfig {
   customWidth?: number
   customHeight?: number
   launcherOffset?: number
+  showTeaser?: boolean
   teaserMessage?: string
   teaserDelay?: number
   hiddenPages?: string[]
@@ -365,10 +366,10 @@ export function useWidget(config: WidgetConfig) {
 
   const isEmbed = useRef(typeof window !== 'undefined' && window.parent !== window)
   const LAUNCHER_PX = { small: 48, default: 56, large: 64 } as const
-  const OPEN_WIDTH_MAP: Record<string, number> = { narrow: 320, default: 400, wide: 440 }
+  const OPEN_WIDTH_MAP: Record<string, number> = { narrow: 320, default: 380, wide: 440 }
   const OPEN_WIDTH = config.customWidth && config.customWidth > 0
-    ? config.customWidth
-    : OPEN_WIDTH_MAP[config.widgetWidth || 'default'] || 400
+    ? Math.min(config.customWidth, 500)
+    : OPEN_WIDTH_MAP[config.widgetWidth || 'default'] || 380
   const OPEN_HEIGHT = config.customHeight && config.customHeight > 0
     ? Math.min(Math.max(config.customHeight, 300), 1200)
     : Math.min(Math.max(config.widgetHeight || 620, 300), 900)
@@ -400,14 +401,14 @@ export function useWidget(config: WidgetConfig) {
   // Teaser message — appears after a delay, dismisses on open.
   const [teaserVisible, setTeaserVisible] = useState(false)
   useEffect(() => {
-    if (config.preview || !config.teaserMessage || isOpen || isHidden) {
+    if (config.preview || config.showTeaser === false || !config.teaserMessage || isOpen || isHidden) {
       setTeaserVisible(false)
       return
     }
     const delay = Math.max(config.teaserDelay ?? 5, 1) * 1000
     const id = setTimeout(() => setTeaserVisible(true), delay)
     return () => clearTimeout(id)
-  }, [config.preview, config.teaserMessage, config.teaserDelay, isOpen, isHidden])
+  }, [config.preview, config.showTeaser, config.teaserMessage, config.teaserDelay, isOpen, isHidden])
   const dismissTeaser = useCallback(() => setTeaserVisible(false), [])
 
   // Fullscreen on small screens: track viewport so open/close sizing follows

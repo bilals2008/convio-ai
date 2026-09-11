@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { SectionCard } from './SectionCard'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import type { WidgetConfig } from '../types'
 import {
@@ -31,6 +32,7 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
   const customWidth = config.customWidth ?? 0
   const customHeight = config.customHeight ?? 0
   const launcherOffset = config.launcherOffset ?? 0
+  const showTeaser = config.showTeaser !== false
   const teaserMessage = config.teaserMessage ?? ''
   const teaserDelay = config.teaserDelay ?? 5
   const hiddenPages = config.hiddenPages ?? []
@@ -171,7 +173,7 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
                 <span className="text-xs text-muted-foreground">Width</span>
                 <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">{customWidth > 0 ? `${customWidth}px` : 'auto'}</span>
               </div>
-              <input type="range" min={0} max={800} step={10} value={customWidth} onChange={(e) => onChange({ customWidth: Number(e.target.value) })} className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary" />
+              <input type="range" min={0} max={500} step={10} value={customWidth} onChange={(e) => onChange({ customWidth: Number(e.target.value) })} className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary" />
               <p className="text-[11px] text-muted-foreground/50">0 = use preset above</p>
             </div>
             <div className="space-y-1.5">
@@ -195,14 +197,21 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
           </div>
 
           {/* Teaser message */}
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-foreground">Teaser message</span>
-            <Input value={teaserMessage} onChange={(e) => onChange({ teaserMessage: e.target.value })} placeholder="Need help? Chat with us" maxLength={80} className="h-8 text-xs" />
-            <div className="flex items-center gap-3">
-              <span className="text-[11px] text-muted-foreground">Show after</span>
-              <input type="number" min={1} max={60} value={teaserDelay} onChange={(e) => onChange({ teaserDelay: Number(e.target.value) || 5 })} className="h-7 w-14 rounded-md border border-border bg-muted/30 px-2 text-center text-xs tabular-nums" />
-              <span className="text-[11px] text-muted-foreground">seconds</span>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-foreground">Teaser message</span>
+              <Switch checked={showTeaser} onCheckedChange={(v) => onChange({ showTeaser: v })} />
             </div>
+            {showTeaser && (
+              <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3">
+                <Input value={teaserMessage} onChange={(e) => onChange({ teaserMessage: e.target.value })} placeholder="Need help? Chat with us" maxLength={80} className="h-8 text-xs" />
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">Show after</span>
+                  <input type="number" min={1} max={60} value={teaserDelay} onChange={(e) => onChange({ teaserDelay: Number(e.target.value) || 5 })} className="h-7 w-14 rounded-md border border-border bg-muted/30 px-2 text-center text-xs tabular-nums" />
+                  <span className="text-[11px] text-muted-foreground">seconds</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Hidden pages */}

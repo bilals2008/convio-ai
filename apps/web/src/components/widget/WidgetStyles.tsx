@@ -159,7 +159,7 @@ export function WidgetStyles({ theme, themeMode = 'auto' }: WidgetStylesProps) {
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: `.convio-widget { background: transparent !important; ${Object.entries(vars)
+        __html: `.convio-widget { background: transparent !important; --border: var(--widget-border) !important; --ring: var(--widget-primary) !important; ${Object.entries(vars)
           .map(([k, v]) => `${k}: ${v};`)
           .join(' ')} }`,
       }}

@@ -38,6 +38,7 @@ export interface ChatWidgetProps {
   customWidth?: number
   customHeight?: number
   launcherOffset?: number
+  showTeaser?: boolean
   teaserMessage?: string
   teaserDelay?: number
   hiddenPages?: string[]
@@ -104,12 +105,13 @@ export function ChatWidget({
   customWidth = 0,
   customHeight = 0,
   launcherOffset = 0,
+  showTeaser = true,
   teaserMessage = '',
   teaserDelay = 5,
   hiddenPages = [],
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, host, visitorId, currentPath, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior, launcherShape, customWidth, customHeight, launcherOffset, teaserMessage, teaserDelay, hiddenPages })
+  const widget = useWidget({ agentId, publicKey, host, visitorId, currentPath, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior, launcherShape, customWidth, customHeight, launcherOffset, showTeaser, teaserMessage, teaserDelay, hiddenPages })
   // Fullscreen windows are edge-to-edge — sharp corners regardless of setting.
   const effectiveBorderRadius = widget.isFullscreen ? 'none' : borderRadius
 

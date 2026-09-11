@@ -42,6 +42,7 @@ export interface WidgetConfig {
   customWidth?: number
   customHeight?: number
   launcherOffset?: number
+  showTeaser?: boolean
   teaserMessage?: string
   teaserDelay?: number
   hiddenPages?: string[]

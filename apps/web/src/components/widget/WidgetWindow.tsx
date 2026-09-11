@@ -19,7 +19,7 @@ export function WidgetWindow() {
 
   if (!isOpen && !exiting) return null
 
-  const widthPx = customWidth && customWidth > 0 ? customWidth : undefined
+  const widthPx = customWidth && customWidth > 0 ? Math.min(customWidth, 500) : undefined
   const heightPx = customHeight && customHeight > 0
     ? Math.min(Math.max(customHeight, 300), 1200)
     : (widgetHeight || DEFAULT_HEIGHT)

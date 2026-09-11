@@ -278,7 +278,7 @@ export default function WidgetConfigPage() {
 
       {widget && (
         <ChatWidget
-          key={JSON.stringify([config.agentName, config.agentAvatar, config.greeting, config.primaryColor, config.backgroundColor, config.textColor, config.position, config.headerTitle, config.headerSubtitle, config.launcherLabel, config.footerBgColor, config.quickReplies, config.widgetWidth, config.widgetHeight, config.launcherSize, config.borderRadius, config.launcherShape, config.customWidth, config.customHeight, config.launcherOffset, config.teaserMessage, config.teaserDelay, config.showPoweredBy, config.themeMode, config.headerGradient, config.placeholderText, config.showOnlineIndicator])}
+          key={JSON.stringify([config.agentName, config.agentAvatar, config.greeting, config.primaryColor, config.backgroundColor, config.textColor, config.position, config.headerTitle, config.headerSubtitle, config.launcherLabel, config.footerBgColor, config.quickReplies, config.widgetWidth, config.widgetHeight, config.launcherSize, config.borderRadius, config.launcherShape, config.customWidth, config.customHeight, config.launcherOffset, config.showTeaser, config.teaserMessage, config.teaserDelay, config.showPoweredBy, config.themeMode, config.headerGradient, config.placeholderText, config.showOnlineIndicator])}
           {...chatWidgetPropsFromConfig(
             { config, agent: widget.agent },
             { agentId: widget.agent.id, publicKey: widget.publicKey, preview: true },
