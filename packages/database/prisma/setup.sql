@@ -200,7 +200,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, name, avatar, "emailVerified")
+  INSERT INTO public.profiles (id, email, name, avatar, "emailVerified", "updatedAt")
   VALUES (
     NEW.id,
     NEW.email,
@@ -212,7 +212,8 @@ BEGIN
       NEW.raw_user_meta_data ->> 'avatar_url',
       NEW.raw_user_meta_data ->> 'picture'
     ),
-    COALESCE(NEW.email_confirmed_at IS NOT NULL, NEW.confirmed_at IS NOT NULL, false)
+    COALESCE(NEW.email_confirmed_at IS NOT NULL, NEW.confirmed_at IS NOT NULL, false),
+    NOW()
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
