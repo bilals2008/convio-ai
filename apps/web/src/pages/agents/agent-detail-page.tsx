@@ -40,6 +40,7 @@ import {
 import { agents as agentsApi, widgets, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
+import { usePlan } from '@/lib/hooks/use-billing'
 
 interface Agent {
   id: string
@@ -110,6 +111,9 @@ export default function AgentDetailPage() {
   }, [activeTab])
 
   const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
+
+  const { data: plan } = usePlan()
+  const toolsAllowed = !!plan && plan.name !== 'free'
 
   const { data: agent, isLoading } = useQuery({
     queryKey: ['agent', id],
@@ -254,7 +258,7 @@ export default function AgentDetailPage() {
       temperature: data.temperature,
       reasoningEffort: data.reasoningEffort,
       maxTokens: data.maxTokens,
-      tools: tools.filter((t) => t.enabled).map((t) => t.id),
+      tools: toolsAllowed ? tools.filter((t) => t.enabled).map((t) => t.id) : [],
       guardrails,
     })
   })
@@ -372,6 +376,7 @@ export default function AgentDetailPage() {
             modelsErrorMessage={modelsErrorObj instanceof Error ? modelsErrorObj.message : undefined}
             tools={tools}
             onToolToggle={handleToolToggle}
+            toolsDisabled={!toolsAllowed}
             mcpServers={mcpServers}
             linkedMcpServerIds={linkedMcpServerIds}
             onMcpServerToggle={handleMcpServerToggle}

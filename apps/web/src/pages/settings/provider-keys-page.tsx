@@ -515,7 +515,14 @@ export default function ProviderKeysPage() {
                             const meta = getProviderMeta(id)
                             return (
                               <SelectItem key={id} value={id}>
-                                {meta.name}
+                                <span className="flex items-center gap-1.5">
+                                  {meta.name}
+                                  {id === 'agnes' && (
+                                    <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                                      New
+                                    </span>
+                                  )}
+                                </span>
                               </SelectItem>
                             )
                           })

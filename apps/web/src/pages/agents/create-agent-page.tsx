@@ -26,6 +26,7 @@ import { AgentAiModal, type AgentDraft } from '@/components/agents/agent-ai-moda
 import { agents as agentsApi, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
+import { usePlan } from '@/lib/hooks/use-billing'
 import { cn } from '@/lib/utils'
 
 const createSchema = z.object({
@@ -67,6 +68,8 @@ export default function CreateAgentPage() {
   const queryClient = useQueryClient()
   const { orgId } = useOrg()
   const { data: models = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj } = useAvailableModels()
+  const { data: plan } = usePlan()
+  const toolsAllowed = !!plan && plan.name !== 'free'
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
   const [deploymentOptions, setDeploymentOptions] = useState(DEFAULT_DEPLOYMENTS)
@@ -215,7 +218,7 @@ export default function CreateAgentPage() {
         maxTokens: 2048,
         organizationId: orgId,
         capabilities: capabilities.filter((c) => c.enabled).map((c) => c.id),
-        tools: tools.filter((t) => t.enabled).map((t) => t.id),
+        tools: toolsAllowed ? tools.filter((t) => t.enabled).map((t) => t.id) : [],
         deployment: deploymentOptions.filter((o) => o.enabled).map((o) => o.id),
         settings: { toneOfVoice: data.toneOfVoice, language: data.language },
         guardrails: guardrails.enabled ? guardrails : undefined,
@@ -393,15 +396,22 @@ export default function CreateAgentPage() {
                     <Wrench className="size-4.5" />
                   </div>
                   <div>
+                  <div className="flex items-center gap-2">
                     <CardTitle>Tools</CardTitle>
-                    <CardDescription>Built-in tools your agent can use.</CardDescription>
+                    {!toolsAllowed && (
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Pro</span>
+                    )}
+                  </div>
+                  <CardDescription>
+                    {toolsAllowed ? 'Built-in tools your agent can use.' : 'Upgrade to Pro to enable tools'}
+                  </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <AgentToolPicker
                     tools={tools}
                     onToggle={handleToolToggle}
-                    disabled={saving}
+                    disabled={saving || !toolsAllowed}
                     onSeeAll={() => setToolModalOpen(true)}
                     totalCount={builtInTools.length}
                   />
@@ -631,7 +641,7 @@ export default function CreateAgentPage() {
                     size="sm"
                     checked={current.enabled}
                     onCheckedChange={(checked) => handleToolToggle(tool.id, checked)}
-                    disabled={saving}
+                    disabled={saving || !toolsAllowed}
                   />
                 </div>
               )
