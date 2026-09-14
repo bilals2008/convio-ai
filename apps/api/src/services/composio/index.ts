@@ -147,6 +147,15 @@ export async function getSessionTools(session: {
   return []
 }
 
+/**
+ * Errors that genuinely mean the toolkit's connection is missing/revoked.
+ * Deliberately narrow — a bare "connect" or "auth" appears in unrelated
+ * tool failures (invalid page IDs, permissions, network hiccups) and would
+ * make the agent falsely claim the integration isn't set up.
+ */
+const AUTH_ERROR_PATTERN =
+  /\b(401|403)\b|unauthorized|not connected|no connected account|connected account (not|isn't|is not)|authentication required|re-?connect/i
+
 /** Execute a Composio tool through its session. */
 export async function executeComposioTool(
   session: {
@@ -158,15 +167,21 @@ export async function executeComposioTool(
   try {
     const result = (await session.execute(slug, args)) as { data?: unknown; error?: string | null }
     if (result && typeof result === 'object' && 'data' in result && 'error' in result) {
-      if (result.error) throw new ComposioAuthError(result.error, new Error(result.error))
+      if (result.error) {
+        const message = String(result.error)
+        // Auth failures get the special error so the adapter can hint at reconnecting;
+        // everything else keeps its REAL message so the LLM sees what actually failed.
+        if (AUTH_ERROR_PATTERN.test(message)) throw new ComposioAuthError(message, new Error(message))
+        throw new Error(message)
+      }
       return result.data
     }
     return result
   } catch (error) {
     if (error instanceof ComposioAuthError) throw error
     const message = error instanceof Error ? error.message : String(error)
-    if (/unauthorized|auth|connect|401/i.test(message)) {
-      throw new ComposioAuthError('Authentication required for this toolkit', new Error(message))
+    if (AUTH_ERROR_PATTERN.test(message)) {
+      throw new ComposioAuthError(message, new Error(message))
     }
     throw error
   }

@@ -32,12 +32,15 @@ export function adaptComposioTools(
       } catch (error) {
         if (error instanceof ComposioAuthError) {
           return {
-            error: `This toolkit (${tool.toolkit}) is not connected yet. Ask the user to connect it from Settings → Composio, then retry.`,
+            error: `The ${tool.toolkit} connection is missing or expired. Tell the user to reconnect it in Settings → Composio.`,
             needs_auth: true,
             toolkit: tool.toolkit,
           }
         }
-        return { error: `Composio tool ${tool.name} failed: ${(error as Error).message}` }
+        // Pass the REAL failure through — wrong page ID, missing permissions,
+        // rate limits, etc. The model can often retry with corrected arguments,
+        // and it should never claim the integration is missing when it isn't.
+        return { error: `${tool.name} failed: ${(error as Error).message}` }
       }
     },
   }))
