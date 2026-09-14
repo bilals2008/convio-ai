@@ -4,7 +4,9 @@ import { AgentCapabilities, type Capability } from '@/components/agents/agent-ca
 import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settings'
 import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
 import { AgentGuardrails, type AgentGuardrailsValue } from '@/components/agents/agent-guardrails'
-import { Plug } from 'lucide-react'
+import { AgentComposioToolkits, type ComposioToolkit } from '@/components/agents/agent-composio-toolkits'
+import { CollapsibleSection } from '@/components/agents/collapsible-section'
+import { Plug, Wrench, Boxes } from 'lucide-react'
 
 interface ModelOption {
   id: string
@@ -33,6 +35,9 @@ interface AgentBuilderProps {
   mcpServers?: McpServerOption[]
   linkedMcpServerIds?: string[]
   onMcpServerToggle?: (serverId: string, checked: boolean) => void
+  composioToolkits?: ComposioToolkit[]
+  selectedComposioToolkits?: string[]
+  onComposioToolkitToggle?: (slug: string, enabled: boolean) => void
   guardrails?: AgentGuardrailsValue
   onGuardrailsChange?: (value: AgentGuardrailsValue) => void
 }
@@ -52,9 +57,15 @@ export function AgentBuilder({
   mcpServers,
   linkedMcpServerIds = [],
   onMcpServerToggle,
+  composioToolkits,
+  selectedComposioToolkits,
+  onComposioToolkitToggle,
   guardrails,
   onGuardrailsChange,
 }: AgentBuilderProps) {
+  const linkedMcpCount = mcpServers?.filter((s) => linkedMcpServerIds.includes(s.id)).length ?? 0
+  const selectedComposioCount = selectedComposioToolkits?.length ?? 0
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
@@ -73,30 +84,32 @@ export function AgentBuilder({
         />
 
         {guardrails && onGuardrailsChange && (
-          <div className="space-y-3 border-t border-border/40 pt-5">
-            <AgentGuardrails value={guardrails} onChange={onGuardrailsChange} disabled={disabled} />
-          </div>
+          <AgentGuardrails value={guardrails} onChange={onGuardrailsChange} disabled={disabled} />
         )}
       </div>
 
-      <div className="space-y-6">
-        <AgentCapabilities
-          capabilities={capabilities}
-          onToggle={onCapabilityToggle}
-          disabled={disabled}
-        />
+      <div className="space-y-4">
+        <CollapsibleSection
+          title="Capabilities"
+          icon={
+            <svg className="size-3 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          }
+        >
+          <AgentCapabilities
+            capabilities={capabilities}
+            onToggle={onCapabilityToggle}
+            disabled={disabled}
+          />
+        </CollapsibleSection>
 
         {onToolToggle && (
-          <div className="rounded-lg border border-border/50 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="flex size-5 items-center justify-center rounded-md bg-primary/10">
-                <svg className="size-3 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-              </div>
-              <span className="text-sm font-medium">Tools</span>
-              {toolsDisabled && (
-                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Pro</span>
-              )}
-            </div>
+          <CollapsibleSection
+            title="Tools"
+            icon={<Wrench className="size-3 text-primary" />}
+            badge={toolsDisabled ? (
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Pro</span>
+            ) : undefined}
+          >
             {toolsDisabled && (
               <p className="text-xs text-muted-foreground">Upgrade to Pro to enable tools</p>
             )}
@@ -105,17 +118,38 @@ export function AgentBuilder({
               onToggle={onToolToggle}
               disabled={disabled || toolsDisabled}
             />
-          </div>
+          </CollapsibleSection>
+        )}
+
+        {/* Composio sits above MCP — connected apps are the primary integration */}
+        {composioToolkits && onComposioToolkitToggle && (
+          <CollapsibleSection
+            title="Composio Toolkits"
+            icon={<Boxes className="size-3 text-primary" />}
+            badge={selectedComposioCount > 0 ? (
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                {selectedComposioCount}
+              </span>
+            ) : undefined}
+          >
+            <AgentComposioToolkits
+              selectedToolkits={selectedComposioToolkits || []}
+              onToggle={onComposioToolkitToggle}
+              disabled={disabled}
+            />
+          </CollapsibleSection>
         )}
 
         {mcpServers && mcpServers.length > 0 && onMcpServerToggle && (
-          <div className="rounded-lg border border-border/50 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="flex size-5 items-center justify-center rounded-md bg-primary/10">
-                <Plug className="size-3 text-primary" />
-              </div>
-              <span className="text-sm font-medium">MCP Servers</span>
-            </div>
+          <CollapsibleSection
+            title="MCP Servers"
+            icon={<Plug className="size-3 text-primary" />}
+            badge={linkedMcpCount > 0 ? (
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                {linkedMcpCount}
+              </span>
+            ) : undefined}
+          >
             <div className="space-y-1">
               {mcpServers.map((server) => {
                 const checked = linkedMcpServerIds.includes(server.id)
@@ -137,7 +171,7 @@ export function AgentBuilder({
                 )
               })}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
       </div>
     </div>

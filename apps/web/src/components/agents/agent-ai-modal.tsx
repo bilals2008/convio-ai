@@ -35,9 +35,6 @@ const toolLabels: Record<string, string> = {
 const capabilityLabels: Record<string, string> = {
   'answer-questions': 'Answer Questions',
   'knowledge-search': 'Knowledge Search',
-  'generate-leads': 'Generate Leads',
-  'book-appointments': 'Book Appointments',
-  'execute-actions': 'Execute Actions',
 }
 
 const deploymentLabels: Record<string, string> = {

@@ -41,6 +41,7 @@ import { agents as agentsApi, widgets, mcpServers as mcpApi } from '@/lib/api'
 import { useAvailableModels } from '@/lib/hooks/use-available-models'
 import { useOrg } from '@/lib/org-context'
 import { usePlanFeatures } from '@/lib/hooks/use-plan-features'
+import { useComposioToolkits } from '@/lib/hooks/use-composio'
 
 interface Agent {
   id: string
@@ -59,7 +60,7 @@ interface Agent {
   status: string
   welcomeMessage?: string
   widgetColor: string
-  widgetConfig?: { tools?: string[] }
+  widgetConfig?: { tools?: string[]; composioToolkits?: string[] }
 }
 
 const agentDetailSchema = z.object({
@@ -84,6 +85,7 @@ export default function AgentDetailPage() {
   const [capabilities, setCapabilities] = useState(defaultCapabilities)
   const [tools, setTools] = useState<BuiltInTool[]>(builtInTools.map((t) => ({ ...t })))
   const [linkedMcpServerIds, setLinkedMcpServerIds] = useState<string[]>([])
+  const [selectedComposioToolkits, setSelectedComposioToolkits] = useState<string[]>([])
   const [guardrails, setGuardrails] = useState<AgentGuardrailsValue>(defaultGuardrails)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
@@ -153,6 +155,8 @@ export default function AgentDetailPage() {
     enabled: !!id,
   })
 
+  const { data: composioToolkits = [] } = useComposioToolkits()
+
   useEffect(() => {
     if (linkedMcpServers) {
       setLinkedMcpServerIds(linkedMcpServers.map((s) => s.id))
@@ -206,6 +210,11 @@ export default function AgentDetailPage() {
       if (savedGuardrails) {
         setGuardrails({ ...defaultGuardrails, ...savedGuardrails })
       }
+
+      const savedComposio = agent.widgetConfig?.composioToolkits
+      if (Array.isArray(savedComposio) && savedComposio.length > 0) {
+        setSelectedComposioToolkits(savedComposio)
+      }
     }
   }, [agent, form])
 
@@ -255,6 +264,12 @@ export default function AgentDetailPage() {
     )
   }
 
+  const handleComposioToolkitToggle = (slug: string, enabled: boolean) => {
+    setSelectedComposioToolkits((prev) =>
+      enabled ? [...prev, slug] : prev.filter((s) => s !== slug)
+    )
+  }
+
   const handleSave = form.handleSubmit((data) => {
     updateMutation.mutate({
       name: data.name,
@@ -266,6 +281,7 @@ export default function AgentDetailPage() {
       reasoningEffort: data.reasoningEffort,
       maxTokens: data.maxTokens,
         tools: features.tools ? tools.filter((t) => t.enabled).map((t) => t.id) : [],
+      composioToolkits: selectedComposioToolkits,
       guardrails,
     })
   })
@@ -371,7 +387,7 @@ export default function AgentDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="builder">
+<TabsContent value="builder">
           <AgentBuilder
             control={form.control}
             capabilities={capabilities}
@@ -387,6 +403,9 @@ export default function AgentDetailPage() {
             mcpServers={mcpServers}
             linkedMcpServerIds={linkedMcpServerIds}
             onMcpServerToggle={handleMcpServerToggle}
+            composioToolkits={composioToolkits}
+            selectedComposioToolkits={selectedComposioToolkits}
+            onComposioToolkitToggle={handleComposioToolkitToggle}
             guardrails={guardrails}
             onGuardrailsChange={setGuardrails}
           />

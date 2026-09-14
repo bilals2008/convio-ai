@@ -74,7 +74,7 @@ interface Agent {
   providerKeyId?: string | null
   knowledgeBaseId?: string | null
   avatar?: string | null
-  widgetConfig?: { tools?: string[] }
+  widgetConfig?: { tools?: string[]; composioToolkits?: string[] }
   guardrails?: { enabled: boolean; blockedWords: string[]; restrictedTopics: string[] }
 }
 
@@ -151,6 +151,7 @@ export default function AgentPlaygroundPage() {
   const { data: plan } = usePlan()
   const toolsAllowed = !!plan && plan.name !== 'free'
   const agentTools = agent?.widgetConfig?.tools ?? []
+  const agentComposioToolkits = agent?.widgetConfig?.composioToolkits ?? []
   const agentHasTools = agentTools.length > 0
   const hasKb = !!agent?.knowledgeBaseId
 
@@ -176,6 +177,7 @@ export default function AgentPlaygroundPage() {
       knowledgeBaseId: useKnowledge ? agent!.knowledgeBaseId : null,
       tools: useTools && toolsAllowed ? agentTools : [],
       mcpServerIds: (linkedMcpServers ?? []).map((s) => s.id),
+      composioToolkits: agentComposioToolkits,
       guardrails: agent!.guardrails,
     })
   }
@@ -323,6 +325,7 @@ export default function AgentPlaygroundPage() {
                     knowledgeBaseId: useKnowledge ? agent?.knowledgeBaseId ?? null : null,
                     tools: useTools && toolsAllowed ? agentTools : [],
                     mcpServerIds: (linkedMcpServers ?? []).map((srv) => srv.id),
+                    composioToolkits: agentComposioToolkits,
                     guardrails: agent?.guardrails,
                   })}>
                     {s.label}

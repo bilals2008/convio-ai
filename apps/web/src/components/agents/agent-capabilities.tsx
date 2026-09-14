@@ -1,4 +1,4 @@
-import { MessageSquare, Search, Users, Calendar, Zap } from 'lucide-react'
+import { MessageSquare, Search } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
@@ -34,32 +34,7 @@ const defaultCapabilities: Capability[] = [
     icon: <Search className="size-4" />,
     enabled: true,
   },
-  {
-    id: 'generate-leads',
-    label: 'Generate Leads',
-    description: 'Capture leads & details',
-    icon: <Users className="size-4" />,
-    enabled: false,
-  },
-  {
-    id: 'book-appointments',
-    label: 'Book Appointments',
-    description: 'Schedule meetings',
-    icon: <Calendar className="size-4" />,
-    enabled: false,
-  },
-  {
-    id: 'execute-actions',
-    label: 'Execute Actions',
-    description: 'Perform custom actions',
-    icon: <Zap className="size-4" />,
-    enabled: false,
-  },
 ]
-
-function isAvailable(capability: Capability) {
-  return capability.enabled || capability.id === 'answer-questions' || capability.id === 'knowledge-search'
-}
 
 export function AgentCapabilities({
   capabilities = defaultCapabilities,
@@ -71,13 +46,12 @@ export function AgentCapabilities({
   return (
     <div className="space-y-0.5">
       {capabilities.map((capability) => {
-        const available = isAvailable(capability)
         return (
           <div
             key={capability.id}
             className={cn(
               "flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors",
-              available ? "hover:bg-muted/40" : "opacity-50"
+              !disabled && "hover:bg-muted/40",
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -93,7 +67,7 @@ export function AgentCapabilities({
               size="sm"
               checked={capability.enabled}
               onCheckedChange={(checked) => onToggle(capability.id, checked)}
-              disabled={disabled || !available}
+              disabled={disabled}
             />
           </div>
         )
