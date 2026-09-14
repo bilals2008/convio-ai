@@ -28,6 +28,7 @@ export interface PlaygroundConfig {
   knowledgeBaseId?: string | null
   tools?: string[]
   mcpServerIds?: string[]
+  composioToolkits?: string[]
   guardrails?: { enabled: boolean; blockedWords: string[]; restrictedTopics: string[] }
 }
 
@@ -141,6 +142,7 @@ export function usePlaygroundChat() {
           knowledgeBaseId: config.knowledgeBaseId ?? null,
           tools: config.tools ?? [],
           mcpServerIds: config.mcpServerIds ?? [],
+          composioToolkits: config.composioToolkits ?? [],
           guardrails: config.guardrails,
           history,
           signal: controller.signal,

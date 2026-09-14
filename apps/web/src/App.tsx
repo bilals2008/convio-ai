@@ -74,6 +74,7 @@ const BillingPage = lazyLoad(() => import('@/pages/settings/billing-page'))
 const DataManagementPage = lazyLoad(() => import('@/pages/settings/data-management-page'))
 const McpServersPage = lazyLoad(() => import('@/pages/settings/mcp-servers-page'))
 const McpTemplatesPage = lazyLoad(() => import('@/pages/settings/mcp-templates-page'))
+const ComposioPage = lazyLoad(() => import('@/pages/settings/composio-page'))
 const SettingsAuditLogsPage = lazyLoad(() => import('@/pages/settings/audit-logs-page'))
 const NotificationPreferencesPage = lazyLoad(() => import('@/pages/settings/notification-preferences-page'))
 const SupportTicketsPage = lazyLoad(() => import('@/pages/support/support-tickets-page'))
@@ -573,6 +574,7 @@ export function App() {
                 <Route path="deployments" element={<DeploymentsPage />} />
                 <Route path="provider-keys" element={<ProviderKeysPage />} />
                 <Route path="mcp-servers" element={<McpServersPage />} />
+                <Route path="composio" element={<ComposioPage />} />
                 <Route path="billing" element={<BillingPage />} />
                  <Route path="data" element={<DataManagementPage />} />
                  <Route path="audit-logs" element={<SettingsAuditLogsPage />} />

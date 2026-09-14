@@ -90,6 +90,7 @@ export const agents = {
     knowledgeBaseId?: string | null
     tools?: string[]
     mcpServerIds?: string[]
+    composioToolkits?: string[]
     guardrails?: { enabled: boolean; blockedWords: string[]; restrictedTopics: string[] }
     history?: Array<{ role: 'user' | 'assistant'; content: string }>
     signal?: AbortSignal
@@ -324,6 +325,18 @@ export const mcpServers = {
     api.post(`/agents/${agentId}/mcp-servers/${serverId}`),
   unlinkFromAgent: (agentId: string, serverId: string) =>
     api.delete(`/agents/${agentId}/mcp-servers/${serverId}`),
+}
+
+export const composio = {
+  get: (orgId: string) => api.get(`/organizations/${orgId}/composio`),
+  create: (orgId: string, data: { apiKey: string; enabledToolkits: string[] }) =>
+    api.post(`/organizations/${orgId}/composio`, data),
+  update: (orgId: string, data: { apiKey?: string; enabledToolkits?: string[] }) =>
+    api.patch(`/organizations/${orgId}/composio`, data),
+  delete: (orgId: string) => api.delete(`/organizations/${orgId}/composio`),
+  listToolkits: (orgId: string) => api.get(`/organizations/${orgId}/composio/toolkits`),
+  connect: (orgId: string, toolkit: string) =>
+    api.post<{ data: { toolkit: string; connectUrl: string } }>(`/organizations/${orgId}/composio/connect`, { toolkit }),
 }
 
 export const avatarPresets = {
