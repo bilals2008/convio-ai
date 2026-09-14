@@ -92,33 +92,33 @@ export function KPICard({
         : 'text-muted-foreground'
 
   return (
-    <div className={cn(cardBase, 'group flex items-center justify-between gap-4 px-5 py-4')}>
-      <div className="flex min-w-0 flex-col gap-2">
-        <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+    <div className={cn(cardBase, 'group flex items-center justify-between gap-2 sm:gap-4 px-3 py-3 sm:px-5 sm:py-4')}>
+      <div className="flex min-w-0 flex-col gap-1 sm:gap-2">
+        <span className="text-[9px] sm:text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <span className="text-2xl font-semibold leading-none tracking-tight text-foreground">
+        <span className="text-lg sm:text-2xl font-semibold leading-none tracking-tight text-foreground">
           {value}
         </span>
         {(change || period) && (
-          <span className="mt-0.5 flex items-center gap-1.5 text-xs">
+          <span className="mt-0.5 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
             {change && (
               <span className={cn('inline-flex items-center gap-0.5 font-medium', trendColor)}>
-                <TrendIcon className="size-3" />
+                <TrendIcon className="size-2.5 sm:size-3" />
                 {change}
               </span>
             )}
-            {period && <span className="text-muted-foreground">{period}</span>}
+            {period && <span className="text-muted-foreground whitespace-nowrap">{period}</span>}
           </span>
         )}
       </div>
       <div
         className={cn(
-          'flex size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105',
+          'flex size-8 sm:size-11 shrink-0 items-center justify-center rounded-lg sm:rounded-xl transition-transform duration-200 group-hover:scale-105',
           iconClassName
         )}
       >
-        <Icon className="size-5" />
+        <Icon className="size-3.5 sm:size-5" />
       </div>
     </div>
   )

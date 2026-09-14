@@ -77,10 +77,10 @@ export function AgentComposioToolkits({
   // lost their connection (so the user can see and untick them).
   const inlineToolkits = useMemo(() => {
     const connectedSlugs = new Set(connected.map((t) => t.slug))
+    const selectedSet = new Set(selectedToolkits)
     const selectedUnconnected = toolkits.filter((t) => !t.connected && selectedSet.has(t.slug))
     return [...connected, ...selectedUnconnected]
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, toolkits, selectedToolkits.join(',')])
+  }, [connected, toolkits, selectedToolkits])
 
   const visibleInline = inlineToolkits.slice(0, 4)
   const hiddenCount = inlineToolkits.length - visibleInline.length
