@@ -125,7 +125,10 @@ export function AgentComposioToolkits({
       <div className="space-y-0.5">
         {visibleInline.map((toolkit) => {
           const status = statusBySlug.get(toolkit.slug)
-          const isEnabled = selectedSet.has(toolkit.slug) || !!status?.enabled
+          // Selection comes only from the agent's own saved list — the org-level
+          // enabled flag must NOT force this row on (that made the switch look
+          // stuck ON after the org toolkit was disabled in Settings).
+          const isEnabled = selectedSet.has(toolkit.slug)
           const isConnected = status?.connected ?? false
 
           return (

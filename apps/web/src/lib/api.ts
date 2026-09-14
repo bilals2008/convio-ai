@@ -337,6 +337,8 @@ export const composio = {
   listToolkits: (orgId: string) => api.get(`/organizations/${orgId}/composio/toolkits`),
   connect: (orgId: string, toolkit: string) =>
     api.post<{ data: { toolkit: string; connectUrl: string } }>(`/organizations/${orgId}/composio/connect`, { toolkit }),
+  disconnect: (orgId: string, toolkit: string) =>
+    api.post<{ data: { toolkit: string; disconnected: boolean } }>(`/organizations/${orgId}/composio/disconnect`, { toolkit }),
 }
 
 export const avatarPresets = {

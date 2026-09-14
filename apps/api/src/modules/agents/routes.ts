@@ -768,42 +768,57 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     })
 
     try {
-      const stream = provider.stream({
-        model,
-        messages,
-        temperature,
-        maxTokens,
-        reasoningEffort: reasoningEffort || undefined,
-        apiKey,
-        tools: toolDefs.length > 0 ? toolDefs : undefined,
-      })
-      console.log(`[composio] Total toolDefs sent to LLM: ${toolDefs.length} — names: ${toolDefs.map((d) => d.name).join(', ')}`)
+      // Multi-round agentic loop: the model may chain tool calls across rounds
+      // (search → fetch page → answer). Each round's tool results are fed back
+      // as context; the final round omits tools so the model must answer.
+      const MAX_TOOL_ROUNDS = 5
       let finalUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined
+      const roundContext: { role: 'user' | 'assistant'; content: string }[] = []
 
-      let firstResponseText = ''
-      const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
+      for (let round = 1; round <= MAX_TOOL_ROUNDS; round++) {
+        const isFinalRound = round === MAX_TOOL_ROUNDS
+        const stream = provider.stream({
+          model,
+          messages: [...messages, ...roundContext],
+          temperature,
+          maxTokens,
+          reasoningEffort: reasoningEffort || undefined,
+          apiKey,
+          tools: !isFinalRound && toolDefs.length > 0 ? toolDefs : undefined,
+        })
 
-      for await (const chunk of stream) {
-        if (clientDisconnected) break
-        if (chunk.type === 'reasoning') {
-          reply.raw.write(`data: ${JSON.stringify({ type: 'reasoning', content: chunk.content })}\n\n`)
-        } else if (chunk.type === 'text' && chunk.content) {
-          firstResponseText += chunk.content
-          reply.raw.write(`data: ${JSON.stringify({ type: 'text', content: chunk.content })}\n\n`)
-        } else if (chunk.type === 'tool_call' && chunk.toolCall) {
-          const toolName = chunk.toolCall.name
-          const args = chunk.toolCall.arguments
-          toolCallsFromStream.push({ tool: toolName, args })
-          reply.raw.write(`data: ${JSON.stringify({ type: 'tool_call', tool: toolName, args })}\n\n`)
-        } else if (chunk.type === 'done') {
-          finalUsage = chunk.usage
-          break
+        let roundText = ''
+        const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
+
+        for await (const chunk of stream) {
+          if (clientDisconnected) break
+          if (chunk.type === 'reasoning') {
+            reply.raw.write(`data: ${JSON.stringify({ type: 'reasoning', content: chunk.content })}\n\n`)
+          } else if (chunk.type === 'text' && chunk.content) {
+            roundText += chunk.content
+            reply.raw.write(`data: ${JSON.stringify({ type: 'text', content: chunk.content })}\n\n`)
+          } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+            const toolName = chunk.toolCall.name
+            const args = chunk.toolCall.arguments
+            toolCallsFromStream.push({ tool: toolName, args })
+            reply.raw.write(`data: ${JSON.stringify({ type: 'tool_call', tool: toolName, args })}\n\n`)
+          } else if (chunk.type === 'done') {
+            if (chunk.usage) {
+              finalUsage = {
+                promptTokens: (finalUsage?.promptTokens ?? 0) + (chunk.usage.promptTokens ?? 0),
+                completionTokens: (finalUsage?.completionTokens ?? 0) + (chunk.usage.completionTokens ?? 0),
+                totalTokens: (finalUsage?.totalTokens ?? 0) + (chunk.usage.totalTokens ?? 0),
+              }
+            }
+            break
+          }
         }
-      }
+        if (clientDisconnected) break
 
-      // Execute tools from native tool calls and make second AI call for summarization
-      if (toolCallsFromStream.length > 0) {
-        // ponytail: check for ask_user first — client-handled, sends tool_requires_input
+        // No tool calls this round → the model delivered its final answer.
+        if (toolCallsFromStream.length === 0) break
+
+        // ponytail: ask_user is client-handled — surface questions and pause.
         const askUserCall = toolCallsFromStream.find((tc) => tc.tool === 'ask_user')
         if (askUserCall) {
           const toolCallId = `tc-${Date.now()}`
@@ -828,6 +843,10 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
             const result = await handler.execute(tc.args)
             reply.raw.write(`data: ${JSON.stringify({ type: 'tool_result', tool: tc.tool, result })}\n\n`)
             results.push({ tool: tc.tool, result })
+          } else {
+            // Feed unknown-tool errors back so the model can self-correct
+            // instead of silently continuing without the data.
+            results.push({ tool: tc.tool, result: { error: `Tool "${tc.tool}" is not available.` } })
           }
         }
 
@@ -835,27 +854,11 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
           .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
           .join('\n\n')
 
-        const finalStream = provider.stream({
-          model,
-          messages: [
-            ...history.map((h) => ({ role: h.role as 'user' | 'assistant' | 'system', content: h.content })),
-            { role: 'user', content: message },
-            { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
-            { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
-          ],
-          temperature,
-          maxTokens,
-          apiKey,
+        roundContext.push({ role: 'assistant', content: roundText || 'I will look that up for you.' })
+        roundContext.push({
+          role: 'user',
+          content: `The following tools returned these results:\n\n${resultsSummary}\n\nContinue: if you still need information, call another tool; otherwise write your final answer to the user now.`,
         })
-        for await (const chunk of finalStream) {
-          if (clientDisconnected) break
-          if (chunk.type === 'text' && chunk.content) {
-            reply.raw.write(`data: ${JSON.stringify({ type: 'text', content: chunk.content })}\n\n`)
-          }
-          if (chunk.type === 'done' && chunk.usage) {
-            finalUsage = chunk.usage
-          }
-        }
       }
 
       if (finalUsage) {

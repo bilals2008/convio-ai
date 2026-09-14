@@ -109,13 +109,11 @@ export function useDeleteComposioConfig() {
 }
 
 /**
- * Start a toolkit connection. Opens Composio's hosted OAuth page in a
- * Google-style centered popup window (not a full new tab) and polls the
- * connection status so every open view flips to "Connected" as soon as the
- * user finishes — then closes the popup automatically.
+ * Start a toolkit connection. Navigates the current tab to Composio's hosted
+ * OAuth page; Composio redirects back to Settings → Composio with
+ * ?composio_connect=<toolkit>&status=success|failed when done (handled there).
  */
 export function useConnectComposioToolkit() {
-  const queryClient = useQueryClient()
   const { orgId } = useOrg()
 
   return useMutation({
@@ -130,58 +128,35 @@ export function useConnectComposioToolkit() {
         return
       }
 
-      // Centered popup (Google OAuth style): ~520×680 over the current window.
-      const width = 520
-      const height = 680
-      const left = Math.max(0, (window.innerWidth - width) / 2)
-      const top = Math.max(0, (window.innerHeight - height) / 2)
-      const popup = window.open(
-        data.connectUrl,
-        `composio-connect-${data.toolkit}`,
-        `width=${width},height=${height},left=${left},top=${top},popup=yes,noopener,noreferrer`,
-      )
-      if (!popup) {
-        // Popup blocked → fall back to a normal tab so the flow still works.
-        toast.error('Popup blocked — opening in a new tab instead')
-        window.open(data.connectUrl, '_blank', 'noopener,noreferrer')
-      }
-
-      // Poll while OAuth completes. When the toolkit flips to connected,
-      // close the popup and refresh status everywhere.
-      const toolkitsKey = ['composio-toolkits', orgId]
-      const startedAt = Date.now()
-      const interval = setInterval(async () => {
-        if (Date.now() - startedAt > 5 * 60_000) {
-          clearInterval(interval)
-          return
-        }
-        try {
-          await queryClient.invalidateQueries({ queryKey: toolkitsKey })
-          const fresh = queryClient.getQueryData<ComposioToolkit[]>(toolkitsKey)
-          const nowConnected = fresh?.some(
-            (t) => t.slug === data.toolkit && t.connected,
-          )
-          if (nowConnected) {
-            clearInterval(interval)
-            if (popup && !popup.closed) popup.close()
-            toast.success(`${data.toolkit} connected successfully`)
-          }
-        } catch {
-          // transient — keep polling
-        }
-      }, 3_000)
-
-      // Stop polling when leaving the page.
-      window.addEventListener(
-        'pagehide',
-        () => {
-          clearInterval(interval)
-        },
-        { once: true },
-      )
+      // Same-tab redirect (like the MCP + Kapso flows) — no popup blockers.
+      window.location.href = data.connectUrl
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to start toolkit connection')
+    },
+  })
+}
+
+/**
+ * Revoke a toolkit's connected account at Composio. The card flips back to
+ * "Connect" once the query cache refreshes.
+ */
+export function useDisconnectComposioToolkit() {
+  const queryClient = useQueryClient()
+  const { orgId } = useOrg()
+
+  return useMutation({
+    mutationFn: async (toolkit: string) => {
+      if (!orgId) throw new Error('No organization selected')
+      const res = await composioApi.disconnect(orgId, toolkit)
+      return res.data.data as { toolkit: string; disconnected: boolean }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['composio-toolkits', orgId] })
+      toast.success(`${data.toolkit} disconnected`)
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to disconnect toolkit')
     },
   })
 }

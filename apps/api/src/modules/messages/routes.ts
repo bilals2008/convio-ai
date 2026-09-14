@@ -937,32 +937,58 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           tools: toolDefs.length > 0 ? toolDefs : undefined,
         })
 
-      let firstResponseText = ''
-      const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
+      // Multi-round agentic loop: the model may chain tool calls across rounds
+      // (search → fetch page → answer). Each round's tool results are fed back
+      // as context; the final round omits tools so the model must answer.
+      const MAX_TOOL_ROUNDS = 5
+      const roundContext: { role: 'user' | 'assistant'; content: string }[] = []
 
-      for await (const chunk of stream) {
-        if (clientDisconnected) break
-        if (chunk.type === 'reasoning') continue
-        if (chunk.type === 'text' && chunk.content) {
-          firstResponseText += chunk.content
-          writeChunk({ content: chunk.content })
-        } else if (chunk.type === 'tool_call' && chunk.toolCall) {
-          toolCallsFromStream.push({ tool: chunk.toolCall.name, args: chunk.toolCall.arguments })
-        } else if (chunk.content) {
-          firstResponseText += chunk.content
-          writeChunk({ content: chunk.content })
-        }
-        if (chunk.type === 'done') {
-          if (chunk.usage) {
-            totalInputTokens += chunk.usage.promptTokens || 0
-            totalOutputTokens += chunk.usage.completionTokens || 0
+      for (let round = 1; round <= MAX_TOOL_ROUNDS; round++) {
+        const isFinalRound = round === MAX_TOOL_ROUNDS
+        const roundStream = isFinalRound
+          ? null
+          : provider!.stream({
+              model: agent.model!,
+              messages: [...aiMessages, ...roundContext],
+              temperature: agent.temperature ?? 0.7,
+              maxTokens: agent.maxTokens ?? 2048,
+              apiKey,
+              signal,
+              tools: toolDefs.length > 0 ? toolDefs : undefined,
+            })
+
+        let roundText = ''
+        const toolCallsFromStream: { tool: string; args: Record<string, unknown> }[] = []
+
+        if (roundStream) {
+          for await (const chunk of roundStream) {
+            if (clientDisconnected) break
+            if (chunk.type === 'reasoning') continue
+            if (chunk.type === 'text' && chunk.content) {
+              roundText += chunk.content
+              fullResponse += chunk.content
+              writeChunk({ content: chunk.content })
+            } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+              toolCallsFromStream.push({ tool: chunk.toolCall.name, args: chunk.toolCall.arguments })
+            } else if (chunk.content) {
+              roundText += chunk.content
+              fullResponse += chunk.content
+              writeChunk({ content: chunk.content })
+            }
+            if (chunk.type === 'done') {
+              if (chunk.usage) {
+                totalInputTokens += chunk.usage.promptTokens || 0
+                totalOutputTokens += chunk.usage.completionTokens || 0
+              }
+              break
+            }
           }
-          break
         }
-      }
+        if (clientDisconnected) break
 
-      // Execute tools and make second AI call for summarization
-      if (toolCallsFromStream.length > 0) {
+        // Final round (no tools offered) or no tool calls → answer complete.
+        if (!roundStream || toolCallsFromStream.length === 0) break
+
         // ponytail: ask_user is client-handled — surface the questions and
         // pause; the visitor answers and the resume endpoint continues.
         const askUserCall = toolCallsFromStream.find((tc) => tc.tool === 'ask_user')
@@ -974,46 +1000,31 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
             args: askUserCall.args,
           })
           fullResponse = formatWidgetQuestions(askUserCall.args)
-        } else {
-          const results: { tool: string; result: unknown }[] = []
-          for (const tc of toolCallsFromStream) {
-            const handler = toolHandlers.find((h) => h.schema.name === tc.tool)
-            if (handler) {
-              const result = await handler.execute(tc.args)
-              results.push({ tool: tc.tool, result })
-            }
-          }
+          break
+        }
 
-          const resultsSummary = results
-            .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
-            .join('\n\n')
-
-          const finalStream = provider!.stream({
-            model: agent.model!,
-            messages: [
-              ...aiMessages,
-              { role: 'assistant', content: firstResponseText || 'I will look that up for you.' },
-              { role: 'user', content: `The following tools returned these results:\n\n${resultsSummary}\n\nProvide a clear, helpful response in plain text. Do NOT use any tools or output JSON.` },
-            ],
-            temperature: agent.temperature ?? 0.7,
-            maxTokens: agent.maxTokens ?? 2048,
-            apiKey,
-            signal,
-          })
-          for await (const chunk of finalStream) {
-            if (clientDisconnected) break
-            if (chunk.type === 'text' && chunk.content) {
-              fullResponse += chunk.content
-              writeChunk({ content: chunk.content })
-            }
-            if (chunk.type === 'done' && chunk.usage) {
-              totalInputTokens += chunk.usage.promptTokens || 0
-              totalOutputTokens += chunk.usage.completionTokens || 0
-            }
+        const results: { tool: string; result: unknown }[] = []
+        for (const tc of toolCallsFromStream) {
+          const handler = toolHandlers.find((h) => h.schema.name === tc.tool)
+          if (handler) {
+            const result = await handler.execute(tc.args)
+            writeChunk({ type: 'tool_result', tool: tc.tool, result })
+            results.push({ tool: tc.tool, result })
+          } else {
+            // Feed unknown-tool errors back so the model can self-correct.
+            results.push({ tool: tc.tool, result: { error: `Tool "${tc.tool}" is not available.` } })
           }
         }
-      } else {
-        fullResponse = firstResponseText
+
+        const resultsSummary = results
+          .map((r) => `${r.tool} returned:\n${JSON.stringify(r.result, null, 2)}`)
+          .join('\n\n')
+
+        roundContext.push({ role: 'assistant', content: roundText || 'I will look that up for you.' })
+        roundContext.push({
+          role: 'user',
+          content: `The following tools returned these results:\n\n${resultsSummary}\n\nContinue: if you still need information, call another tool; otherwise write your final answer to the user now.`,
+        })
       }
     } catch {
       if (!clientDisconnected) {

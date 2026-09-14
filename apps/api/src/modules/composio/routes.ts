@@ -216,6 +216,9 @@ export default async function composioRoutes(fastify: FastifyInstance) {
 
   // POST /api/organizations/:orgId/composio/connect — Start toolkit connection
   // Returns a real Connect Link (hosted OAuth page) from session.authorize().
+  // The Connect Link carries a callbackUrl back to Settings → Composio, so the
+  // same tab completes OAuth and lands on the page with ?status=success|failed
+  // (redirect-back flow, no popup).
   fastify.post('/organizations/:orgId/composio/connect', {
     preHandler: [
       fastify.authenticate,
@@ -246,7 +249,22 @@ export default async function composioRoutes(fastify: FastifyInstance) {
 
     try {
       const client = createComposioClient(apiKey)
-      const session = await getOrCreateSession(client, orgId, config.enabledToolkits ?? [], config.composioSessionId ?? undefined)
+      // Merge the requested toolkit into the session allowlist — the UI lets
+      // users enable + connect in one go BEFORE saving, so the saved list may
+      // not contain it yet. A stale/empty allowlist makes session creation
+      // fail with Composio's "preload.tools=\"all\" requires a positive
+      // toolkits allowlist" (400).
+      const savedToolkits = config.enabledToolkits ?? []
+      const toolkits = Array.from(new Set([...savedToolkits, toolkit]))
+      // Sessions pin their toolkit scope at creation time — force a fresh
+      // session whenever the allowlist grew, so the new toolkit's tools and
+      // authorize flow are actually in scope.
+      const session = await getOrCreateSession(
+        client,
+        orgId,
+        toolkits,
+        toolkits.length === savedToolkits.length ? (config.composioSessionId ?? undefined) : undefined,
+      )
 
       if (session.sessionId !== config.composioSessionId) {
         await prisma.composioConfig.update({
@@ -255,7 +273,13 @@ export default async function composioRoutes(fastify: FastifyInstance) {
         }).catch(() => {})
       }
 
-      const connectUrl = await getToolkitConnectLink(session, toolkit)
+      // Composio preserves existing query params and appends status= +
+      // connected_account_id= after OAuth — the settings page reads these to
+      // show the result and refresh connection status.
+      const frontendUrl = fastify.config.CORS_ORIGIN.split(',')[0].trim()
+      const callbackUrl = `${frontendUrl}/settings/composio?composio_connect=${encodeURIComponent(toolkit)}`
+
+      const connectUrl = await getToolkitConnectLink(session, toolkit, callbackUrl)
       if (!connectUrl) {
         throw new AppError(502, 'Composio did not return a connect link for this toolkit')
       }
@@ -270,6 +294,63 @@ export default async function composioRoutes(fastify: FastifyInstance) {
         throw new AppError(401, 'Your stored Composio API key is invalid or was revoked. Update it in Settings → Composio.', 'INVALID_API_KEY')
       }
       throw new AppError(502, `Failed to start toolkit connection: ${message}`)
+    }
+  })
+
+  // POST /api/organizations/:orgId/composio/disconnect — Revoke a toolkit's
+  // connected account(s) via connectedAccounts.delete (revokes the OAuth tokens
+  // at Composio) and reset the cached session so stale credentials are never
+  // reused.
+  fastify.post('/organizations/:orgId/composio/disconnect', {
+    preHandler: [
+      fastify.authenticate,
+      fastify.requireMembership,
+      validate({ params: orgParamsSchema, body: connectToolkitSchema }),
+    ],
+  }, async (request) => {
+    const { orgId } = request.params as { orgId: string }
+    const { toolkit } = request.body as { toolkit: string }
+
+    await fastify.ensureAdmin(request.userId!, orgId)
+
+    const config = await prisma.composioConfig.findUnique({
+      where: { organizationId: orgId },
+    })
+    if (!config?.apiKey) {
+      throw new AppError(400, 'Composio is not configured for this organization')
+    }
+
+    const encryptionKey = getEncryptionKey()
+    const apiKey = decryptSecret(config.apiKey, encryptionKey)
+
+    try {
+      const client = createComposioClient(apiKey)
+      const accounts = await client.connectedAccounts.list({ userIds: [orgId], toolkitSlugs: [toolkit] })
+      const targets = (accounts.items ?? []).filter((a) => a.toolkit?.slug === toolkit)
+
+      if (targets.length === 0) {
+        throw new AppError(404, `${toolkit} is not connected`)
+      }
+
+      for (const account of targets) {
+        await client.connectedAccounts.delete(account.id)
+      }
+
+      // The cached session references the revoked credentials — force a fresh
+      // session on next use.
+      await prisma.composioConfig.update({
+        where: { organizationId: orgId },
+        data: { composioSessionId: null },
+      }).catch(() => {})
+
+      return { data: { toolkit, disconnected: true } }
+    } catch (error) {
+      if (error instanceof AppError) throw error
+      const message = error instanceof Error ? error.message : String(error)
+      if (/401|invalid api key|APIKey_InvalidAPIKey/i.test(message)) {
+        throw new AppError(401, 'Your stored Composio API key is invalid or was revoked. Update it in Settings → Composio.', 'INVALID_API_KEY')
+      }
+      throw new AppError(502, `Failed to disconnect ${toolkit}: ${message}`)
     }
   })
 }

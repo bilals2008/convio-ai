@@ -1,9 +1,11 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Loader2, Key, Save, Trash2, Search, CheckCircle2, ArrowUpRight, ArrowDownToLine, X } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Loader2, Key, Save, Trash2, Search, CheckCircle2, ArrowUpRight, ArrowDownToLine, X, Unlink } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { PageHeader } from '@/components/shared/page-header'
 import { PageContainer } from '@/components/shared/page-container'
 import { EmptyState } from '@/components/shared/empty-state'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -20,7 +22,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { useOrg } from '@/lib/org-context'
-import { useComposioConfig, useComposioToolkits, useCreateComposioConfig, useUpdateComposioConfig, useDeleteComposioConfig, useConnectComposioToolkit } from '@/lib/hooks/use-composio'
+import { useComposioConfig, useComposioToolkits, useCreateComposioConfig, useUpdateComposioConfig, useDeleteComposioConfig, useConnectComposioToolkit, useDisconnectComposioToolkit } from '@/lib/hooks/use-composio'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 
@@ -132,6 +134,7 @@ function StatusChip() {
 
 export default function ComposioPage() {
   const { orgId, isLoading: orgLoading } = useOrg()
+  const queryClient = useQueryClient()
 
   const { data: config, isLoading: configLoading, error: configError } = useComposioConfig()
   // Keep connection status fresh — flips cards to "Connected" after OAuth completes.
@@ -140,6 +143,7 @@ export default function ComposioPage() {
   const updateConfig = useUpdateComposioConfig()
   const deleteConfig = useDeleteComposioConfig()
   const connectToolkit = useConnectComposioToolkit()
+  const disconnectToolkit = useDisconnectComposioToolkit()
 
   const [apiKey, setApiKey] = useState('')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -163,6 +167,29 @@ export default function ComposioPage() {
   useEffect(() => {
     setVisibleCount(PAGE_SIZE)
   }, [query, category])
+
+  // OAuth redirect-back: Composio lands here after the hosted auth page with
+  // ?composio_connect=<toolkit>&status=success|failed. Show the result,
+  // refresh connection status, and clean the URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const toolkit = params.get('composio_connect')
+    if (!toolkit) return
+
+    const status = params.get('status')
+    params.delete('composio_connect')
+    params.delete('status')
+    params.delete('connected_account_id')
+    const qs = params.toString()
+    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+
+    if (status === 'success') {
+      toast.success(`${toolkit} connected successfully`)
+    } else {
+      toast.error(`${toolkit} connection failed — please try again`)
+    }
+    void queryClient.invalidateQueries({ queryKey: ['composio-toolkits', orgId] })
+  }, [queryClient, orgId])
 
   const statusBySlug = useMemo(() => new Map(toolkits.map((t) => [t.slug, t])), [toolkits])
 
@@ -445,6 +472,7 @@ export default function ComposioPage() {
                     const isEnabled = enabledSet.has(toolkit.slug)
                     const isConnected = status?.connected ?? false
                     const isConnecting = connectToolkit.isPending && connectToolkit.variables === toolkit.slug
+                    const isDisconnecting = disconnectToolkit.isPending && disconnectToolkit.variables === toolkit.slug
 
                     return (
                       <div
@@ -481,23 +509,49 @@ export default function ComposioPage() {
                           />
                         </div>
                         {/* Uniform footer on EVERY card → identical heights, no gaps.
-                            Disabled cards show their category here. */}
+                            Disabled cards show their category here — connection
+                            state/actions are only meaningful when enabled. */}
                         <div className="flex h-6 items-center justify-between gap-2">
-                          {isConnecting ? (
+                          {isEnabled && isConnecting ? (
                             <Badge variant="outline" className="gap-1 text-[11px] font-medium text-muted-foreground">
                               <Loader2 className="size-3 animate-spin" /> Connecting…
                             </Badge>
-                          ) : isConnected ? (
-                            <StatusChip />
+                          ) : isEnabled && isConnected ? (
+                            <>
+                              <StatusChip />
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    aria-label={`Disconnect ${toolkit.name}`}
+                                    disabled={disconnectToolkit.isPending}
+                                    onClick={() => disconnectToolkit.mutate(toolkit.slug)}
+                                    className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                                  >
+                                    {isDisconnecting ? (
+                                      <Loader2 className="size-3.5 animate-spin" />
+                                    ) : (
+                                      <Unlink className="size-3.5" />
+                                    )}
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {isDisconnecting ? 'Disconnecting…' : `Disconnect ${toolkit.name} — revokes access`}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </>
                           ) : isEnabled ? (
-                            <Button
-                              variant="outline"
-                              size="xs"
-                              disabled={connectToolkit.isPending}
-                              onClick={() => connectToolkit.mutate(toolkit.slug)}
-                            >
-                              <ArrowUpRight /> Connect
-                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  disabled={connectToolkit.isPending}
+                                  onClick={() => connectToolkit.mutate(toolkit.slug)}
+                                  className={cn(buttonVariants({ variant: 'outline', size: 'xs' }))}
+                                >
+                                  <ArrowUpRight /> Connect
+                                </TooltipTrigger>
+                                <TooltipContent>Authorize {toolkit.name} via Composio&apos;s secure OAuth page</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           ) : (
                             <span className="text-[11px] text-muted-foreground">{toolkit.category}</span>
                           )}
