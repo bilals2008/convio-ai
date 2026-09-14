@@ -126,7 +126,7 @@ export function Sidebar() {
           </SidebarGroup>
 
           <SidebarGroup label="Integrations">
-            <SidebarItem icon={LinkIcon} label="Composio" href="/settings/composio" badge="Beta" />
+            <SidebarItem icon={LinkIcon} label="Composio" href="/settings/composio" badge="Soon" />
           </SidebarGroup>
 
           <SidebarGroup label="Support">
@@ -429,7 +429,7 @@ function getMobileNavGroups(role?: string) {
     {
       label: 'Integrations',
       items: [
-        { icon: LinkIcon, label: 'Composio', href: '/settings/composio', badge: 'Beta' },
+        { icon: LinkIcon, label: 'Composio', href: '/settings/composio', badge: 'Soon' },
       ],
     },
     {

@@ -6,6 +6,7 @@ import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
 import { decryptSecret, getEncryptionKey, encryptSecret } from '../../services/encryption.js'
 import { createComposioClient, getOrCreateSession, getToolkitConnectLink } from '../../services/composio/index.js'
+import { COMPOSIO_LAUNCH_ENABLED } from '../../services/composio/session-loader.js'
 import { getOrgPlan } from '../../services/billing.js'
 
 /**
@@ -230,6 +231,11 @@ export default async function composioRoutes(fastify: FastifyInstance) {
     const { toolkit } = request.body as { toolkit: string }
 
     await fastify.ensureAdmin(request.userId!, orgId)
+
+    // Coming Soon gate — connection setup is closed until launch.
+    if (!COMPOSIO_LAUNCH_ENABLED) {
+      throw new AppError(403, 'Composio integrations are coming soon. This feature is not available yet.', 'FEATURE_NOT_AVAILABLE')
+    }
 
     const planName = await getOrgPlan(orgId).then((p) => p.name).catch(() => null)
     if (planName === null || planName === 'free') {

@@ -8,6 +8,14 @@ import {
 import { adaptComposioTools } from './tool-adapter.js'
 import type { ToolHandler } from '../tools/index.js'
 
+/**
+ * Coming Soon launch gate — the whole Composio integration is built but not
+ * launched. When false, NO Composio tools are ever loaded/executed anywhere
+ * (agent stream, playground, widgets/messages), regardless of saved config.
+ * Flip to true to launch; nothing else changes.
+ */
+export const COMPOSIO_LAUNCH_ENABLED = false
+
 export interface LoadComposioHandlersOptions {
   orgId: string
   /**
@@ -36,6 +44,11 @@ export async function loadComposioToolHandlers(
   options: LoadComposioHandlersOptions
 ): Promise<LoadComposioHandlersResult> {
   const { orgId, requestedToolkits = [] } = options
+
+  // Coming Soon gate — short-circuit before any Composio API/session work.
+  if (!COMPOSIO_LAUNCH_ENABLED) {
+    return { handlers: [], sessionId: '', rejectedToolkits: [], configured: false }
+  }
 
   try {
     const config = await loadComposioOrgConfig(orgId)

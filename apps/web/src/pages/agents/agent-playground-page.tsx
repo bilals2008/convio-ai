@@ -57,6 +57,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { AiResponse } from '@/components/shared/ai-response'
 import { agents as agentsApi, mcpServers as mcpApi } from '@/lib/api'
 import { usePlaygroundChat } from '@/lib/hooks/use-playground-chat'
+import { COMPOSIO_ENABLED } from '@/lib/feature-flags'
 import { usePlan } from '@/lib/hooks/use-billing'
 import { getReasoningEfforts } from '@/components/agents/reasoning'
 import { QuestionCard } from '@/components/agents/question-card'
@@ -177,7 +178,7 @@ export default function AgentPlaygroundPage() {
       knowledgeBaseId: useKnowledge ? agent!.knowledgeBaseId : null,
       tools: useTools && toolsAllowed ? agentTools : [],
       mcpServerIds: (linkedMcpServers ?? []).map((s) => s.id),
-      composioToolkits: agentComposioToolkits,
+      composioToolkits: COMPOSIO_ENABLED ? agentComposioToolkits : [],
       guardrails: agent!.guardrails,
     })
   }
@@ -325,7 +326,7 @@ export default function AgentPlaygroundPage() {
                     knowledgeBaseId: useKnowledge ? agent?.knowledgeBaseId ?? null : null,
                     tools: useTools && toolsAllowed ? agentTools : [],
                     mcpServerIds: (linkedMcpServers ?? []).map((srv) => srv.id),
-                    composioToolkits: agentComposioToolkits,
+                    composioToolkits: COMPOSIO_ENABLED ? agentComposioToolkits : [],
                     guardrails: agent?.guardrails,
                   })}>
                     {s.label}

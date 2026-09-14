@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { useOrg } from '@/lib/org-context'
+import { COMPOSIO_ENABLED, COMPOSIO_LAUNCH_MESSAGE } from '@/lib/feature-flags'
 import { useComposioConfig, useComposioToolkits, useCreateComposioConfig, useUpdateComposioConfig, useDeleteComposioConfig, useConnectComposioToolkit, useDisconnectComposioToolkit } from '@/lib/hooks/use-composio'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
@@ -238,6 +239,22 @@ export default function ComposioPage() {
     setShowDeleteDialog(false)
     setApiKey('')
     setSelectedToolkits([])
+  }
+
+  // Coming Soon gate — the feature is fully built but not launched yet. Only
+  // the centered Coming Soon state is shown; all config/catalog UI stays in
+  // the code below.
+  if (!COMPOSIO_ENABLED) {
+    return (
+      <PageContainer>
+        <div className="flex flex-1 items-center justify-center py-16">
+          <EmptyState
+            title="Coming Soon"
+            description={COMPOSIO_LAUNCH_MESSAGE}
+          />
+        </div>
+      </PageContainer>
+  )
   }
 
   if (orgLoading || configLoading) {

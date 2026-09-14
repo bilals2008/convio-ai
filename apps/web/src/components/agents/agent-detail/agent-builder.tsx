@@ -5,6 +5,7 @@ import { AgentBehaviorSettings } from '@/components/agents/agent-behavior-settin
 import { AgentToolPicker, builtInTools, type BuiltInTool } from '@/components/agents/agent-tool-picker'
 import { AgentGuardrails, type AgentGuardrailsValue } from '@/components/agents/agent-guardrails'
 import { AgentComposioToolkits, type ComposioToolkit } from '@/components/agents/agent-composio-toolkits'
+import { COMPOSIO_ENABLED, COMPOSIO_LAUNCH_MESSAGE } from '@/lib/feature-flags'
 import { CollapsibleSection } from '@/components/agents/collapsible-section'
 import { Plug, Wrench, Boxes } from 'lucide-react'
 
@@ -121,22 +122,34 @@ export function AgentBuilder({
           </CollapsibleSection>
         )}
 
-        {/* Composio sits above MCP — connected apps are the primary integration */}
+        {/* Composio sits above MCP — connected apps are the primary integration.
+            Gated behind Coming Soon until launch: the picker stays wired up,
+            the section just shows a teaser until COMPOSIO_ENABLED flips. */}
         {composioToolkits && onComposioToolkitToggle && (
           <CollapsibleSection
             title="Composio Toolkits"
             icon={<Boxes className="size-3 text-primary" />}
-            badge={selectedComposioCount > 0 ? (
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                {selectedComposioCount}
-              </span>
-            ) : undefined}
+            badge={
+              !COMPOSIO_ENABLED ? (
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Soon</span>
+              ) : selectedComposioCount > 0 ? (
+                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                  {selectedComposioCount}
+                </span>
+              ) : undefined
+            }
           >
-            <AgentComposioToolkits
-              selectedToolkits={selectedComposioToolkits || []}
-              onToggle={onComposioToolkitToggle}
-              disabled={disabled}
-            />
+            {COMPOSIO_ENABLED ? (
+              <AgentComposioToolkits
+                selectedToolkits={selectedComposioToolkits || []}
+                onToggle={onComposioToolkitToggle}
+                disabled={disabled}
+              />
+            ) : (
+              <p className="rounded-md border border-dashed px-3 py-3 text-xs text-muted-foreground">
+                {COMPOSIO_LAUNCH_MESSAGE}
+              </p>
+            )}
           </CollapsibleSection>
         )}
 
