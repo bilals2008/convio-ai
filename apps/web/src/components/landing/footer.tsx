@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Separator } from '@/components/ui/separator'
 import { DirectionHover } from './direction-hover'
-import { ArrowUp } from 'lucide-react'
+import { ArrowUp, Globe } from 'lucide-react'
 
 const linkGroups = [
   {
@@ -49,6 +49,11 @@ const socialLinks = [
     label: 'X',
     icon: 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/x/default.svg',
     invert: true,
+  },
+  {
+    href: 'https://mbilalhassan.vercel.app/',
+    label: 'Portfolio',
+    lucideIcon: Globe,
   },
 ]
 
@@ -148,11 +153,15 @@ export function Footer() {
                   aria-label={social.label}
                   className="flex size-9 items-center justify-center rounded-lg border border-border bg-background/40 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground"
                 >
-                  <img
-                    src={social.icon}
-                    alt={social.label}
-                    className={`size-5${social.invert ? ' dark:invert' : ''}`}
-                  />
+              {social.lucideIcon ? (
+                <social.lucideIcon className="size-5" />
+              ) : (
+                <img
+                  src={social.icon}
+                  alt={social.label}
+                  className={`size-5${social.invert ? ' dark:invert' : ''}`}
+                />
+              )}
                 </a>
               ))}
             </div>

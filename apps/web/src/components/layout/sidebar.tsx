@@ -22,6 +22,7 @@ import {
   Wand2,
   Bell,
   LifeBuoy,
+  Link as LinkIcon,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -122,6 +123,10 @@ export function Sidebar() {
             <SidebarItem icon={MessageCircle} label="Widgets" href="/widgets" />
             <SidebarItem icon={Globe} label="Deployments" href="/settings/deployments" />
             <SidebarItem icon={Shield} label="Provider Keys" href="/settings/provider-keys" />
+          </SidebarGroup>
+
+          <SidebarGroup label="Integrations">
+            <SidebarItem icon={LinkIcon} label="Composio" href="/settings/composio" badge="Beta" />
           </SidebarGroup>
 
           <SidebarGroup label="Support">
@@ -419,6 +424,12 @@ function getMobileNavGroups(role?: string) {
         { icon: MessageCircle, label: 'Widgets', href: '/widgets' },
         { icon: Globe, label: 'Deployments', href: '/settings/deployments' },
         { icon: Shield, label: 'Provider Keys', href: '/settings/provider-keys' },
+      ],
+    },
+    {
+      label: 'Integrations',
+      items: [
+        { icon: LinkIcon, label: 'Composio', href: '/settings/composio', badge: 'Beta' },
       ],
     },
     {
