@@ -10,7 +10,8 @@ import { resolveProviderKey } from '../../services/provider-key.js'
 import { decryptSecret, getEncryptionKey } from '../../services/encryption.js'
 import { getTemplate, listTemplates } from './templates.js'
 import { AGENT_GENERATION_PROMPT, resolveGenerationProvider, parseAgentDraft } from './agent-generator.js'
-import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers, ASK_USER_TOOL } from '../../services/tools/index.js'
+import { getToolHandler, loadAgentToolHandlers, loadDbToolHandlers, loadAgentComposioHandlers, ASK_USER_TOOL } from '../../services/tools/index.js'
+import { loadComposioToolHandlers } from '../../services/composio/session-loader.js'
 import { getOrgPlan } from '../../services/billing.js'
 import { guardrailInputRefusal, guardrailPrompt } from '../../services/guardrails.js'
 import { NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
@@ -18,6 +19,37 @@ import { z } from 'zod'
 
 // Tools that consume server-side resources (e.g. Tavily web search) are Pro+ only.
 const GATED_TOOLS = new Set(['web-search'])
+
+// ponytail: resolve the caller's org for plan checks — prefers the org that owns
+// the selected provider key, falling back to the user's first membership.
+async function resolveCallerOrgId(userId: string, providerKeyId?: string): Promise<string | null> {
+  if (providerKeyId) {
+    const key = await prisma.providerKey.findFirst({
+      where: {
+        id: providerKeyId,
+        organization: { memberships: { some: { userId } } },
+      },
+      select: { organizationId: true },
+    })
+    if (key) return key.organizationId
+  }
+  const membership = await prisma.membership.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'asc' },
+    select: { organizationId: true },
+  })
+  return membership?.organizationId ?? null
+}
+
+async function getCallerPlanName(userId: string, providerKeyId?: string): Promise<string | null> {
+  const orgId = await resolveCallerOrgId(userId, providerKeyId)
+  if (!orgId) return null
+  try {
+    return (await getOrgPlan(orgId)).name
+  } catch {
+    return null
+  }
+}
 
 const orgParamsSchema = z.object({
   orgId: z.string().uuid(),
@@ -58,6 +90,7 @@ const testStreamSchema = z.object({
   tools: z.array(z.string()).optional().default([]),
   toolIds: z.array(z.string().uuid()).optional().default([]),
   mcpServerIds: z.array(z.string().uuid()).optional().default([]),
+  composioToolkits: z.array(z.string()).optional().default([]),
   guardrails: agentGuardrailsSchema.nullish(),
 })
 
@@ -82,6 +115,7 @@ const testStreamResumeSchema = z.object({
 const createAgentBodySchema = createAgentSchema.extend({
   knowledgeBaseId: z.string().uuid().optional().nullable(),
   tools: z.array(z.string()).optional(),
+  composioToolkits: z.array(z.string()).optional(),
 })
 
 const fromTemplateBodySchema = z.object({
@@ -99,6 +133,7 @@ const fromTemplateBodySchema = z.object({
 const updateAgentBodySchema = updateAgentSchema.extend({
   knowledgeBaseId: z.string().uuid().optional().nullable(),
   tools: z.array(z.string()).optional(),
+  composioToolkits: z.array(z.string()).optional(),
 })
 
 const generateAgentBodySchema = z.object({
@@ -119,11 +154,14 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     const { orgId } = request.params as { orgId: string }
 
     const body = request.body as Record<string, unknown>
-    const { knowledgeBaseId, reasoningEffort, tools, ...rest } = body
+    const { knowledgeBaseId, reasoningEffort, tools, composioToolkits, ...rest } = body
 
     const createData: Record<string, unknown> = { ...rest }
-    if (tools !== undefined) {
-      createData.widgetConfig = { tools }
+    if (tools !== undefined || composioToolkits !== undefined) {
+      const widgetConfig: Record<string, unknown> = {}
+      if (tools !== undefined) widgetConfig.tools = tools
+      if (composioToolkits !== undefined) widgetConfig.composioToolkits = composioToolkits
+      createData.widgetConfig = widgetConfig
     }
 
     const agent = await prisma.agent.create({
@@ -293,7 +331,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     await fastify.ensureAdmin(request.userId!, existing.organizationId)
 
     const body = request.body as Record<string, unknown>
-    const { knowledgeBaseId, reasoningEffort, tools, ...rest } = body
+    const { knowledgeBaseId, reasoningEffort, tools, composioToolkits, ...rest } = body
 
     const updateData: Record<string, unknown> = { ...rest }
     if (knowledgeBaseId !== undefined) {
@@ -302,9 +340,12 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
     if (reasoningEffort !== undefined) {
       updateData.reasoningEffort = reasoningEffort
     }
-    if (tools !== undefined) {
+    if (tools !== undefined || composioToolkits !== undefined) {
       const existingConfig = (existing.widgetConfig as Record<string, unknown>) || {}
-      updateData.widgetConfig = { ...existingConfig, tools }
+      const widgetConfig: Record<string, unknown> = { ...existingConfig }
+      if (tools !== undefined) widgetConfig.tools = tools
+      if (composioToolkits !== undefined) widgetConfig.composioToolkits = composioToolkits
+      updateData.widgetConfig = widgetConfig
     }
 
     const agent = await prisma.agent.update({
@@ -492,6 +533,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       tools: toolNames,
       toolIds,
       mcpServerIds,
+      composioToolkits,
       guardrails,
     } = request.body as z.infer<typeof testStreamSchema>
 
@@ -526,34 +568,11 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       }
     }
 
-    // Plan-gate server-billed tools (e.g. web search). Resolve the caller's org
-    // via the provider key's org, falling back to their first membership.
+    // Plan-gate server-billed tools (e.g. web search). Free plans cannot use them.
     let effectiveToolNames = toolNames
     let gatedToolNote = ''
     if (toolNames.some((name) => GATED_TOOLS.has(name))) {
-      const orgRef = providerKeyId
-        ? await prisma.providerKey.findFirst({
-            where: {
-              id: providerKeyId,
-              organization: { memberships: { some: { userId: request.userId! } } },
-            },
-            select: { organizationId: true },
-          })
-        : await prisma.membership.findFirst({
-            where: { userId: request.userId! },
-            orderBy: { createdAt: 'asc' },
-            select: { organizationId: true },
-          })
-
-      let planName: string | null = null
-      if (orgRef?.organizationId) {
-        try {
-          planName = (await getOrgPlan(orgRef.organizationId)).name
-        } catch {
-          planName = null
-        }
-      }
-
+      const planName = await getCallerPlanName(request.userId!, providerKeyId)
       // Free plans (or an unresolvable org) cannot use gated tools.
       if (planName === null || planName === 'free') {
         effectiveToolNames = toolNames.filter((name) => !GATED_TOOLS.has(name))
@@ -678,6 +697,40 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
       }
     }
 
+    // Load Composio tools by toolkit (org config gates which toolkits are allowed)
+    const composioToolHandlers: Record<string, { schema: { name: string; description: string; parameters: Record<string, unknown> }; execute: (args: Record<string, unknown>) => Promise<unknown> }> = {}
+    if (composioToolkits.length > 0) {
+      const orgId = await resolveCallerOrgId(request.userId!, providerKeyId)
+      if (orgId) {
+        // Plan gate: Composio toolkits are a Pro feature — free plans get a note instead.
+        let planName: string | null = null
+        try {
+          planName = (await getOrgPlan(orgId)).name
+        } catch {
+          planName = null
+        }
+        if (planName === null || planName === 'free') {
+          systemContext += '\n\nComposio integrations are a Pro feature and are disabled on the current plan. If asked to use connected apps (Gmail, Slack, GitHub, etc.), explain that upgrading to Pro enables them.'
+        } else {
+          const result = await loadComposioToolHandlers({ orgId, requestedToolkits: composioToolkits })
+          for (const handler of result.handlers) {
+            toolDefs.push({
+              name: handler.schema.name,
+              description: handler.schema.description,
+              parameters: handler.schema.parameters,
+            })
+            composioToolHandlers[handler.schema.name] = {
+              schema: handler.schema,
+              execute: async (args: Record<string, unknown>) => await handler.execute(args),
+            }
+          }
+          if (result.rejectedToolkits.length > 0) {
+            console.warn(`[composio] Ignored toolkits not enabled at org level: ${result.rejectedToolkits.join(', ')}`)
+          }
+        }
+      }
+    }
+
     if (knowledgeBaseId) {
       const kb = await prisma.knowledgeBase.findFirst({
         where: { id: knowledgeBaseId, organization: { memberships: { some: { userId: request.userId! } } } },
@@ -724,7 +777,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
         apiKey,
         tools: toolDefs.length > 0 ? toolDefs : undefined,
       })
-
+      console.log(`[composio] Total toolDefs sent to LLM: ${toolDefs.length} — names: ${toolDefs.map((d) => d.name).join(', ')}`)
       let finalUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined
 
       let firstResponseText = ''
@@ -770,7 +823,7 @@ export default async function agentsRoutes(fastify: FastifyInstance) {
 
         const results: { tool: string; result: unknown }[] = []
         for (const tc of toolCallsFromStream) {
-          const handler = getToolHandler(tc.tool) || dbToolHandlers[tc.tool] || mcpToolHandlers[tc.tool]
+          const handler = getToolHandler(tc.tool) || dbToolHandlers[tc.tool] || mcpToolHandlers[tc.tool] || composioToolHandlers[tc.tool]
           if (handler) {
             const result = await handler.execute(tc.args)
             reply.raw.write(`data: ${JSON.stringify({ type: 'tool_result', tool: tc.tool, result })}\n\n`)

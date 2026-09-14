@@ -6,9 +6,10 @@ import { getProviderForModel } from '@convio/ai/providers'
 import { getCorsHeaders } from '../../plugins/cors.js'
 import { retrieveContext, markDocumentQueriesSuccess } from '../../services/processor.js'
 import { moderateForOrg, type ModerationFlag } from '../../services/moderation.js'
-import { checkMessageLimit } from '../../services/billing.js'
+import { checkMessageLimit, getOrgPlan } from '../../services/billing.js'
 import { resolveProviderKey } from '../../services/provider-key.js'
 import { loadAgentToolHandlers, ASK_USER_TOOL } from '../../services/tools/index.js'
+import { loadComposioToolHandlers } from '../../services/composio/session-loader.js'
 import { computeCost } from '@convio/ai/pricing'
 import { getAgentWidgetDomains, assertConversationAccess } from '../widgets/access.js'
 import { runExclusive, createRequestSignal } from '../../services/concurrency.js'
@@ -838,6 +839,27 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         apiKey = providerKey?.apiKey
         toolHandlers = handlers
         provider = getProviderForModel(agent.model!, providerKey?.provider)
+
+        // Load Composio tools from agent's widgetConfig (org config gates toolkits)
+        const agentComposioToolkits = Array.isArray((agent.widgetConfig as Record<string, unknown>)?.composioToolkits)
+          ? ((agent.widgetConfig as Record<string, unknown>).composioToolkits as string[])
+          : []
+        if (agentComposioToolkits.length > 0) {
+          // Plan gate: Composio toolkits are a Pro feature.
+          let planName: string | null = null
+          try {
+            planName = (await getOrgPlan(agent.organizationId)).name
+          } catch {
+            planName = null
+          }
+          if (planName === 'pro' || planName === 'business' || planName === 'enterprise') {
+            const result = await loadComposioToolHandlers({
+              orgId: agent.organizationId,
+              requestedToolkits: agentComposioToolkits,
+            })
+            toolHandlers.push(...result.handlers)
+          }
+        }
       } catch {
         earlyResponse = 'Sorry, something went wrong. Please try again.'
       }
