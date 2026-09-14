@@ -5,6 +5,7 @@ import { getCurrentTime } from './current-time.js'
 import { createDbToolHandler } from './db-tool-executor.js'
 import type { JsonValue } from '@prisma/client/runtime/client'
 import { clientFromServer } from '../mcp/factory.js'
+import { loadComposioToolHandlers } from '../composio/session-loader.js'
 
 export interface ToolHandler<T = unknown> {
   execute(args: Record<string, unknown>): Promise<T> | T
@@ -151,6 +152,7 @@ export function listTools(): ToolHandler['schema'][] {
 }
 
 interface AgentWithTools {
+  organizationId: string
   widgetConfig: unknown
   tools: Array<{ tool: { id: string; name: string; description: string; type: string; config: unknown; organizationId: string } }>
   mcpServers?: Array<{ mcpServer: {
@@ -256,7 +258,25 @@ export async function loadAgentToolHandlers(
     }
   }
 
+  // Load Composio tools from agent's widgetConfig (org config gates toolkits)
+  const composioHandlers = await loadAgentComposioHandlers(agent)
+  handlers.push(...composioHandlers)
+
   return handlers
+}
+
+export async function loadAgentComposioHandlers(
+  agent: { organizationId: string; widgetConfig: unknown }
+): Promise<ToolHandler[]> {
+  const widgetConfig = (agent.widgetConfig || {}) as Record<string, unknown>
+  const agentToolkits = Array.isArray(widgetConfig.composioToolkits)
+    ? (widgetConfig.composioToolkits as string[])
+    : []
+  const result = await loadComposioToolHandlers({
+    orgId: agent.organizationId,
+    requestedToolkits: agentToolkits,
+  })
+  return result.handlers
 }
 
 export async function loadDbToolHandlers(
