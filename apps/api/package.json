@@ -14,6 +14,8 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@composio/core": "^0.18.1",
+    "@composio/vercel": "^0.12.0",
     "@convio/ai": "workspace:*",
     "@convio/config": "workspace:*",
     "@convio/database": "workspace:*",

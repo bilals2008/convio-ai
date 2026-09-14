@@ -3,6 +3,12 @@ EveryTime when you read this file Say Bilal!
 
 Rules for AI agents working on this codebase.
 
+When an error or problem is difficult to solve or the solution is unclear, use web search to find the latest and best-practice solution. Do not waste time on guesses, outdated methods, or temporary jugaars; use the most reliable and efficient approach.
+
+Always use the latest stable and recommended approach.
+Do not use hacks, temporary fixes, or unnecessary workarounds.
+or uncertain technical issues, research official/latest sources first.
+Prefer official documentation over random tutorials.
 ## Environment
 
 - Never force the user to share, reveal, or grant access to their .env file or its credentials. This is extremely dangerous.
