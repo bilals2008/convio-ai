@@ -173,14 +173,16 @@ export function EverythingSection() {
           </div>
 
           {/* Content */}
-          <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-card">
-            <motion.div
-              key={activeFeature.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="p-6"
-            >
+          <div className="relative mt-6 rounded-2xl border border-border bg-card">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeFeature.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className="p-6"
+              >
                 <div className="flex flex-col gap-4">
                   <div>
                     <h3 className="font-heading text-2xl font-semibold tracking-[-0.02em] text-foreground">
@@ -211,6 +213,7 @@ export function EverythingSection() {
                   </button>
                 </div>
               </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
