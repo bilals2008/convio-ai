@@ -399,6 +399,16 @@ export const createMcpServerSchema = mcpServerSchema.omit({
 
 export const updateMcpServerSchema = createMcpServerSchema.partial()
 
+// Composio schemas
+export const composioConfigSchema = z.object({
+  apiKey: z.string().min(1),
+  enabledToolkits: z.array(z.string()).default([]),
+})
+
+export const createComposioConfigSchema = composioConfigSchema
+
+export const updateComposioConfigSchema = composioConfigSchema.partial()
+
 // Billing schemas
 export const billingPlanSchema = z.enum(['free', 'pro', 'business', 'enterprise'])
 
@@ -443,3 +453,4 @@ export type Tool = z.infer<typeof toolSchema>
 export type Deployment = z.infer<typeof deploymentSchema>
 export type AuditLog = z.infer<typeof auditLogSchema>
 export type SsoConfig = z.infer<typeof ssoConfigSchema>
+export type ComposioConfig = z.infer<typeof composioConfigSchema>

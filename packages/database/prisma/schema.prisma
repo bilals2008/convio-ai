@@ -51,6 +51,7 @@ model Organization {
   providerKeys            ProviderKey[]
   tools                   Tool[]
   mcpServers              McpServer[]
+  composioConfig          ComposioConfig?
   widgets                 Widget[]
   auditLogs               AuditLog[]
   invitations             Invitation[]
@@ -337,6 +338,20 @@ model McpServer {
 
   @@unique([organizationId, name])
   @@index([organizationId])
+}
+
+model ComposioConfig {
+  id               String       @id @default(uuid())
+  organizationId   String       @unique
+  apiKey           String       // encrypted AES-256-GCM
+  enabledToolkits  String[]     @default([])
+  composioSessionId String?     // cached Composio session ID
+  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @db.Timestamptz(6)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("composio_configs")
 }
 
 model AgentMcpServer {
