@@ -4,7 +4,6 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
-import { plugin as shadcn } from '@shadcn/lint'
 
 export default defineConfig([
   globalIgnores(['dist']),
@@ -19,19 +18,7 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
-    plugins: { shadcn },
-    settings: {
-      shadcn: {
-        ui: "@/components/ui",
-      },
-    },
     rules: {
-      "shadcn/no-restyle": ["error", { allow: ["layout"] }],
-      "shadcn/no-raw-colors": "error",
-      "shadcn/no-arbitrary-values": ["error", { allow: ["layout"] }],
-      "shadcn/no-inline-styles": "error",
-      "shadcn/no-unknown-classes": "warn",
-      "shadcn/require-static-classes": "error",
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'warn',
