@@ -19,6 +19,7 @@ import {
   LifeBuoy,
   FlaskConical,
   Zap,
+  Type,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -85,6 +86,7 @@ export const adminNavGroups: NavGroup[] = [
       { icon: CreditCard, label: 'Billing', href: '/admin/billing', permission: 'admin.billing.read' },
       { icon: Tags, label: 'Pricing', href: '/admin/pricing', permission: 'admin.billing.read' },
       { icon: Shield, label: 'Providers', href: '/admin/providers', permission: 'admin.providers.read' },
+      { icon: Type, label: 'Fonts', href: '/admin/fonts', permission: 'admin.access' },
       { icon: Bell, label: 'Notifications', href: '/admin/notifications', permission: 'admin.system.read' },
       { icon: KeyRound, label: 'Admin Access', href: '/admin/access', permission: 'admin.access.manage' },
     ],

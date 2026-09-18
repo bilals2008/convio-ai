@@ -1091,16 +1091,16 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
     const signature = request.headers['x-signature-ed25519'] as string | undefined
     const timestamp = request.headers['x-signature-timestamp'] as string | undefined
     const rawBody = (request as unknown as { rawBody?: string }).rawBody ?? ''
+    const interaction = request.body as DiscordInteraction
+
+    // PING — always respond with PONG (must handle before signature check
+    // so Discord's endpoint verification succeeds even if publicKey is unset)
+    if (interaction.type === 1) {
+      return reply.code(200).send({ type: 1 })
+    }
 
     if (!signature || !timestamp) {
       return reply.code(401).send({ error: 'Missing signature headers' })
-    }
-
-    const interaction = request.body as DiscordInteraction
-
-    // PING — always respond with PONG
-    if (interaction.type === 1) {
-      return reply.code(200).send({ type: 1 })
     }
 
     // Resolve the public key for THIS bot. Prefer the deployment's own key

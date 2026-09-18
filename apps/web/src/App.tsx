@@ -43,6 +43,7 @@ const AdminTicketsPage = lazyLoad(() => import('@/admin/pages/tickets-page'))
 const AdminTicketDetailPage = lazyLoad(() => import('@/admin/pages/ticket-detail-page'))
 const AdminPlaygroundPage = lazyLoad(() => import('@/admin/pages/playground-page'))
 const AdminApiUsagePage = lazyLoad(() => import('@/admin/pages/api-usage-page'))
+const AdminFontsPage = lazyLoad(() => import('@/admin/pages/fonts-page'))
 
 const Landing = lazyLoad(() => import('@/pages/landing'))
 const PricingPage = lazyLoad(() => import('@/pages/pricing-page'))
@@ -613,6 +614,7 @@ export function App() {
                 <Route path="/admin/tickets" element={<AdminTicketsPage />} />
                 <Route path="/admin/tickets/:ticketId" element={<AdminTicketDetailPage />} />
                 <Route path="/admin/api-usage" element={<AdminApiUsagePage />} />
+                <Route path="/admin/fonts" element={<AdminFontsPage />} />
               </Route>
             </Route>
           </Routes>

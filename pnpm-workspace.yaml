@@ -9,3 +9,6 @@ allowBuilds:
   prisma: true
   protobufjs: true
   sharp: true
+
+minimumReleaseAgeExclude:
+  - '@shadcn/lint@0.1.0'
