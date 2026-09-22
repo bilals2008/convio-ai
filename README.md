@@ -1,85 +1,149 @@
+<div align="center">
+
 # Convio
 
-AI Chatbot & Agent Management Platform — multi-tenant, multi-channel AI agents with RAG knowledge bases, BYOK AI providers, embeddable web widget, and real-time streaming chat.
+**The open-source platform for building, deploying and scaling AI agents across every channel.**
 
-![Convio Dashboard](https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/hero.avif)
+Multi-tenant · Multi-channel · Provider-agnostic · Real-time
 
-## Features
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](./tsconfig.base.json)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Fastify](https://img.shields.io/badge/Fastify-Backend-000000?logo=fastify&logoColor=white)](https://fastify.dev)
+[![Prisma](https://img.shields.io/badge/Prisma-v7-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![Turborepo](https://img.shields.io/badge/Monorepo-Turborepo%20%2B%20pnpm-EF4444?logo=turborepo&logoColor=white)](https://turbo.build)
 
-- **AI Agents** — Configure AI brains with custom prompts, tools, tool configs, and knowledge bases
-- **Multi-channel Deployment** — Deploy agents to Web widget, WhatsApp, Telegram, Discord, Slack
-- **Knowledge Base (RAG)** — Upload documents and URLs; chunking, embeddings, and reranking
-- **Real-time Chat** — Streaming AI responses (SSE) in the dashboard and web widget
-- **Embeddable Widget** — Paste one `<script>` tag; customizable theme, quick replies, domain allow-listing
-- **Analytics** — Conversations, messages, success rate, response time, token usage
-- **Multi-tenant Organizations** — Team collaboration with role-based access (owner/admin/member/viewer)
-- **Custom Tools** — Extend AI capabilities with web search, calculators, HTTP tools, and more
-- **BYOK** — Bring your own API keys per provider; stored org-scoped and encrypted at rest (AES-256-GCM)
-- **Billing** — Subscription plans via Creem (Free / Pro / Business / Enterprise)
-- **Admin Panel** — Platform-wide management: users, orgs, tickets, billing, audit log
+<img src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/hero.avif" alt="Convio Dashboard" width="100%" />
+
+[**Documentation**](./docs) · [**Architecture**](./ARCHITECTURE.md) · [**Getting Started**](#-getting-started) · [**Contributing**](./CONTRIBUTING.md)
+
+</div>
+
+---
+
+<div align="center">
+
+## What is Convio?
+
+Convio is a complete platform for running production AI agents — not a demo, not a thin wrapper.
+
+It gives you a single control plane to define agent behaviour, ground agents in your own knowledge, connect them to the channels your customers already use, and observe everything they do. The AI layer is fully provider-agnostic, so you are never locked to a single model vendor.
+
+</div>
+
+<div align="center">
+
+## Highlights
+
+</div>
+
+| Capability | Description |
+|:-----------|:------------|
+| **AI Agents** | Composable agent brains — system prompts, tools, tool configs, knowledge bases and model routing |
+| **Knowledge Base (RAG)** | Document and URL ingestion, chunking, embeddings, vector search and reranking |
+| **Multi-channel** | One agent, many surfaces — web widget, WhatsApp, Telegram, Discord and Slack |
+| **Real-time Streaming** | Token-by-token responses over SSE in both the dashboard and the embeddable widget |
+| **Embeddable Widget** | Drop-in `<script>` tag with theming, quick replies and domain allow-listing |
+| **Provider-agnostic AI** | OpenAI, Anthropic, Google, Groq, OpenRouter, DeepSeek, local gateway — or bring your own keys |
+| **Multi-tenant** | Organizations, memberships and role-based access control out of the box |
+| **Observability** | Conversations, messages, success rate, latency, token usage and per-agent analytics |
+| **Security** | AES-256-GCM encrypted provider keys, JWT verification, audit logging |
+| **Billing** | Subscription tiers with plan enforcement and provider-agnostic billing abstraction |
+| **Admin Panel** | Platform-wide management of users, organizations, tickets, billing and audit trails |
+
+<div align="center">
 
 ## Tech Stack
 
+</div>
+
 | Layer | Technology |
-|-------|------------|
-| Frontend | React + Vite + TypeScript + Tailwind + shadcn/ui (Base UI) |
-| Backend | Fastify + TypeScript |
-| Auth | Supabase Auth (JWT verified server-side) |
-| Database | PostgreSQL + Prisma v7 driver adapter (pgvector for embeddings) |
-| Streaming | Server-Sent Events (SSE) |
-| AI | Provider-agnostic `packages/ai` (OpenAI, Anthropic, Google, Groq, OpenRouter, DeepSeek, local gateway, BYOK) |
-| Embeddings | GitHub Models, OpenAI, or local `@huggingface/transformers` + `all-MiniLM-L6-v2` |
-| Validation | Zod schemas shared between frontend and backend |
-| Monorepo | Turborepo + pnpm workspaces |
+|:------|:-----------|
+| **Frontend** | React · Vite · TypeScript · Tailwind CSS · shadcn/ui |
+| **Backend** | Fastify · TypeScript |
+| **Auth** | Supabase Auth — JWT verified server-side |
+| **Database** | PostgreSQL · Prisma v7 driver adapter · pgvector |
+| **Streaming** | Server-Sent Events (SSE) |
+| **AI Runtime** | Provider-agnostic `packages/ai` — generate, stream, embed, moderate |
+| **Embeddings** | GitHub Models · OpenAI · local `all-MiniLM-L6-v2` |
+| **Validation** | Zod schemas shared across client and server |
+| **Monorepo** | Turborepo · pnpm workspaces |
+
+<div align="center">
 
 ## Getting Started
 
+</div>
+
 ```bash
+# 1. Install dependencies
 pnpm install
-pnpm db:generate   # generate Prisma client
-pnpm db:push       # sync schema to your database
-pnpm dev           # runs api + web
+
+# 2. Generate the Prisma client
+pnpm db:generate
+
+# 3. Sync the schema to your database
+pnpm db:push
+
+# 4. Run the API and web app together
+pnpm dev
 ```
 
-Copy `.env.example` to `.env` (API) and fill in the required values (`DATABASE_URL`, Supabase keys). Set the `VITE_*` vars in `apps/web/.env` (see `apps/web/.env.example`). All other variables are optional — features gracefully disable when missing.
+<div align="center">
+
+Copy `.env.example` to `.env` for the API and set the required values (`DATABASE_URL`, Supabase keys).
+Configure the `VITE_*` variables in `apps/web/.env` — see `apps/web/.env.example`.
+Every other variable is optional; features degrade gracefully when a service is not configured.
+
+</div>
+
+<div align="center">
 
 ## Project Structure
+
+</div>
 
 ```
 convio/
 ├── apps/
-│   ├── web/          ← React frontend (dashboard, admin, widget, docs)
-│   └── api/          ← Fastify backend
+│   ├── web/          React frontend — dashboard, admin, widget, docs
+│   └── api/          Fastify backend
 │
 ├── packages/
-│   ├── ai/           ← AI provider abstraction (generate/stream/embed/moderate)
-│   ├── config/       ← Shared app config & plan limits
-│   ├── database/     ← Prisma schema + client (lazy-initialized)
-│   ├── types/        ← Shared types & RBAC permissions
-│   └── validation/   ← Shared Zod schemas
+│   ├── ai/           AI provider abstraction (generate / stream / embed / moderate)
+│   ├── config/       Shared app config and plan limits
+│   ├── database/     Prisma schema and lazy-initialized client
+│   ├── types/        Shared types and RBAC permissions
+│   └── validation/   Shared Zod schemas
 │
-└── docs/             ← Project documentation
+└── docs/             Project documentation
 ```
+
+<div align="center">
 
 ## Documentation
 
-- [Architecture](./ARCHITECTURE.md)
-- [Structure](./docs/STRUCTURE.md)
-- [Database Schema](./docs/DATABASE-SCHEMA.md)
-- [API Design](./docs/API-DESIGN.md)
-- [Backend Modules](./docs/BACKEND-MODULES.md)
-- [Frontend Structure](./docs/FRONTEND-STRUCTURE.md)
-- [Auth Flow](./docs/AUTH.md)
-- [AI Integration](./docs/AI-INTEGRATION.md)
-- [Multi-channel](./docs/MULTI-CHANNEL.md)
-- [Real-time Chat](./docs/REALTIME-CHAT.md)
-- [Theme](./docs/THEME.md)
-- [shadcn Patterns](./docs/SHADCN-PATTERNS.md)
+</div>
+
+<div align="center">
+
+[Architecture](./ARCHITECTURE.md) · [Structure](./docs/STRUCTURE.md) · [Database Schema](./docs/DATABASE-SCHEMA.md) · [API Design](./docs/API-DESIGN.md) · [Backend Modules](./docs/BACKEND-MODULES.md) · [Frontend Structure](./docs/FRONTEND-STRUCTURE.md) · [Auth Flow](./docs/AUTH.md) · [AI Integration](./docs/AI-INTEGRATION.md) · [Multi-channel](./docs/MULTI-CHANNEL.md) · [Real-time Chat](./docs/REALTIME-CHAT.md) · [MCP](./docs/MCP.md) · [Theme](./docs/THEME.md) · [shadcn Patterns](./docs/SHADCN-PATTERNS.md)
+
+</div>
+
+<div align="center">
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request.
 
 ## License
 
-MIT
+Released under the [MIT License](./LICENSE).
 
 ---
 
 Built by **Muhammad Bilal Hassan** ([@bilals2008](https://github.com/bilals2008))
+
+</div>

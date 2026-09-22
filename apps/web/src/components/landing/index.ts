@@ -1,13 +1,21 @@
 export { Navbar } from './navbar'
 export { HeroSection } from './hero-section'
-export { TrustedBySection } from './trusted-by-section'
+export { ChannelsSection } from './channels-section'
+export { HowItWorks } from './how-it-works'
 export { EverythingSection } from './everything-section'
 export { Pricing } from './pricing'
 export { CTA } from './cta'
 export { Footer } from './footer'
+export { SectionIntro } from './section-intro'
 export { ScrollReveal } from './scroll-reveal'
 export { GlowCard } from './glow-card'
 export { DirectionHover } from './direction-hover'
 export { SectionHeading } from './section-heading'
-export { PromoBanner } from './promo-banner'
 export { ProClaimModal } from './pro-claim-modal'
+export {
+  SmoothScroll,
+  Reveal,
+  SplitHeading,
+  Parallax,
+  useLenis,
+} from './motion'

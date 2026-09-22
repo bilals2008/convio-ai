@@ -1,8 +1,10 @@
-import { ExternalLink, Plus, Globe2 } from 'lucide-react'
+import { ExternalLink, Plus, Globe2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CodeBlock } from '@/components/shared/code-block'
+import { cn } from '@/lib/utils'
 import { SectionCard } from './SectionCard'
+import { isValidDomain, sanitizeDomain, MAX_DOMAIN_LENGTH } from '../helpers'
 
 const Html5Icon = () => (
   <svg viewBox="0 0 452 520" className="size-4 shrink-0" aria-hidden="true">
@@ -34,6 +36,9 @@ export function InstallTab({
   position,
   snippet,
 }: InstallTabProps) {
+  const sanitizedDomain = sanitizeDomain(domainInput)
+  const domainInvalid = sanitizedDomain.length > 0 && !isValidDomain(sanitizedDomain)
+
   return (
     <div className="space-y-6 [&>*+*]:border-t [&>*+*]:border-border/40 [&>*+*]:pt-6">
       <SectionCard
@@ -91,10 +96,10 @@ export function InstallTab({
                   <button
                     type="button"
                     onClick={() => onRemoveDomain(d)}
-                    className="ml-2 shrink-0 text-muted-foreground/30 hover:text-destructive transition-colors text-sm"
+                    className="ml-2 shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors"
                     aria-label={`Remove ${d}`}
                   >
-                    ×
+                    <X className="size-3.5" />
                   </button>
                 </div>
               ))}
@@ -110,8 +115,13 @@ export function InstallTab({
               value={domainInput}
               onChange={(e) => onDomainInputChange(e.target.value)}
               placeholder="example.com"
-              className="h-8 flex-1 font-mono text-xs"
+              className={cn(
+                'h-8 flex-1 font-mono text-xs',
+                domainInvalid && 'border-destructive focus-visible:ring-destructive/30',
+              )}
               aria-label="Domain to add"
+              aria-invalid={domainInvalid}
+              maxLength={MAX_DOMAIN_LENGTH}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -124,6 +134,12 @@ export function InstallTab({
               Add
             </Button>
           </div>
+
+          {domainInvalid && (
+            <p className="text-[11px] text-destructive">
+              Enter a domain without a protocol, e.g. example.com
+            </p>
+          )}
 
           {domains.length > 0 && (
             <p className="text-[11px] text-muted-foreground/50" aria-live="polite">

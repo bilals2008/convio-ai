@@ -121,7 +121,7 @@ export function ProClaimModal() {
               <p className="mt-2.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
                 {plan?.isTrial
                   ? `Your Pro trial is active. Enjoy all features until your trial ends.`
-                  : `Unlock all Pro features for 14 days — no credit card required. Cancel anytime.`}
+                  : `Unlock all Pro features for 14 days. No credit card required. Cancel anytime.`}
               </p>
 
               {plan?.isTrial && plan?.trialEndsAt && (

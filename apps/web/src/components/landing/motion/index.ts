@@ -1,0 +1,6 @@
+export { gsap, ScrollTrigger, prefersReducedMotion } from './gsap'
+export { SmoothScroll } from './smooth-scroll'
+export { useLenis } from './lenis-context'
+export { Reveal } from './reveal'
+export { SplitHeading } from './split-heading'
+export { Parallax } from './parallax'

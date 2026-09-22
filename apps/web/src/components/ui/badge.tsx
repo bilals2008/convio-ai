@@ -61,6 +61,8 @@ const badgeVariants = cva(
           "bg-info/10 text-info border-info/20",
         beta:
           "bg-warning/15 text-warning border-0 h-4 px-1.5 py-0",
+        soon:
+          "bg-primary/10 text-primary border-0 h-4 px-1.5 py-0",
         entity_agent:
           "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
         entity_member:

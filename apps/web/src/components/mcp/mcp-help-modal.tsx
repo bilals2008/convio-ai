@@ -142,7 +142,7 @@ export function McpHelpModal({ open, onOpenChange }: McpHelpModalProps) {
 
         <div className="border-t border-border/60 px-6 py-4 flex items-center justify-between gap-3">
           <a
-            href="/docs/connecting-mcp-server"
+            href="/docs"
             onClick={() => onOpenChange(false)}
             className="text-xs text-primary hover:underline"
           >

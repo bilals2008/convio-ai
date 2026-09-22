@@ -19,12 +19,6 @@ import {
   Type,
   HelpCircle,
   Loader2,
-  Table2,
-  FileJson,
-  FileCode,
-  Zap,
-  Link2,
-  FileText,
   CheckCircle2,
   AlertCircle,
   LayoutGrid,
@@ -35,6 +29,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Wand2,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -83,7 +78,7 @@ import { useOrg } from '@/lib/org-context'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { KnowledgeCard, KnowledgeCardSkeleton } from '@/components/knowledge/knowledge-card'
 import { KbGenerateModal as KnowledgeGenerateModal } from '@/components/knowledge/kb-generate-modal'
-import { SourcePickerModal, type SourceType } from '@/components/knowledge/source-picker-modal'
+import type { SourceType } from '@/components/knowledge/source-picker-modal'
 import { FileIcon } from '@/components/shared/file-icon'
 import { toast } from '@/lib/toast'
 
@@ -100,15 +95,10 @@ interface KnowledgeBase {
 }
 
 const quickSources = [
-  { id: 'file-upload' as SourceType, label: 'File', icon: Upload, color: 'bg-primary/10 text-primary' },
-  { id: 'website' as SourceType, label: 'Website', icon: null, color: 'bg-blue-500/10 text-blue-500', logo: 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/google-chrome/default.svg' },
-  { id: 'custom-text' as SourceType, label: 'Text', icon: Type, color: 'bg-teal-500/10 text-teal-500' },
-  { id: 'faq' as SourceType, label: 'FAQ', icon: HelpCircle, color: 'bg-pink-500/10 text-pink-500' },
-  { id: 'csv' as SourceType, label: 'CSV', icon: Table2, color: 'bg-emerald-500/10 text-emerald-500' },
-  { id: 'json' as SourceType, label: 'JSON', icon: FileJson, color: 'bg-amber-500/10 text-amber-500' },
-  { id: 'markdown' as SourceType, label: 'Markdown', icon: FileCode, color: 'bg-blue-500/10 text-blue-500' },
-  { id: 'api' as SourceType, label: 'API', icon: Zap, color: 'bg-purple-500/10 text-purple-500' },
-  { id: 'sitemap' as SourceType, label: 'Sitemap', icon: Link2, color: 'bg-cyan-500/10 text-cyan-500' },
+  { id: 'file-upload' as SourceType, label: 'File', icon: Upload, logo: null as string | null },
+  { id: 'website' as SourceType, label: 'Website', icon: null, logo: 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/google-chrome/default.svg' },
+  { id: 'custom-text' as SourceType, label: 'Text', icon: Type, logo: null },
+  { id: 'faq' as SourceType, label: 'FAQ', icon: HelpCircle, logo: null },
 ]
 
 const columnHelper = createColumnHelper<KnowledgeBase>()
@@ -119,7 +109,6 @@ export default function KnowledgeListPage() {
   const { orgId, isLoading: orgLoading } = useOrg()
   const [search, setSearch] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [sourceModalOpen, setSourceModalOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [createName, setCreateName] = useState('')
   const [createDesc, setCreateDesc] = useState('')
@@ -370,80 +359,71 @@ export default function KnowledgeListPage() {
   return (
     <PageContainer>
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-              <BookOpen className="size-4 text-primary" />
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight">Knowledge Bases</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <BookOpen className="size-4 text-primary" />
           </div>
-          <p className="text-sm text-muted-foreground">Manage context for your AI agents.</p>
+          <div className="space-y-1 min-w-0">
+            <h1 className="text-xl font-semibold tracking-tight leading-none sm:text-2xl">Knowledge Bases</h1>
+            <p className="text-sm text-muted-foreground">Manage context for your AI agents.</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-            <Plus className="size-4" />
-            Create Knowledge Base
-          </Button>
-        </div>
+        <Button onClick={() => setCreateOpen(true)} className="w-full shrink-0 sm:w-auto">
+          <Plus className="size-4" />
+          Create
+        </Button>
       </div>
 
-      {/* Quick sources */}
-      <div className="flex flex-wrap items-center gap-2">
-        {quickSources.map((source) => (
-          <button
-            key={source.id}
-            onClick={() => handleSourceSelect(source.id)}
-            className="flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-muted/30"
-          >
-            {source.logo ? (
-              <div className="flex size-4 shrink-0 items-center justify-center rounded bg-background border border-border/40">
-                <img src={source.logo} alt="" className="size-2.5" loading="lazy" />
-              </div>
-            ) : source.icon ? (
-              <div className={cn('flex size-4 shrink-0 items-center justify-center rounded', source.color)}>
-                <source.icon className="size-2.5" />
-              </div>
-            ) : null}
-            {source.label}
-          </button>
-        ))}
-        <button
-          onClick={() => setSourceModalOpen(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-dashed border-border/60 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-        >
-          <Plus className="size-3" />
-          More
-        </button>
+       {/* Quick sources */}
+       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+         {quickSources.map((source) => (
+           <button
+             key={source.id}
+             onClick={() => handleSourceSelect(source.id)}
+             className="flex items-center justify-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-muted/30 sm:justify-start sm:py-1.5"
+           >
+             {source.logo ? (
+               <div className="flex size-4 shrink-0 items-center justify-center rounded bg-background border border-border/40">
+                 <img src={source.logo} alt="" className="size-2.5" loading="lazy" />
+               </div>
+             ) : source.icon ? (
+               <div className="flex size-4 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+                 <source.icon className="size-2.5" />
+               </div>
+             ) : null}
+             {source.label}
+           </button>
+         ))}
        </div>
 
        {/* Generate with AI */}
-       <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 shadow-sm">
-         <div className="flex items-center gap-3">
+       <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+         <div className="flex items-start gap-3 min-w-0">
            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
              <Wand2 className="size-4.5" />
            </div>
-           <div>
-             <p className="text-sm font-medium">Generate with AI</p>
-             <p className="text-xs text-muted-foreground">Describe your business and get a starter KB with documents and FAQs.</p>
+           <div className="space-y-1 min-w-0">
+             <p className="text-sm font-medium leading-none">Generate with AI</p>
+             <p className="text-xs text-muted-foreground leading-snug">Describe your business and get a starter KB with documents and FAQs.</p>
            </div>
          </div>
-         <Button type="button" variant="outline" size="sm" onClick={() => setGenerateOpen(true)}>
+         <Button type="button" variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" onClick={() => setGenerateOpen(true)}>
            Try it
          </Button>
        </div>
 
        {/* Toolbar */}
       {knowledgeBases.length > 0 && (
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="w-full flex-1">
             <SearchInput
               value={search}
               onChange={setSearch}
               placeholder="Search knowledge bases..."
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
               <button
                 type="button"
@@ -485,9 +465,9 @@ export default function KnowledgeListPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <Table>
-              <TableHeader>
+            <div className="rounded-xl border border-border bg-card overflow-x-auto">
+              <Table className="min-w-[560px]">
+                <TableHeader>
                 <TableRow className="hover:bg-transparent border-b border-border">
                   <TableHead className="text-muted-foreground font-medium h-11 px-4 text-sm">Knowledge Base</TableHead>
                   <TableHead className="text-muted-foreground font-medium h-11 px-4 text-sm">Documents</TableHead>
@@ -517,7 +497,7 @@ export default function KnowledgeListPage() {
           icon={BookOpen}
           title="No knowledge bases yet"
           description="Create a knowledge base to give your AI agents context about your business."
-          action={{ label: 'Create Knowledge Base', onClick: () => setCreateOpen(true) }}
+          action={{ label: 'Create', onClick: () => setCreateOpen(true) }}
         />
       )}
 
@@ -534,7 +514,7 @@ export default function KnowledgeListPage() {
       {/* List */}
       {!loading && filtered.length > 0 && (
         <>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <div onClick={(e) => e.stopPropagation()}>
                 <Checkbox
@@ -580,8 +560,8 @@ export default function KnowledgeListPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <Table>
+            <div className="rounded-xl border border-border bg-card overflow-x-auto">
+              <Table className="min-w-[560px]">
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow
@@ -626,7 +606,7 @@ export default function KnowledgeListPage() {
               </Table>
 
               {showPagination && (
-                <div className="flex items-center justify-between border-t border-border px-4 py-3">
+                <div className="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-muted-foreground">
                     Showing {table.getState().pagination.pageIndex * PAGE_SIZE + 1} to{' '}
                     {Math.min(
@@ -635,7 +615,7 @@ export default function KnowledgeListPage() {
                     )}{' '}
                     of {filtered.length} knowledge bases
                   </p>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     <Button
                       variant="outline"
                       size="icon-sm"
@@ -680,9 +660,10 @@ export default function KnowledgeListPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="w-full sm:w-auto" disabled={bulkDeleteMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
+              className="w-full sm:w-auto"
               disabled={bulkDeleteMutation.isPending}
               onClick={() => bulkDeleteMutation.mutate(Array.from(bulk.selectedIds))}
             >
@@ -702,9 +683,10 @@ export default function KnowledgeListPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
+              className="w-full sm:w-auto"
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
               disabled={deleteMutation.isPending}
             >
@@ -713,12 +695,6 @@ export default function KnowledgeListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <SourcePickerModal
-        open={sourceModalOpen}
-        onOpenChange={setSourceModalOpen}
-        onSelect={handleSourceSelect}
-      />
 
       <KnowledgeGenerateModal
         open={generateOpen}
@@ -731,7 +707,7 @@ export default function KnowledgeListPage() {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Knowledge Base</DialogTitle>
+            <DialogTitle>Create</DialogTitle>
             <DialogDescription>Add a name and optional description.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -754,11 +730,11 @@ export default function KnowledgeListPage() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => { setCreateOpen(false); setCreateName(''); setCreateDesc('') }}>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => { setCreateOpen(false); setCreateName(''); setCreateDesc('') }}>
               Cancel
             </Button>
-            <Button size="sm" onClick={() => createMutation.mutate()} disabled={!createName.trim() || createMutation.isPending}>
+            <Button size="sm" className="w-full sm:w-auto" onClick={() => createMutation.mutate()} disabled={!createName.trim() || createMutation.isPending}>
               {createMutation.isPending && <Loader2 className="size-3.5 animate-spin mr-1.5" />}
               Create
             </Button>

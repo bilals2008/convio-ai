@@ -41,6 +41,7 @@
     "env-schema": "^6.0.0",
     "fastify": "^5.0.0",
     "fastify-plugin": "^5.0.0",
+    "jose": "^6.2.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "resend": "^6.17.2",

@@ -38,7 +38,7 @@ function writeChunk(reply: FastifyReply, payload: WireChunk): void {
 }
 
 export default async function adminAssistantRoutes(fastify: FastifyInstance) {
-  const adminGuard = { preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin] }
+  const adminGuard = { preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin] }
 
   // GET /api/admin/assistant/conversations — conversation history for this admin
   fastify.get('/admin/assistant/conversations', adminGuard, async (request) => {
@@ -78,7 +78,7 @@ export default async function adminAssistantRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/admin/assistant/conversations/:id/messages',
     {
-      preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: conversationParamsSchema })],
+      preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: conversationParamsSchema })],
     },
     async (request, reply) => {
       const { id } = request.params as { id: string }
@@ -95,7 +95,7 @@ export default async function adminAssistantRoutes(fastify: FastifyInstance) {
   fastify.delete(
     '/admin/assistant/conversations/:id',
     {
-      preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: conversationParamsSchema })],
+      preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: conversationParamsSchema })],
     },
     async (request, reply) => {
       const { id } = request.params as { id: string }
@@ -131,7 +131,7 @@ export default async function adminAssistantRoutes(fastify: FastifyInstance) {
     '/admin/assistant/stream',
     {
       preHandler: [
-        fastify.authenticate,
+        fastify.authenticateSensitive,
         fastify.ensurePlatformAdmin,
         validate({ body: streamBodySchema }),
       ],

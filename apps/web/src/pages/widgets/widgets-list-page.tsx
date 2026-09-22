@@ -111,7 +111,7 @@ export default function WidgetsListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { orgId, isLoading: orgLoading } = useOrg()
-  const { widgets = [], isLoading, isError, refetch } = useWidgets(orgId)
+  const { widgets = [], isLoading, isError, refetch } = useWidgets(orgId ?? undefined)
   const [createOpen, setCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterStatus>('all')
@@ -393,7 +393,6 @@ export default function WidgetsListPage() {
     initialState: { pagination: { pageSize: PAGE_SIZE } },
   })
 
-  const hasActiveFilters = !!search.trim() || filter !== 'all'
   const loading = orgLoading || isLoading
 
   const clearFilters = () => {

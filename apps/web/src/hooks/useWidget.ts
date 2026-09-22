@@ -26,6 +26,10 @@ export interface WidgetTheme {
   inputBgColor: string
   sendBtnColor: string
   footerBgColor: string
+  headerTitleColor: string
+  headerSubtitleColor: string
+  onlineIndicatorColor: string
+  headerIconColor: string
 }
 
 export interface WidgetConfig {
@@ -57,6 +61,8 @@ export interface WidgetConfig {
   teaserMessage?: string
   teaserDelay?: number
   hiddenPages?: string[]
+  /** Preview embeds can render open on first paint. Ignored outside preview. */
+  defaultOpen?: boolean
 }
 const defaultTheme: WidgetTheme = {
   primaryColor: '#1cca4a',
@@ -70,14 +76,28 @@ const defaultTheme: WidgetTheme = {
   inputBgColor: '',
   sendBtnColor: '',
   footerBgColor: '',
+  headerTitleColor: '',
+  headerSubtitleColor: '',
+  onlineIndicatorColor: '',
+  headerIconColor: '',
 }
 
 function generateId(): string {
   return crypto.randomUUID()
 }
 
+// Hidden-page patterns are URL path prefixes: "/checkout" hides "/checkout" and
+// "/checkout/success" but not "/checkout-legacy". A trailing "*" is accepted and
+// behaves identically, and "*" alone hides the widget everywhere.
+function matchesHiddenPage(path: string, pattern: string): boolean {
+  const withoutWildcard = pattern.endsWith('*') ? pattern.slice(0, -1) : pattern
+  const prefix = withoutWildcard.endsWith('/') ? withoutWildcard.slice(0, -1) : withoutWildcard
+  if (prefix === '') return true
+  return path === prefix || path.startsWith(`${prefix}/`)
+}
+
 export function useWidget(config: WidgetConfig) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(() => Boolean(config.preview && config.defaultOpen))
   const [isMinimized, setIsMinimized] = useState(false)
   const [messages, setMessages] = useState<WidgetMessage[]>([])
   const [isTyping, setIsTyping] = useState(false)
@@ -368,11 +388,11 @@ export function useWidget(config: WidgetConfig) {
   const LAUNCHER_PX = { small: 48, default: 56, large: 64 } as const
   const OPEN_WIDTH_MAP: Record<string, number> = { narrow: 320, default: 380, wide: 440 }
   const OPEN_WIDTH = config.customWidth && config.customWidth > 0
-    ? Math.min(config.customWidth, 500)
+    ? Math.min(Math.max(config.customWidth, 300), 500)
     : OPEN_WIDTH_MAP[config.widgetWidth || 'default'] || 380
   const OPEN_HEIGHT = config.customHeight && config.customHeight > 0
     ? Math.min(Math.max(config.customHeight, 300), 1200)
-    : Math.min(Math.max(config.widgetHeight || 620, 300), 900)
+    : Math.min(Math.max(config.widgetHeight || 540, 300), 900)
   const LAUNCHER_OFFSET = Math.min(Math.max(config.launcherOffset ?? 0, 0), 200)
 
   // Hide widget on specific pages (pattern matching against current path).
@@ -383,10 +403,7 @@ export function useWidget(config: WidgetConfig) {
     // Inside the embed iframe window.location is the widget's own URL, so use
     // the embedding page's path passed in by widget.js (fall back for preview).
     const path = config.currentPath || window.location.pathname
-    return pages.some((pattern) => {
-      if (pattern.endsWith('*')) return path.startsWith(pattern.slice(0, -1))
-      return path === pattern
-    })
+    return pages.some((pattern) => matchesHiddenPage(path, pattern))
   }, [config.preview, config.hiddenPages, config.currentPath])
   const [isHidden, setIsHidden] = useState(isPathHidden)
   useEffect(() => {
@@ -401,14 +418,16 @@ export function useWidget(config: WidgetConfig) {
   // Teaser message — appears after a delay, dismisses on open.
   const [teaserVisible, setTeaserVisible] = useState(false)
   useEffect(() => {
-    if (config.preview || config.showTeaser === false || !config.teaserMessage || isOpen || isHidden) {
+    // Teasers are shown in preview too (once the widget is closed) so the
+    // Layout tab's teaser controls have visible feedback.
+    if (config.showTeaser === false || !config.teaserMessage || isOpen || isHidden) {
       setTeaserVisible(false)
       return
     }
     const delay = Math.max(config.teaserDelay ?? 5, 1) * 1000
     const id = setTimeout(() => setTeaserVisible(true), delay)
     return () => clearTimeout(id)
-  }, [config.preview, config.showTeaser, config.teaserMessage, config.teaserDelay, isOpen, isHidden])
+  }, [config.showTeaser, config.teaserMessage, config.teaserDelay, isOpen, isHidden])
   const dismissTeaser = useCallback(() => setTeaserVisible(false), [])
 
   // Fullscreen on small screens: track viewport so open/close sizing follows

@@ -38,10 +38,16 @@ export interface ChatWidgetProps {
   customWidth?: number
   customHeight?: number
   launcherOffset?: number
+  /** Bottom offset of the open chat window. Defaults to 80px (clears the launcher). */
+  windowBottomOffset?: number
   showTeaser?: boolean
   teaserMessage?: string
   teaserDelay?: number
   hiddenPages?: string[]
+  /** Portal target for the widget tree. Defaults to document.body. */
+  portalContainer?: HTMLElement | null
+  /** Render open on first paint (preview only). */
+  defaultOpen?: boolean
 }
 
 const defaultTheme: WidgetTheme = {
@@ -56,6 +62,10 @@ const defaultTheme: WidgetTheme = {
   inputBgColor: '',
   sendBtnColor: '',
   footerBgColor: '',
+  headerTitleColor: '',
+  headerSubtitleColor: '',
+  onlineIndicatorColor: '',
+  headerIconColor: '',
 }
 
 function WidgetBackdrop({ show, onClose }: { show: boolean; onClose: () => void }) {
@@ -105,13 +115,16 @@ export function ChatWidget({
   customWidth = 0,
   customHeight = 0,
   launcherOffset = 0,
+  windowBottomOffset,
   showTeaser = true,
   teaserMessage = '',
   teaserDelay = 5,
   hiddenPages = [],
+  portalContainer,
+  defaultOpen,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
-  const widget = useWidget({ agentId, publicKey, host, visitorId, currentPath, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior, launcherShape, customWidth, customHeight, launcherOffset, showTeaser, teaserMessage, teaserDelay, hiddenPages })
+  const widget = useWidget({ agentId, publicKey, host, visitorId, currentPath, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior, launcherShape, customWidth, customHeight, launcherOffset, showTeaser, teaserMessage, teaserDelay, hiddenPages, defaultOpen })
   // Fullscreen windows are edge-to-edge — sharp corners regardless of setting.
   const effectiveBorderRadius = widget.isFullscreen ? 'none' : borderRadius
 
@@ -142,6 +155,7 @@ export function ChatWidget({
     launcherShape: widget.launcherShape,
     customWidth,
     customHeight,
+    windowBottomOffset,
     headerGradient,
     headerTitle,
     headerSubtitle,
@@ -174,6 +188,6 @@ export function ChatWidget({
         <WidgetWindow />
       </div>
     </WidgetStateProvider>,
-    document.body
+    portalContainer ?? document.body
   )
 }

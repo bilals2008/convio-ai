@@ -26,6 +26,8 @@ export interface WidgetStateValue {
   launcherSize: 'small' | 'default' | 'large'
   borderRadius: 'none' | 'default' | 'full'
   widgetHeight?: number
+  /** Distance from the bottom edge to the open chat window. Defaults to 80 (above the launcher). */
+  windowBottomOffset?: number
   headerGradient: boolean
   headerTitle?: string
   headerSubtitle?: string

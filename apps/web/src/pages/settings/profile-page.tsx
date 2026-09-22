@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button'
 import { ProfileInformationCard } from '@/components/settings/profile-information-card'
 import { AccountOverviewCard } from '@/components/settings/account-overview-card'
 import { LoginActivityTable } from '@/components/settings/login-activity-table'
+import { SignOutCard } from '@/components/settings/sign-out-card'
 import { ConnectedAccountsCard } from '@/components/settings/connected-accounts-card'
 import { PasswordChangeCard } from '@/components/settings/password-change-card'
+import { PasskeysCard } from '@/components/settings/passkeys-card'
 import { DangerZoneCard } from '@/components/settings/danger-zone-card'
 import { AiGenerationModelCard } from '@/components/settings/ai-generation-model-card'
 import {
@@ -63,7 +65,9 @@ export default function ProfilePage() {
         <AccountOverviewCard />
         <AiGenerationModelCard />
         <PasswordChangeCard />
+        <PasskeysCard />
         <LoginActivityTable />
+        <SignOutCard />
         {/* <ConnectedAccountsCard /> */}
         <DangerZoneCard />
       </form>

@@ -1,4 +1,4 @@
-import type { WidgetDetail } from './types'
+import type { WidgetConfig, WidgetDetail } from './types'
 
 export const primaryPresets = [
   { label: 'Convio', color: '#1cca4a' },
@@ -55,6 +55,30 @@ export const footerBgPresets = [
   { label: 'Auto', color: '' },
   { label: 'Dark', color: '#0a0a0a' },
   { label: 'Light', color: '#ffffff' },
+] as const
+
+export const headerTitleColorPresets = [
+  { label: 'Auto', color: '' },
+  { label: 'White', color: '#ffffff' },
+  { label: 'Dark', color: '#111827' },
+] as const
+
+export const headerSubtitleColorPresets = [
+  { label: 'Auto', color: '' },
+  { label: 'Emerald', color: '#6ee7b7' },
+  { label: 'Muted', color: '#9ca3af' },
+] as const
+
+export const onlineIndicatorColorPresets = [
+  { label: 'Auto', color: '' },
+  { label: 'Emerald', color: '#34d399' },
+  { label: 'Amber', color: '#fbbf24' },
+] as const
+
+export const headerIconColorPresets = [
+  { label: 'Auto', color: '' },
+  { label: 'White', color: '#ffffff' },
+  { label: 'Dark', color: '#111827' },
 ] as const
 
 export const STATUS_BADGE: Record<
@@ -123,7 +147,9 @@ export const LAUNCHER_SHAPE_OPTIONS = [
 
 // Single source of truth for widget config defaults — used by the form hook,
 // dirty checks and the preview. New options only need an entry here.
-export const DEFAULT_WIDGET_CONFIG = {
+// Typed as Required<WidgetConfig> (rather than `as const`) so it stays a mutable,
+// fully-resolved WidgetConfig for useState and resolveConfig.
+export const DEFAULT_WIDGET_CONFIG: Required<WidgetConfig> = {
   position: 'bottom-right',
   primaryColor: '#1cca4a',
   backgroundColor: '#1c1c1c',
@@ -147,6 +173,10 @@ export const DEFAULT_WIDGET_CONFIG = {
   themeMode: 'auto',
   headerTitle: '',
   headerSubtitle: '',
+  headerTitleColor: '',
+  headerSubtitleColor: '',
+  onlineIndicatorColor: '',
+  headerIconColor: '',
   showOnlineIndicator: true,
   launcherLabel: '',
   placeholderText: '',
@@ -161,4 +191,4 @@ export const DEFAULT_WIDGET_CONFIG = {
   teaserMessage: '',
   teaserDelay: 5,
   hiddenPages: [],
-} as const
+}

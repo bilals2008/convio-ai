@@ -22,6 +22,10 @@ export const widgetDraftSchema = z.object({
   footerBgColor: z.string().max(20).optional(),
   headerTitle: z.string().max(100).optional(),
   headerSubtitle: z.string().max(100).optional(),
+  headerTitleColor: z.string().max(20).optional(),
+  headerSubtitleColor: z.string().max(20).optional(),
+  onlineIndicatorColor: z.string().max(20).optional(),
+  headerIconColor: z.string().max(20).optional(),
   agentName: z.string().max(50).optional(),
   placeholderText: z.string().max(120).optional(),
   quickReplies: z.array(z.string().max(60)).max(4).optional(),
@@ -45,6 +49,10 @@ const COLOR_KEYS = [
   'inputBgColor',
   'sendBtnColor',
   'footerBgColor',
+  'headerTitleColor',
+  'headerSubtitleColor',
+  'onlineIndicatorColor',
+  'headerIconColor',
 ] as const
 
 export const WIDGET_GENERATION_PROMPT = `You design the look and feel of an embedded website chat widget called a Convio widget. The user describes their brand or website, and you respond with ONLY a single valid JSON object (no markdown fences, no commentary) matching this schema:
@@ -64,6 +72,10 @@ export const WIDGET_GENERATION_PROMPT = `You design the look and feel of an embe
   "footerBgColor": string,           // optional footer/input area background as #rrggbb
   "headerTitle": string,             // text shown in the widget header
   "headerSubtitle": string,          // small subtitle under the header title
+  "headerTitleColor": string,        // optional header title text color as #rrggbb
+  "headerSubtitleColor": string,     // optional header subtitle/status text color as #rrggbb
+  "onlineIndicatorColor": string,    // optional online status dot color as #rrggbb
+  "headerIconColor": string,         // optional header menu/close icon color as #rrggbb
   "agentName": string,               // assistant display name
   "placeholderText": string,         // input placeholder, e.g. "Type your message..."
   "quickReplies": string[],          // 0-4 short suggestion chips (<=60 chars each)

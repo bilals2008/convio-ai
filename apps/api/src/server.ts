@@ -10,6 +10,7 @@ import configPlugin from './config/index.js'
 import errorHandlerPlugin from './plugins/error.js'
 import corsPlugin from './plugins/cors.js'
 import authPlugin from './plugins/auth.js'
+import sessionGuardPlugin from './plugins/session-guard.js'
 import validationPlugin from './plugins/validate.js'
 import membershipPlugin from './plugins/membership.js'
 import adminPlugin from './plugins/admin.js'
@@ -71,6 +72,7 @@ async function buildServer() {
   await app.register(errorHandlerPlugin)
   await app.register(corsPlugin)
   await app.register(authPlugin)
+  await app.register(sessionGuardPlugin)
   await app.register(membershipPlugin)
   await app.register(adminPlugin)
   await app.register(billingLimitsPlugin)

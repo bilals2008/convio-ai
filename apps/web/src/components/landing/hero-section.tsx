@@ -1,26 +1,31 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
-import { ArrowRight, ArrowUpRight, Check, MessageSquare, BarChart3, Globe } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Check, Globe } from 'lucide-react'
 import { HeroBackground } from './hero-background'
+import { Parallax, Reveal, SplitHeading } from './motion'
+
+const HERO_IMAGE =
+  'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/hero.avif'
 
 function ProductPreview() {
   return (
     <div className="relative">
-      <div className="pointer-events-none absolute -inset-6 -z-10 rounded-[32px] bg-primary/[0.07] blur-[60px]" />
       <div className="flex items-center gap-1.5 rounded-t-2xl border border-b-0 border-border bg-card px-3 py-2.5">
-        <span className="size-2.5 rounded-full bg-destructive/70" />
-        <span className="size-2.5 rounded-full bg-warning/70" />
-        <span className="size-2.5 rounded-full bg-success/70" />
+        <span className="size-2.5 rounded-full bg-destructive/60" />
+        <span className="size-2.5 rounded-full bg-warning/60" />
+        <span className="size-2.5 rounded-full bg-success/60" />
         <div className="ml-3 h-5 w-full max-w-[200px] rounded-md bg-muted" />
       </div>
-      <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-b-2xl border border-border bg-secondary/20">
+      <AspectRatio
+        ratio={16 / 9}
+        className="overflow-hidden rounded-b-2xl border border-border bg-secondary/30 shadow-soft-lg"
+      >
         <img
-          src="https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/hero.avif"
-          alt="AI agent dashboard preview"
-          className="object-cover"
+          src={HERO_IMAGE}
+          alt="Convio agent dashboard"
+          className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/15 to-transparent pointer-events-none" />
       </AspectRatio>
     </div>
   )
@@ -28,74 +33,77 @@ function ProductPreview() {
 
 export function HeroSection() {
   return (
-    <section id="top" className="relative overflow-hidden">
+    <section id="top" className="relative overflow-hidden border-b border-border">
       <HeroBackground />
 
-      <div className="relative mx-auto max-w-[1160px] px-5 md:px-10 pb-16 pt-28 md:pb-24 md:pt-36">
+      <div className="relative mx-auto max-w-[1160px] px-5 pb-16 pt-28 md:px-10 md:pb-24 md:pt-36">
         <div className="flex flex-col items-center text-center">
-          <a
-            href="#channels"
-            className="group inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-4 py-1.5 text-[13px] font-medium text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/40 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-            </span>
-            New — BYOK: Bring your own API keys
-            <ArrowUpRight className="size-3.5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-          </a>
-
-          <h1 className="mt-8 max-w-[14ch] font-heading text-[clamp(40px,6vw,72px)] font-semibold leading-[1.05] tracking-[-0.035em] text-foreground">
-            AI agents that live{' '}
-            <span className="relative whitespace-nowrap text-success">
-              where your users are
-              <svg
-                className="absolute -bottom-1.5 left-0 w-full text-success/50"
-                viewBox="0 0 300 12"
-                fill="none"
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                <path d="M2 9C60 3 240 3 298 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-              </svg>
-            </span>
-          </h1>
-
-          <p className="mt-5 max-w-[480px] text-[clamp(15px,1.5vw,18px)] leading-[1.6] text-muted-foreground">
-            Build RAG-powered agents, deploy across web, WhatsApp, Telegram, Discord & Slack.
-          </p>
-
-          <div className="mt-8 flex items-center gap-3">
-            <Link to="/signup">
-              <Button size="lg" className="glow-primary-sm">
-                Start free
-                <ArrowRight className="size-4" />
-              </Button>
-            </Link>
-            <a href="#everything">
-              <Button size="lg" variant="outline" className="bg-card/60">
-                View demo
-              </Button>
+          <Reveal y={12} duration={0.5}>
+            <a
+              href="#channels"
+              className="group inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/50" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+              </span>
+              New: Bring your own API keys
+              <ArrowUpRight className="size-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </a>
-          </div>
+          </Reveal>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <Globe className="size-3.5 shrink-0 text-primary/70" /> 5 channels
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <MessageSquare className="size-3.5 shrink-0 text-primary/70" /> Unlimited agents
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <BarChart3 className="size-3.5 shrink-0 text-primary/70" /> Built-in analytics
-            </span>
-          </div>
+          <SplitHeading
+            as="h1"
+            text="AI agents that live where your users are"
+            highlight="where your users are"
+            highlightClassName="text-primary"
+            delay={0.1}
+            className="mt-7 max-w-[15ch] font-heading text-[clamp(40px,6.5vw,76px)] font-semibold leading-[1.03] tracking-[-0.035em] text-foreground"
+          />
+
+          <Reveal y={18} delay={0.35} className="w-full">
+            <p className="mx-auto mt-5 max-w-[520px] text-[clamp(15px,1.5vw,18px)] leading-[1.6] text-muted-foreground">
+              Build RAG-powered agents and deploy them to web, WhatsApp, Telegram, Discord,
+              and Slack from one dashboard.
+            </p>
+          </Reveal>
+
+          <Reveal y={18} delay={0.45} className="w-full">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link to="/signup">
+                <Button size="lg" className="glow-primary-sm">
+                  Start free
+                  <ArrowRight className="size-4" />
+                </Button>
+              </Link>
+              <a href="#everything">
+                <Button size="lg" variant="outline">
+                  See it in action
+                </Button>
+              </a>
+            </div>
+          </Reveal>
+
+          <Reveal y={14} delay={0.55} className="w-full">
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <Globe className="size-3.5 shrink-0 text-primary/70" /> 5 channels
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="size-3.5 shrink-0 text-primary/70" /> Free forever plan
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="size-3.5 shrink-0 text-primary/70" /> No credit card
+              </span>
+            </div>
+          </Reveal>
         </div>
 
-        <div className="relative mt-12 md:mt-16">
-          <div className="pointer-events-none absolute -top-8 left-1/2 h-[200px] w-[60%] -translate-x-1/2 rounded-full bg-primary/[0.08] blur-[60px]" />
-          <ProductPreview />
-        </div>
+        <Reveal y={32} delay={0.3} duration={0.9} className="mt-12 md:mt-16">
+          <Parallax distance={46}>
+            <ProductPreview />
+          </Parallax>
+        </Reveal>
       </div>
     </section>
   )

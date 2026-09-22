@@ -1,5 +1,18 @@
 import { useCallback, useState } from 'react'
-import { ArrowLeft, Check, Code2, Copy, ExternalLink, Eye, EyeOff, MoreVertical, Pause, Rocket, Save, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  Check,
+  Code2,
+  Copy,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  MoreVertical,
+  Pause,
+  Rocket,
+  Save,
+  Trash2,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -8,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { WidgetDetail } from '../types'
 import { STATUS_INDICATOR } from '../constants'
@@ -17,6 +31,7 @@ interface WidgetHeaderProps {
   name: string
   isDirty: boolean
   copied: boolean
+  canPublish: boolean
   position: string
   savePending: boolean
   showPreview?: boolean
@@ -32,6 +47,7 @@ export function WidgetHeader({
   name,
   isDirty,
   copied,
+  canPublish,
   position,
   savePending,
   showPreview = true,
@@ -59,7 +75,7 @@ export function WidgetHeader({
     <div className="space-y-5">
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground/70 hover:text-foreground transition-colors"
+        className="inline-flex items-center gap-1.5 py-1 text-xs font-medium text-muted-foreground/70 hover:text-foreground transition-colors"
       >
         <ArrowLeft className="size-3.5" />
         Back to widgets
@@ -74,7 +90,7 @@ export function WidgetHeader({
               className="size-11 shrink-0 rounded-full object-cover ring-1 ring-border/30"
             />
           ) : (
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 text-sm font-semibold text-primary ring-1 ring-primary/10">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary ring-1 ring-primary/15">
               {widget.agent.name.charAt(0).toUpperCase()}
             </div>
           )}
@@ -84,7 +100,7 @@ export function WidgetHeader({
                 {name}
               </h1>
               {isDirty && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/15 bg-warning/5 px-2 py-0.5 text-[10px] font-medium text-warning">
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-warning/15 bg-warning/5 px-2 py-0.5 text-[10px] font-medium text-warning">
                   <span className="size-1.5 rounded-full bg-warning" />
                   Unsaved
                 </span>
@@ -101,7 +117,7 @@ export function WidgetHeader({
                       : 'bg-muted/50 text-muted-foreground',
                 )}
               >
-                <span className={cn('size-1.5 rounded-full', isLive && 'bg-success animate-pulse')} />
+                <span className={cn('size-1.5 rounded-full', status.dot)} />
                 {status.label}
               </span>
               <span className="text-muted-foreground/50">·</span>
@@ -110,56 +126,84 @@ export function WidgetHeader({
               <button
                 onClick={copyKey}
                 className="group inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                aria-label="Copy public key"
               >
                 {widget.publicKey.slice(0, 8)}
                 {keyCopied ? (
                   <Check className="size-3 text-success" />
                 ) : (
-                  <Copy className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  // Visible on touch (no hover), revealed on hover on pointer devices.
+                  <Copy className="size-3 shrink-0 opacity-50 transition-opacity sm:opacity-0 sm:group-hover:opacity-100" />
                 )}
               </button>
             </div>
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+        <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:shrink-0 sm:justify-end">
           <Button
             variant="ghost"
             size="icon"
             onClick={onTogglePreview}
-            className={cn('size-8', !showPreview && 'text-muted-foreground/40')}
+            className={cn('hidden size-8 xl:inline-flex', !showPreview && 'text-muted-foreground/40')}
             aria-label={showPreview ? 'Hide preview' : 'Show preview'}
           >
             {showPreview ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
           </Button>
-          <Button variant="outline" size="sm" onClick={onCopyEmbed} className="h-8 text-xs gap-1.5">
-            <Code2 className="size-3.5" />
-            Get Code
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCopyEmbed}
+            className="h-8 flex-1 text-xs gap-1.5 sm:flex-none"
+          >
+            {copied ? <Check className="size-3.5 text-success" /> : <Code2 className="size-3.5" />}
+            {copied ? 'Copied' : 'Get code'}
           </Button>
-          <Button size="sm" onClick={() => onSave()} disabled={!isDirty || savePending} className="h-8 text-xs gap-1.5">
+          <Button
+            size="sm"
+            onClick={() => onSave()}
+            disabled={!isDirty || savePending}
+            className="h-8 flex-1 text-xs gap-1.5 sm:flex-none"
+          >
             <Save className="size-3.5" />
             {savePending ? 'Saving...' : 'Save'}
           </Button>
-          {!isLive && (
-            <Button
-              size="sm"
-              onClick={() => onSave('active')}
-              disabled={savePending}
-              className="h-8 text-xs gap-1.5 bg-success text-primary-foreground hover:bg-success/80"
-            >
-              <Rocket className="size-3.5" />
-              {savePending ? 'Publishing...' : 'Publish'}
-            </Button>
-          )}
+          {!isLive &&
+            (canPublish ? (
+              <Button
+                size="sm"
+                onClick={() => onSave('active')}
+                disabled={savePending}
+                className="h-8 flex-1 text-xs gap-1.5 sm:flex-none bg-success text-primary-foreground hover:bg-success/80"
+              >
+                <Rocket className="size-3.5" />
+                {savePending ? 'Publishing...' : 'Publish'}
+              </Button>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger render={<span className="inline-flex flex-1 sm:flex-none" />}>
+                  <Button
+                    size="sm"
+                    disabled
+                    className="h-8 w-full text-xs gap-1.5 bg-success text-primary-foreground"
+                  >
+                    <Rocket className="size-3.5" />
+                    Publish
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Add at least one allowed domain in Install before publishing
+                </TooltipContent>
+              </Tooltip>
+            ))}
           <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted/50 hover:text-foreground transition-colors">
+            <DropdownMenuTrigger
+              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted/50 hover:text-foreground transition-colors"
+              aria-label="More actions"
+            >
               <MoreVertical className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={onCopyEmbed}>
-                {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                {copied ? 'Copied!' : 'Copy embed code'}
-              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
                   window.open(
@@ -169,17 +213,12 @@ export function WidgetHeader({
                 }
               >
                 <ExternalLink className="size-3.5" />
-                Live preview
+                Open live preview
               </DropdownMenuItem>
-              {isLive ? (
+              {isLive && (
                 <DropdownMenuItem onClick={() => onSave('paused')}>
                   <Pause className="size-3.5" />
                   Pause widget
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onClick={() => onSave('active')}>
-                  <Rocket className="size-3.5" />
-                  Publish widget
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />

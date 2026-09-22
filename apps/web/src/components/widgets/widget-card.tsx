@@ -19,21 +19,6 @@ interface WidgetCardProps {
   showCheckbox?: boolean
 }
 
-const STATUS_VARIANT: Record<string, 'active' | 'pending' | 'archived'> = {
-  active: 'active',
-  paused: 'pending',
-  draft: 'archived',
-}
-
-function statusVariant(status: string) {
-  return STATUS_VARIANT[status] ?? 'archived'
-}
-
-function statusLabel(status: string) {
-  if (status === 'active') return 'Live'
-  return status.charAt(0).toUpperCase() + status.slice(1)
-}
-
 function timeAgo(date: string) {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
   if (seconds < 60) return 'Today'

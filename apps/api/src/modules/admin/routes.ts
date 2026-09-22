@@ -86,7 +86,7 @@ function getSupabaseAdmin() {
 }
 
 export default async function adminRoutes(fastify: FastifyInstance) {
-  const adminGuard = { preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin] }
+  const adminGuard = { preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin] }
 
   // GET /api/admin/stats — Dashboard KPIs
   fastify.get('/admin/stats', adminGuard, async () => {
@@ -139,7 +139,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/users — All users with filters (plan/status/org/date ranges) + usage metrics
   fastify.get('/admin/users', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: adminUserQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: adminUserQuerySchema })],
   }, async (request) => {
     const { cursor, limit, search, status, plan, orgId, verified, createdFrom, createdTo, activeFrom, activeTo } =
       request.query as {
@@ -282,7 +282,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/users/:id — Single user detail with usage, billing, agents + activity
   fastify.get('/admin/users/:id', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: userParamsSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: userParamsSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
 
@@ -422,7 +422,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/users/:id/conversations — Recent conversations where the user is the account actor
   fastify.get('/admin/users/:id/conversations', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: userParamsSchema, query: paginationSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: userParamsSchema, query: paginationSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const { cursor, limit } = request.query as { cursor?: string; limit: number }
@@ -466,7 +466,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // PATCH /api/admin/users/:id — Edit user profile (name/avatar)
   fastify.patch('/admin/users/:id', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: userParamsSchema, body: adminUserUpdateSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: userParamsSchema, body: adminUserUpdateSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const body = request.body as { name?: string | null; avatar?: string | null }
@@ -486,7 +486,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/admin/users/:id/suspend — Suspend account (blocks login via Supabase ban + marks status)
   fastify.post('/admin/users/:id/suspend', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const user = await prisma.profile.findUnique({ where: { id } })
@@ -504,7 +504,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/admin/users/:id/activate — Re-activate account
   fastify.post('/admin/users/:id/activate', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const user = await prisma.profile.findUnique({ where: { id } })
@@ -522,7 +522,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/admin/users/:id/verify-email — Mark email as confirmed in Supabase auth
   fastify.post('/admin/users/:id/verify-email', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const user = await prisma.profile.findUnique({ where: { id } })
@@ -540,7 +540,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/admin/users/:id/reset-password — Send password recovery link to user's email
   fastify.post('/admin/users/:id/reset-password', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const user = await prisma.profile.findUnique({ where: { id } })
@@ -557,7 +557,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   // POST /api/admin/users/:id/impersonate — Generate a login link the admin can open to access the account
   // ponytail: recovery link as impersonation; upgrade to a minted session token if real SSO-style access is needed
   fastify.post('/admin/users/:id/impersonate', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const user = await prisma.profile.findUnique({ where: { id } })
@@ -573,7 +573,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/admin/users/:id/force-logout — Revoke all active sessions globally
   fastify.post('/admin/users/:id/force-logout', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const user = await prisma.profile.findUnique({ where: { id } })
@@ -601,7 +601,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/admin/users/:id — Hard delete user account (auth + profile + owned orgs)
   fastify.delete('/admin/users/:id', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: adminUserActionSchema })],
   }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const user = await prisma.profile.findUnique({ where: { id } })
@@ -613,7 +613,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/admin/users/bulk — Bulk suspend/activate/verify/delete users
   fastify.post('/admin/users/bulk', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: adminBulkActionSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ body: adminBulkActionSchema })],
   }, async (request) => {
     const { ids, action } = request.body as { ids: string[]; action: 'suspend' | 'activate' | 'verify' | 'delete' }
 
@@ -659,7 +659,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/organizations — All orgs with pagination + search
   fastify.get('/admin/organizations', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
   }, async (request) => {
     const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
 
@@ -715,7 +715,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/organizations/:id — Single org detail with stats
   fastify.get('/admin/organizations/:id', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
 
@@ -768,7 +768,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/analytics — Platform-wide analytics with daily breakdown
   fastify.get('/admin/analytics', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
   }, async (request) => {
     const query = request.query as { cursor?: string; limit: number; search?: string }
     const days = Math.min(query.limit || 30, 90)
@@ -961,7 +961,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/agents — All agents with cursor pagination + search
   fastify.get('/admin/agents', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
   }, async (request) => {
     const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
 
@@ -1041,7 +1041,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/moderation — Organization moderation configs with violation counts
   fastify.get('/admin/moderation', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: moderationQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: moderationQuerySchema })],
   }, async (request) => {
     const { search, limit, offset } = request.query as { search?: string; limit: number; offset: number }
 
@@ -1097,7 +1097,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/moderation/violations — Paginated recent violations across platform
   fastify.get('/admin/moderation/violations', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: violationQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: violationQuerySchema })],
   }, async (request) => {
     const { limit, offset, severity, orgId } = request.query as {
       search?: string; limit: number; offset: number; severity?: string; orgId?: string
@@ -1144,7 +1144,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/provider-keys — All provider keys across orgs (masked)
   fastify.get('/admin/provider-keys', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
   }, async (request) => {
     const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
 
@@ -1244,7 +1244,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   // GET /api/admin/revenue — Revenue analytics aggregated by week/month/year
   // ponytail: no explicit cost model in the DB, so "loss" = churned subscription value + uncollectible invoices
   fastify.get('/admin/revenue', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: revenueQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: revenueQuerySchema })],
   }, async (request) => {
     const { period } = request.query as { period: RevenuePeriod }
 
@@ -1422,7 +1422,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/admin/plans — Create a plan
   fastify.post('/admin/plans', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: planCreateSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ body: planCreateSchema })],
   }, async (request) => {
     const body = request.body as Record<string, unknown>
     const plan = await prisma.plan.create({ data: body as any })
@@ -1431,7 +1431,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // PATCH /api/admin/plans/:id — Update a plan
   fastify.patch('/admin/plans/:id', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: planUpdateSchema, params: orgParamsSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ body: planUpdateSchema, params: orgParamsSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     const body = request.body as Record<string, unknown>
@@ -1441,7 +1441,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/admin/plans/:id — Delete a plan
   fastify.delete('/admin/plans/:id', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     await prisma.plan.delete({ where: { id } })
@@ -1450,7 +1450,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/knowledge-bases — All knowledge bases with org + usage counts
   fastify.get('/admin/knowledge-bases', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: searchQuerySchema })],
   }, async (request) => {
     const { cursor, limit, search } = request.query as { cursor?: string; limit: number; search?: string }
 
@@ -1502,7 +1502,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/knowledge-bases/:id — KB detail with documents + usage
   fastify.get('/admin/knowledge-bases/:kbId', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: knowledgeParamsSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: knowledgeParamsSchema })],
   }, async (request) => {
     const { kbId } = request.params as { kbId: string }
 
@@ -1559,7 +1559,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/knowledge-bases/:kbId/documents/:documentId — Document chunks + query history
   fastify.get('/admin/knowledge-bases/:kbId/documents/:documentId', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: knowledgeDocumentParamsSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: knowledgeDocumentParamsSchema })],
   }, async (request) => {
     const { kbId, documentId } = request.params as { kbId: string; documentId: string }
 
@@ -1606,7 +1606,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/audit-logs — Platform audit logs with filters
   fastify.get('/admin/audit-logs', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: auditLogQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: auditLogQuerySchema })],
   }, async (request) => {
     const query = request.query as {
       action?: string
@@ -1729,7 +1729,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   })
 
   // GET /api/admin/grants — List active temporary admin grants
-  fastify.get('/admin/grants', { preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin] }, async () => {
+  fastify.get('/admin/grants', { preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin] }, async () => {
     const grants = await prisma.adminGrant.findMany({
       orderBy: { expiresAt: 'desc' },
       include: { grantedBy: { select: { id: true, name: true, email: true } } },
@@ -1739,7 +1739,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/admin/grants — Grant temporary admin access for N hours
   fastify.post('/admin/grants', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: adminGrantCreateSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ body: adminGrantCreateSchema })],
   }, async (request) => {
     const { email, hours } = request.body as { email: string; hours: number }
     const normalized = email.toLowerCase()
@@ -1763,7 +1763,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/admin/grants/:id — Revoke an admin grant
   fastify.delete('/admin/grants/:id', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ params: adminGrantParamsSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: adminGrantParamsSchema })],
   }, async (request) => {
     const { id } = request.params as { id: string }
     await prisma.adminGrant.deleteMany({ where: { id } })

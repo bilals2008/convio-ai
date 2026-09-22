@@ -79,7 +79,7 @@ export function KbSettingsPanel({ settings: externalSettings, onChange, disabled
               <Label className="text-xs font-medium text-muted-foreground">Embedding Model</Label>
               <Select
                 value={settings.embeddingModel}
-                onValueChange={(v) => update({ embeddingModel: v })}
+                onValueChange={(v) => update({ embeddingModel: v ?? settings.embeddingModel })}
                 disabled={disabled}
               >
                 <SelectTrigger className="h-9">
@@ -174,7 +174,7 @@ export function KbSettingsPanel({ settings: externalSettings, onChange, disabled
               <Label className="text-xs font-medium text-muted-foreground">Similarity Metric</Label>
               <Select
                 value={settings.retrieverMetric}
-                onValueChange={(v) => update({ retrieverMetric: v })}
+                onValueChange={(v) => update({ retrieverMetric: v ?? settings.retrieverMetric })}
                 disabled={disabled}
               >
                 <SelectTrigger className="h-9">

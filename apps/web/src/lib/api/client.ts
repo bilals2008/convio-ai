@@ -30,7 +30,9 @@ api.interceptors.response.use(
       const { data, error: refreshError } = await supabase.auth.refreshSession()
       if (refreshError || !data.session) {
         captureError(error, { action: 'session-expired' })
-        supabase.auth.signOut()
+        // This device's session is dead — don't also end the user's sessions
+        // on their other devices as a side effect of one expired token.
+        supabase.auth.signOut({ scope: 'local' })
         const currentPath = window.location.pathname + window.location.search
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
         return Promise.reject(error)

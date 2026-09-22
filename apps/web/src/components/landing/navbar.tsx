@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, X, LogOut, LayoutDashboard, User, Sun, Moon, BookOpen } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, User, Sun, Moon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
 import { useTheme } from 'next-themes'
 import { DirectionHover } from './direction-hover'
-import { PromoBanner } from './promo-banner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const navLinks = [
+const navLinks: { label: string; href: string; badge?: string }[] = [
   { label: 'Docs', href: '/docs' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Contact', href: '/contact' },
@@ -44,15 +43,14 @@ export function Navbar() {
 
   return (
     <header className="fixed top-0 inset-x-0 z-[200]">
-      <PromoBanner hidden={scrolled} />
       <div
         className={`transition-all duration-300 ${
           scrolled
-            ? 'mx-3 mt-2.5 rounded-2xl border border-border bg-background/80 shadow-lg backdrop-blur-lg supports-[backdrop-filter]:bg-background/60 lg:mx-auto lg:max-w-[1160px]'
+            ? 'mx-3 mt-1.5 rounded-2xl border border-border bg-background/80 shadow-lg backdrop-blur-lg supports-[backdrop-filter]:bg-background/60 lg:mx-auto lg:max-w-[1160px]'
             : 'bg-background/40 backdrop-blur-sm'
         }`}
       >
-        <div className="mx-auto flex h-14 max-w-[1160px] items-center justify-between px-5 md:px-10">
+        <div className="mx-auto flex h-12 max-w-[1160px] items-center justify-between px-4 md:px-8">
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <img src="/logo.png" alt="Convio" className="h-6 w-auto" />
             <span className="text-base font-bold font-heading">Convio</span>
@@ -69,8 +67,9 @@ export function Navbar() {
                       active ? 'bg-primary/10 ring-primary/15' : 'bg-primary/0 ring-transparent'
                     }`}
                   />
-                  <span className="relative z-10 flex items-center">
+                  <span className="relative z-10 flex items-center gap-1.5">
                     <DirectionHover title={link.label} fontSize={13} />
+                    {link.badge && <Badge variant="soon">{link.badge}</Badge>}
                   </span>
                 </>
               )
@@ -195,12 +194,15 @@ export function Navbar() {
                   active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`
                 const inner = (
-                  <DirectionHover
-                    title={link.label}
-                    fontSize={14}
-                    textColor={active ? 'var(--foreground)' : 'var(--muted-foreground)'}
-                    hoverColor="var(--foreground)"
-                  />
+                  <span className="inline-flex items-center gap-2">
+                    <DirectionHover
+                      title={link.label}
+                      fontSize={14}
+                      textColor={active ? 'var(--foreground)' : 'var(--muted-foreground)'}
+                      hoverColor="var(--foreground)"
+                    />
+                    {link.badge && <Badge variant="soon">{link.badge}</Badge>}
+                  </span>
                 )
                 return link.href.startsWith('/') ? (
                   <Link key={link.href} to={link.href} className={cls} onClick={() => setIsOpen(false)} aria-current={active ? 'page' : undefined}>{inner}</Link>

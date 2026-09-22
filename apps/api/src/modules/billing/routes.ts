@@ -69,7 +69,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // GET /api/organizations/:orgId/billing/usage
   fastify.get('/organizations/:orgId/billing/usage', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireMembership,
       validate({ params: orgParamsSchema, query: billingUsageQuerySchema }),
     ],
@@ -94,7 +94,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // GET /api/organizations/:orgId/billing/plan
   fastify.get('/organizations/:orgId/billing/plan', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
@@ -109,7 +109,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // GET /api/organizations/:orgId/billing/subscription
   fastify.get('/organizations/:orgId/billing/subscription', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
@@ -124,7 +124,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // GET /api/organizations/:orgId/billing/invoices
   fastify.get('/organizations/:orgId/billing/invoices', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
@@ -139,7 +139,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/billing/start-trial — 14-day Pro trial
   fastify.post('/organizations/:orgId/billing/start-trial', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireAdmin,
       validate({ params: orgParamsSchema }),
     ],
@@ -204,7 +204,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/billing/checkout
   fastify.post('/organizations/:orgId/billing/checkout', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: checkoutBodySchema }),
     ],
@@ -263,7 +263,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:orgId/billing/portal
   fastify.post('/organizations/:orgId/billing/portal', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireAdmin,
       validate({ params: orgParamsSchema }),
     ],

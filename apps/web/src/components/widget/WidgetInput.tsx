@@ -2,20 +2,7 @@ import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 're
 import { Send, Smile } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWidgetState } from './WidgetState'
-
-const EMOJIS = [
-  '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊',
-  '😋', '😎', '😍', '🥰', '😘', '😗', '😙', '😚', '🙂', '🤗',
-  '🤩', '🤔', '🤨', '😐', '😑', '😶', '🙄', '😏', '😣', '😥',
-  '😮', '🤐', '😯', '😪', '😫', '😴', '😌', '😛', '😜', '😝',
-  '🤤', '😒', '😓', '😔', '😕', '🙃', '🤑', '😲', '☹️', '🙁',
-  '😖', '😞', '😟', '😤', '😢', '😭', '😦', '😧', '😨', '😩',
-  '🤯', '😬', '😰', '😱', '🥵', '🥶', '😳', '🤪', '😵', '😡',
-  '😠', '🤬', '👍', '👎', '👊', '✊', '🤛', '🤜', '👏', '🙌',
-  '👐', '🤲', '🤝', '🙏', '✌️', '🤞', '🫶', '❤️', '💔', '💕',
-  '🔥', '⭐', '✨', '💯', '🎉', '🎊', '🥳', '🎈', '💪', '🤷',
-  '💀', '👀', '🗣️', '💬', '💭', '😶‍🌫️', '🫡', '🫠', '🫢', '🫣',
-]
+import { EmojiPicker3D } from './emoji/EmojiPicker3D'
 
 export function WidgetInput() {
   const { onSendMessage, isTyping, placeholderText, showPoweredBy } = useWidgetState()
@@ -85,19 +72,8 @@ export function WidgetInput() {
               <Smile className="size-4" />
             </button>
             {showEmoji && (
-              <div className="absolute bottom-full left-0 mb-2 z-50 w-[280px] max-h-[200px] overflow-y-auto rounded border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] p-2 shadow-xl">
-                <div className="grid grid-cols-8 gap-0.5">
-                  {EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => insertEmoji(emoji)}
-                      className="flex size-8 items-center justify-center rounded text-lg hover:bg-[hsl(var(--widget-muted))] transition-colors"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
+              <div className="absolute bottom-full left-0 z-50 mb-2 overflow-hidden rounded border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] shadow-xl">
+                <EmojiPicker3D onSelect={insertEmoji} />
               </div>
             )}
           </div>

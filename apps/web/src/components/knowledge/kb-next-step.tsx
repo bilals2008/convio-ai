@@ -1,6 +1,6 @@
-import { ArrowRight, Upload, FlaskConical, Plug, Loader2 } from 'lucide-react'
+import { CheckCircle2, Circle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { KnowledgeBaseDetail } from './kb-types'
+import { buildWorkflow, type KnowledgeBaseDetail } from './kb-types'
 
 interface KbNextStepProps {
   kb: KnowledgeBaseDetail
@@ -10,59 +10,48 @@ interface KbNextStepProps {
 }
 
 export function KbNextStep({ kb, hasTested, onAddSource, onNavigate }: KbNextStepProps) {
-  if (kb.status === 'failed') return null
+  const steps = buildWorkflow(kb, [], hasTested, false)
+  const nextPending = steps.find((s) => s.state !== 'complete')
 
-  const step = kb.documentCount === 0
-    ? {
-        icon: Upload,
-        title: 'Add your first source',
-        description: 'Upload a document or connect a source to start building context.',
-        cta: 'Add Source',
-        action: onAddSource,
-        spinning: false,
-      }
-    : kb.status === 'indexing'
-      ? {
-          icon: Loader2,
-          title: 'Indexing in progress',
-          description: 'Your documents are being chunked and embedded. This usually takes a minute.',
-          cta: 'View Sources',
-          action: () => onNavigate('sources'),
-          spinning: true,
-        }
-      : !hasTested
-        ? {
-            icon: FlaskConical,
-            title: 'Run a test query',
-            description: 'Verify retrieval works before connecting this base to an agent.',
-            cta: 'Test',
-            action: () => onNavigate('test'),
-            spinning: false,
-          }
-        : {
-            icon: Plug,
-            title: 'Connect to an agent',
-            description: 'Your knowledge base is ready. Link it to an agent to go live.',
-            cta: 'Connect',
-            action: () => onNavigate('overview'),
-            spinning: false,
-          }
+  if (!nextPending) {
+    return (
+      <div className="rounded-xl border border-success/30 bg-success/5 px-4 py-3">
+        <p className="text-sm font-medium text-success">All steps complete! Your knowledge base is ready.</p>
+      </div>
+    )
+  }
 
-  const Icon = step.icon
+  const actions: Record<string, () => void> = {
+    sources: onAddSource,
+    testing: () => onNavigate('test'),
+    connected: () => onNavigate('overview'),
+  }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <Icon className={step.spinning ? 'size-4 animate-spin' : 'size-4'} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{step.title}</p>
-        <p className="text-xs text-muted-foreground">{step.description}</p>
+    <div className="rounded-xl border border-border/60 bg-card px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            {steps.map((step) =>
+              step.state === 'complete' ? (
+                <CheckCircle2 key={step.key} className="size-4 text-success" />
+              ) : step.state === 'active' ? (
+                <div key={step.key} className="size-4 rounded-full border-2 border-primary animate-pulse" />
+              ) : (
+                <Circle key={step.key} className="size-4 text-muted-foreground/40" />
+              ),
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-medium">{nextPending.label}</p>
+            <p className="text-xs text-muted-foreground">{nextPending.description}</p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={actions[nextPending.key] ?? (() => onNavigate(nextPending.key))}>
+          Next
+          <ArrowRight className="size-3.5 ml-1" />
+        </Button>
       </div>
-      <Button size="sm" className="gap-1.5" onClick={step.action}>
-        {step.cta}
-        {!step.spinning && <ArrowRight className="size-3.5" />}
-      </Button>
     </div>
   )
 }

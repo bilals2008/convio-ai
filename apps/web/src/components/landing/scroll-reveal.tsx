@@ -1,18 +1,20 @@
 import { type ReactNode } from 'react'
-import { motion, type Variants } from 'framer-motion'
+import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { cn } from '@/lib/utils'
+
+const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
 
 const variants: Record<string, Variants> = {
   fadeUp: {
-    hidden: { opacity: 0, y: 24 },
-    visible: { opacity: 1, y: 0 },
+    hidden: { opacity: 0, y: 32, scale: 0.985 },
+    visible: { opacity: 1, y: 0, scale: 1 },
   },
   fadeIn: {
     hidden: { opacity: 0 },
     visible: { opacity: 1 },
   },
   scaleIn: {
-    hidden: { opacity: 0, scale: 0.95 },
+    hidden: { opacity: 0, scale: 0.96 },
     visible: { opacity: 1, scale: 1 },
   },
   slideDown: {
@@ -37,11 +39,15 @@ export function ScrollReveal({
   children,
   variant = 'fadeUp',
   delay = 0,
-  duration = 0.5,
+  duration = 0.7,
   className,
   once = true,
-  amount = 0.3,
+  amount = 0.2,
 }: ScrollRevealProps) {
+  const reduce = useReducedMotion()
+
+  if (reduce) return <div className={cn(className)}>{children}</div>
+
   return (
     <motion.div
       initial="hidden"
@@ -51,7 +57,7 @@ export function ScrollReveal({
       transition={{
         duration,
         delay,
-        ease: [0.25, 0.1, 0.25, 1],
+        ease: EASE,
       }}
       className={cn(className)}
     >

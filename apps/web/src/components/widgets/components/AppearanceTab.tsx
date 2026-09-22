@@ -3,6 +3,7 @@ import { Palette, PaintBucket, Upload, X, Loader2, Image as ImageIcon, MessageCi
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { usePlan } from '@/lib/hooks/use-billing'
 import { SectionCard } from './SectionCard'
@@ -25,6 +26,10 @@ import {
   inputBgPresets,
   sendBtnPresets,
   footerBgPresets,
+  headerTitleColorPresets,
+  headerSubtitleColorPresets,
+  onlineIndicatorColorPresets,
+  headerIconColorPresets,
   THEME_MODES,
   MAX_GREETING_LENGTH,
   type ThemeMode,
@@ -91,6 +96,10 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
   const themeMode = config.themeMode ?? 'auto'
   const headerTitle = config.headerTitle ?? ''
   const headerSubtitle = config.headerSubtitle ?? ''
+  const headerTitleColor = config.headerTitleColor ?? ''
+  const headerSubtitleColor = config.headerSubtitleColor ?? ''
+  const onlineIndicatorColor = config.onlineIndicatorColor ?? ''
+  const headerIconColor = config.headerIconColor ?? ''
   const showOnlineIndicator = config.showOnlineIndicator ?? true
   const placeholderText = config.placeholderText ?? ''
   const showPoweredBy = config.showPoweredBy ?? true
@@ -115,6 +124,10 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
   const onThemeModeChange = (value: ThemeMode) => onChange({ themeMode: value })
   const onHeaderTitleChange = (value: string) => onChange({ headerTitle: value })
   const onHeaderSubtitleChange = (value: string) => onChange({ headerSubtitle: value })
+  const onHeaderTitleColorChange = (value: string) => onChange({ headerTitleColor: value })
+  const onHeaderSubtitleColorChange = (value: string) => onChange({ headerSubtitleColor: value })
+  const onOnlineIndicatorColorChange = (value: string) => onChange({ onlineIndicatorColor: value })
+  const onHeaderIconColorChange = (value: string) => onChange({ headerIconColor: value })
   const onShowOnlineIndicatorChange = (value: boolean) => onChange({ showOnlineIndicator: value })
   const onPlaceholderTextChange = (value: string) => onChange({ placeholderText: value })
   const onShowPoweredByChange = (value: boolean) => onChange({ showPoweredBy: value })
@@ -173,22 +186,28 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
         <h2 className="text-sm font-medium text-foreground">Appearance settings</h2>
         <p className="text-xs text-muted-foreground/70">Customize how your widget looks and feels.</p>
       </div>
-      <nav className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl bg-muted/30 p-1">
+      <nav
+        role="tablist"
+        aria-label="Appearance sections"
+        className="inline-flex w-full max-w-full items-center gap-0.5 overflow-x-auto rounded-xl bg-muted/30 p-1 sm:w-auto"
+      >
         {SUB_TABS.map(({ value, label, icon: Icon }) => (
           <button
             key={value}
             type="button"
+            role="tab"
+            aria-selected={subTab === value}
             onClick={() => setSubTab(value)}
             className={cn(
-              'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-medium transition-all',
+              'inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-1.5 py-2 text-[11px] font-medium transition-all sm:flex-none sm:px-3.5 sm:text-xs',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
               subTab === value
                 ? 'bg-primary/10 text-primary'
                 : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/50',
             )}
           >
-            <Icon className="size-3.5" />
-            <span className="hidden sm:inline">{label}</span>
+            <Icon className="size-3 shrink-0 sm:size-3.5" />
+            {label}
           </button>
         ))}
       </nav>
@@ -331,7 +350,7 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
               <div className="space-y-5">
                 <div className="space-y-2.5">
                   <p className="text-xs font-medium text-foreground">Theme mode</p>
-                  <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+                  <div className="inline-flex rounded-lg bg-muted/30 p-0.5" role="radiogroup" aria-label="Theme mode">
                     {THEME_MODES.map((mode) => (
                       <button
                         key={mode.value}
@@ -429,24 +448,11 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-foreground">Use gradient</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={headerGradient}
-                    onClick={() => onHeaderGradientChange(!headerGradient)}
-                    className={cn(
-                      'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                      headerGradient ? 'bg-primary' : 'bg-muted-foreground/20',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200',
-                        headerGradient ? 'translate-x-4' : 'translate-x-0.5',
-                      )}
-                    />
-                  </button>
+                  <Switch
+                    checked={headerGradient}
+                    onCheckedChange={onHeaderGradientChange}
+                    aria-label="Use header gradient"
+                  />
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -513,30 +519,27 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
                   <span className="text-xs font-medium text-foreground">Online indicator</span>
-                  <button type="button" role="switch" aria-checked={showOnlineIndicator} onClick={() => onShowOnlineIndicatorChange(!showOnlineIndicator)}
-                    className={cn('relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors', showOnlineIndicator ? 'bg-primary' : 'bg-muted-foreground/20')}>
-                    <span className={cn('pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform', showOnlineIndicator ? 'translate-x-4' : 'translate-x-0.5')} />
-                  </button>
+                  <Switch
+                    checked={showOnlineIndicator}
+                    onCheckedChange={onShowOnlineIndicatorChange}
+                    aria-label="Show online indicator"
+                  />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-border/40 px-3.5 py-2.5">
                   <span className="text-xs font-medium text-foreground">Powered by Convio</span>
                   {isFreePlan ? (
                     <Tooltip>
-                      <TooltipTrigger
-                        render={<span className="inline-flex cursor-not-allowed opacity-50" />}
-                      >
-                        <button type="button" role="switch" aria-checked={true} disabled
-                          className="relative inline-flex h-5 w-9 shrink-0 cursor-not-allowed rounded-full transition-colors bg-primary opacity-60">
-                          <span className="pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform translate-x-4" />
-                        </button>
+                      <TooltipTrigger render={<span className="inline-flex cursor-not-allowed opacity-50" />}>
+                        <Switch checked disabled aria-label="Powered by Convio (locked on free plan)" />
                       </TooltipTrigger>
                       <TooltipContent side="top">Upgrade to Pro to hide this</TooltipContent>
                     </Tooltip>
                   ) : (
-                    <button type="button" role="switch" aria-checked={showPoweredBy} onClick={() => onShowPoweredByChange(!showPoweredBy)}
-                      className={cn('relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors', showPoweredBy ? 'bg-primary' : 'bg-muted-foreground/20')}>
-                      <span className={cn('pointer-events-none inline-block size-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform', showPoweredBy ? 'translate-x-4' : 'translate-x-0.5')} />
-                    </button>
+                    <Switch
+                      checked={showPoweredBy}
+                      onCheckedChange={onShowPoweredByChange}
+                      aria-label="Show powered by Convio"
+                    />
                   )}
                 </div>
                 <div className="space-y-2 sm:col-span-2">
@@ -557,6 +560,39 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
                     {quickReplies.length < 4 && <QuickReplyInput onAdd={(val) => onQuickRepliesChange([...quickReplies, val])} />}
                   </div>
                 </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              icon={<PaintBucket className="size-3.5" />}
+              title="Header colors"
+              description="Text, status and icon colors inside the header"
+            >
+              <div className="grid gap-5 sm:grid-cols-2">
+                <ColorField
+                  label="Title"
+                  value={headerTitleColor}
+                  onChange={onHeaderTitleColorChange}
+                  presets={headerTitleColorPresets}
+                />
+                <ColorField
+                  label="Subtitle"
+                  value={headerSubtitleColor}
+                  onChange={onHeaderSubtitleColorChange}
+                  presets={headerSubtitleColorPresets}
+                />
+                <ColorField
+                  label="Online dot"
+                  value={onlineIndicatorColor}
+                  onChange={onOnlineIndicatorColorChange}
+                  presets={onlineIndicatorColorPresets}
+                />
+                <ColorField
+                  label="Header icons"
+                  value={headerIconColor}
+                  onChange={onHeaderIconColorChange}
+                  presets={headerIconColorPresets}
+                />
               </div>
             </SectionCard>
           </>

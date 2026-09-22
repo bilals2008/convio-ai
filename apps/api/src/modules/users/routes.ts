@@ -23,7 +23,7 @@ const userByIdParamsSchema = z.object({
 export default async function usersRoutes(fastify: FastifyInstance) {
   // GET /api/users/me — Current user profile
   fastify.get('/users/me', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticateSensitive],
   }, async (request) => {
     const user = await prisma.profile.findUnique({ where: { id: request.userId } })
     if (!user) throw new AppError(404, 'User not found')
@@ -32,7 +32,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
 
   // PATCH /api/users/me — Update current user profile (email is auth-owned, never client-set)
   fastify.patch('/users/me', {
-    preHandler: [fastify.authenticate, validate({ body: updateUserSchema })],
+    preHandler: [fastify.authenticateSensitive, validate({ body: updateUserSchema })],
   }, async (request) => {
     const body = request.body as Record<string, unknown>
     const data: Record<string, unknown> = {}
@@ -47,7 +47,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/users/me — Delete everything: Supabase auth + profile + owned orgs
   fastify.delete('/users/me', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticateSensitive],
   }, async (request, reply) => {
     await deleteUserAccount(request.log, request.userId!)
     reply.code(204).send()
@@ -56,7 +56,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
   // GET /api/users — List org members (admin only, cursor-based pagination)
   fastify.get('/users', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireAdmin,
       validate({ query: paginationQuerySchema }),
     ],
@@ -91,7 +91,7 @@ export default async function usersRoutes(fastify: FastifyInstance) {
   // GET /api/users/:id — Get user by ID (admin only)
   fastify.get('/users/:id', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireAdmin,
       validate({ params: userByIdParamsSchema, query: userByIdQuerySchema }),
     ],

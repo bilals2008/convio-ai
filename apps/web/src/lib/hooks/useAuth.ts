@@ -38,7 +38,7 @@ export function useSession() {
         }
       } catch (error) {
         if (axios.isAxiosError(error) && error.response?.status === 401) {
-          await supabase.auth.signOut()
+          await supabase.auth.signOut({ scope: 'local' })
           toast.error('No account found. Please create a new account.')
         }
         return null
@@ -127,7 +127,10 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.auth.signOut()
+      // `scope: 'local'` explicitly — the SDK default is 'global', which would
+      // also sign the user out on every other device they're signed in on.
+      // Ending all sessions is a separate, deliberate action (see useSignOutAll).
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
       if (error) throw error
     },
     onSuccess: () => {

@@ -67,7 +67,7 @@ function maskKey(key: string): string {
 
 export default async function providerKeysRoutes(fastify: FastifyInstance) {
   fastify.get('/organizations/:orgId/provider-keys', {
-    preHandler: [fastify.authenticate, fastify.requireMembership],
+    preHandler: [fastify.authenticateSensitive, fastify.requireMembership],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
 
@@ -88,7 +88,7 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/organizations/:orgId/provider-keys', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
+    preHandler: [fastify.authenticateSensitive, fastify.requireAdmin],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
     const { provider, apiKey, label } = createKeySchema.parse(request.body)
@@ -114,7 +114,7 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
   })
 
   fastify.patch('/organizations/:orgId/provider-keys/:keyId', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
+    preHandler: [fastify.authenticateSensitive, fastify.requireAdmin],
   }, async (request) => {
     const { orgId, keyId } = request.params as { orgId: string; keyId: string }
     const { apiKey, label } = updateKeySchema.parse(request.body)
@@ -142,7 +142,7 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
 
   // Test button in Settings → Provider Keys: verifies the stored key is accepted.
   fastify.post('/organizations/:orgId/provider-keys/:keyId/test', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
+    preHandler: [fastify.authenticateSensitive, fastify.requireAdmin],
   }, async (request) => {
     const { orgId, keyId } = request.params as { orgId: string; keyId: string }
 
@@ -155,7 +155,7 @@ export default async function providerKeysRoutes(fastify: FastifyInstance) {
   })
 
   fastify.delete('/organizations/:orgId/provider-keys/:keyId', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
+    preHandler: [fastify.authenticateSensitive, fastify.requireAdmin],
   }, async (request, reply) => {
     const { orgId, keyId } = request.params as { orgId: string; keyId: string }
 

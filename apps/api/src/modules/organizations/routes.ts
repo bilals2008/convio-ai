@@ -45,7 +45,7 @@ const membersQuerySchema = z.object({
 export default async function organizationsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations — Create new organization (creator becomes owner)
   fastify.post('/organizations', {
-    preHandler: [fastify.authenticate, fastify.checkOrgLimit, validate({ body: createOrganizationSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.checkOrgLimit, validate({ body: createOrganizationSchema })],
   }, async (request) => {
     const { name, slug, logo } = request.body as {
       name: string
@@ -75,7 +75,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
 
   // GET /api/organizations — List user's organizations
   fastify.get('/organizations', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticateSensitive],
   }, async (request) => {
     let memberships
     try {
@@ -99,7 +99,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   // GET /api/organizations/:id — Get organization by ID (member only)
   fastify.get('/organizations/:id', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireMembership,
       validate({ params: orgParamsSchema }),
     ],
@@ -115,7 +115,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   // PATCH /api/organizations/:id — Update organization (admin/owner only)
   fastify.patch('/organizations/:id', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: updateOrganizationSchema }),
     ],
@@ -150,7 +150,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   // DELETE /api/organizations/:id — Delete organization (owner only)
   fastify.delete('/organizations/:id', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireOwner,
       validate({ params: orgParamsSchema }),
     ],
@@ -226,7 +226,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   // GET /api/organizations/:id/members — List members (member only, cursor pagination)
   fastify.get('/organizations/:id/members', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireMembership,
       validate({ params: orgParamsSchema, query: membersQuerySchema }),
     ],
@@ -264,7 +264,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:id/members — Add member (admin only)
   fastify.post('/organizations/:id/members', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: addMemberSchema }),
     ],
@@ -343,7 +343,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:id/members/bulk — Bulk invite members (admin only)
   fastify.post('/organizations/:id/members/bulk', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: bulkInviteBodySchema }),
     ],
@@ -412,7 +412,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   // DELETE /api/organizations/:id/members/:userId — Remove member (admin or self-leave)
   fastify.delete('/organizations/:id/members/:userId', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       validate({ params: memberParamsSchema }),
     ],
   }, async (request, reply) => {
@@ -468,7 +468,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   // POST /api/organizations/:id/invitations — Create invitation (admin only)
   fastify.post('/organizations/:id/invitations', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireAdmin,
       validate({ params: orgParamsSchema, body: bulkInviteBodySchema }),
     ],
@@ -577,7 +577,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
 
   // POST /api/invitations/:token/accept — Accept invitation (authenticated)
   fastify.post('/invitations/:token/accept', {
-    preHandler: [fastify.authenticate, validate({ params: z.object({ token: z.string() }) })],
+    preHandler: [fastify.authenticateSensitive, validate({ params: z.object({ token: z.string() }) })],
   }, async (request) => {
     const { token } = request.params as { token: string }
 
@@ -624,7 +624,7 @@ export default async function organizationsRoutes(fastify: FastifyInstance) {
   // PATCH /api/organizations/:id/members/:userId/role — Update member role (owner only)
   fastify.patch('/organizations/:id/members/:userId/role', {
     preHandler: [
-      fastify.authenticate,
+      fastify.authenticateSensitive,
       fastify.requireOwner,
       validate({ params: memberParamsSchema, body: updateRoleSchema }),
     ],
