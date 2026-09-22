@@ -6,8 +6,16 @@ export { EverythingSection } from './everything-section'
 export { Pricing } from './pricing'
 export { CTA } from './cta'
 export { Footer } from './footer'
+export { SectionIntro } from './section-intro'
 export { ScrollReveal } from './scroll-reveal'
 export { GlowCard } from './glow-card'
 export { DirectionHover } from './direction-hover'
 export { SectionHeading } from './section-heading'
 export { ProClaimModal } from './pro-claim-modal'
+export {
+  SmoothScroll,
+  Reveal,
+  SplitHeading,
+  Parallax,
+  useLenis,
+} from './motion'

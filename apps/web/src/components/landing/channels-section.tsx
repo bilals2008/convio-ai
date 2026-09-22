@@ -1,5 +1,5 @@
 import { Globe, type LucideIcon } from 'lucide-react'
-import { ScrollReveal } from './scroll-reveal'
+import { Reveal } from './motion'
 
 interface Channel {
   name: string
@@ -20,38 +20,37 @@ function ChannelLogo({ channel }: { channel: Channel }) {
   return (
     <div className="flex items-center gap-2.5 whitespace-nowrap">
       {Icon ? (
-        <Icon className="size-7 text-foreground/70" aria-hidden="true" />
+        <Icon className="size-6 text-foreground/60" aria-hidden="true" />
       ) : (
-        <img src={channel.src} alt="" className="size-7" loading="lazy" />
+        <img src={channel.src} alt="" className="size-6" loading="lazy" />
       )}
-      <span className="text-[15px] font-medium text-foreground/70">{channel.name}</span>
+      <span className="text-[15px] font-medium text-foreground/60">{channel.name}</span>
     </div>
   )
 }
 
 export function ChannelsSection() {
   return (
-    <section id="channels" className="relative overflow-hidden border-b border-border bg-background py-10 md:py-14">
+    <section id="channels" className="relative overflow-hidden border-b border-border bg-background py-12 md:py-16">
       <div className="mx-auto max-w-[1160px] px-5 md:px-10">
-        <ScrollReveal variant="fadeIn">
-          <p className="mb-8 text-center text-[13px] tracking-wide text-muted-foreground uppercase">
-            One agent — deployed to every channel
+        <Reveal y={12} duration={0.5}>
+          <p className="mb-8 text-center text-[12px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            One agent, deployed to every channel
           </p>
+        </Reveal>
 
-        <div className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-background to-transparent" />
-
-          <div className="flex w-max animate-marquee gap-12 hover:[animation-play-state:paused] motion-reduce:[animation-play-state:paused]">
-            {CHANNELS.map((channel) => (
-              <ChannelLogo key={channel.name} channel={channel} />
-            ))}
-            {CHANNELS.map((channel) => (
-              <ChannelLogo key={`${channel.name}-dup`} channel={channel} />
-            ))}
+        <Reveal y={16} duration={0.6}>
+          <div className="mask-fade-x relative overflow-hidden">
+            <div className="flex w-max animate-marquee gap-12 hover:[animation-play-state:paused] motion-reduce:[animation-play-state:paused]">
+              {CHANNELS.map((channel) => (
+                <ChannelLogo key={channel.name} channel={channel} />
+              ))}
+              {CHANNELS.map((channel) => (
+                <ChannelLogo key={`${channel.name}-dup`} channel={channel} />
+              ))}
+            </div>
           </div>
-        </div>
-        </ScrollReveal>
+        </Reveal>
       </div>
     </section>
   )

@@ -3,9 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { ScrollReveal } from './scroll-reveal'
-import { SectionHeading } from './section-heading'
-import { FloatingOrbs } from './floating-orbs'
+import { SectionIntro } from './section-intro'
+import { Reveal } from './motion'
 import { Check, Zap, Shield, Star, Crown } from 'lucide-react'
 import { pricingConfig } from '@/lib/pricing/config'
 import type { PlanConfig } from '@/lib/pricing/config'
@@ -33,15 +32,11 @@ function PlanCard({ plan, isYearly, onAction }: { plan: PlanConfig; isYearly: bo
       className={cn(
         'group relative h-full rounded-2xl border bg-card overflow-hidden flex flex-col transition-all duration-300',
         plan.highlighted
-          ? 'border-primary/60 shadow-lg shadow-primary/10 hover:shadow-xl hover:shadow-primary/15 ring-1 ring-primary/20'
-          : 'border-border hover:border-primary/30 hover:shadow-md',
+          ? 'border-primary/60 ring-1 ring-primary/20'
+          : 'border-border hover:border-primary/30',
         plan.comingSoon && 'opacity-70',
       )}
     >
-      {plan.highlighted && (
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/80 via-primary to-primary/80" />
-      )}
-
       <div className="relative flex flex-col h-full p-5 md:p-7">
         <div className="flex flex-col items-center text-center mb-5">
           {icon && (
@@ -131,25 +126,16 @@ export function Pricing() {
   }, [session, isYearly, navigate])
 
   return (
-    <section id="pricing" className="relative overflow-hidden">
-      <FloatingOrbs />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 bg-glow-green opacity-20"
-      />
-
+    <section id="pricing" className="relative overflow-hidden border-b border-border bg-background">
       <div className="max-w-[1320px] mx-auto px-5 md:px-10 py-20 md:py-28">
-        <ScrollReveal>
-          <SectionHeading
-            eyebrow={section.eyebrow}
-            title={section.title}
-            description={section.description}
-          />
-        </ScrollReveal>
+        <SectionIntro
+          eyebrow={section.eyebrow}
+          title={section.title}
+          description={section.description}
+        />
 
         {/* Monthly / Yearly Toggle */}
-        <ScrollReveal>
+        <Reveal>
           <div className="flex items-center justify-center gap-3 mt-8">
             <span className={cn('text-sm transition-colors', !isYearly ? 'text-foreground font-medium' : 'text-muted-foreground')}>
               Monthly
@@ -166,19 +152,19 @@ export function Pricing() {
               Save 20%
             </Badge>
           </div>
-        </ScrollReveal>
+        </Reveal>
 
         {/* Plan Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 items-stretch mt-10">
           {plans.map((plan, i) => (
-                <ScrollReveal key={plan.name} delay={i * 0.06} className="h-full">
+                <Reveal key={plan.name} delay={i * 0.06} className="h-full">
                   <PlanCard plan={plan} isYearly={isYearly} onAction={handlePlanAction} />
-                </ScrollReveal>
+                </Reveal>
           ))}
         </div>
 
         {/* View All Plans CTA */}
-        <ScrollReveal>
+        <Reveal>
           <div className="flex justify-center mt-10">
             <Link to="/pricing">
               <Button variant="outline" className="gap-2">
@@ -187,7 +173,7 @@ export function Pricing() {
               </Button>
             </Link>
           </div>
-        </ScrollReveal>
+        </Reveal>
       </div>
     </section>
   )

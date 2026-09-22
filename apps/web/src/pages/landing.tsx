@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Navbar, HeroSection, HowItWorks, ChannelsSection, EverythingSection, Pricing, CTA, Footer } from '@/components/landing'
+import { SmoothScroll } from '@/components/landing/motion'
 import { ChatWidget, chatWidgetPropsFromConfig } from '@/components/widget'
 import { publicApi } from '@/lib/api'
 
@@ -16,25 +17,27 @@ export default function Landing() {
   const agentId = widgetConfig?.agent?.id || ''
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main>
-        <HeroSection />
-        <HowItWorks />
-        <ChannelsSection />
-        <EverythingSection />
-        <Pricing />
-        <CTA />
-      </main>
-      <Footer />
-      {agentId && (
-        <ChatWidget
-          {...chatWidgetPropsFromConfig(widgetConfig, {
-            agentId,
-            publicKey: LANDING_WIDGET_KEY,
-          })}
-        />
-      )}
-    </div>
+    <SmoothScroll>
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main>
+          <HeroSection />
+          <ChannelsSection />
+          <HowItWorks />
+          <EverythingSection />
+          <Pricing />
+          <CTA />
+        </main>
+        <Footer />
+        {agentId && (
+          <ChatWidget
+            {...chatWidgetPropsFromConfig(widgetConfig, {
+              agentId,
+              publicKey: LANDING_WIDGET_KEY,
+            })}
+          />
+        )}
+      </div>
+    </SmoothScroll>
   )
 }
