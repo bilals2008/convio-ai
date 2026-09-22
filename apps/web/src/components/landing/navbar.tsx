@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
 import { useTheme } from 'next-themes'
 import { DirectionHover } from './direction-hover'
-import { PromoBanner } from './promo-banner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +43,6 @@ export function Navbar() {
 
   return (
     <header className="fixed top-0 inset-x-0 z-[200]">
-      <PromoBanner hidden={scrolled} />
       <div
         className={`transition-all duration-300 ${
           scrolled

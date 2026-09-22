@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SectionHeading } from './section-heading'
 import { ScrollReveal } from './scroll-reveal'
-import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { cn } from '@/lib/utils'
 import {
   Bot,
@@ -23,7 +22,7 @@ const FEATURES = [
     id: 'agents',
     title: 'AI Agents',
     icon: Bot,
-    description: 'Configure AI agents with custom prompts, tools, and knowledge bases. Each agent is fully customizable for your specific use case.',
+    description: 'Custom prompts, tools, and knowledge bases — each agent built for its job.',
     image: 'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/agent-deatils-overview-tab-ss.avif',
   },
   {
@@ -128,19 +127,22 @@ export function EverythingSection() {
 
   return (
     <section id="everything" className="border-b border-border bg-background">
-      <div className="mx-auto max-w-[1160px] px-5 md:px-10 py-20 md:py-28">
+      <div className="mx-auto max-w-[1160px] px-5 md:px-10 py-24 md:py-36">
         <ScrollReveal>
           <SectionHeading
+            align="left"
             eyebrow="Features"
             title="Everything you need"
             description="From knowledge to deployment, Convio provides all the tools needed to create, manage, and scale intelligent AI agents."
           />
         </ScrollReveal>
 
-        <div className="mt-10 md:mt-14">
+        <div className="mt-12 md:mt-16">
           <ScrollReveal>
           {/* Tabs */}
           <div
+            role="tablist"
+            aria-label="Feature categories"
             className="relative flex gap-2 overflow-x-auto pb-2 scrollbar-none md:flex-wrap md:overflow-visible md:pb-0"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -151,9 +153,16 @@ export function EverythingSection() {
               return (
                 <button
                   key={feature.id}
+                  type="button"
+                  role="tab"
+                  id={`feature-tab-${feature.id}`}
+                  aria-selected={isActive}
+                  aria-controls="feature-panel"
+                  tabIndex={isActive ? 0 : -1}
                   onClick={() => handleTabClick(index)}
                   className={cn(
                     'relative flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
+                    'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
                     isActive
                       ? 'text-primary'
                       : 'text-muted-foreground hover:text-foreground'
@@ -174,7 +183,12 @@ export function EverythingSection() {
           </div>
 
           {/* Content */}
-          <div className="relative mt-6 rounded-2xl border border-border bg-card">
+          <div
+            id="feature-panel"
+            role="tabpanel"
+            aria-labelledby={`feature-tab-${activeFeature.id}`}
+            className="relative mt-6 rounded-xl border border-border/60 bg-card"
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeFeature.id}
@@ -184,35 +198,23 @@ export function EverythingSection() {
                 transition={{ duration: 0.25 }}
                 className="p-6"
               >
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <h3 className="font-heading text-2xl font-semibold tracking-[-0.02em] text-foreground">
-                      {activeFeature.title}
-                    </h3>
-                    <p className="mt-2 max-w-lg text-[15px] leading-[1.7] text-muted-foreground">
-                      {activeFeature.description}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLightboxIndex(activeIndex)}
-                    aria-label={`Zoom ${activeFeature.title} screenshot`}
-                    className="group relative block w-full cursor-zoom-in overflow-hidden rounded-xl"
-                  >
-                    <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl bg-secondary/20">
-                      <img
-                        src={activeFeature.image}
-                        alt={activeFeature.title}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                      />
-                    </AspectRatio>
-                    <span className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-xs font-medium text-foreground opacity-0 backdrop-blur transition-opacity duration-300 group-hover:opacity-100">
-                      <ZoomIn className="size-3.5" />
-                      Zoom
-                    </span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(activeIndex)}
+                  aria-label={`Zoom ${activeFeature.title} screenshot`}
+                  className="group relative block w-full cursor-zoom-in overflow-hidden rounded-xl focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <img
+                    src={activeFeature.image}
+                    alt={activeFeature.title}
+                    loading="lazy"
+                    className="w-full rounded-xl border border-border bg-secondary/20 transition-transform duration-500 group-hover:scale-[1.03]"
+                  />
+                  <span className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-xs font-medium text-foreground opacity-0 backdrop-blur transition-opacity duration-300 group-hover:opacity-100">
+                    <ZoomIn className="size-3.5" />
+                    Zoom
+                  </span>
+                </button>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -258,10 +260,13 @@ function FeatureLightbox({
     }
     window.addEventListener('keydown', onKey)
     const prevOverflow = document.body.style.overflow
+    const prevFocus = document.activeElement as HTMLElement | null
     document.body.style.overflow = 'hidden'
+    ;(document.querySelector('[role="dialog"] button') as HTMLElement | null)?.focus()
     return () => {
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
+      prevFocus?.focus()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, index, onClose])
@@ -289,11 +294,12 @@ function FeatureLightbox({
               src={current.image}
               alt={current.title}
               draggable={false}
+              onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.97, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: 12 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              className="max-h-[calc(100vh-13rem)] max-w-full rounded-2xl border border-border/40 object-contain shadow-[0_32px_100px_-20px_rgb(0_0_0/0.5)] sm:max-h-[calc(100vh-14rem)]"
+              className="max-h-[calc(100vh-13rem)] max-w-full rounded-xl border border-border/60 object-contain shadow-soft-lg sm:max-h-[calc(100vh-14rem)]"
             />
 
             <button
