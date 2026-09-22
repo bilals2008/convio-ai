@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/lib/toast'
 
 export interface SessionInfo {
   sessionId: string
@@ -92,7 +93,13 @@ export function useSignOutAll() {
       const { error } = await supabase.auth.signOut({ scope: 'global' })
       if (error) throw error
     },
-    onSuccess: () => {
+    onError: (error) => {
+      toast.error(error.message || 'Could not sign out of all devices')
+    },
+    // Always drop local state, even when revoking the other sessions failed:
+    // the user asked to be signed out, and silently staying signed in here would
+    // be worse than a partial success they have been told about.
+    onSettled: () => {
       queryClient.setQueryData(['auth', 'session'], null)
       queryClient.clear()
       navigate('/login', { replace: true })
