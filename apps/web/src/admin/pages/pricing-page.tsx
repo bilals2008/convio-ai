@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type SortingState, type ColumnDef } from '@/lib/table'
 import { useQueryClient } from '@tanstack/react-query'
-import { Tags, Plus, Pencil, Trash2, Star, List, LayoutGrid, Bot, MessageSquare, Database, Building2, ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react'
+import { Tags, Plus, Pencil, Trash2, Star, List, LayoutGrid, Bot, MessageSquare, Database, Building2, ArrowRight, ChevronDown, SlidersHorizontal, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/admin/page-header'
 import { EmptyState } from '@/components/admin/empty-state'
 import { DataTableColumnHeader } from '@/components/admin/data-table-column-header'
@@ -12,14 +12,34 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useAdminPlans } from '@/admin/hooks/use-admin'
-import { adminApi, type AdminPlan } from '@/admin/services/admin-api'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useAdminPlans, useCreemPlansStatus } from '@/admin/hooks/use-admin'
+import { adminApi, type AdminPlan, type CreemPlansStatus } from '@/admin/services/admin-api'
+import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 
 type ViewMode = 'list' | 'grid'
 
 const fmtLimit = (v: number | null | undefined) =>
   v === null || v === undefined || v === Infinity ? '∞' : v.toLocaleString()
+
+interface CreemChip {
+  text: string
+  className: string
+}
+
+// Collapses both periods into one chip, worst state first, so a broken product
+// never hides behind a healthy one.
+function creemChipFor(planId: string, status?: CreemPlansStatus): CreemChip | null {
+  const entry = status?.plans.find((p) => p.planId === planId)
+  if (!entry) return null
+
+  const linked = entry.periods.filter((p) => p.productId)
+  if (linked.length === 0) return { text: 'Not linked', className: 'bg-muted text-muted-foreground' }
+  if (linked.some((p) => !p.found)) return { text: 'Not found', className: 'bg-destructive/10 text-destructive' }
+  if (linked.some((p) => p.mismatchCount > 0)) return { text: 'Mismatch', className: 'bg-amber-500/10 text-amber-600' }
+  return { text: 'Verified', className: 'bg-emerald-500/10 text-emerald-600' }
+}
 
 function LimitRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
   return (
@@ -33,7 +53,7 @@ function LimitRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ cl
   )
 }
 
-function PlanCard({ plan, onOpen }: { plan: AdminPlan; onOpen: () => void }) {
+function PlanCard({ plan, creem, onOpen }: { plan: AdminPlan; creem: CreemChip | null; onOpen: () => void }) {
   const [limitsOpen, setLimitsOpen] = useState(false)
   return (
     <Card
@@ -64,9 +84,13 @@ function PlanCard({ plan, onOpen }: { plan: AdminPlan; onOpen: () => void }) {
             : <Badge variant="secondary" className="shrink-0 bg-muted text-muted-foreground">Hidden</Badge>}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {plan.badge && <Badge variant="secondary" className="shrink-0 border border-primary/20 bg-primary/15 text-primary">{plan.badge}</Badge>}
           <code className="min-w-0 truncate rounded bg-muted px-1.5 py-0.5 text-[11px] font-mono text-muted-foreground">{plan.key}</code>
+          {creem && <Badge variant="secondary" className={cn('shrink-0', creem.className)}>{creem.text}</Badge>}
+          {plan.trialPeriodDays ? (
+            <Badge variant="secondary" className="shrink-0 bg-primary/10 text-primary">{plan.trialPeriodDays}d trial</Badge>
+          ) : null}
           <span className="ml-auto shrink-0 text-[11px] text-muted-foreground tabular-nums">{plan.features?.length ?? 0} features</span>
         </div>
 
@@ -117,21 +141,34 @@ export default function AdminPricingPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [sorting, setSorting] = useState<SortingState>([])
+  const [pendingDelete, setPendingDelete] = useState<AdminPlan | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [view, setView] = useState<ViewMode>(() =>
     typeof localStorage !== 'undefined' && localStorage.getItem('admin-pricing-view') === 'grid' ? 'grid' : 'list'
   )
   const { data, isLoading } = useAdminPlans()
+  const creemStatus = useCreemPlansStatus()
 
   const setViewMode = (v: ViewMode) => {
     setView(v)
     try { localStorage.setItem('admin-pricing-view', v) } catch { /* noop */ }
   }
 
-  const deletePlan = useCallback(async (plan: AdminPlan) => {
-    if (!confirm(`Delete the "${plan.name}" plan? This does not change orgs already on this plan.`)) return
-    await adminApi.deletePlan(plan.id)
-    queryClient.invalidateQueries({ queryKey: ['admin', 'plans'] })
-  }, [queryClient])
+  const confirmDelete = useCallback(async () => {
+    if (!pendingDelete) return
+    setDeleting(true)
+    try {
+      await adminApi.deletePlan(pendingDelete.id)
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'plans'] })
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'creem'] })
+      toast.success(`${pendingDelete.name} plan deleted`)
+      setPendingDelete(null)
+    } catch (error) {
+      toast.error((error as Error).message || 'Unable to delete plan.')
+    } finally {
+      setDeleting(false)
+    }
+  }, [pendingDelete, queryClient])
 
   const columns = useMemo<ColumnDef<AdminPlan>[]>(() => [
     { accessorKey: 'name', header: ({ column }) => <DataTableColumnHeader column={column} title="Plan" />,
@@ -140,6 +177,9 @@ export default function AdminPricingPage() {
           {row.original.highlighted && <Star className="size-3.5 fill-amber-400 text-amber-400" />}
           <span className="text-sm font-medium">{row.original.name}</span>
           {row.original.badge && <Badge variant="secondary" className="bg-primary/15 text-primary border border-primary/20">{row.original.badge}</Badge>}
+          {row.original.trialPeriodDays ? (
+            <Badge variant="secondary" className="bg-primary/10 text-primary">{row.original.trialPeriodDays}d trial</Badge>
+          ) : null}
         </div>
       ) },
     { accessorKey: 'key', header: ({ column }) => <DataTableColumnHeader column={column} title="Key" />,
@@ -153,6 +193,12 @@ export default function AdminPricingPage() {
             {p.yearlyPrice && <div className="text-xs text-muted-foreground">yearly {p.yearlyPrice}</div>}
           </div>
         )
+      } },
+    { id: 'creem', header: ({ column }) => <DataTableColumnHeader column={column} title="Creem" />,
+      cell: ({ row }) => {
+        const chip = creemChipFor(row.original.id, creemStatus.data)
+        if (!chip) return <span className="text-xs text-muted-foreground">—</span>
+        return <Badge variant="secondary" className={cn('shrink-0', chip.className)}>{chip.text}</Badge>
       } },
     { id: 'limits', header: ({ column }) => <DataTableColumnHeader column={column} title="Limits" />,
       cell: ({ row }) => {
@@ -176,10 +222,10 @@ export default function AdminPricingPage() {
       cell: ({ row }) => (
         <div className="flex gap-1 justify-end">
           <Button variant="ghost" size="icon" className="size-8" onClick={() => navigate(`/admin/pricing/${row.original.id}`)}><Pencil className="size-4" /></Button>
-          <Button variant="ghost" size="icon" className="size-8 text-red-500 hover:text-red-500" onClick={() => deletePlan(row.original)}><Trash2 className="size-4" /></Button>
+          <Button variant="ghost" size="icon" className="size-8 text-red-500 hover:text-red-500" onClick={() => setPendingDelete(row.original)}><Trash2 className="size-4" /></Button>
         </div>
       ) },
-  ], [navigate, deletePlan])
+  ], [navigate, creemStatus.data])
 
   const table = useReactTable({
     data: data || [],
@@ -199,6 +245,27 @@ export default function AdminPricingPage() {
         description="Manage plans, prices, features, and limits. Changes apply immediately to the public pricing page and billing enforcement."
         actions={
           <div className="flex items-center gap-2">
+            {creemStatus.data && (
+              <Badge
+                variant="secondary"
+                className={cn(
+                  'shrink-0',
+                  creemStatus.data.mode === 'test' ? 'bg-amber-500/10 text-amber-600' : 'bg-destructive/10 text-destructive',
+                )}
+              >
+                Creem {creemStatus.data.mode.toUpperCase()}
+              </Badge>
+            )}
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8"
+              onClick={() => creemStatus.refetch()}
+              disabled={creemStatus.isFetching}
+              aria-label="Re-check Creem products"
+            >
+              <RefreshCw className={cn('size-3.5', creemStatus.isFetching && 'animate-spin')} />
+            </Button>
             <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
               <button
                 type="button"
@@ -283,11 +350,26 @@ export default function AdminPricingPage() {
             </div>
           ) : (
             plans.map((plan) => (
-              <PlanCard key={plan.id} plan={plan} onOpen={() => navigate(`/admin/pricing/${plan.id}`)} />
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                creem={creemChipFor(plan.id, creemStatus.data)}
+                onOpen={() => navigate(`/admin/pricing/${plan.id}`)}
+              />
             ))
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => { if (!open) setPendingDelete(null) }}
+        title={`Delete the "${pendingDelete?.name}" plan?`}
+        description="Organizations already on this plan keep their access, but the plan disappears from the pricing page and can no longer be purchased."
+        confirmText={deleting ? 'Deleting…' : 'Delete plan'}
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }
