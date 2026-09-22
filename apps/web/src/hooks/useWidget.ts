@@ -26,6 +26,10 @@ export interface WidgetTheme {
   inputBgColor: string
   sendBtnColor: string
   footerBgColor: string
+  headerTitleColor: string
+  headerSubtitleColor: string
+  onlineIndicatorColor: string
+  headerIconColor: string
 }
 
 export interface WidgetConfig {
@@ -72,6 +76,10 @@ const defaultTheme: WidgetTheme = {
   inputBgColor: '',
   sendBtnColor: '',
   footerBgColor: '',
+  headerTitleColor: '',
+  headerSubtitleColor: '',
+  onlineIndicatorColor: '',
+  headerIconColor: '',
 }
 
 function generateId(): string {

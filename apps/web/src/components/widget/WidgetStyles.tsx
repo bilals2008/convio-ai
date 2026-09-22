@@ -49,6 +49,10 @@ export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Reco
   const inputBg = theme.inputBgColor ? hexToHsl(theme.inputBgColor) : null
   const sendBtn = theme.sendBtnColor ? hexToHsl(theme.sendBtnColor) : null
   const footerBg = theme.footerBgColor ? hexToHsl(theme.footerBgColor) : null
+  const headerTitle = theme.headerTitleColor ? hexToHsl(theme.headerTitleColor) : null
+  const headerSubtitle = theme.headerSubtitleColor ? hexToHsl(theme.headerSubtitleColor) : null
+  const onlineIndicator = theme.onlineIndicatorColor ? hexToHsl(theme.onlineIndicatorColor) : null
+  const headerIcon = theme.headerIconColor ? hexToHsl(theme.headerIconColor) : null
 
   const bgL = isDark ? Math.min(bg.l, 18) : bg.l
   const textL = isDark ? Math.max(text.l, 85) : text.l
@@ -78,6 +82,20 @@ export function getWidgetCSSVariables(theme: WidgetTheme, isDark: boolean): Reco
     '--widget-footer-bg': footerBg
       ? `${footerBg.h} ${footerBg.s}% ${footerBg.l}%`
       : `${bg.h} ${Math.max(bg.s, 5)}% ${bgL}%`,
+    // Header text/status colors default to white text and the emerald "online"
+    // accent, so leaving them blank keeps the original header look.
+    '--widget-header-title': headerTitle
+      ? `${headerTitle.h} ${headerTitle.s}% ${headerTitle.l}%`
+      : '0 0% 100%',
+    '--widget-header-subtitle': headerSubtitle
+      ? `${headerSubtitle.h} ${headerSubtitle.s}% ${headerSubtitle.l}%`
+      : '156 72% 67%',
+    '--widget-header-online': onlineIndicator
+      ? `${onlineIndicator.h} ${onlineIndicator.s}% ${onlineIndicator.l}%`
+      : '158 64% 52%',
+    '--widget-header-icon': headerIcon
+      ? `${headerIcon.h} ${headerIcon.s}% ${headerIcon.l}%`
+      : '0 0% 100%',
   }
 
   return vars

@@ -8,8 +8,8 @@ export function WidgetHeader() {
     ? agentName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
     : 'AI'
 
-  const displayTitle = headerTitle || agentName || 'Assistant'
-  const displaySubtitle = headerSubtitle || 'We\'re online'
+  const displayTitle = (headerTitle?.trim()) || agentName || 'Assistant'
+  const displaySubtitle = headerSubtitle?.trim() || "We're online"
   const showOnline = showOnlineIndicator !== false
 
   return (
@@ -25,38 +25,32 @@ export function WidgetHeader() {
             }
       }
     >
-      <div className="relative z-10 flex items-center justify-between px-4 py-3 border-b-2 border-white/10">
+      <div className="relative z-10 flex items-center justify-between px-4 py-3 border-b-2 border-[hsl(var(--widget-header-icon)_/_0.1)]">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative shrink-0">
             {agentAvatar ? (
               <img
                 src={agentAvatar}
                 alt={agentName}
-                className="size-9 rounded-full object-cover ring-2 ring-white/20 sm:size-11"
+                className="size-9 rounded-full object-cover ring-2 ring-[hsl(var(--widget-header-icon)_/_0.2)] sm:size-11"
               />
             ) : (
-              <div className="size-9 rounded-full bg-white/15 flex items-center justify-center ring-2 ring-white/20 sm:size-11">
-                <span className="text-xs font-bold text-white tracking-wide sm:text-sm">
+              <div className="size-9 rounded-full bg-[hsl(var(--widget-header-icon)_/_0.15)] flex items-center justify-center ring-2 ring-[hsl(var(--widget-header-icon)_/_0.2)] sm:size-11">
+                <span className="text-xs font-bold text-[hsl(var(--widget-header-title))] tracking-wide sm:text-sm">
                   {initials}
                 </span>
               </div>
             )}
             {showOnline && (
-              <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-400 border-2 border-[hsl(var(--widget-header-start))] sm:size-3.5" />
+              <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-[hsl(var(--widget-header-online))] border-2 border-[hsl(var(--widget-header-start))] sm:size-3.5" />
             )}
           </div>
           <div className="min-w-0">
-            {headerTitle && (
-              <p className="text-[10px] text-white/60 font-medium leading-tight sm:text-[11px]">
-                {headerTitle}
-              </p>
-            )}
-            <p className="truncate text-[13px] font-semibold text-white tracking-tight leading-tight sm:text-[14px]">
+            <p className="truncate text-[13px] font-semibold text-[hsl(var(--widget-header-title))] tracking-tight leading-tight sm:text-[14px]">
               {displayTitle}
             </p>
             {showOnline && (
-              <p className="text-[9px] text-emerald-300/80 font-medium flex items-center gap-1 sm:text-[10px]">
-                <span className="size-1.5 rounded-full bg-emerald-400 inline-block" />
+              <p className="text-[9px] text-[hsl(var(--widget-header-subtitle))] font-medium sm:text-[10px]">
                 {displaySubtitle}
               </p>
             )}
@@ -67,7 +61,7 @@ export function WidgetHeader() {
             type="button"
             onClick={onClearChat}
             disabled={isTyping || messages.length === 0}
-            className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white/60"
+            className="flex size-8 items-center justify-center rounded-lg text-[hsl(var(--widget-header-icon)_/_0.6)] hover:bg-[hsl(var(--widget-header-icon)_/_0.1)] hover:text-[hsl(var(--widget-header-icon))] transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[hsl(var(--widget-header-icon)_/_0.6)]"
             aria-label="Start new chat"
             title="Start new chat"
           >
@@ -77,7 +71,7 @@ export function WidgetHeader() {
             <button
               type="button"
               onClick={onMinimize}
-              className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+              className="flex size-8 items-center justify-center rounded-lg text-[hsl(var(--widget-header-icon)_/_0.6)] hover:bg-[hsl(var(--widget-header-icon)_/_0.1)] hover:text-[hsl(var(--widget-header-icon))] transition-colors"
               aria-label="Minimize"
             >
               <ChevronDown className="size-4" />
@@ -86,7 +80,7 @@ export function WidgetHeader() {
           <button
             type="button"
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            className="flex size-8 items-center justify-center rounded-lg text-[hsl(var(--widget-header-icon)_/_0.6)] hover:bg-[hsl(var(--widget-header-icon)_/_0.1)] hover:text-[hsl(var(--widget-header-icon))] transition-colors"
             aria-label="Close"
           >
             <X className="size-4" />

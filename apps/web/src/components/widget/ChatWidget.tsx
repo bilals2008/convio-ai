@@ -62,6 +62,10 @@ const defaultTheme: WidgetTheme = {
   inputBgColor: '',
   sendBtnColor: '',
   footerBgColor: '',
+  headerTitleColor: '',
+  headerSubtitleColor: '',
+  onlineIndicatorColor: '',
+  headerIconColor: '',
 }
 
 function WidgetBackdrop({ show, onClose }: { show: boolean; onClose: () => void }) {

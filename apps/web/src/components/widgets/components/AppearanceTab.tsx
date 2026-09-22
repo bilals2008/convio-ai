@@ -26,6 +26,10 @@ import {
   inputBgPresets,
   sendBtnPresets,
   footerBgPresets,
+  headerTitleColorPresets,
+  headerSubtitleColorPresets,
+  onlineIndicatorColorPresets,
+  headerIconColorPresets,
   THEME_MODES,
   MAX_GREETING_LENGTH,
   type ThemeMode,
@@ -92,6 +96,10 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
   const themeMode = config.themeMode ?? 'auto'
   const headerTitle = config.headerTitle ?? ''
   const headerSubtitle = config.headerSubtitle ?? ''
+  const headerTitleColor = config.headerTitleColor ?? ''
+  const headerSubtitleColor = config.headerSubtitleColor ?? ''
+  const onlineIndicatorColor = config.onlineIndicatorColor ?? ''
+  const headerIconColor = config.headerIconColor ?? ''
   const showOnlineIndicator = config.showOnlineIndicator ?? true
   const placeholderText = config.placeholderText ?? ''
   const showPoweredBy = config.showPoweredBy ?? true
@@ -116,6 +124,10 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
   const onThemeModeChange = (value: ThemeMode) => onChange({ themeMode: value })
   const onHeaderTitleChange = (value: string) => onChange({ headerTitle: value })
   const onHeaderSubtitleChange = (value: string) => onChange({ headerSubtitle: value })
+  const onHeaderTitleColorChange = (value: string) => onChange({ headerTitleColor: value })
+  const onHeaderSubtitleColorChange = (value: string) => onChange({ headerSubtitleColor: value })
+  const onOnlineIndicatorColorChange = (value: string) => onChange({ onlineIndicatorColor: value })
+  const onHeaderIconColorChange = (value: string) => onChange({ headerIconColor: value })
   const onShowOnlineIndicatorChange = (value: boolean) => onChange({ showOnlineIndicator: value })
   const onPlaceholderTextChange = (value: string) => onChange({ placeholderText: value })
   const onShowPoweredByChange = (value: boolean) => onChange({ showPoweredBy: value })
@@ -548,6 +560,39 @@ export function AppearanceTab({ config, onChange }: AppearanceTabProps) {
                     {quickReplies.length < 4 && <QuickReplyInput onAdd={(val) => onQuickRepliesChange([...quickReplies, val])} />}
                   </div>
                 </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              icon={<PaintBucket className="size-3.5" />}
+              title="Header colors"
+              description="Text, status and icon colors inside the header"
+            >
+              <div className="grid gap-5 sm:grid-cols-2">
+                <ColorField
+                  label="Title"
+                  value={headerTitleColor}
+                  onChange={onHeaderTitleColorChange}
+                  presets={headerTitleColorPresets}
+                />
+                <ColorField
+                  label="Subtitle"
+                  value={headerSubtitleColor}
+                  onChange={onHeaderSubtitleColorChange}
+                  presets={headerSubtitleColorPresets}
+                />
+                <ColorField
+                  label="Online dot"
+                  value={onlineIndicatorColor}
+                  onChange={onOnlineIndicatorColorChange}
+                  presets={onlineIndicatorColorPresets}
+                />
+                <ColorField
+                  label="Header icons"
+                  value={headerIconColor}
+                  onChange={onHeaderIconColorChange}
+                  presets={headerIconColorPresets}
+                />
               </div>
             </SectionCard>
           </>

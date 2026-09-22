@@ -76,6 +76,10 @@ export function chatWidgetPropsFromConfig(
       inputBgColor: config.inputBgColor || '',
       sendBtnColor: config.sendBtnColor || '',
       footerBgColor: config.footerBgColor || '',
+      headerTitleColor: config.headerTitleColor || '',
+      headerSubtitleColor: config.headerSubtitleColor || '',
+      onlineIndicatorColor: config.onlineIndicatorColor || '',
+      headerIconColor: config.headerIconColor || '',
     },
   }
 }

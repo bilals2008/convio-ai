@@ -32,6 +32,10 @@ export interface WidgetConfig {
   themeMode?: 'auto' | 'light' | 'dark'
   headerTitle?: string
   headerSubtitle?: string
+  headerTitleColor?: string
+  headerSubtitleColor?: string
+  onlineIndicatorColor?: string
+  headerIconColor?: string
   showOnlineIndicator?: boolean
   launcherLabel?: string
   placeholderText?: string
@@ -62,6 +66,10 @@ export interface WidgetDraft {
   sendBtnColor?: string
   headerTitle?: string
   headerSubtitle?: string
+  headerTitleColor?: string
+  headerSubtitleColor?: string
+  onlineIndicatorColor?: string
+  headerIconColor?: string
   agentName?: string
   placeholderText?: string
   quickReplies?: string[]

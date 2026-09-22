@@ -57,6 +57,30 @@ export const footerBgPresets = [
   { label: 'Light', color: '#ffffff' },
 ] as const
 
+export const headerTitleColorPresets = [
+  { label: 'Auto', color: '' },
+  { label: 'White', color: '#ffffff' },
+  { label: 'Dark', color: '#111827' },
+] as const
+
+export const headerSubtitleColorPresets = [
+  { label: 'Auto', color: '' },
+  { label: 'Emerald', color: '#6ee7b7' },
+  { label: 'Muted', color: '#9ca3af' },
+] as const
+
+export const onlineIndicatorColorPresets = [
+  { label: 'Auto', color: '' },
+  { label: 'Emerald', color: '#34d399' },
+  { label: 'Amber', color: '#fbbf24' },
+] as const
+
+export const headerIconColorPresets = [
+  { label: 'Auto', color: '' },
+  { label: 'White', color: '#ffffff' },
+  { label: 'Dark', color: '#111827' },
+] as const
+
 export const STATUS_BADGE: Record<
   WidgetDetail['status'],
   { label: string; variant: 'active' | 'draft' | 'archived' }
@@ -149,6 +173,10 @@ export const DEFAULT_WIDGET_CONFIG: Required<WidgetConfig> = {
   themeMode: 'auto',
   headerTitle: '',
   headerSubtitle: '',
+  headerTitleColor: '',
+  headerSubtitleColor: '',
+  onlineIndicatorColor: '',
+  headerIconColor: '',
   showOnlineIndicator: true,
   launcherLabel: '',
   placeholderText: '',
