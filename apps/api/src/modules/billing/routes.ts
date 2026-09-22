@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import crypto from 'crypto'
 import { prisma } from '@convio/database'
-import { CREEM_TEST_MODE, APP_URL } from '@convio/config'
+import { APP_URL } from '@convio/config'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { checkoutBodySchema, billingUsageQuerySchema } from '@convio/validation'
@@ -9,8 +9,7 @@ import { z } from 'zod'
 import { getOrgPlan, getOrgUsage, getActiveSubscription, getBillingInvoices } from '../../services/billing.js'
 import { getPlanFromProductId, getPlanDef } from '../../services/plans.js'
 import { emitDomainEvent, NOTIFICATION_EVENTS } from '../../services/notifications/events.js'
-
-const CREEM_API = CREEM_TEST_MODE ? 'https://test-api.creem.io' : 'https://api.creem.io'
+import { creemCheckouts, creemCustomers } from '../../services/creem.js'
 
 // Minimal shape of a Creem webhook event (the provider payload). Optional fields
 // are unioned where the provider can send either an object or a scalar id.
@@ -44,14 +43,6 @@ function objectId(value: { id?: string } | string | undefined): string | undefin
 const orgParamsSchema = z.object({
   orgId: z.string().uuid(),
 })
-
-function creemHeaders() {
-  return {
-    'x-api-key': process.env.CREEM_API_KEY || '',
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  }
-}
 
 function verifyWebhookSignature(payload: string, signature: string): boolean {
   const secret = process.env.CREEM_WEBHOOK_SECRET
@@ -136,71 +127,6 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     return { data: invoices }
   })
 
-  // POST /api/organizations/:orgId/billing/start-trial — 14-day Pro trial
-  fastify.post('/organizations/:orgId/billing/start-trial', {
-    preHandler: [
-      fastify.authenticateSensitive,
-      fastify.requireAdmin,
-      validate({ params: orgParamsSchema }),
-    ],
-  }, async (request) => {
-    const { orgId } = request.params as { orgId: string }
-
-    const org = await prisma.organization.findUnique({ where: { id: orgId } })
-    if (!org) throw new AppError(404, 'Organization not found', 'NOT_FOUND')
-
-    if (org.plan === 'pro') {
-      throw new AppError(400, 'Pro plan is already active on this organization', 'ALREADY_ACTIVE')
-    }
-
-    const existingTrial = await prisma.subscription.findFirst({
-      where: {
-        customer: { organizationId: orgId },
-        status: { in: ['on_trial', 'expired'] },
-        providerSubscriptionId: { startsWith: 'trial_' },
-      },
-    })
-    if (existingTrial) {
-      const msg = existingTrial.status === 'on_trial'
-        ? 'A free trial is already active for this organization'
-        : 'A free trial has already been used for this organization'
-      throw new AppError(400, msg, 'TRIAL_ALREADY_CLAIMED')
-    }
-
-    let customer = await prisma.billingCustomer.findUnique({ where: { organizationId: orgId } })
-    if (!customer) {
-      customer = await prisma.billingCustomer.create({
-        data: {
-          organizationId: orgId,
-          providerCustomerId: `trial_customer_${orgId}`,
-        },
-      })
-    }
-
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-
-    await prisma.subscription.create({
-      data: {
-        customerId: customer.id,
-        providerSubscriptionId: `trial_${orgId}`,
-        providerProductId: 'trial_pro',
-        providerPlanId: 'trial_pro_monthly',
-        plan: 'pro',
-        status: 'on_trial',
-        trialEndsAt,
-      },
-    })
-
-    await prisma.organization.update({
-      where: { id: orgId },
-      data: { plan: 'pro' },
-    })
-
-    fastify.log.info({ orgId, trialEndsAt }, 'Pro trial started')
-
-    return { data: { plan: 'pro', trialEndsAt: trialEndsAt.toISOString(), message: '14-day Pro trial activated!' } }
-  })
-
   // POST /api/organizations/:orgId/billing/checkout
   fastify.post('/organizations/:orgId/billing/checkout', {
     preHandler: [
@@ -212,14 +138,13 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     const { orgId } = request.params as { orgId: string }
     const { plan: planKey, billingPeriod } = request.body as { plan: string; billingPeriod?: string }
 
-    const paidPlans = ['pro', 'business', 'enterprise']
-    if (paidPlans.includes(planKey)) {
-      throw new AppError(400, 'Paid plans are coming soon! Only the Free plan is available right now.', 'COMING_SOON')
-    }
-
     const planDef = await getPlanDef(planKey)
     if (!planDef) {
       throw new AppError(400, `Checkout not available for this plan`, 'CHECKOUT_UNAVAILABLE')
+    }
+
+    if (planDef.comingSoon) {
+      throw new AppError(400, `${planDef.label} is not available yet.`, 'COMING_SOON')
     }
 
     const productId = billingPeriod === 'yearly'
@@ -237,23 +162,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
     if (!org) throw new AppError(404, 'Organization not found')
 
-    const checkoutResponse = await fetch(`${CREEM_API}/v1/checkouts`, {
-      method: 'POST',
-      headers: creemHeaders(),
-      body: JSON.stringify({
-        product_id: productId,
-        success_url: `${APP_URL}/settings/billing?checkout=success`,
-        metadata: { orgId, billingPeriod },
-      }),
+    const checkout = await creemCheckouts.create({
+      product_id: productId,
+      success_url: `${APP_URL}/settings/billing?checkout=success`,
+      metadata: { orgId, billingPeriod },
     })
-
-    if (!checkoutResponse.ok) {
-      const err = await checkoutResponse.text()
-      fastify.log.error({ err }, 'Creem checkout failed')
-      throw new AppError(500, 'Failed to create checkout session')
-    }
-
-    const checkout = await checkoutResponse.json() as { checkout_url: string }
 
     return {
       data: { checkoutUrl: checkout.checkout_url },
@@ -278,20 +191,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
       throw new AppError(400, 'No active subscription found. Upgrade to a paid plan first.', 'NO_SUBSCRIPTION')
     }
 
-    const portalResponse = await fetch(`${CREEM_API}/v1/customers/billing`, {
-      method: 'POST',
-      headers: creemHeaders(),
-      body: JSON.stringify({
-        customer_id: customer.providerCustomerId,
-      }),
-    })
-
-    if (!portalResponse.ok) {
-      fastify.log.error('Failed to create customer portal')
-      throw new AppError(500, 'Failed to create customer portal')
-    }
-
-    const portal = await portalResponse.json() as { customer_portal_link: string }
+    const portal = await creemCustomers.billingPortal(customer.providerCustomerId)
 
     return {
       data: { url: portal.customer_portal_link },
@@ -341,6 +241,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
         case 'checkout.completed': {
           const orgId = eventObject.metadata?.orgId as string | undefined
           const customerData = eventObject.customer
+          const creemCustomerId = objectId(customerData)
 
           if (!orgId) break
 
@@ -348,13 +249,25 @@ export default async function billingRoutes(fastify: FastifyInstance) {
             where: { organizationId: orgId },
           })
 
-          if (!customer && objectId(customerData)) {
+          if (!customer && creemCustomerId) {
             customer = await prisma.billingCustomer.create({
               data: {
                 organizationId: orgId,
-                providerCustomerId: String(objectId(customerData)),
+                providerCustomerId: String(creemCustomerId),
               },
             })
+          } else if (customer && creemCustomerId && customer.providerCustomerId !== String(creemCustomerId)) {
+            // The stored provider id can be stale (e.g. written by the retired local
+            // trial). Refresh it so later subscription events resolve this customer.
+            const owner = await prisma.billingCustomer.findUnique({
+              where: { providerCustomerId: String(creemCustomerId) },
+            })
+            if (!owner) {
+              customer = await prisma.billingCustomer.update({
+                where: { id: customer.id },
+                data: { providerCustomerId: String(creemCustomerId) },
+              })
+            }
           }
 
           if (customer && eventObject.order) {
@@ -394,76 +307,58 @@ export default async function billingRoutes(fastify: FastifyInstance) {
           const plan = await getPlanFromProductId(productId)
           const orgId = eventObject.metadata?.orgId as string | undefined
 
-          const bc = await prisma.billingCustomer.findUnique({
+          const subscriptionData = {
+            status,
+            plan,
+            providerProductId: productId,
+            providerPlanId: productId,
+            trialEndsAt: eventObject.trial_ends_at ? new Date(eventObject.trial_ends_at) : null,
+            renewsAt: eventObject.current_period_end_date ? new Date(eventObject.current_period_end_date) : null,
+            endsAt: eventObject.ends_at ? new Date(eventObject.ends_at) : null,
+          }
+
+          // Resolve the customer by provider id, then fall back to the organization. A row
+          // can already exist for the org under a different provider id (created before a
+          // provider switch, or by the retired local trial), and BillingCustomer
+          // .organizationId is unique — so adopt that row instead of creating a duplicate.
+          let customer = await prisma.billingCustomer.findUnique({
             where: { providerCustomerId: creemCustomerId },
           })
 
-          if (bc) {
-            const existing = await prisma.subscription.findUnique({
-              where: { providerSubscriptionId: subscriptionId },
+          if (!customer && orgId) {
+            const existingForOrg = await prisma.billingCustomer.findUnique({
+              where: { organizationId: orgId },
             })
 
-            if (existing) {
-              await prisma.subscription.update({
-                where: { providerSubscriptionId: subscriptionId },
-                data: {
-                  status,
-                  plan,
-                  providerProductId: productId,
-                  trialEndsAt: eventObject.trial_ends_at ? new Date(eventObject.trial_ends_at) : null,
-                  renewsAt: eventObject.current_period_end_date ? new Date(eventObject.current_period_end_date) : null,
-                  endsAt: eventObject.ends_at ? new Date(eventObject.ends_at) : null,
-                },
-              })
-            } else {
-              await prisma.subscription.create({
-                data: {
-                  customerId: bc.id,
-                  providerSubscriptionId: subscriptionId,
-                  providerProductId: productId,
-                  providerPlanId: productId,
-                  plan,
-                  status,
-                  trialEndsAt: eventObject.trial_ends_at ? new Date(eventObject.trial_ends_at) : null,
-                  renewsAt: eventObject.current_period_end_date ? new Date(eventObject.current_period_end_date) : null,
-                  endsAt: eventObject.ends_at ? new Date(eventObject.ends_at) : null,
-                },
-              })
-            }
+            customer = existingForOrg
+              ? await prisma.billingCustomer.update({
+                  where: { id: existingForOrg.id },
+                  data: { providerCustomerId: creemCustomerId },
+                })
+              : await prisma.billingCustomer.create({
+                  data: { organizationId: orgId, providerCustomerId: creemCustomerId },
+                })
+          }
 
-            if (plan !== 'free') {
-              await prisma.organization.update({
-                where: { id: bc.organizationId },
-                data: { plan },
-              })
-            }
-          } else if (orgId) {
-            const newCustomer = await prisma.billingCustomer.create({
-              data: {
-                organizationId: orgId,
-                providerCustomerId: creemCustomerId,
-              },
+          if (!customer) break
+
+          // Creem emits several events per subscription (trialing, active, paid), so
+          // upsert instead of create — a repeat delivery must not throw.
+          await prisma.subscription.upsert({
+            where: { providerSubscriptionId: subscriptionId },
+            create: {
+              customerId: customer.id,
+              providerSubscriptionId: subscriptionId,
+              ...subscriptionData,
+            },
+            update: subscriptionData,
+          })
+
+          if (plan !== 'free') {
+            await prisma.organization.update({
+              where: { id: customer.organizationId },
+              data: { plan },
             })
-
-            await prisma.subscription.create({
-              data: {
-                customerId: newCustomer.id,
-                providerSubscriptionId: subscriptionId,
-                providerProductId: productId,
-                providerPlanId: productId,
-                plan,
-                status,
-                trialEndsAt: eventObject.trial_ends_at ? new Date(eventObject.trial_ends_at) : null,
-                renewsAt: eventObject.current_period_end_date ? new Date(eventObject.current_period_end_date) : null,
-              },
-            })
-
-            if (plan !== 'free') {
-              await prisma.organization.update({
-                where: { id: orgId },
-                data: { plan },
-              })
-            }
           }
 
           break
@@ -553,11 +448,25 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
         case 'subscription.paused': {
           const subscriptionId = String(eventObject.id)
+          const sub = await prisma.subscription.findUnique({
+            where: { providerSubscriptionId: subscriptionId },
+            include: { customer: true },
+          })
 
           await prisma.subscription.updateMany({
             where: { providerSubscriptionId: subscriptionId },
             data: { status: 'paused' },
           })
+
+          // Creem pauses billing without ending the subscription, so access has to be
+          // revoked here the same way it is on expiry — otherwise a paused customer
+          // keeps paid limits indefinitely.
+          if (sub) {
+            await prisma.organization.update({
+              where: { id: sub.customer.organizationId },
+              data: { plan: 'free' },
+            })
+          }
 
           break
         }

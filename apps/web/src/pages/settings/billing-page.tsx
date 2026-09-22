@@ -15,7 +15,6 @@ import {
   Loader2,
   Search,
   X,
-  Sparkles,
 } from 'lucide-react'
 import { InvoiceTable, type Invoice } from '@/components/settings/invoice-table'
 import { PageHeader } from '@/components/shared/page-header'
@@ -32,11 +31,10 @@ import {
   useInvoices,
   useCheckout,
   usePortal,
-  useStartTrial,
 } from '@/lib/hooks/use-billing'
 
 interface PlanData {
-  name: 'free' | 'starter' | 'pro' | 'enterprise'
+  name: 'free' | 'pro' | 'business' | 'enterprise'
   label: string
   features: string[]
   limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
@@ -144,14 +142,11 @@ export default function BillingPage() {
   const invoices = useInvoices()
   const checkout = useCheckout()
   const portal = usePortal()
-  const startTrial = useStartTrial()
 
   const pendingPlan = searchParams.get('plan')
   const pendingPeriod = searchParams.get('billing')
   const checkoutSuccess = searchParams.get('checkout') === 'success'
-  const trialParam = searchParams.get('trial') === 'pro'
   const checkoutTriggered = useRef(false)
-  const trialTriggered = useRef(false)
 
   // Show success toast when returning from checkout
   useEffect(() => {
@@ -166,13 +161,6 @@ export default function BillingPage() {
   useEffect(() => {
     if (pendingPlan && orgId && !checkoutTriggered.current && !checkout.isPending) {
       checkoutTriggered.current = true
-      const paidPlans = ['starter', 'pro', 'enterprise']
-      if (paidPlans.includes(pendingPlan)) {
-        toast.info('Paid plans are coming soon!')
-        setSearchParams({}, { replace: true })
-        checkoutTriggered.current = false
-        return
-      }
       toast.info('Redirecting to secure checkout...')
       checkout.mutate(
         { planKey: pendingPlan, billingPeriod: pendingPeriod || 'monthly' },
@@ -186,24 +174,8 @@ export default function BillingPage() {
     }
   }, [pendingPlan, pendingPeriod, orgId, checkout, setSearchParams])
 
-  // Auto-start trial when arriving with ?trial=pro
-  useEffect(() => {
-    if (trialParam && orgId && !trialTriggered.current && !startTrial.isPending) {
-      trialTriggered.current = true
-      startTrial.mutate(undefined, {
-        onSuccess: () => {
-          setSearchParams({}, { replace: true })
-          plan.refetch()
-        },
-        onError: () => {
-          setSearchParams({}, { replace: true })
-        },
-      })
-    }
-  }, [trialParam, orgId, startTrial, setSearchParams, plan])
-
   const handlePortal = () => {
-    toast.info('Subscription management coming soon.')
+    portal.mutate()
   }
 
   const handleUpgrade = () => {
@@ -213,14 +185,12 @@ export default function BillingPage() {
       return
     }
     if (plan.data.name === 'free') {
-      startTrial.mutate()
-      return
+      checkout.mutate({ planKey: 'pro', billingPeriod: 'monthly' })
     }
-    toast.info('Paid plans are coming soon! Stay tuned.')
   }
 
   const pageLoading = orgLoading
-  const isCheckoutRedirecting = checkout.isPending || startTrial.isPending
+  const isCheckoutRedirecting = checkout.isPending
 
   return (
     <div className="space-y-6">
@@ -255,19 +225,6 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* Temporary: Promo banner for free users */}
-      {plan.data?.name === 'free' && (
-        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
-          <Sparkles className="size-4 shrink-0 text-emerald-500" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">
-              Limited time offer — get <span className="text-emerald-500">Pro plan</span> free!
-            </p>
-            <p className="text-xs text-muted-foreground">No credit card required. Claim below.</p>
-          </div>
-        </div>
-      )}
-
       <KPISection
         orgLoading={pageLoading}
         invoices={invoices.data}
@@ -291,7 +248,7 @@ export default function BillingPage() {
           onRetry={() => plan.refetch()}
           onUpgrade={handleUpgrade}
           onPortal={handlePortal}
-          checkoutPending={checkout.isPending || startTrial.isPending}
+          checkoutPending={checkout.isPending}
           portalPending={portal.isPending}
         />
         <BillingHistoryCard
@@ -518,7 +475,7 @@ function PlanCard({
           ) : (
             <Star className="size-4" />
           )}
-          {checkoutPending ? 'Activating...' : 'Claim Pro Free'}
+          {checkoutPending ? 'Opening checkout...' : 'Upgrade to Pro'}
         </Button>
       ) : hasSubscription ? (
         <Button

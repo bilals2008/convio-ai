@@ -16,18 +16,37 @@ export interface PlanDef {
   limits: PlanLimits
   price: string
   priceMonthly: number
+  comingSoon: boolean
   providerMonthlyProductId?: string
   providerYearlyProductId?: string
 }
 
-function toPlanDef(row: Prisma.PlanGetPayload<object>): PlanDef {
-  const rawLimits = (row.limits ?? {}) as Partial<Record<keyof PlanLimits, number | null>>
-  const limits: PlanLimits = {
-    agents: rawLimits.agents ?? Infinity,
-    messagesPerMonth: rawLimits.messagesPerMonth ?? Infinity,
-    knowledgeBases: rawLimits.knowledgeBases ?? Infinity,
-    organizations: rawLimits.organizations ?? Infinity,
+// The DB stores null for "unlimited"; the app uses Infinity internally.
+export function toPlanLimits(raw: unknown): PlanLimits {
+  const value = (raw ?? {}) as Partial<Record<keyof PlanLimits, number | null>>
+  return {
+    agents: value.agents ?? Infinity,
+    messagesPerMonth: value.messagesPerMonth ?? Infinity,
+    knowledgeBases: value.knowledgeBases ?? Infinity,
+    organizations: value.organizations ?? Infinity,
   }
+}
+
+// Infinity does not survive JSON, so public responses send the string the UI expects.
+export const UNLIMITED = 'unlimited' as const
+
+export function toPublicLimits(raw: unknown): Record<keyof PlanLimits, number | typeof UNLIMITED> {
+  const limits = toPlanLimits(raw)
+  return {
+    agents: limits.agents === Infinity ? UNLIMITED : limits.agents,
+    messagesPerMonth: limits.messagesPerMonth === Infinity ? UNLIMITED : limits.messagesPerMonth,
+    knowledgeBases: limits.knowledgeBases === Infinity ? UNLIMITED : limits.knowledgeBases,
+    organizations: limits.organizations === Infinity ? UNLIMITED : limits.organizations,
+  }
+}
+
+function toPlanDef(row: Prisma.PlanGetPayload<object>): PlanDef {
+  const limits = toPlanLimits(row.limits)
 
   const features = (Array.isArray(row.features) ? row.features : [])
     .map((f: unknown) => {
@@ -37,6 +56,13 @@ function toPlanDef(row: Prisma.PlanGetPayload<object>): PlanDef {
     })
     .filter(Boolean)
 
+  // The DB row is the admin-editable source of truth, but rows ship with null product
+  // IDs, which made checkout reject every paid plan. Fall back to the env-configured
+  // IDs so checkout works before an admin fills the table in.
+  const staticPlan = PLANS[row.key] as
+    | { providerMonthlyProductId?: string; providerYearlyProductId?: string }
+    | undefined
+
   return {
     key: row.key,
     label: row.name,
@@ -44,8 +70,9 @@ function toPlanDef(row: Prisma.PlanGetPayload<object>): PlanDef {
     limits,
     price: row.price ?? '$0',
     priceMonthly: row.priceMonthly ?? 0,
-    providerMonthlyProductId: row.providerMonthlyProductId ?? undefined,
-    providerYearlyProductId: row.providerYearlyProductId ?? undefined,
+    comingSoon: row.comingSoon,
+    providerMonthlyProductId: row.providerMonthlyProductId ?? staticPlan?.providerMonthlyProductId ?? undefined,
+    providerYearlyProductId: row.providerYearlyProductId ?? staticPlan?.providerYearlyProductId ?? undefined,
   }
 }
 
@@ -73,12 +100,13 @@ export async function getPlanDef(key: string): Promise<PlanDef | undefined> {
     limits: { ...staticPlan.limits },
     price: staticPlan.price,
     priceMonthly: staticPlan.priceMonthly,
+    comingSoon: false,
     providerMonthlyProductId: (staticPlan as { providerMonthlyProductId?: string }).providerMonthlyProductId,
     providerYearlyProductId: (staticPlan as { providerYearlyProductId?: string }).providerYearlyProductId,
   }
 }
 
-const STATIC_TIER: Record<string, number> = { free: 0, starter: 1, pro: 2, business: 3, enterprise: 4 }
+const STATIC_TIER: Record<string, number> = { free: 0, pro: 1, business: 2, enterprise: 3 }
 
 export async function getPlanTierMap(): Promise<Record<string, number>> {
   const plans = await getAllPlans()
