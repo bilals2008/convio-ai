@@ -52,8 +52,9 @@ export function Header() {
         )}
         {orgId && <NotificationBell orgId={orgId} />}
         <Link to="/docs" aria-label="Docs">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="sm" className="gap-1.5">
             <BookOpen className="size-4" />
+            <Badge variant="soon">Soon</Badge>
           </Button>
         </Link>
         <Link to="https://github.com/bilals2008" target="_blank" rel="noreferrer" aria-label="GitHub">
