@@ -1,209 +1,75 @@
-import { useRef, useState } from 'react'
-import { Search, ArrowUp, Clock, Wand2 } from 'lucide-react'
+import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { cn, formatTokenCount } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import { knowledge as knowledgeApi } from '@/lib/api'
+import { toast } from 'sonner'
 import type { SearchResult } from './kb-types'
-import { DocumentTypeBadge } from './document-type-badge'
-
-function highlight(text: string, query: string) {
-  const terms = query
-    .trim()
-    .split(/\s+/)
-    .filter((t) => t.length > 2)
-    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  if (terms.length === 0) return text
-  const re = new RegExp(`(${terms.join('|')})`, 'gi')
-  const parts = text.split(re)
-  return parts.map((part, i) =>
-    re.test(part) ? (
-      <mark key={i} className="rounded bg-primary/20 px-0.5 text-foreground">
-        {part}
-      </mark>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  )
-}
-
-function tokenEstimate(text: string): number {
-  return Math.ceil(text.length / 4)
-}
-
-function inferType(name: string): 'pdf' | 'txt' | 'csv' | 'md' | 'json' | 'url' {
-  const ext = name.split('.').pop()?.toLowerCase()
-  if (ext === 'pdf') return 'pdf'
-  if (ext === 'csv') return 'csv'
-  if (ext === 'md') return 'md'
-  if (ext === 'json') return 'json'
-  return 'txt'
-}
 
 interface KbTestPanelProps {
   knowledgeBaseId: string
   onTested: () => void
-  onSearch?: (meta: { latency: number | null; found: number; query: string }) => void
+  onSearch: (meta: { latency: number | null; found: number; query: string }) => void
 }
 
 export function KbTestPanel({ knowledgeBaseId, onTested, onSearch }: KbTestPanelProps) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [searching, setSearching] = useState(false)
-  const [hasSearched, setHasSearched] = useState(false)
-  const [latency, setLatency] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [results, setResults] = useState<SearchResult[] | null>(null)
 
-  const run = async (q: string) => {
-    const term = q.trim()
-    if (!term || searching) return
-    setQuery(term)
-    setSearching(true)
-    setError(null)
-    const start = performance.now()
-    try {
-      const res = await knowledgeApi.searchChunks(knowledgeBaseId, term, 10)
-      const data = (res.data.data || []) as SearchResult[]
-      setResults(data)
-      setLatency(Math.round(performance.now() - start))
-      setHasSearched(true)
+  const searchMutation = useMutation({
+    mutationFn: async (q: string) => {
+      const start = performance.now()
+      const res = await knowledgeApi.searchChunks(knowledgeBaseId, q)
+      const latency = performance.now() - start
+      return { results: (res.data.data || []) as SearchResult[], latency }
+    },
+    onSuccess: ({ results: hits, latency }) => {
+      setResults(hits)
+      onSearch({ latency, found: hits.length, query })
       onTested()
-      onSearch?.({ latency: Math.round(performance.now() - start), found: data.length, query: term })
-    } catch (err: unknown) {
-      setResults([])
-      setLatency(null)
-      setHasSearched(true)
-      const message =
-        err && typeof err === 'object' && 'response' in err
-          ? ((err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Search request failed')
-          : err instanceof Error
-            ? err.message
-            : 'Search request failed'
-      setError(message)
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  const promptTokens = results.reduce((s, r) => s + tokenEstimate(r.content), 0)
+    },
+    onError: () => toast.error('Search failed'),
+  })
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') run(query)
-            }}
-            placeholder="Search your knowledge base…"
-            className="h-10 w-full rounded-lg border border-border/60 bg-background pl-9 pr-4 text-sm outline-none transition-colors focus:border-primary/50"
-          />
-        </div>
+      <div className="flex gap-2">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Enter a test query..."
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && query.trim()) searchMutation.mutate(query.trim())
+          }}
+        />
         <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5 shrink-0"
-          onClick={() => run(query)}
-          disabled={searching || !query.trim()}
+          onClick={() => query.trim() && searchMutation.mutate(query.trim())}
+          disabled={!query.trim() || searchMutation.isPending}
         >
-          {searching ? (
-            <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          ) : (
-            <ArrowUp className="size-3.5" />
-          )}
-          Test
+          {searchMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
         </Button>
       </div>
 
-      {!hasSearched && !searching && (
-        <p className="text-xs text-muted-foreground">
-          Run a query to verify retrieval quality.
-        </p>
-      )}
-
-      {searching && (
+      {results && (
         <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-lg border border-border/60 bg-card" />
-          ))}
-        </div>
-      )}
-
-      {hasSearched && !searching && (
-        <>
-          {error ? (
-            <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {error}
-              <p className="mt-1 text-xs text-destructive/70">
-                Check that the API server is running, your documents finished indexing, and an embedding provider (OPENAI_API_KEY) is configured.
-              </p>
-            </div>
-          ) : results.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border/60 py-10 text-center">
-              <p className="text-sm text-muted-foreground">No results for "{query}"</p>
-              <p className="mt-1 text-xs text-muted-foreground/70">Try different keywords.</p>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
-                <span>{results.length} result{results.length !== 1 ? 's' : ''}</span>
-                <span className="flex items-center gap-3 tabular-nums">
-                  {latency != null && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="size-3" />
-                      {latency}ms
-                    </span>
-                  )}
-                  <span>~{formatTokenCount(promptTokens)} tokens</span>
+          <p className="text-xs text-muted-foreground">{results.length} result{results.length !== 1 ? 's' : ''}</p>
+          {results.map((r) => (
+            <div key={r.id} className="rounded-lg border border-border/40 bg-card p-3">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs font-medium truncate">{r.documentName}</span>
+                <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                  {(r.score * 100).toFixed(0)}%
                 </span>
               </div>
-              <div className="space-y-2">
-                {results.map((chunk, i) => (
-                  <div key={chunk.id} className="rounded-lg border border-border/60 bg-card p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex size-5 items-center justify-center rounded bg-muted/60 text-[10px] font-medium tabular-nums">
-                          {i + 1}
-                        </span>
-                        <span className="truncate text-xs font-medium">{chunk.documentName}</span>
-                        <DocumentTypeBadge type={inferType(chunk.documentName)} />
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'shrink-0 tabular-nums',
-                          chunk.score > 0.8
-                            ? 'border-success/30 bg-success/10 text-success'
-                            : chunk.score > 0.6
-                              ? 'border-warning/30 bg-warning/10 text-warning'
-                              : 'border-border bg-muted text-muted-foreground',
-                        )}
-                      >
-                        {Math.round(chunk.score * 100)}%
-                      </Badge>
-                    </div>
-                    <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground/90">
-                      {highlight(chunk.content, query)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </>
+              <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3">{r.content}</p>
+            </div>
+          ))}
+          {results.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground py-4">No results found. Try a different query.</p>
           )}
-        </>
+        </div>
       )}
-
-      <div className="flex items-center justify-center gap-1.5 border-t border-border/60 pt-4 text-center">
-        <Wand2 className="size-3.5 text-muted-foreground" />
-        <p className="text-[11px] text-muted-foreground">
-          AI-powered testing (ask questions with citations, auto-generated test questions) — coming soon
-        </p>
-      </div>
     </div>
   )
 }

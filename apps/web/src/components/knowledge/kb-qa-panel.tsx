@@ -1,13 +1,12 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Plus, Pencil, Trash2, GripVertical, Check, X, BookOpen } from 'lucide-react'
+import { Loader2, Plus, Pencil, Trash2, GripVertical, X, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { knowledge as knowledgeApi } from '@/lib/api'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
 
 export function KbQaPanel({ knowledgeBaseId }: { knowledgeBaseId: string }) {
   const queryClient = useQueryClient()
@@ -16,7 +15,7 @@ export function KbQaPanel({ knowledgeBaseId }: { knowledgeBaseId: string }) {
   const [addOpen, setAddOpen] = useState(false)
   const [addValues, setAddValues] = useState({ question: '', answer: '' })
 
-  const { data: pairs = [], isLoading, refetch } = useQuery({
+  const { data: pairs = [], isLoading } = useQuery({
     queryKey: ['knowledge-base-qa', knowledgeBaseId],
     queryFn: async () => {
       const res = await knowledgeApi.getQa(knowledgeBaseId)

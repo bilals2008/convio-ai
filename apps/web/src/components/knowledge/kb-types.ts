@@ -1,5 +1,8 @@
 import type { DocumentItem } from './document-card'
 
+// Re-exported so consumers can take every knowledge-base type from one module.
+export type { DocumentItem }
+
 export type KbStatus = 'ready' | 'indexing' | 'failed' | 'draft'
 
 export interface KbSettings {

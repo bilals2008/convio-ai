@@ -373,7 +373,7 @@ export function KbSources({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Select value={status} onValueChange={setStatus}>
+        <Select value={status} onValueChange={(v) => setStatus(v ?? 'all')}>
           <SelectTrigger className="h-9 w-[150px]">
             <SelectValue />
           </SelectTrigger>

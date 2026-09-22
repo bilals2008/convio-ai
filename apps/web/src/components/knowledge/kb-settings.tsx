@@ -21,7 +21,7 @@ export function KbSettingsTab({ settings, onChange, disabled }: KbSettingsTabPro
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-3">
         <div className="space-y-1.5">
           <Label className="text-xs font-medium text-muted-foreground">Embedding Model</Label>
-          <Select value={settings.embeddingModel} disabled={disabled} onValueChange={(v) => update({ embeddingModel: v })}>
+          <Select value={settings.embeddingModel} disabled={disabled} onValueChange={(v) => update({ embeddingModel: v ?? settings.embeddingModel })}>
             <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="text-embedding-3-small">text-embedding-3-small</SelectItem>

@@ -78,7 +78,7 @@ export default function KnowledgeDetailPage() {
   const isEdit = !!id && !isCreate
 
   const [form, setForm] = useState<KbFormValues>({ name: '', description: '', tags: [] })
-  const [settings, setSettings] = useState<KbSettings>(DEFAULT_KB_SETTINGS)
+  const [settings] = useState<KbSettings>(DEFAULT_KB_SETTINGS)
   const [errors, setErrors] = useState<Partial<Record<keyof KbFormValues, string>>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -203,7 +203,8 @@ export default function KnowledgeDetailPage() {
     if (kb && !kbInit.current) {
       kbInit.current = true
       setForm({ name: kb.name, description: kb.description || '', tags: kb.tags ?? [] })
-      if (kb.settings) setSettings({ ...DEFAULT_KB_SETTINGS, ...kb.settings })
+      // Retrieval settings aren't persisted by the API — there is no settings
+      // column on KnowledgeBase — so there is nothing to hydrate here.
     }
   }, [kb])
 
@@ -298,6 +299,17 @@ export default function KnowledgeDetailPage() {
 
   const saving = createMutation.isPending || updateMutation.isPending
 
+  const isDirty = useMemo(() => {
+    if (isCreate) return true
+    if (!kb) return false
+    const tagsChanged = (form.tags ?? []).join('\u0001') !== (kb.tags ?? []).join('\u0001')
+    return (
+      form.name !== kb.name ||
+      (form.description ?? '') !== (kb.description ?? '') ||
+      tagsChanged
+    )
+  }, [isCreate, kb, form])
+
   const handleDeleteDocument = async (docId: string) => {
     try {
       await knowledgeApi.deleteDocument(docId)
@@ -390,7 +402,6 @@ export default function KnowledgeDetailPage() {
     refetchInterval: 700,
   })
 
-  const importing = !!importJob && importJobStatus?.status !== 'done'
   const jobDone = importJobStatus?.status === 'done'
   const jobFinishedRef = useRef(false)
   useEffect(() => {
@@ -470,7 +481,16 @@ export default function KnowledgeDetailPage() {
   if (isEdit && isLoading) {
     return (
       <PageContainer className="max-w-5xl">
-        <Skeleton className="h-14 w-full rounded-xl" />
+        <div className="space-y-4">
+          <Skeleton className="h-3 w-36" />
+          <div className="flex items-start gap-3.5">
+            <Skeleton className="size-11 rounded-xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-56" />
+              <Skeleton className="h-3 w-72" />
+            </div>
+          </div>
+        </div>
         <Skeleton className="h-16 w-full rounded-xl" />
         <Skeleton className="h-11 w-full rounded-lg" />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -518,6 +538,7 @@ export default function KnowledgeDetailPage() {
       <KbHeader
         kb={detail}
         saving={saving}
+        dirty={isDirty}
         onBack={() => navigate('/knowledge')}
         onSave={handleSave}
         onDelete={() => deleteMutation.mutate()}
