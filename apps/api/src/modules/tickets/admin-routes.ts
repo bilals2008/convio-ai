@@ -43,7 +43,7 @@ const ticketMessageSelect = {
 
 export default async function adminTicketRoutes(fastify: FastifyInstance) {
   fastify.get('/admin/tickets/stats', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin],
   }, async () => {
     const [total, open, inProgress] = await Promise.all([
       prisma.supportTicket.count({ where: { deletedAt: null } }),
@@ -54,7 +54,7 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
   })
 
   fastify.get('/admin/tickets', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ query: adminTicketsQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ query: adminTicketsQuerySchema })],
   }, async (request) => {
     const { cursor, limit, search, status, deleted } = request.query as {
       cursor?: string; limit: number; search?: string; status?: string; deleted?: 'true' | 'false'
@@ -106,7 +106,7 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
   })
 
   fastify.get('/admin/tickets/:ticketId', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin],
   }, async (request, reply) => {
     const { ticketId } = request.params as { ticketId: string }
 
@@ -148,7 +148,7 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/admin/tickets/:ticketId/messages', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: adminMessageSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ body: adminMessageSchema })],
   }, async (request, reply) => {
     const { ticketId } = request.params as { ticketId: string }
     const body = request.body as z.infer<typeof adminMessageSchema>
@@ -174,7 +174,7 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
   })
 
   fastify.patch('/admin/tickets/:ticketId', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: adminUpdateTicketSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ body: adminUpdateTicketSchema })],
   }, async (request, reply) => {
     const { ticketId } = request.params as { ticketId: string }
     const body = request.body as z.infer<typeof adminUpdateTicketSchema>
@@ -196,7 +196,7 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
   })
 
   fastify.delete('/admin/tickets/:ticketId', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin],
   }, async (request, reply) => {
     const { ticketId } = request.params as { ticketId: string }
     const existing = await prisma.supportTicket.findUnique({ where: { id: ticketId } })
@@ -206,7 +206,7 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/admin/tickets/:ticketId/restore', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin],
   }, async (request, reply) => {
     const { ticketId } = request.params as { ticketId: string }
     const existing = await prisma.supportTicket.findUnique({ where: { id: ticketId } })
@@ -216,7 +216,7 @@ export default async function adminTicketRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/admin/tickets/bulk', {
-    preHandler: [fastify.authenticate, fastify.ensurePlatformAdmin, validate({ body: adminBulkTicketSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ body: adminBulkTicketSchema })],
   }, async (request) => {
     const { ids, action } = request.body as z.infer<typeof adminBulkTicketSchema>
     const result = await prisma.supportTicket.updateMany({

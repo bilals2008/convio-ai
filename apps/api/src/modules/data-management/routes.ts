@@ -66,7 +66,7 @@ async function getDocumentIds(kbIds: string[]): Promise<string[]> {
 export default async function dataManagementRoutes(fastify: FastifyInstance) {
   // GET /api/organizations/:orgId/data-summary — Count of all data categories
   fastify.get('/organizations/:orgId/data-summary', {
-    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.requireMembership, validate({ params: orgParamsSchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
 
@@ -150,7 +150,7 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // GET /api/organizations/:orgId/data/:category — List items in a category
   fastify.get('/organizations/:orgId/data/:category', {
-    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }), query: listCategoryQuerySchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.requireMembership, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }), query: listCategoryQuerySchema })],
   }, async (request) => {
     const { orgId, category } = request.params as { orgId: string; category: string }
     const { search, status, limit, offset } = request.query as z.infer<typeof listCategoryQuerySchema>
@@ -239,7 +239,7 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // GET /api/organizations/:orgId/data/:category/cascade — What will be deleted
   fastify.get('/organizations/:orgId/data/:category/cascade', {
-    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }) })],
+    preHandler: [fastify.authenticateSensitive, fastify.requireMembership, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }) })],
   }, async (request) => {
     const { orgId, category } = request.params as { orgId: string; category: string }
 
@@ -317,7 +317,7 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/organizations/:orgId/data/:category — Delete all data in a category
   fastify.delete('/organizations/:orgId/data/:category', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }) })],
+    preHandler: [fastify.authenticateSensitive, fastify.requireAdmin, validate({ params: z.object({ orgId: z.string().uuid(), category: deleteCategorySchema.shape.category }) })],
   }, async (request) => {
     const { orgId, category } = request.params as { orgId: string; category: string }
 
@@ -410,7 +410,7 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/organizations/:orgId/data/wipe — Delete ALL org data
   fastify.delete('/organizations/:orgId/data/wipe', {
-    preHandler: [fastify.authenticate, fastify.requireOwner, validate({ params: orgParamsSchema })],
+    preHandler: [fastify.authenticateSensitive, fastify.requireOwner, validate({ params: orgParamsSchema })],
   }, async (request) => {
     const { orgId } = request.params as { orgId: string }
 
@@ -492,7 +492,7 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
 
   // GET /api/organizations/:orgId/export — Export data as CSV/JSON (streamed)
   fastify.get('/organizations/:orgId/export', {
-    preHandler: [fastify.authenticate, fastify.requireMembership, validate({ params: orgParamsSchema, query: z.object({ format: z.enum(['csv', 'json']).default('csv'), scope: z.enum(['agents', 'conversations', 'analytics', 'knowledge-bases', 'deployments', 'all']).default('all') }) })],
+    preHandler: [fastify.authenticateSensitive, fastify.requireMembership, validate({ params: orgParamsSchema, query: z.object({ format: z.enum(['csv', 'json']).default('csv'), scope: z.enum(['agents', 'conversations', 'analytics', 'knowledge-bases', 'deployments', 'all']).default('all') }) })],
   }, async (request, reply) => {
     const { orgId } = request.params as { orgId: string }
     const { format, scope } = request.query as { format: 'csv' | 'json'; scope: 'agents' | 'conversations' | 'analytics' | 'knowledge-bases' | 'deployments' | 'all' }
