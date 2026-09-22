@@ -95,7 +95,6 @@ export function EverythingSection() {
     <section id="everything" className="border-b border-border bg-background">
       <div className="mx-auto max-w-[1160px] px-5 py-24 md:px-10 md:py-32">
         <SectionIntro
-          align="left"
           eyebrow="Features"
           title="Everything you need in one place"
           highlight="one place"

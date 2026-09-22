@@ -40,15 +40,10 @@ export function ChannelsSection() {
         </Reveal>
 
         <Reveal y={16} duration={0.6}>
-          <div className="mask-fade-x relative overflow-hidden">
-            <div className="flex w-max animate-marquee gap-12 hover:[animation-play-state:paused] motion-reduce:[animation-play-state:paused]">
-              {CHANNELS.map((channel) => (
-                <ChannelLogo key={channel.name} channel={channel} />
-              ))}
-              {CHANNELS.map((channel) => (
-                <ChannelLogo key={`${channel.name}-dup`} channel={channel} />
-              ))}
-            </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
+            {CHANNELS.map((channel) => (
+              <ChannelLogo key={channel.name} channel={channel} />
+            ))}
           </div>
         </Reveal>
       </div>

@@ -11,6 +11,8 @@
 @import "@fontsource-variable/source-serif-4";
 @import "@fontsource-variable/manrope";
 @import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/plus-jakarta-sans";
 @import "@fontsource-variable/jetbrains-mono";
 @import "@fontsource-variable/source-code-pro";
 @import "@fontsource/poppins";
@@ -76,7 +78,6 @@
     --animate-typing-dot: typing-dot 1.4s ease-in-out infinite;
     --animate-widget-enter: widget-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     --animate-widget-exit: widget-exit 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    --animate-marquee: marquee 30s linear infinite;
 }
 
 :root {
@@ -272,15 +273,6 @@ html.lenis body {
 @keyframes backdrop-out {
   from { opacity: 1; }
   to { opacity: 0; }
-}
-
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
 }
 
 @keyframes float {
