@@ -79,6 +79,7 @@ export const planSchema = z.object({
   description: z.string().max(300).nullish(),
   price: z.string().max(50).nullish(),
   priceMonthly: z.coerce.number().min(0).nullish(),
+  priceYearly: z.coerce.number().min(0).nullish(),
   yearlyPrice: z.string().max(50).nullish(),
   period: z.string().max(20).nullish(),
   badge: z.string().max(50).nullish(),
@@ -98,12 +99,17 @@ export const planSchema = z.object({
   }).optional(),
   active: z.boolean().default(true),
   sortOrder: z.coerce.number().int().min(0).default(0),
+  trialPeriodDays: z.number().int().min(1).max(365).nullish(),
   providerMonthlyProductId: z.string().max(200).nullish(),
   providerYearlyProductId: z.string().max(200).nullish(),
 })
 
 export const planCreateSchema = planSchema
 export const planUpdateSchema = planSchema.partial()
+
+export const creemPeriodSchema = z.object({
+  period: z.enum(['monthly', 'yearly']),
+})
 
 export const knowledgeParamsSchema = z.object({
   kbId: z.string().uuid(),

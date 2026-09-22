@@ -314,6 +314,7 @@ export interface AdminPlan {
   description: string | null
   price: string | null
   priceMonthly: number | null
+  priceYearly: number | null
   yearlyPrice: string | null
   period: string | null
   badge: string | null
@@ -333,10 +334,59 @@ export interface AdminPlan {
   } | null
   active: boolean
   sortOrder: number
+  trialPeriodDays: number | null
   providerMonthlyProductId: string | null
   providerYearlyProductId: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type CreemPeriod = 'monthly' | 'yearly'
+
+export interface CreemProductSummary {
+  id: string
+  name: string
+  price: number
+  currency: string
+  billingType: string
+  billingPeriod: string
+  status: string
+  mode: string
+  trialPeriodDays: number | null
+}
+
+export interface PlanCreemPeriodStatus {
+  period: CreemPeriod
+  productId: string | null
+  source: 'plan' | 'env' | 'none'
+  found: boolean
+  product: CreemProductSummary | null
+  amountCents: number | null
+  mismatches: string[]
+}
+
+export interface PlanCreemStatus {
+  mode: 'test' | 'live'
+  configured: boolean
+  periods: PlanCreemPeriodStatus[]
+}
+
+export interface CreemPlanSummary {
+  planId: string
+  periods: Array<{
+    period: CreemPeriod
+    productId: string | null
+    source: 'plan' | 'env' | 'none'
+    found: boolean
+    mismatchCount: number
+    trialPeriodDays: number | null
+  }>
+}
+
+export interface CreemPlansStatus {
+  mode: 'test' | 'live'
+  configured: boolean
+  plans: CreemPlanSummary[]
 }
 
 export interface AdminKnowledgeBase {
@@ -532,6 +582,30 @@ export const adminApi = {
     api.patch<{ data: AdminPlan }>(`/admin/plans/${id}`, data),
 
   deletePlan: (id: string) => api.delete(`/admin/plans/${id}`),
+
+  creemStatus: () => api.get<{ data: { mode: 'test' | 'live'; configured: boolean } }>('/admin/creem/status'),
+
+  creemPlansStatus: () => api.get<{ data: CreemPlansStatus }>('/admin/creem/plans-status'),
+
+  planCreemStatus: (id: string) => api.get<{ data: PlanCreemStatus }>(`/admin/plans/${id}/creem-status`),
+
+  createCreemProduct: (id: string, period: CreemPeriod) =>
+    api.post<{ data: { plan: AdminPlan; product: CreemProductSummary } }>(
+      `/admin/plans/${id}/creem-product`,
+      { period },
+    ),
+
+  syncCreemProduct: (id: string, period: CreemPeriod) =>
+    api.patch<{ data: { product: CreemProductSummary; mismatches: string[] } }>(
+      `/admin/plans/${id}/creem-product`,
+      { period },
+    ),
+
+  linkCreemProduct: (id: string, period: CreemPeriod) =>
+    api.post<{ data: { plan: AdminPlan; product: CreemProductSummary } }>(
+      `/admin/plans/${id}/creem-link`,
+      { period },
+    ),
 
   knowledgeBases: (params?: { cursor?: string; limit?: number; search?: string }) =>
     api.get<PaginatedResponse<AdminKnowledgeBase>>('/admin/knowledge-bases', { params }),
