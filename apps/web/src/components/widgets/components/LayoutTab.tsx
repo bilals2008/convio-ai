@@ -132,7 +132,7 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
                 </Tooltip>
               )}
             </div>
-            <div className="flex flex-wrap rounded-lg bg-muted/30 p-0.5" role="radiogroup">
+            <div className="flex flex-wrap rounded-lg bg-muted/30 p-0.5" role="radiogroup" aria-label={field.label}>
               {field.options.map((opt) => (
                 <button
                   key={String(opt.value)}
@@ -166,23 +166,67 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
           Advanced
         </button>
         {showAdvanced && (<div className="mt-4 space-y-4">
-          {/* Custom width / height sliders */}
+          {/* Custom width / height overrides */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Width</span>
-                <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">{customWidth > 0 ? `${customWidth}px` : 'auto'}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">
+                    {customWidth > 0 ? `${customWidth}px` : 'preset'}
+                  </span>
+                  {customWidth > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => onChange({ customWidth: 0 })}
+                      className="text-[11px] text-primary hover:underline"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               </div>
-              <input type="range" min={0} max={500} step={10} value={customWidth} onChange={(e) => onChange({ customWidth: Number(e.target.value) })} className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary" />
-              <p className="text-[11px] text-muted-foreground/50">0 = use preset above</p>
+              <input
+                type="range"
+                min={300}
+                max={500}
+                step={10}
+                value={customWidth > 0 ? customWidth : 380}
+                onChange={(e) => onChange({ customWidth: Number(e.target.value) })}
+                className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+                aria-label="Custom widget width"
+              />
+              <p className="text-[11px] text-muted-foreground/50">Overrides the width preset. Reset to go back.</p>
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Height</span>
-                <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">{customHeight > 0 ? `${customHeight}px` : 'auto'}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">
+                    {customHeight > 0 ? `${customHeight}px` : 'preset'}
+                  </span>
+                  {customHeight > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => onChange({ customHeight: 0 })}
+                      className="text-[11px] text-primary hover:underline"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               </div>
-              <input type="range" min={0} max={1200} step={10} value={customHeight} onChange={(e) => onChange({ customHeight: Number(e.target.value) })} className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary" />
-              <p className="text-[11px] text-muted-foreground/50">0 = use preset above</p>
+              <input
+                type="range"
+                min={300}
+                max={1200}
+                step={10}
+                value={customHeight > 0 ? customHeight : 540}
+                onChange={(e) => onChange({ customHeight: Number(e.target.value) })}
+                className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary"
+                aria-label="Custom widget height"
+              />
+              <p className="text-[11px] text-muted-foreground/50">Overrides the height preset. Reset to go back.</p>
             </div>
           </div>
 
@@ -192,7 +236,7 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
               <span className="text-xs text-muted-foreground">Bottom spacing</span>
               <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums">{launcherOffset}px</span>
             </div>
-            <input type="range" min={0} max={200} step={5} value={launcherOffset} onChange={(e) => onChange({ launcherOffset: Number(e.target.value) })} className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary" />
+            <input type="range" min={0} max={200} step={5} value={launcherOffset} onChange={(e) => onChange({ launcherOffset: Number(e.target.value) })} className="w-full h-1 rounded-full appearance-none bg-muted cursor-pointer accent-primary" aria-label="Launcher bottom spacing" />
             <p className="text-[11px] text-muted-foreground/50">Offset from bottom edge — useful if a cookie banner overlaps the launcher.</p>
           </div>
 
@@ -205,6 +249,11 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
             {showTeaser && (
               <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3">
                 <Input value={teaserMessage} onChange={(e) => onChange({ teaserMessage: e.target.value })} placeholder="Need help? Chat with us" maxLength={80} className="h-8 text-xs" />
+                {!teaserMessage.trim() && (
+                  <p className="text-[11px] text-warning">
+                    Add a message — the teaser stays hidden while this is empty.
+                  </p>
+                )}
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] text-muted-foreground">Show after</span>
                   <input type="number" min={1} max={60} value={teaserDelay} onChange={(e) => onChange({ teaserDelay: Number(e.target.value) || 5 })} className="h-7 w-14 rounded-md border border-border bg-muted/30 px-2 text-center text-xs tabular-nums" />
@@ -233,7 +282,10 @@ export function LayoutTab({ config, onChange }: LayoutTabProps) {
                 <Plus className="size-3" />
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground/50">URL path prefixes. Supports trailing * as wildcard (e.g. /admin/*).</p>
+            <p className="text-[11px] text-muted-foreground/50">
+              Matched as URL path prefixes — /checkout also hides /checkout/success. A trailing *
+              is optional.
+            </p>
           </div>
         </div>)}
       </div>

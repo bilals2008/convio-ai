@@ -1,199 +1,103 @@
-import { useEffect, useState } from 'react'
-import { Zap, Send, Smile, X, ChevronDown, MessageSquarePlus } from 'lucide-react'
-import { getWidgetCSSVariables } from '@/components/widget/WidgetStyles'
+import { useEffect, useRef, useState } from 'react'
+import { ChatWidget, chatWidgetPropsFromConfig } from '@/components/widget'
+import { cn } from '@/lib/utils'
+import { WIDTH_OPTIONS } from '../constants'
+import type { WidgetConfig, WidgetDetail } from '../types'
+
+// Breathing room around the widget window inside the frame. The frame keeps the
+// same size in both states, so closing the widget never resizes it — it just
+// reveals the launcher in the corner, the way it would on a real page.
+const MARGIN_X = 24
+const MARGIN_Y = 24
+
+// WidgetWindow normally clears the launcher (80px above the bottom edge). The
+// preview hides the launcher while the window is open, so it can sit flush and
+// leave no dead strip underneath.
+const PREVIEW_WINDOW_BOTTOM = 12
+
+const MAX_FRAME_HEIGHT = 640
+const MOBILE_FRAME_WIDTH = 300
 
 interface WidgetPreviewPanelProps {
-  primaryColor: string
-  backgroundColor: string
-  textColor: string
-  promptBgColor: string
-  headerGradientStart: string
-  headerGradientEnd: string
-  headerGradientDirection: string
-  borderColor: string
-  inputBgColor: string
-  sendBtnColor: string
-  footerBgColor: string
-  agentName: string
-  agentAvatar?: string
-  headerTitle?: string
-  headerSubtitle?: string
-  showOnlineIndicator?: boolean
-  placeholderText?: string
-  showPoweredBy?: boolean
-  quickReplies?: string[]
-  headerGradient: boolean
-  previewThemeMode: 'auto' | 'light' | 'dark'
-  greeting?: string
+  widget: WidgetDetail
+  config: WidgetConfig
+  device: 'desktop' | 'mobile'
 }
 
-export function WidgetPreviewPanel({
-  primaryColor, backgroundColor, textColor, promptBgColor,
-  headerGradientStart, headerGradientEnd, headerGradientDirection,
-  borderColor, inputBgColor,   sendBtnColor,
-  footerBgColor,
-  agentName, agentAvatar, headerTitle, headerSubtitle,
-  showOnlineIndicator, placeholderText, showPoweredBy, quickReplies,
-  headerGradient, previewThemeMode, greeting,
-}: WidgetPreviewPanelProps) {
-  // 'auto' must resolve like the real widget does (OS preference), otherwise
-  // dark-themed widgets preview with light-mode vars — washed out and unreadable.
-  const [isDark, setIsDark] = useState(
-    () =>
-      previewThemeMode === 'auto'
-        ? window.matchMedia('(prefers-color-scheme: dark)').matches
-        : previewThemeMode === 'dark',
-  )
+/**
+ * Renders the *real* widget (the same component the embed ships) inside a
+ * contained, scaled device frame — so width, height, radius, launcher shape and
+ * theme can never drift from production.
+ *
+ * Two details make the containment work:
+ *  - the inner box is both the portal target and a transformed element, and a
+ *    transform turns an element into the containing block for `position: fixed`
+ *    descendants — which is how the widget positions itself;
+ *  - scaling that box scales the widget and its fixed offsets together.
+ */
+export function WidgetPreviewPanel({ widget, config, device }: WidgetPreviewPanelProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [availableWidth, setAvailableWidth] = useState(0)
+  const [portalTarget, setPortalTarget] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (previewThemeMode !== 'auto') {
-      setIsDark(previewThemeMode === 'dark')
-      return
-    }
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    setIsDark(mq.matches)
-    const onChange = (e: MediaQueryListEvent) => setIsDark(e.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [previewThemeMode])
+    const el = wrapperRef.current
+    if (!el) return
+    setAvailableWidth(el.clientWidth)
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width
+      if (width) setAvailableWidth(width)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
-  const theme = { primaryColor, backgroundColor, textColor, promptBgColor, headerGradientStart, headerGradientEnd, headerGradientDirection, borderColor, inputBgColor, sendBtnColor, footerBgColor }
-  const vars = getWidgetCSSVariables(theme, isDark)
+  const presetWidth =
+    WIDTH_OPTIONS.find((option) => option.value === (config.widgetWidth ?? 'default'))?.width ?? 380
+  const windowWidth =
+    config.customWidth && config.customWidth > 0
+      ? Math.min(Math.max(config.customWidth, 300), 500)
+      : presetWidth
+  const windowHeight =
+    config.customHeight && config.customHeight > 0
+      ? Math.min(Math.max(config.customHeight, 300), 1200)
+      : (config.widgetHeight ?? 540)
 
-  const initials = agentName
-    ? agentName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
-    : 'AI'
-
-  const displayTitle = headerTitle || agentName || 'Assistant'
-  const displaySubtitle = headerSubtitle || "We're online"
-  const showOnline = showOnlineIndicator !== false
-  const replies = quickReplies && quickReplies.length > 0 ? quickReplies.slice(0, 4) : ['What can you help with?', 'How does this work?', 'Tell me about Convio', 'Get started']
-
-  const headerStyle = headerGradient
-    ? { background: `linear-gradient(var(--widget-header-direction, 135deg), hsl(var(--widget-header-start)), hsl(var(--widget-header-end)))` }
-    : { background: `hsl(var(--widget-header-start))` }
+  const contentWidth = windowWidth + MARGIN_X
+  const contentHeight = windowHeight + MARGIN_Y
+  const targetWidth = device === 'mobile' ? Math.min(availableWidth, MOBILE_FRAME_WIDTH) : availableWidth
+  const scale =
+    targetWidth > 0 ? Math.min(1, targetWidth / contentWidth, MAX_FRAME_HEIGHT / contentHeight) : 1
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden convio-widget-preview">
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `.convio-widget-preview { ${Object.entries(vars)
-            .map(([k, v]) => `${k}: ${v};`)
-            .join(' ')} }`,
-        }}
-      />
-      {/* Header */}
-      <div className="relative shrink-0" style={headerStyle}>
-        <div className="relative z-10 flex items-center justify-between px-3.5 py-2.5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="relative shrink-0">
-              {agentAvatar ? (
-                <img src={agentAvatar} alt={agentName} className="size-9 rounded-full object-cover ring-2 ring-white/15" />
-              ) : (
-                <div className="size-9 rounded-full bg-white/10 flex items-center justify-center ring-2 ring-white/15">
-                  <span className="text-xs font-semibold text-white tracking-wide">{initials}</span>
-                </div>
-              )}
-              {showOnline && (
-                <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-400 border-2 border-[hsl(var(--widget-header-start))]" />
-              )}
-            </div>
-            <div className="min-w-0">
-              {headerTitle && (
-                <p className="text-[10px] text-white/50 font-medium leading-tight">{headerTitle}</p>
-              )}
-              <p className="truncate text-[13px] font-semibold text-white tracking-tight leading-tight">{displayTitle}</p>
-              {showOnline && (
-                <p className="text-[10px] text-emerald-300/70 font-medium flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-emerald-400 inline-block" />
-                  {displaySubtitle}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-0.5">
-            <button type="button" className="flex size-7 items-center justify-center rounded-md text-white/40" aria-label="Start new chat">
-              <MessageSquarePlus className="size-3.5" />
-            </button>
-            <button type="button" className="flex size-7 items-center justify-center rounded-md text-white/40 hover:bg-white/10 hover:text-white/80 transition-colors">
-              <ChevronDown className="size-3.5" />
-            </button>
-            <button type="button" className="flex size-7 items-center justify-center rounded-md text-white/40 hover:bg-white/10 hover:text-white/80 transition-colors">
-              <X className="size-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Welcome area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-5 overflow-auto" style={{ backgroundColor: `hsl(var(--widget-bg))` }}>
-        <div className="flex flex-col items-center text-center w-full max-w-[260px]">
-          <div className="relative mb-3.5">
-            {agentAvatar ? (
-              <img src={agentAvatar} alt={agentName} className="size-14 rounded-full object-cover" style={{ boxShadow: `0 0 0 3px hsl(var(--widget-primary) / 0.08)` }} />
-            ) : (
-              <div
-                className="size-14 rounded-full flex items-center justify-center"
-                style={{ background: `linear-gradient(135deg, hsl(var(--widget-header-start)), hsl(var(--widget-header-end)))` }}
-              >
-                <span className="text-base font-semibold text-white">{initials}</span>
-              </div>
+    <div ref={wrapperRef} className="w-full">
+      <div
+        data-widget-preview
+        className={cn(
+          'relative mx-auto overflow-hidden rounded-2xl border border-border/40 bg-muted/30 shadow-sm',
+          'transition-[width,height] duration-200 ease-out',
+        )}
+        style={{ width: contentWidth * scale, height: contentHeight * scale }}
+      >
+        <div
+          ref={setPortalTarget}
+          className="absolute left-0 top-0 origin-top-left"
+          style={{
+            width: contentWidth,
+            height: contentHeight,
+            transform: `scale(${scale})`,
+          }}
+        />
+        {portalTarget && (
+          <ChatWidget
+            {...chatWidgetPropsFromConfig(
+              { config, agent: widget.agent },
+              { agentId: widget.agent.id, publicKey: widget.publicKey, preview: true },
             )}
-            <div className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full bg-emerald-500 border-2 flex items-center justify-center" style={{ borderColor: `hsl(var(--widget-bg))` }}>
-              <Zap className="size-2 text-white" />
-            </div>
-          </div>
-          <h3 className="text-[14px] font-semibold mb-0.5 tracking-tight" style={{ color: `hsl(var(--widget-text))` }}>
-            {agentName || 'Assistant'}
-          </h3>
-          <p className="text-[11px] mb-4 leading-relaxed px-2" style={{ color: `hsl(var(--widget-muted-foreground))` }}>
-            {greeting || "Hi there! How can I help you today?"}
-          </p>
-          <div className="flex flex-wrap gap-1.5 justify-center w-full">
-            {replies.map((reply) => (
-              <button
-                key={reply}
-                type="button"
-                className="rounded border px-3 py-1.5 text-[11px] font-medium transition-all duration-150"
-                style={{
-                  borderColor: `hsl(var(--widget-primary) / 0.2)`,
-                  backgroundColor: `hsl(var(--widget-primary) / 0.04)`,
-                  color: `hsl(var(--widget-primary))`,
-                }}
-              >
-                {reply}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Input area */}
-      <div className="shrink-0 border-t" style={{ borderColor: `hsl(var(--widget-border))`, backgroundColor: footerBgColor ? footerBgColor : `hsl(var(--widget-bg))` }}>
-        <div className="p-2.5">
-          <div
-            className="flex items-end gap-1 rounded-sm border p-1"
-            style={{ borderColor: `hsl(var(--widget-border))`, backgroundColor: `hsl(var(--widget-input-bg))` }}
-          >
-            <button type="button" className="flex size-7 shrink-0 items-center justify-center rounded transition-colors" style={{ color: `hsl(var(--widget-muted-foreground))` }}>
-              <Smile className="size-4" />
-            </button>
-            <p className="min-h-[28px] flex-1 py-1.5 text-[12px] leading-relaxed" style={{ color: `hsl(var(--widget-muted-foreground))`, opacity: 0.5 }}>
-              {placeholderText || 'Enter your message...'}
-            </p>
-            <button
-              type="button"
-              className="mb-0.5 flex size-7 shrink-0 items-center justify-center rounded"
-              style={{ backgroundColor: `hsl(var(--widget-send-btn))`, color: `hsl(var(--widget-muted-foreground))` }}
-            >
-              <Send className="size-3.5" />
-            </button>
-          </div>
-        </div>
-        {showPoweredBy !== false && (
-          <p className="text-center text-[9px] pb-2 font-medium" style={{ color: `hsl(var(--widget-muted-foreground))`, opacity: 0.35 }}>
-            Powered by Convio
-          </p>
+            portalContainer={portalTarget}
+            windowBottomOffset={PREVIEW_WINDOW_BOTTOM}
+            defaultOpen
+          />
         )}
       </div>
     </div>

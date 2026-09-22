@@ -1,4 +1,4 @@
-import type { WidgetDetail } from './types'
+import type { WidgetConfig, WidgetDetail } from './types'
 
 export const primaryPresets = [
   { label: 'Convio', color: '#1cca4a' },
@@ -123,7 +123,9 @@ export const LAUNCHER_SHAPE_OPTIONS = [
 
 // Single source of truth for widget config defaults — used by the form hook,
 // dirty checks and the preview. New options only need an entry here.
-export const DEFAULT_WIDGET_CONFIG = {
+// Typed as Required<WidgetConfig> (rather than `as const`) so it stays a mutable,
+// fully-resolved WidgetConfig for useState and resolveConfig.
+export const DEFAULT_WIDGET_CONFIG: Required<WidgetConfig> = {
   position: 'bottom-right',
   primaryColor: '#1cca4a',
   backgroundColor: '#1c1c1c',
@@ -161,4 +163,4 @@ export const DEFAULT_WIDGET_CONFIG = {
   teaserMessage: '',
   teaserDelay: 5,
   hiddenPages: [],
-} as const
+}

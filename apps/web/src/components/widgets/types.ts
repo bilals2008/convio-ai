@@ -48,6 +48,30 @@ export interface WidgetConfig {
   hiddenPages?: string[]
 }
 
+export interface WidgetDraft {
+  name?: string
+  primaryColor?: string
+  backgroundColor?: string
+  textColor?: string
+  promptBgColor?: string
+  headerGradientStart?: string
+  headerGradientEnd?: string
+  headerGradientDirection?: number
+  borderColor?: string
+  inputBgColor?: string
+  sendBtnColor?: string
+  headerTitle?: string
+  headerSubtitle?: string
+  agentName?: string
+  placeholderText?: string
+  quickReplies?: string[]
+  themeMode?: 'auto' | 'light' | 'dark'
+  position?: 'bottom-right' | 'bottom-left'
+  widgetWidth?: 'narrow' | 'default' | 'wide'
+  launcherSize?: 'small' | 'default' | 'large'
+  borderRadius?: 'none' | 'default' | 'full'
+}
+
 export interface ApiError {
   response?: {
     status?: number

@@ -10,8 +10,9 @@ const SHAPE_MAP = {
 }
 
 export function WidgetButton() {
-  const { isOpen, isEmbed, unreadCount, agentAvatar, agentName, position, launcherSize, launcherLabel, launcherShape, launcherOffset, teaserMessage, teaserVisible, dismissTeaser, onToggle } = useWidgetState()
+  const { isOpen, isEmbed, unreadCount, agentAvatar, position, launcherSize, launcherLabel, launcherShape, launcherOffset, teaserMessage, teaserVisible, dismissTeaser, onToggle } = useWidgetState()
 
+  // The launcher always yields to the open window.
   if (isEmbed && isOpen) return null
   if (isOpen) return null
 

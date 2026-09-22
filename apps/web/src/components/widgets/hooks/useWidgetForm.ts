@@ -4,10 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { widgets as widgetsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
-import { type WidgetDetail, type WidgetConfig, type ApiError } from '../types'
+import { type WidgetDetail, type WidgetConfig, type WidgetDraft, type ApiError } from '../types'
 import { DEFAULT_WIDGET_CONFIG } from '../constants'
-import type { WidgetDraft as WidgetAiDraft } from '../components/DesignAiTab'
-import { sanitizeDomain } from '../helpers'
+import { sanitizeDomain, isValidDomain, MAX_DOMAIN_LENGTH, MAX_DOMAINS } from '../helpers'
 
 // Resolved config for a widget: stored values merged over defaults, with the
 // agent's name as fallback for agentName.
@@ -20,20 +19,21 @@ function resolveConfig(widget: WidgetDetail): WidgetConfig {
   }
 }
 
-export function useWidgetForm(widgetId: string) {
+export function useWidgetForm(widgetId: string | undefined) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { orgId } = useOrg()
 
-  const { data: widget, isLoading } = useQuery({
+  const widgetQuery = useQuery({
     queryKey: ['widget', widgetId],
-    queryFn: async () => (await widgetsApi.get(widgetId)).data.data as WidgetDetail,
+    queryFn: async () => (await widgetsApi.get(widgetId!)).data.data as WidgetDetail,
     enabled: Boolean(widgetId),
   })
+  const widget = widgetQuery.data
 
   const { data: embedSnippet } = useQuery({
     queryKey: ['widget-embed', widgetId],
-    queryFn: async () => (await widgetsApi.getEmbed(widgetId)).data.data.snippet as string,
+    queryFn: async () => (await widgetsApi.getEmbed(widgetId!)).data.data.snippet as string,
     enabled: Boolean(widgetId),
   })
 
@@ -51,14 +51,21 @@ export function useWidgetForm(widgetId: string) {
     setConfigState((prev) => ({ ...prev, ...patch }))
   }, [])
 
+  // Seeds the editable form from a server payload. Used both on first load and
+  // after a save, so the local state always mirrors what the API actually stored
+  // (which clears the "Unsaved" indicator).
+  const syncFromWidget = useCallback((next: WidgetDetail) => {
+    initializedWidgetId.current = next.id
+    setName(next.name)
+    setDomains(next.allowedDomains ?? [])
+    setConfigState(resolveConfig(next))
+  }, [])
+
   useEffect(() => {
     if (!widget) return
     if (initializedWidgetId.current === widget.id) return
-    initializedWidgetId.current = widget.id
-    setName(widget.name)
-    setDomains(widget.allowedDomains ?? [])
-    setConfigState(resolveConfig(widget))
-  }, [widget])
+    syncFromWidget(widget)
+  }, [widget, syncFromWidget])
 
   const isDirty = useMemo(() => {
     if (!widget) return false
@@ -83,7 +90,7 @@ export function useWidgetForm(widgetId: string) {
 
   const save = useMutation({
     mutationFn: (status?: string) =>
-      widgetsApi.update(widgetId, {
+      widgetsApi.update(widgetId!, {
         name,
         status,
         allowedDomains: domains,
@@ -92,10 +99,15 @@ export function useWidgetForm(widgetId: string) {
           greeting: config.greeting?.trim() || DEFAULT_WIDGET_CONFIG.greeting,
         },
       }),
-    onSuccess: () => {
+    onSuccess: (response, status) => {
+      const updated = response.data.data as WidgetDetail
+      syncFromWidget(updated)
+      queryClient.setQueryData(['widget', widgetId], updated)
       queryClient.invalidateQueries({ queryKey: ['widget', widgetId] })
       queryClient.invalidateQueries({ queryKey: ['widgets', orgId] })
-      toast.success('Widget saved')
+      toast.success(
+        status === 'active' ? 'Widget published' : status === 'paused' ? 'Widget paused' : 'Widget saved',
+      )
     },
     onError: (error: ApiError) => {
       const status = error?.response?.status
@@ -114,7 +126,7 @@ export function useWidgetForm(widgetId: string) {
   })
 
   const deleteWidget = useMutation({
-    mutationFn: () => widgetsApi.delete(widgetId),
+    mutationFn: () => widgetsApi.delete(widgetId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['widgets', orgId] })
       toast.success('Widget deleted')
@@ -124,7 +136,7 @@ export function useWidgetForm(widgetId: string) {
   })
 
   const copyEmbed = useCallback(async () => {
-    const response = await widgetsApi.getEmbed(widgetId)
+    const response = await widgetsApi.getEmbed(widgetId!)
     await navigator.clipboard.writeText(response.data.data.snippet)
     setCopied(true)
     toast.success('Embed code copied')
@@ -134,8 +146,20 @@ export function useWidgetForm(widgetId: string) {
   const addDomain = useCallback(() => {
     const d = sanitizeDomain(domainInput)
     if (!d) return
+    if (d.length > MAX_DOMAIN_LENGTH) {
+      toast.error('That domain is too long.')
+      return
+    }
+    if (!isValidDomain(d)) {
+      toast.error('Enter a valid domain without a protocol, e.g. example.com')
+      return
+    }
     if (domains.includes(d)) {
       toast.error('Domain already added')
+      return
+    }
+    if (domains.length >= MAX_DOMAINS) {
+      toast.error(`You can allow up to ${MAX_DOMAINS} domains.`)
       return
     }
     setDomains((prev) => [...prev, d])
@@ -147,7 +171,7 @@ export function useWidgetForm(widgetId: string) {
   }, [])
 
   const applyAiDraft = useCallback(
-    (draft: WidgetAiDraft) => {
+    (draft: WidgetDraft) => {
       const { name: draftName, ...rest } = draft
       if (draftName) setName(draftName)
       if (rest.quickReplies) rest.quickReplies = rest.quickReplies.slice(0, 4)
@@ -160,7 +184,9 @@ export function useWidgetForm(widgetId: string) {
 
   return {
     widget,
-    isLoading,
+    isLoading: widgetQuery.isLoading,
+    isError: widgetQuery.isError,
+    refetch: widgetQuery.refetch,
     embedSnippet,
     name,
     setName,

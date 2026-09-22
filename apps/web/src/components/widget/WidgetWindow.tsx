@@ -15,11 +15,11 @@ const RADIUS_MAP = { none: 'rounded-none', default: 'rounded-2xl', full: 'rounde
 const DEFAULT_HEIGHT = 540
 
 export function WidgetWindow() {
-  const { isOpen, isMinimized, isEmbed, entering, exiting, position, error, dismissError, widgetWidth, borderRadius, widgetHeight, customWidth, customHeight } = useWidgetState()
+  const { isOpen, isMinimized, isEmbed, entering, exiting, position, error, dismissError, widgetWidth, borderRadius, widgetHeight, customWidth, customHeight, windowBottomOffset } = useWidgetState()
 
   if (!isOpen && !exiting) return null
 
-  const widthPx = customWidth && customWidth > 0 ? Math.min(customWidth, 500) : undefined
+  const widthPx = customWidth && customWidth > 0 ? Math.min(Math.max(customWidth, 300), 500) : undefined
   const heightPx = customHeight && customHeight > 0
     ? Math.min(Math.max(customHeight, 300), 1200)
     : (widgetHeight || DEFAULT_HEIGHT)
@@ -31,7 +31,7 @@ export function WidgetWindow() {
         isEmbed
           ? 'inset-0 w-full h-full rounded-none animate-widget-enter'
           : cn(
-              'bottom-20 max-w-[calc(100vw-24px)]',
+              'max-w-[calc(100vw-24px)]',
               !widthPx && WIDTH_MAP[widgetWidth],
               position === 'bottom-left' ? 'left-3 sm:left-5' : 'right-3 sm:right-5',
             ),
@@ -46,6 +46,9 @@ export function WidgetWindow() {
           height: `${heightPx}px`,
           ...(widthPx ? { width: `${widthPx}px` } : {}),
         }),
+        // 80px clears the launcher (default). Previews pass a smaller offset so
+        // the frame can hug the window while the launcher is hidden.
+        ...(!isEmbed ? { bottom: `${windowBottomOffset ?? 80}px` } : {}),
       }}
     >
       <WidgetHeader />
