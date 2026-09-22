@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, Loader2, XCircle, Mail, Lock } from 'lucide-react'
+import { Eye, EyeOff, Loader2, XCircle, Mail, Lock, Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { SocialLoginButtons } from './social-login-buttons'
 import { useAuth } from '@/lib/auth-context'
+import { isPasskeySupported, passkeyErrorMessage, usePasskeyLogin } from '@/lib/hooks/use-passkeys'
 import { cn } from '@/lib/utils'
 
 export function LoginForm({ redirectTo }: { redirectTo?: string }) {
@@ -15,6 +16,17 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const { login } = useAuth()
+  const passkeyLogin = usePasskeyLogin(redirectTo)
+  const passkeySupported = isPasskeySupported()
+
+  function handlePasskeySignIn() {
+    setError('')
+    passkeyLogin.mutate(undefined, {
+      onError: (err) => {
+        setError(passkeyErrorMessage(err, 'Could not sign in with passkey'))
+      },
+    })
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -50,6 +62,39 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
             <XCircle className="size-4" />
           </button>
         </div>
+      )}
+
+      {passkeySupported && (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn('w-full h-11 text-sm font-semibold transition-all', passkeyLogin.isPending && 'opacity-70')}
+            disabled={passkeyLogin.isPending || login.isPending}
+            onClick={handlePasskeySignIn}
+          >
+            {passkeyLogin.isPending ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                <span className="ml-2">Waiting for passkey...</span>
+              </>
+            ) : (
+              <>
+                <Fingerprint className="size-4" />
+                <span className="ml-2">Sign in with passkey</span>
+              </>
+            )}
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <Separator />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-3 text-muted-foreground">or sign in with email</span>
+            </div>
+          </div>
+        </>
       )}
 
       <div className="space-y-2">
@@ -100,7 +145,7 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
       <Button
         type="submit"
         className={cn('w-full h-11 text-sm font-semibold transition-all', login.isPending && 'opacity-70')}
-        disabled={login.isPending}
+        disabled={login.isPending || passkeyLogin.isPending}
       >
         {login.isPending ? (
           <>
