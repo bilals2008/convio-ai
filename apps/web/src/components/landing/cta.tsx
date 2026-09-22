@@ -18,7 +18,7 @@ export function CTA() {
 
           <Reveal y={16} delay={0.25} className="w-full">
             <p className="mx-auto mt-5 max-w-[480px] text-[15px] leading-[1.7] text-muted-foreground">
-              Connect a channel, add your knowledge, and go live in minutes. Free forever —
+              Connect a channel, add your knowledge, and go live in minutes. Free forever,
               no credit card required.
             </p>
           </Reveal>

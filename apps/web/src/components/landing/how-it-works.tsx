@@ -5,7 +5,7 @@ const STEPS = [
   {
     title: 'Build your agent',
     description:
-      'Pick a model, write a prompt, and attach tools. Use any provider — or bring your own key.',
+      'Pick a model, write a prompt, and attach tools. Use any provider, or bring your own key.',
     image:
       'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/agent-deatils-overview-tab-ss.avif',
   },

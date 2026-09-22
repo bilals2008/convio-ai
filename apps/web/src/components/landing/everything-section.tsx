@@ -22,7 +22,7 @@ const FEATURES = [
     id: 'agents',
     title: 'AI Agents',
     icon: Bot,
-    description: 'Custom prompts, tools, and knowledge bases — each agent built for its job.',
+    description: 'Custom prompts, tools, and knowledge bases, each agent built for its job.',
     image:
       'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/agent-deatils-overview-tab-ss.avif',
   },
@@ -76,7 +76,7 @@ const FEATURES = [
     title: 'BYOK',
     icon: Key,
     description:
-      'Bring your own API keys. Use your own OpenAI, Anthropic, or Google keys — stored encrypted at rest.',
+      'Bring your own API keys. Use your own OpenAI, Anthropic, or Google keys, stored encrypted at rest.',
     image:
       'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/byok.avif',
   },
@@ -99,7 +99,7 @@ export function EverythingSection() {
           eyebrow="Features"
           title="Everything you need in one place"
           highlight="one place"
-          description="Create, train, deploy, and measure your agents — no glue code, no extra services."
+          description="Create, train, deploy, and measure your agents, no glue code, no extra services."
         />
 
         <Reveal y={28} className="mt-12 md:mt-16">

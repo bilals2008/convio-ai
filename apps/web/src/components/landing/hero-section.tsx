@@ -47,7 +47,7 @@ export function HeroSection() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/50" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
               </span>
-              New — Bring your own API keys
+              New: Bring your own API keys
               <ArrowUpRight className="size-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </a>
           </Reveal>
@@ -64,7 +64,7 @@ export function HeroSection() {
           <Reveal y={18} delay={0.35} className="w-full">
             <p className="mx-auto mt-5 max-w-[520px] text-[clamp(15px,1.5vw,18px)] leading-[1.6] text-muted-foreground">
               Build RAG-powered agents and deploy them to web, WhatsApp, Telegram, Discord,
-              and Slack — from one dashboard.
+              and Slack from one dashboard.
             </p>
           </Reveal>
 
