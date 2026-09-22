@@ -7,7 +7,7 @@ import { ScrollReveal } from '@/components/landing/scroll-reveal'
 import { SectionHeading } from '@/components/landing/section-heading'
 import { FloatingOrbs } from '@/components/landing/floating-orbs'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
-import { Check, Zap, Shield, Crown, ShieldCheck, CreditCard, Headphones, Clock } from 'lucide-react'
+import { Check, Zap, Shield, Crown, Star, ShieldCheck, CreditCard, Headphones, Clock } from 'lucide-react'
 import { pricingConfig } from '@/lib/pricing/config'
 import type { PlanConfig } from '@/lib/pricing/config'
 import { usePricingPlans } from '@/lib/pricing/use-pricing-config'
@@ -19,22 +19,32 @@ const { section, footer } = pricingConfig
 const PLAN_ICONS: Record<string, React.ReactNode> = {
   zap: <Zap className="size-5" />,
   shield: <Shield className="size-5" />,
-  star: <Zap className="size-5" />,
+  star: <Star className="size-5" />,
   crown: <Crown className="size-5" />,
 }
 
-const COMPARISON_FEATURES = [
-  { name: 'AI Agents', free: '1', starter: '3', pro: '10', enterprise: 'Unlimited' },
-  { name: 'Messages/mo', free: '500', starter: '5,000', pro: '25,000', enterprise: 'Unlimited' },
-  { name: 'Knowledge Bases', free: '1', starter: '3', pro: '10', enterprise: 'Unlimited' },
-  { name: 'Channels', free: 'Web', starter: 'Web + WhatsApp', pro: 'All', enterprise: 'All' },
-  { name: 'API Access', free: false, starter: true, pro: true, enterprise: true },
-  { name: 'Custom Branding', free: false, starter: false, pro: false, enterprise: true },
-  { name: 'Priority Support', free: false, starter: false, pro: true, enterprise: true },
-  { name: 'SSO / SAML', free: false, starter: false, pro: false, enterprise: true },
-  { name: 'Dedicated Onboarding', free: false, starter: false, pro: false, enterprise: true },
-  { name: 'SLA Guarantee', free: false, starter: false, pro: false, enterprise: true },
+type LimitSource = 'agents' | 'messagesPerMonth' | 'knowledgeBases'
+
+// Rows backed by `from` read the plan's real limits (what billing enforces); rows with
+// `values` are capability flags the API does not send, so they stay listed here.
+const COMPARISON_ROWS: Array<{ name: string; from?: LimitSource; values?: Record<string, string | boolean> }> = [
+  { name: 'AI Agents', from: 'agents' },
+  { name: 'Messages/mo', from: 'messagesPerMonth' },
+  { name: 'Knowledge Bases', from: 'knowledgeBases' },
+  { name: 'Channels', values: { free: 'Web', pro: 'All', business: 'All', enterprise: 'All' } },
+  { name: 'API Access', values: { free: false, pro: true, business: true, enterprise: true } },
+  { name: 'Custom Branding', values: { free: false, pro: false, business: true, enterprise: true } },
+  { name: 'Priority Support', values: { free: false, pro: true, business: true, enterprise: true } },
+  { name: 'SSO / SAML', values: { free: false, pro: false, business: false, enterprise: true } },
+  { name: 'Dedicated Onboarding', values: { free: false, pro: false, business: false, enterprise: true } },
+  { name: 'SLA Guarantee', values: { free: false, pro: false, business: false, enterprise: true } },
 ]
+
+function limitText(value: number | 'unlimited' | null | undefined): string {
+  if (value === null || value === undefined) return '—'
+  if (value === 'unlimited') return 'Unlimited'
+  return value.toLocaleString()
+}
 
 const FAQS = [
   {
@@ -145,9 +155,6 @@ function PlanCard({ plan, isYearly, onAction }: { plan: PlanConfig; isYearly: bo
         >
           {plan.comingSoon ? 'Coming Soon' : plan.cta}
         </Button>
-        {plan.key !== 'free' && plan.key !== 'enterprise' && (
-          <p className="text-center text-[11px] text-muted-foreground mt-2">14-day free trial, no credit card required</p>
-        )}
       </div>
     </div>
   )
@@ -264,22 +271,27 @@ export default function PricingPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {COMPARISON_FEATURES.map((f, i) => (
-                        <tr key={f.name} className={cn('border-b border-border/50 transition-colors hover:bg-muted/50', i % 2 === 0 && 'bg-muted/30')}>
-                          <td className="py-3 pr-4 text-muted-foreground">{f.name}</td>
-                          {(['free', 'starter', 'pro', 'enterprise'] as const).map((plan) => (
-                            <td key={plan} className="text-center py-3 px-3">
-                              {typeof f[plan] === 'boolean' ? (
-                                f[plan] ? (
-                                  <Check className="size-4 text-emerald-500 mx-auto" />
+                      {COMPARISON_ROWS.map((row, i) => (
+                        <tr key={row.name} className={cn('border-b border-border/50 transition-colors hover:bg-muted/50', i % 2 === 0 && 'bg-muted/30')}>
+                          <td className="py-3 pr-4 text-muted-foreground">{row.name}</td>
+                          {plans.map((p) => {
+                            const value = row.from ? limitText(p.limits?.[row.from]) : row.values?.[p.key]
+                            return (
+                              <td key={p.key} className="text-center py-3 px-3">
+                                {typeof value === 'boolean' ? (
+                                  value ? (
+                                    <Check className="size-4 text-emerald-500 mx-auto" />
+                                  ) : (
+                                    <span className="text-muted-foreground/40">—</span>
+                                  )
                                 ) : (
-                                  <span className="text-muted-foreground/40">—</span>
-                                )
-                              ) : (
-                                <span className="text-foreground">{f[plan]}</span>
-                              )}
-                            </td>
-                          ))}
+                                  <span className={cn(value === undefined || value === null ? 'text-muted-foreground/40' : 'text-foreground')}>
+                                    {value ?? '—'}
+                                  </span>
+                                )}
+                              </td>
+                            )
+                          })}
                         </tr>
                       ))}
                     </tbody>

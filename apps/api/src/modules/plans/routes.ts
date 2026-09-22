@@ -1,8 +1,12 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
+import { toPublicLimits } from '../../services/plans.js'
 
 export default async function plansRoutes(fastify: FastifyInstance) {
-  // GET /api/plans — Public pricing plans for the marketing page
+  // GET /api/plans — Public pricing plans for the marketing page.
+  // Limits come straight from the plan rows, which are what billing enforces, so the
+  // page can never advertise more (or less) than customers actually get. Provider
+  // product IDs are deliberately omitted.
   fastify.get('/plans', async () => {
     const rows = await prisma.plan.findMany({
       where: { active: true },
@@ -20,6 +24,7 @@ export default async function plansRoutes(fastify: FastifyInstance) {
         badge: p.badge ?? undefined,
         comingSoon: p.comingSoon,
         features: (Array.isArray(p.features) ? p.features : []) as Array<{ text: string; included?: boolean }>,
+        limits: toPublicLimits(p.limits),
         cta: p.cta ?? 'Get Started',
         href: p.href ?? '/signup',
         variant: p.variant ?? 'outline',

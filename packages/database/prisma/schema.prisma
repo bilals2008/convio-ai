@@ -604,6 +604,7 @@ model Plan {
   description              String?
   price                    String?
   priceMonthly             Float?
+  priceYearly              Float?
   yearlyPrice              String?
   period                   String?
   badge                    String?
@@ -618,6 +619,7 @@ model Plan {
   limits                   Json     @default("{}")
   active                   Boolean  @default(true)
   sortOrder                Int      @default(0)
+  trialPeriodDays          Int?
   providerMonthlyProductId String?
   providerYearlyProductId  String?
   createdAt                DateTime @default(now()) @db.Timestamptz(6)
