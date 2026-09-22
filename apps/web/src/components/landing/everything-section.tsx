@@ -138,6 +138,7 @@ export function EverythingSection() {
         </ScrollReveal>
 
         <div className="mt-10 md:mt-14">
+          <ScrollReveal>
           {/* Tabs */}
           <div
             className="relative flex gap-2 overflow-x-auto pb-2 scrollbar-none md:flex-wrap md:overflow-visible md:pb-0"
@@ -215,6 +216,7 @@ export function EverythingSection() {
               </motion.div>
             </AnimatePresence>
           </div>
+          </ScrollReveal>
         </div>
       </div>
 
