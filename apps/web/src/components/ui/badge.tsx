@@ -57,6 +57,8 @@ const badgeVariants = cva(
           "bg-muted text-muted-foreground border-border",
         pro:
           "bg-primary/10 text-primary border-primary/20",
+        business:
+          "bg-success/10 text-success border-success/20",
         enterprise:
           "bg-info/10 text-info border-info/20",
         beta:

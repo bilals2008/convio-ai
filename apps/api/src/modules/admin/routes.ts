@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import type { Prisma } from '@convio/database'
+import { APP_URL, PLANS } from '@convio/config'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { createClient } from '@supabase/supabase-js'
@@ -15,6 +16,7 @@ import {
   auditLogQuerySchema,
   planCreateSchema,
   planUpdateSchema,
+  creemPeriodSchema,
   knowledgeParamsSchema,
   knowledgeDocumentParamsSchema,
   adminUserQuerySchema,
@@ -25,8 +27,9 @@ import {
   adminGrantParamsSchema,
   revenueQuerySchema,
 } from './admin-schema.js'
+import { creemMode, isCreemConfigured, creemProducts, type CreemProduct, type CreemProductInput } from '../../services/creem.js'
 
-const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, enterprise: 2 }
+const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, business: 2, enterprise: 3 }
 
 type RevenuePeriod = 'weekly' | 'monthly' | 'yearly'
 
@@ -1446,6 +1449,343 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string }
     await prisma.plan.delete({ where: { id } })
     return { success: true }
+  })
+
+  // ---- Creem product linking -------------------------------------------------
+  // Creem product IDs are environment-specific: a TEST id does not resolve in LIVE.
+  // Everything here is platform-admin only and never returns the API key.
+
+  type CreemPeriod = 'monthly' | 'yearly'
+
+  const PERIOD_FIELD = {
+    monthly: 'providerMonthlyProductId',
+    yearly: 'providerYearlyProductId',
+  } as const
+
+  interface LinkablePlan {
+    name: string
+    description: string | null
+    priceMonthly: number | null
+    priceYearly: number | null
+    trialPeriodDays: number | null
+    providerMonthlyProductId: string | null
+    providerYearlyProductId: string | null
+  }
+
+  function planProductId(plan: LinkablePlan & { key: string }, period: CreemPeriod): string | null {
+    return period === 'yearly' ? plan.providerYearlyProductId : plan.providerMonthlyProductId
+  }
+
+  // Checkout falls back to the env-configured IDs when a plan row has none, so the
+  // admin must be able to see that same effective ID rather than a misleading "none".
+  function envProductId(planKey: string, period: CreemPeriod): string | null {
+    const entry = PLANS[planKey] as
+      | { providerMonthlyProductId?: string; providerYearlyProductId?: string }
+      | undefined
+    if (!entry) return null
+    const id = period === 'yearly' ? entry.providerYearlyProductId : entry.providerMonthlyProductId
+    return id || null
+  }
+
+  function effectiveProductId(
+    plan: LinkablePlan & { key: string },
+    period: CreemPeriod,
+  ): { id: string | null; source: 'plan' | 'env' | 'none' } {
+    const fromPlan = planProductId(plan, period)
+    if (fromPlan) return { id: fromPlan, source: 'plan' }
+    const fromEnv = envProductId(plan.key, period)
+    if (fromEnv) return { id: fromEnv, source: 'env' }
+    return { id: null, source: 'none' }
+  }
+
+  // Creem bills in cents and rejects anything between 1 and 99.
+  function planAmountCents(plan: LinkablePlan, period: CreemPeriod): number | null {
+    const dollars = period === 'yearly' ? plan.priceYearly : plan.priceMonthly
+    if (dollars === null || dollars === undefined) return null
+    return Math.round(dollars * 100)
+  }
+
+  function amountIsUsable(cents: number | null): cents is number {
+    return cents !== null && (cents === 0 || cents >= 100)
+  }
+
+  // Creem rejects non-public success URLs (it validates the address), and APP_URL is
+  // a localhost URL in development. Only send one when it is reachable from outside.
+  function publicAppUrl(): string | null {
+    try {
+      const url = new URL(APP_URL)
+      const isLocal = ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(url.hostname)
+      return url.protocol === 'https:' && !isLocal ? url.origin : null
+    } catch {
+      return null
+    }
+  }
+
+  // trial_period_days is always sent explicitly: on Creem, omitting it keeps the
+  // existing trial while null removes it, so clearing the field must send null.
+  function creemProductFields(plan: LinkablePlan, period: CreemPeriod): Omit<CreemProductInput, 'price'> {
+    const appUrl = publicAppUrl()
+    return {
+      name: plan.name,
+      description: plan.description || `${plan.name} plan`,
+      currency: 'USD',
+      billing_type: 'recurring',
+      billing_period: period === 'yearly' ? 'every-year' : 'every-month',
+      tax_category: 'saas',
+      tax_mode: 'exclusive',
+      ...(appUrl ? { default_success_url: `${appUrl}/settings/billing?checkout=success` } : {}),
+      trial_period_days: plan.trialPeriodDays ?? null,
+    }
+  }
+
+  function describeProduct(product: CreemProduct) {
+    return {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      currency: product.currency,
+      billingType: product.billing_type,
+      billingPeriod: product.billing_period,
+      status: product.status,
+      mode: product.mode,
+      trialPeriodDays: product.trial_period_days ?? null,
+    }
+  }
+
+  function comparePlanToProduct(plan: LinkablePlan, period: CreemPeriod, product: CreemProduct): string[] {
+    const mismatches: string[] = []
+
+    if (product.name !== plan.name) {
+      mismatches.push(`Name differs — plan "${plan.name}", Creem "${product.name}"`)
+    }
+
+    const expectedCents = planAmountCents(plan, period)
+    if (expectedCents !== null && product.price !== expectedCents) {
+      mismatches.push(`Price differs — plan ${expectedCents} vs Creem ${product.price} (cents)`)
+    }
+
+    const expectedPeriod = period === 'yearly' ? 'every-year' : 'every-month'
+    if (product.billing_period !== expectedPeriod) {
+      mismatches.push(`Billing period differs — plan ${expectedPeriod}, Creem ${product.billing_period}`)
+    }
+
+    const expectedTrial = plan.trialPeriodDays ?? null
+    const actualTrial = product.trial_period_days ?? null
+    if (expectedTrial !== actualTrial) {
+      mismatches.push(`Trial differs — plan ${expectedTrial ?? 'none'} days, Creem ${actualTrial ?? 'none'} days`)
+    }
+
+    return mismatches
+  }
+
+  // GET /api/admin/creem/status — which environment the server talks to
+  fastify.get('/admin/creem/status', adminGuard, async () => {
+    return { data: { mode: creemMode(), configured: isCreemConfigured() } }
+  })
+
+  // GET /api/admin/plans/:id/creem-status — verify both linked products
+  fastify.get('/admin/plans/:id/creem-status', {
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+
+    const plan = await prisma.plan.findUnique({ where: { id } })
+    if (!plan) throw new AppError(404, 'Plan not found', 'NOT_FOUND')
+
+    const mode = creemMode()
+    const periods = await Promise.all(
+      (['monthly', 'yearly'] as CreemPeriod[]).map(async (period) => {
+        const { id: productId, source } = effectiveProductId(plan, period)
+        const amountCents = planAmountCents(plan, period)
+
+        if (!productId) {
+          return {
+            period,
+            productId: null,
+            source,
+            found: false,
+            product: null,
+            amountCents,
+            mismatches: [] as string[],
+          }
+        }
+
+        try {
+          const product = await creemProducts.get(productId)
+          return {
+            period,
+            productId,
+            source,
+            found: true,
+            product: describeProduct(product),
+            amountCents,
+            mismatches: comparePlanToProduct(plan, period, product),
+          }
+        } catch {
+          // Unresolvable ID: deleted product, or an ID from the other environment.
+          return {
+            period,
+            productId,
+            source,
+            found: false,
+            product: null,
+            amountCents,
+            mismatches: [`"${productId}" was not found in ${mode.toUpperCase()} — it may belong to the other environment`],
+          }
+        }
+      }),
+    )
+
+    return { data: { mode, configured: isCreemConfigured(), periods } }
+  })
+
+  // GET /api/admin/creem/plans-status — compact linkage summary for every plan,
+  // so the list page can show gaps without one request per plan.
+  fastify.get('/admin/creem/plans-status', adminGuard, async () => {
+    const plans = await prisma.plan.findMany({ orderBy: { sortOrder: 'asc' } })
+
+    const summaries = await Promise.all(
+      plans.map(async (plan) => {
+        const periods = await Promise.all(
+          (['monthly', 'yearly'] as CreemPeriod[]).map(async (period) => {
+            const { id: productId, source } = effectiveProductId(plan, period)
+
+            if (!productId) {
+              return { period, productId: null, source, found: false, mismatchCount: 0, trialPeriodDays: null }
+            }
+
+            try {
+              const product = await creemProducts.get(productId)
+              return {
+                period,
+                productId,
+                source,
+                found: true,
+                mismatchCount: comparePlanToProduct(plan, period, product).length,
+                trialPeriodDays: product.trial_period_days ?? null,
+              }
+            } catch {
+              return { period, productId, source, found: false, mismatchCount: 1, trialPeriodDays: null }
+            }
+          }),
+        )
+
+        return { planId: plan.id, periods }
+      }),
+    )
+
+    return { data: { mode: creemMode(), configured: isCreemConfigured(), plans: summaries } }
+  })
+
+  // POST /api/admin/plans/:id/creem-product — create the Creem product for a period
+  fastify.post('/admin/plans/:id/creem-product', {
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema, body: creemPeriodSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { period } = request.body as { period: CreemPeriod }
+
+    const plan = await prisma.plan.findUnique({ where: { id } })
+    if (!plan) throw new AppError(404, 'Plan not found', 'NOT_FOUND')
+
+    if (planProductId(plan, period) || envProductId(plan.key, period)) {
+      throw new AppError(
+        400,
+        `A Creem ${period} product already exists for this plan. Use Sync to update it, or Save to plan to adopt a .env ID.`,
+        'ALREADY_LINKED',
+      )
+    }
+
+    const cents = planAmountCents(plan, period)
+    if (!amountIsUsable(cents)) {
+      throw new AppError(400, period === 'yearly'
+        ? 'Set a numeric yearly amount before creating the yearly product.'
+        : 'Set a numeric monthly amount before creating the product.', 'PRICE_REQUIRED')
+    }
+
+    // The idempotency key makes a retry after a timeout return the original product
+    // rather than creating a duplicate in Creem.
+    const product = await creemProducts.create(
+      { ...creemProductFields(plan, period), price: cents },
+      `plan-${plan.id}-${period}`,
+    )
+
+    const updated = await prisma.plan.update({
+      where: { id },
+      data: { [PERIOD_FIELD[period]]: product.id },
+    })
+
+    fastify.log.info(
+      { actorId: request.userId, planId: plan.id, period, productId: product.id, mode: product.mode },
+      'Creem product created',
+    )
+
+    return { data: { plan: updated, product: describeProduct(product) } }
+  })
+
+  // PATCH /api/admin/plans/:id/creem-product — push plan changes to Creem
+  fastify.patch('/admin/plans/:id/creem-product', {
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema, body: creemPeriodSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { period } = request.body as { period: CreemPeriod }
+
+    const plan = await prisma.plan.findUnique({ where: { id } })
+    if (!plan) throw new AppError(404, 'Plan not found', 'NOT_FOUND')
+
+    const productId = effectiveProductId(plan, period).id
+    if (!productId) {
+      throw new AppError(400, `No Creem ${period} product is linked yet. Create one first.`, 'NOT_LINKED')
+    }
+
+    const cents = planAmountCents(plan, period)
+    if (!amountIsUsable(cents)) {
+      throw new AppError(400, 'Set a valid amount (at least $1) before syncing.', 'PRICE_REQUIRED')
+    }
+
+    const product = await creemProducts.update(productId, { ...creemProductFields(plan, period), price: cents })
+
+    fastify.log.info(
+      { actorId: request.userId, planId: plan.id, period, productId, mode: product.mode },
+      'Creem product synced',
+    )
+
+    return { data: { product: describeProduct(product), mismatches: comparePlanToProduct(plan, period, product) } }
+  })
+
+  // POST /api/admin/plans/:id/creem-link — adopt an existing Creem product onto a plan
+  // Covers IDs that come from .env (used by the checkout fallback) or a product created
+  // directly in the Creem dashboard. The ID is verified against Creem before saving.
+  fastify.post('/admin/plans/:id/creem-link', {
+    preHandler: [fastify.authenticateSensitive, fastify.ensurePlatformAdmin, validate({ params: orgParamsSchema, body: creemPeriodSchema })],
+  }, async (request) => {
+    const { id } = request.params as { id: string }
+    const { period } = request.body as { period: CreemPeriod }
+
+    const plan = await prisma.plan.findUnique({ where: { id } })
+    if (!plan) throw new AppError(404, 'Plan not found', 'NOT_FOUND')
+
+    const { id: productId, source } = effectiveProductId(plan, period)
+    if (!productId) {
+      throw new AppError(400, `Nothing to link for the ${period} period. Create a product first.`, 'NOT_LINKED')
+    }
+    if (source === 'plan') {
+      throw new AppError(400, `The ${period} product is already stored on this plan.`, 'ALREADY_LINKED')
+    }
+
+    // Verify before persisting, so a bad ID never reaches the database.
+    const product = await creemProducts.get(productId)
+
+    const updated = await prisma.plan.update({
+      where: { id },
+      data: { [PERIOD_FIELD[period]]: product.id },
+    })
+
+    fastify.log.info(
+      { actorId: request.userId, planId: plan.id, period, productId: product.id, mode: product.mode },
+      'Creem product linked to plan',
+    )
+
+    return { data: { plan: updated, product: describeProduct(product) } }
   })
 
   // GET /api/admin/knowledge-bases — All knowledge bases with org + usage counts

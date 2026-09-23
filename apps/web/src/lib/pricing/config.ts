@@ -7,6 +7,7 @@ export interface PlanLimits {
   agents: number | 'unlimited'
   knowledgeBases: number | 'unlimited'
   messagesPerMonth: number | 'unlimited'
+  organizations: number | 'unlimited'
   deploymentChannels: string[]
   tools: boolean
   mcpServers: boolean
@@ -50,10 +51,28 @@ export function getPlanFeatures(planKey: string): PlanLimits {
   return plan.limits
 }
 
+const NUMERIC_LIMIT_KEYS = ['agents', 'messagesPerMonth', 'knowledgeBases', 'organizations'] as const
+
+// The API returns the limits billing actually enforces; the local config only carries
+// the capability flags it does not send. Remote numbers therefore win, and the local
+// config stays a pure fallback for when the API is unavailable.
+export function mergePlanLimits(remote?: Partial<PlanLimits> | null, planKey?: string): PlanLimits {
+  const base = planKey ? getPlanFeatures(planKey) : DEFAULT_LIMITS
+  if (!remote) return base
+
+  const merged = { ...base }
+  for (const key of NUMERIC_LIMIT_KEYS) {
+    const value = remote[key]
+    if (typeof value === 'number' || value === 'unlimited') merged[key] = value
+  }
+  return merged
+}
+
 export const DEFAULT_LIMITS: PlanLimits = {
   agents: 1,
   knowledgeBases: 1,
   messagesPerMonth: 500,
+  organizations: 1,
   deploymentChannels: ['web-chat-widget'],
   tools: false,
   mcpServers: false,
@@ -87,7 +106,8 @@ export const pricingConfig: PricingConfig = {
       limits: {
         agents: 1,
         knowledgeBases: 1,
-        messagesPerMonth: 500,
+        messagesPerMonth: 1000,
+        organizations: 1,
         deploymentChannels: ['web-chat-widget'],
         tools: false,
         mcpServers: false,
@@ -103,37 +123,38 @@ export const pricingConfig: PricingConfig = {
       iconColor: 'text-muted-foreground',
     },
     {
-      key: 'starter',
-      name: 'Starter',
-      description: 'For small businesses',
-      price: '$19',
-      yearlyPrice: '$15',
+      key: 'business',
+      name: 'Business',
+      description: 'For growing teams',
+      price: '$99',
+      yearlyPrice: '$79',
       period: '/month',
       features: [
-        { text: '3 AI agents' },
-        { text: '3 knowledge bases' },
-        { text: '5,000 messages/mo' },
-        { text: 'Web + WhatsApp' },
-        { text: 'API access' },
-        { text: '14-day free trial' },
+        { text: 'Unlimited AI agents' },
+        { text: '50 knowledge bases' },
+        { text: '150,000 messages/mo' },
+        { text: 'Custom branding' },
+        { text: 'All channels' },
+        { text: 'Priority support' },
       ],
       limits: {
-        agents: 3,
-        knowledgeBases: 3,
-        messagesPerMonth: 5000,
-        deploymentChannels: ['web-chat-widget', 'whatsapp'],
-        tools: false,
-        mcpServers: false,
+        agents: 'unlimited',
+        knowledgeBases: 50,
+        messagesPerMonth: 150000,
+        organizations: 5,
+        deploymentChannels: ['web-chat-widget', 'shareable-link', 'whatsapp'],
+        tools: true,
+        mcpServers: true,
         knowledgeBaseRag: true,
         capabilities: true,
         guardrails: true,
       },
-      cta: 'Start Free Trial',
+      cta: 'Get started',
       href: '/signup',
       variant: 'outline',
       highlighted: false,
       icon: 'star',
-      iconColor: 'text-info',
+      iconColor: 'text-chart-3',
     },
     {
       key: 'pro',
@@ -151,12 +172,12 @@ export const pricingConfig: PricingConfig = {
         { text: 'Advanced analytics' },
         { text: 'API access' },
         { text: 'Priority support' },
-        { text: '14-day free trial' },
       ],
       limits: {
         agents: 10,
         knowledgeBases: 10,
         messagesPerMonth: 25000,
+        organizations: 10,
         deploymentChannels: ['web-chat-widget', 'shareable-link', 'whatsapp'],
         tools: true,
         mcpServers: true,
@@ -164,7 +185,7 @@ export const pricingConfig: PricingConfig = {
         capabilities: true,
         guardrails: true,
       },
-      cta: 'Start Free Trial',
+      cta: 'Get started',
       href: '/signup',
       variant: 'default',
       highlighted: true,
@@ -190,6 +211,7 @@ export const pricingConfig: PricingConfig = {
         agents: 'unlimited',
         knowledgeBases: 'unlimited',
         messagesPerMonth: 'unlimited',
+        organizations: 'unlimited',
         deploymentChannels: ['web-chat-widget', 'shareable-link', 'whatsapp'],
         tools: true,
         mcpServers: true,

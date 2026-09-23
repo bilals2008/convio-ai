@@ -8,7 +8,6 @@ import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
 import { useOnboarding } from '@/lib/hooks/use-onboarding'
 import { WelcomeModal } from '@/components/onboarding/welcome-modal'
-import { ProClaimModal } from '@/components/landing/pro-claim-modal'
 import { NetworkStatusBanner } from '@/components/shared/network-status-banner'
 import { Button } from '@/components/ui/button'
 
@@ -80,7 +79,6 @@ export function DashboardLayout() {
             <Outlet />
           </main>
         </div>
-        <ProClaimModal />
         <WelcomeModal
           open={!isCreating && !!onboarding && onboarding.status === 'not_started'}
           loading={onboardingLoading}

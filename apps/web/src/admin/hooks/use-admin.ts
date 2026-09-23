@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/toast'
-import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminRevenue, type RevenuePeriod, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant } from '@/admin/services/admin-api'
+import { adminApi, type AdminStats, type AdminUserDetail, type AdminOrgDetail, type SystemHealth, type AuditLogEntry, type AdminAnalytics, type AdminBilling, type AdminRevenue, type RevenuePeriod, type ModerationOrgConfig, type ModerationViolation, type AdminDocFeedback, type AdminPlan, type AdminKnowledgeBaseDetail, type AdminKnowledgeDocumentDetail, type AdminGrant, type PlanCreemStatus, type CreemPeriod } from '@/admin/services/admin-api'
 
 export function invalidateAdminUsers(queryClient: ReturnType<typeof useQueryClient>) {
   return queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -253,6 +253,69 @@ export function useAdminPlans() {
       return res.data.data
     },
   })
+}
+
+export function useCreemStatus() {
+  return useQuery({
+    queryKey: ['admin', 'creem', 'status'],
+    queryFn: async () => (await adminApi.creemStatus()).data.data,
+    staleTime: 300_000,
+  })
+}
+
+export function usePlanCreemStatus(planId: string | undefined, enabled = true) {
+  return useQuery<PlanCreemStatus>({
+    queryKey: ['admin', 'creem', 'plan', planId],
+    queryFn: async () => (await adminApi.planCreemStatus(planId!)).data.data,
+    enabled: !!planId && enabled,
+  })
+}
+
+export function useCreemPlansStatus() {
+  return useQuery({
+    queryKey: ['admin', 'creem', 'plans-status'],
+    queryFn: async () => (await adminApi.creemPlansStatus()).data.data,
+    staleTime: 60_000,
+  })
+}
+
+// Every Creem action also refreshes the plan list, because creating or linking a
+// product writes providerMonthly/YearlyProductId back onto the plan row.
+function useCreemMutation<TArgs>(
+  mutationFn: (args: TArgs) => Promise<unknown>,
+  successMessage: string,
+) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'plans'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'creem'] })
+      toast.success(successMessage)
+    },
+    onError: (error: Error) => toast.error(error.message || 'Creem request failed.'),
+  })
+}
+
+export function useCreateCreemProduct(planId: string) {
+  return useCreemMutation(
+    ({ period }: { period: CreemPeriod }) => adminApi.createCreemProduct(planId, period),
+    'Creem product created and linked',
+  )
+}
+
+export function useSyncCreemProduct(planId: string) {
+  return useCreemMutation(
+    ({ period }: { period: CreemPeriod }) => adminApi.syncCreemProduct(planId, period),
+    'Creem product updated',
+  )
+}
+
+export function useLinkCreemProduct(planId: string) {
+  return useCreemMutation(
+    ({ period }: { period: CreemPeriod }) => adminApi.linkCreemProduct(planId, period),
+    'Creem product linked to this plan',
+  )
 }
 
 export function useAdminKnowledgeBases(params?: { cursor?: string; limit?: number; search?: string }) {

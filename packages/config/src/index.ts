@@ -26,7 +26,15 @@ export const STORAGE_BUCKET = process.env.STORAGE_BUCKET || 'convio'
 // Billing config
 export const CREEM_API_KEY = process.env.CREEM_API_KEY || ''
 export const CREEM_WEBHOOK_SECRET = process.env.CREEM_WEBHOOK_SECRET || ''
-export const CREEM_TEST_MODE = process.env.NODE_ENV !== 'production'
+
+// Sandbox vs live follows the key prefix (creem_test_ = sandbox), the same way the
+// Creem CLI detects its environment. Deriving it from NODE_ENV alone pointed a test
+// key at the live API in production; deriving it from the key cannot disagree with
+// the credential actually in use. CREEM_TEST_MODE overrides when set explicitly.
+const creemTestModeEnv = process.env.CREEM_TEST_MODE
+export const CREEM_TEST_MODE = creemTestModeEnv
+  ? creemTestModeEnv === 'true'
+  : CREEM_API_KEY === '' || CREEM_API_KEY.startsWith('creem_test_')
 
 export const PLANS: Record<string, {
   label: string

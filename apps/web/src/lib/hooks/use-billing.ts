@@ -13,10 +13,10 @@ interface UsageData {
 }
 
 interface PlanData {
-  name: 'free' | 'starter' | 'pro' | 'enterprise'
+  name: 'free' | 'pro' | 'business' | 'enterprise'
   label: string
   features: string[]
-  limits: { agents: number; messagesPerMonth: number; knowledgeBases: number }
+  limits: { agents: number | null; messagesPerMonth: number | null; knowledgeBases: number | null }
   price: string
   priceMonthly: number
   trialEndsAt?: string | null
@@ -84,22 +84,6 @@ export function useCheckout() {
     },
     onError: () => {
       toast.error('Failed to start checkout. Please try again.')
-    },
-  })
-}
-
-export function useStartTrial() {
-  const { orgId } = useOrg()
-
-  return useMutation({
-    mutationFn: () => billing.startTrial(orgId!),
-    onSuccess: (res) => {
-      const data = res?.data?.data as { message?: string } | undefined
-      toast.success(data?.message ?? '14-day Pro trial activated!')
-    },
-    onError: (err) => {
-      const msg = (err as { message?: string })?.message ?? 'Failed to start trial. Please try again.'
-      toast.error(msg)
     },
   })
 }

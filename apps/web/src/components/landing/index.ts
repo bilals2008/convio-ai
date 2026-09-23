@@ -11,7 +11,6 @@ export { ScrollReveal } from './scroll-reveal'
 export { GlowCard } from './glow-card'
 export { DirectionHover } from './direction-hover'
 export { SectionHeading } from './section-heading'
-export { ProClaimModal } from './pro-claim-modal'
 export {
   SmoothScroll,
   Reveal,

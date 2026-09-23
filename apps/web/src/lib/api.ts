@@ -306,7 +306,6 @@ export const billing = {
     api.post(`/organizations/${orgId}/billing/checkout`, { plan, billingPeriod: billingPeriod || 'monthly' }),
   portal: (orgId: string) => api.post(`/organizations/${orgId}/billing/portal`),
   invoices: (orgId: string) => api.get(`/organizations/${orgId}/billing/invoices`),
-  startTrial: (orgId: string) => api.post(`/organizations/${orgId}/billing/start-trial`),
 }
 
 export const mcpServers = {
