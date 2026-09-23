@@ -118,7 +118,8 @@ export const creemProducts = {
     creemRequest<CreemProduct>(`/v1/products?product_id=${encodeURIComponent(productId)}`, { method: 'GET' }),
 
   // On Creem, omitting trial_period_days leaves it unchanged while null removes it.
-  update: (productId: string, payload: Partial<CreemProductInput>) =>
+  // PATCH rejects tax_category ("property tax_category should not exist") — create-only field.
+  update: (productId: string, payload: Partial<Omit<CreemProductInput, 'tax_category'>>) =>
     creemRequest<CreemProduct>(`/v1/products/${encodeURIComponent(productId)}`, { method: 'PATCH', body: payload }),
 }
 

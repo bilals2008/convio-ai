@@ -1739,7 +1739,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       throw new AppError(400, 'Set a valid amount (at least $1) before syncing.', 'PRICE_REQUIRED')
     }
 
-    const product = await creemProducts.update(productId, { ...creemProductFields(plan, period), price: cents })
+    const { tax_category: _createOnly, ...updateFields } = creemProductFields(plan, period)
+    const product = await creemProducts.update(productId, { ...updateFields, price: cents })
 
     fastify.log.info(
       { actorId: request.userId, planId: plan.id, period, productId, mode: product.mode },
