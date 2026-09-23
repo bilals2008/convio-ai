@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { SectionIntro } from './section-intro'
@@ -8,9 +8,11 @@ import {
   Globe,
   Database,
   MessageSquare,
+  MessageCircle,
   Puzzle,
   BarChart3,
   Key,
+  SlidersHorizontal,
   X,
   ChevronLeft,
   ChevronRight,
@@ -80,6 +82,24 @@ const FEATURES = [
     image:
       'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/byok.avif',
   },
+  {
+    id: 'widget',
+    title: 'Chat Widget',
+    icon: MessageCircle,
+    description:
+      'Match your brand with custom colors, prompts, and placement, then embed with one script tag.',
+    image:
+      'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/widget-config.avif',
+  },
+  {
+    id: 'model-config',
+    title: 'Model Config',
+    icon: SlidersHorizontal,
+    description:
+      'Pick a model per agent and tune temperature, system prompts, and response limits.',
+    image:
+      'https://xgarixfzlhmjtfuuhwpk.supabase.co/storage/v1/object/public/assets/landing/agent-deatils-configration-tab-ss.avif',
+  },
 ] as const
 
 type Feature = (typeof FEATURES)[number]
@@ -89,7 +109,11 @@ const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number]
 export function EverythingSection() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const tabsRef = useRef<HTMLDivElement>(null)
   const activeFeature = FEATURES[activeIndex]
+
+  const scrollTabs = (dir: number) =>
+    tabsRef.current?.scrollBy({ left: dir * 240, behavior: 'smooth' })
 
   return (
     <section id="everything" className="border-b border-border bg-background">
@@ -103,50 +127,79 @@ export function EverythingSection() {
 
         <Reveal y={28} className="mt-12 md:mt-16">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-center lg:gap-12">
-            <div
-              role="tablist"
-              aria-label="Feature categories"
-              className="scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5 lg:mx-0 lg:flex-col lg:gap-1.5 lg:overflow-visible lg:px-0"
-            >
-              {FEATURES.map((feature, index) => {
-                const Icon = feature.icon
-                const isActive = activeIndex === index
-                return (
-                  <button
-                    key={feature.id}
-                    type="button"
-                    role="tab"
-                    id={`feature-tab-${feature.id}`}
-                    aria-selected={isActive}
-                    aria-controls="feature-panel"
-                    tabIndex={isActive ? 0 : -1}
-                    onClick={() => setActiveIndex(index)}
-                    className={cn(
-                      'relative flex shrink-0 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-sm font-medium transition-colors lg:w-full',
-                      'focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-                      isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {isActive && (
-                      <motion.div
-                        layoutId="featureTab"
-                        className="absolute inset-0 rounded-lg bg-primary/[0.08]"
-                        transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
-                      />
-                    )}
-                    <Icon className="relative size-4 shrink-0" />
-                    <span className="relative whitespace-nowrap lg:whitespace-normal">
-                      {feature.title}
-                    </span>
-                  </button>
-                )
-              })}
+            <div className="relative -mx-5 min-w-0 lg:mx-0">
+              <div
+                ref={tabsRef}
+                role="tablist"
+                aria-label="Feature categories"
+                data-lenis-prevent
+                className="scrollbar-none flex gap-2 overflow-x-auto px-5 lg:flex-col lg:gap-1.5 lg:overflow-visible lg:px-0"
+              >
+                {FEATURES.map((feature, index) => {
+                  const Icon = feature.icon
+                  const isActive = activeIndex === index
+                  return (
+                    <button
+                      key={feature.id}
+                      type="button"
+                      role="tab"
+                      id={`feature-tab-${feature.id}`}
+                      aria-selected={isActive}
+                      aria-controls="feature-panel"
+                      tabIndex={isActive ? 0 : -1}
+                      onClick={(e) => {
+                        setActiveIndex(index)
+                        e.currentTarget.scrollIntoView({
+                          behavior: 'smooth',
+                          inline: 'nearest',
+                          block: 'nearest',
+                        })
+                      }}
+                      className={cn(
+                        'relative flex shrink-0 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-sm font-medium transition-colors lg:w-full',
+                        'focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
+                        isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="featureTab"
+                          className="absolute inset-0 rounded-lg bg-primary/[0.08]"
+                          transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
+                        />
+                      )}
+                      <Icon className="relative size-4 shrink-0" />
+                      <span className="relative whitespace-nowrap lg:whitespace-normal">
+                        {feature.title}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button
+                type="button"
+                aria-label="Scroll features left"
+                onClick={() => scrollTabs(-1)}
+                className="absolute left-1 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/90 text-foreground backdrop-blur transition-colors hover:bg-foreground/10 lg:hidden"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Scroll features right"
+                onClick={() => scrollTabs(1)}
+                className="absolute right-1 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full border border-border bg-background/90 text-foreground backdrop-blur transition-colors hover:bg-foreground/10 lg:hidden"
+              >
+                <ChevronRight className="size-4" />
+              </button>
             </div>
 
             <div
               id="feature-panel"
               role="tabpanel"
               aria-labelledby={`feature-tab-${activeFeature.id}`}
+              className="min-w-0"
             >
               <AnimatePresence mode="wait">
                 <motion.div
@@ -173,7 +226,7 @@ export function EverythingSection() {
                       alt={activeFeature.title}
                       loading="lazy"
                       decoding="async"
-                      className="aspect-[16/10] w-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+                      className="aspect-[16/10] w-full object-contain object-top transition-transform duration-500 ease-out group-hover:scale-[1.02]"
                     />
                     <span className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-xs font-medium text-foreground opacity-0 backdrop-blur transition-opacity duration-300 group-hover:opacity-100">
                       <ZoomIn className="size-3.5" />
