@@ -39,7 +39,6 @@ import { SidebarGroup, SidebarItem } from './sidebar-nav'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
-import { usePlan } from '@/lib/hooks/use-billing'
 import { cn } from '@/lib/utils'
 
 export function Sidebar() {
@@ -47,7 +46,6 @@ export function Sidebar() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { org } = useOrg()
-  const { data: plan } = usePlan()
 
   const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -86,37 +84,25 @@ export function Sidebar() {
       aria-label="Main navigation"
     >
       {/* Logo area */}
-      <div className={cn('border-b border-border/50 py-4 px-3', collapsed ? 'flex flex-col justify-center gap-2' : 'space-y-2')}>
-        <div className={cn('flex items-center gap-2', collapsed && 'justify-center')}>
-          {!collapsed && (
-            <Link to="/" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-              <img src="/logo.png" alt="Convio" className="h-7 w-auto shrink-0" />
-              <span className="text-[15px] font-semibold tracking-tight truncate block">Convio</span>
-            </Link>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={toggleCollapsed}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-expanded={!collapsed}
-          >
-            <ChevronLeft
-              className={cn('size-4 transition-transform duration-200', collapsed && 'rotate-180')}
-            />
-          </Button>
-        </div>
-
-        {/* Active plan — visible on every page, links to billing */}
-        {!collapsed && plan && (
-          <Link to="/settings/billing" aria-label={`Current plan: ${plan.label}`} className="block">
-            <Badge variant={plan.name} className="w-full justify-center py-1">
-              <CreditCard className="size-3" />
-              {plan.label} plan
-            </Badge>
+      <div className={cn('flex items-center py-4 px-3 border-b border-border/50 gap-2', collapsed && 'justify-center')}>
+        {!collapsed && (
+          <Link to="/" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="Convio" className="h-7 w-auto shrink-0" />
+            <span className="text-[15px] font-semibold tracking-tight truncate block">Convio</span>
           </Link>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+        >
+          <ChevronLeft
+            className={cn('size-4 transition-transform duration-200', collapsed && 'rotate-180')}
+          />
+        </Button>
       </div>
 
       <ScrollArea className="flex-1 min-h-0">

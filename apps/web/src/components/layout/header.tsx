@@ -1,4 +1,4 @@
-import { Search, Moon, Sun, Menu, Clock, BookOpen } from 'lucide-react'
+import { Search, Moon, Sun, Menu, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { useSidebar } from '@/lib/sidebar-context'
 import { usePlan } from '@/lib/hooks/use-billing'
 import { Badge } from '@/components/ui/badge'
 import { NotificationBell } from '@/components/notifications/notification-bell'
+import { PlanBadgeDropdown } from '@/components/shared/plan-badge-dropdown'
 import { useOrg } from '@/lib/org-context'
 import { useNotificationStream } from '@/lib/realtime/notifications'
 
@@ -44,6 +45,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
+        <PlanBadgeDropdown />
         {isOnTrial && daysLeft !== null && (
           <Badge variant={daysLeft <= 3 ? 'destructive' : 'active'}>
             <Clock className="size-3" />
@@ -51,12 +53,6 @@ export function Header() {
           </Badge>
         )}
         {orgId && <NotificationBell orgId={orgId} />}
-        <Link to="/docs" aria-label="Docs">
-          <Button variant="ghost" size="sm" className="gap-1.5">
-            <BookOpen className="size-4" />
-            <Badge variant="soon">Soon</Badge>
-          </Button>
-        </Link>
         <Link to="https://github.com/bilals2008" target="_blank" rel="noreferrer" aria-label="GitHub">
           <Button variant="ghost" size="icon">
             <svg role="img" viewBox="0 0 24 24" className="size-4 fill-current">
