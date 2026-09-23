@@ -26,13 +26,17 @@ export function SignOutCard() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <LogOut className="size-4" />
-            Sign Out
-          </CardTitle>
-          <CardDescription>
-            Sign out of this device only, or end every active session across all your devices.
-          </CardDescription>
+          <div className="flex items-start gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <LogOut className="size-4" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <CardTitle>Sign Out</CardTitle>
+              <CardDescription>
+                Sign out of this device only, or end every active session across all your devices.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           {/* type="button" is required — this card renders inside the profile form,

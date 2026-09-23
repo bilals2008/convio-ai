@@ -32,7 +32,9 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { SidebarGroup, SidebarItem } from './sidebar-nav'
@@ -40,6 +42,13 @@ import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
 import { cn } from '@/lib/utils'
+
+const accountMenuContentClass =
+  'w-56 rounded-lg border border-border/70 p-1 shadow-md duration-150 ease-out data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1 motion-reduce:animate-none motion-reduce:transition-none'
+const accountMenuItemClass =
+  'h-8 gap-2 rounded-md px-2 text-[13px] text-foreground/80 transition-colors duration-150 focus:bg-primary/10 focus:text-foreground focus:[&>svg]:text-primary motion-reduce:transition-none'
+const accountMenuLabelClass =
+  'px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground'
 
 export function Sidebar() {
   const { collapsed, setCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
@@ -151,6 +160,7 @@ export function Sidebar() {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger
+            aria-label={collapsed ? 'Open account settings' : 'Open account menu'}
             className={cn(
               'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-muted/60 outline-none',
               collapsed && 'justify-center px-0'
@@ -170,56 +180,67 @@ export function Sidebar() {
               </>
             )}
           </DropdownMenuTrigger>
-          <DropdownMenuContent side={collapsed ? 'right' : 'top'} align="start" sideOffset={8} className="w-56">
-            <div className="space-y-0.5">
-              <DropdownMenuItem
-                onClick={() => navigate('/settings/profile')}
-                className="justify-between focus:bg-primary/10 focus:text-primary"
-              >
-                <span>Profile</span>
-                <User className="size-4" />
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigate('/settings/organization')}
-                className="justify-between focus:bg-primary/10 focus:text-primary"
-              >
-                <span>Organization</span>
-                <Building2 className="size-4" />
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigate('/settings/billing')}
-                className="justify-between focus:bg-primary/10 focus:text-primary"
-              >
-                <span>Billing</span>
-                <CreditCard className="size-4" />
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigate('/settings/notifications')}
-                className="justify-between focus:bg-primary/10 focus:text-primary"
-              >
-                <span>Notifications</span>
-                <Bell className="size-4" />
-              </DropdownMenuItem>
-              {(org?.role === 'owner' || org?.role === 'admin') && (
-                <>
+          <DropdownMenuContent
+            side={collapsed ? 'right' : 'top'}
+            align={collapsed ? 'center' : 'start'}
+            sideOffset={10}
+            className={accountMenuContentClass}
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className={accountMenuLabelClass}>Account</DropdownMenuLabel>
+              <div className="flex flex-col gap-0.5">
+                <DropdownMenuItem
+                  onClick={() => navigate('/settings/profile')}
+                  className={accountMenuItemClass}
+                >
+                  <User />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('/settings/organization')}
+                  className={accountMenuItemClass}
+                >
+                  <Building2 />
+                  <span>Organization</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('/settings/billing')}
+                  className={accountMenuItemClass}
+                >
+                  <CreditCard />
+                  <span>Billing</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('/settings/notifications')}
+                  className={accountMenuItemClass}
+                >
+                  <Bell />
+                  <span>Notifications</span>
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuGroup>
+            {(org?.role === 'owner' || org?.role === 'admin') && (
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className={accountMenuLabelClass}>Workspace</DropdownMenuLabel>
+                <div className="flex flex-col gap-0.5">
                   <DropdownMenuItem
                     onClick={() => navigate('/settings/data')}
-                    className="justify-between focus:bg-primary/10 focus:text-primary"
+                    className={accountMenuItemClass}
                   >
+                    <Database />
                     <span>Data</span>
-                    <Database className="size-4" />
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => navigate('/settings/audit-logs')}
-                    className="justify-between focus:bg-primary/10 focus:text-primary"
+                    className={accountMenuItemClass}
                   >
+                    <ScrollText />
                     <span>Audit Logs</span>
-                    <ScrollText className="size-4" />
                   </DropdownMenuItem>
-                </>
-              )}
-            </div>
-            <DropdownMenuSeparator />
+                </div>
+              </DropdownMenuGroup>
+            )}
+            <DropdownMenuSeparator className="mx-1 my-1.5 bg-border/70" />
             <DropdownMenuItem
               variant="destructive"
               onClick={() => {
@@ -227,10 +248,10 @@ export function Sidebar() {
                   onSuccess: () => navigate('/login', { replace: true }),
                 })
               }}
-              className="justify-between focus:bg-destructive/10"
+              className="h-8 gap-2 rounded-md px-2 text-[13px] transition-colors duration-150 focus:bg-destructive/10 focus:text-destructive motion-reduce:transition-none"
             >
-              <span>Sign Out</span>
-              <LogOut className="size-4" />
+              <LogOut />
+              <span>Sign out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -311,6 +332,7 @@ export function Sidebar() {
                   <div className="mt-2">
                     <DropdownMenu>
                     <DropdownMenuTrigger
+                      aria-label="Open account menu"
                       className="flex w-full items-center gap-3 rounded-lg p-1 -m-1 transition-colors hover:bg-muted outline-none"
                     >
                       <Avatar className="size-8">
@@ -325,56 +347,69 @@ export function Sidebar() {
                       </div>
                 <Settings className="size-4 text-muted-foreground" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56">
-                      <div className="space-y-0.5" onClick={() => setMobileOpen(false)}>
-                        <DropdownMenuItem
-                          onClick={() => navigate('/settings/profile')}
-                          className="justify-between focus:bg-primary/10 focus:text-primary"
-                        >
-                          <span>Profile</span>
-                          <User className="size-4" />
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => navigate('/settings/organization')}
-                          className="justify-between focus:bg-primary/10 focus:text-primary"
-                        >
-                          <span>Organization</span>
-                          <Building2 className="size-4" />
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => navigate('/settings/billing')}
-                          className="justify-between focus:bg-primary/10 focus:text-primary"
-                        >
-                          <span>Billing</span>
-                          <CreditCard className="size-4" />
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => navigate('/settings/notifications')}
-                          className="justify-between focus:bg-primary/10 focus:text-primary"
-                        >
-                          <span>Notifications</span>
-                          <Bell className="size-4" />
-                        </DropdownMenuItem>
+                    <DropdownMenuContent
+                      side="top"
+                      align="start"
+                      sideOffset={10}
+                      className={accountMenuContentClass}
+                    >
+                      <div onClick={() => setMobileOpen(false)}>
+                        <DropdownMenuGroup>
+                          <DropdownMenuLabel className={accountMenuLabelClass}>Account</DropdownMenuLabel>
+                          <div className="flex flex-col gap-0.5">
+                            <DropdownMenuItem
+                              onClick={() => navigate('/settings/profile')}
+                              className={accountMenuItemClass}
+                            >
+                              <User />
+                              <span>Profile</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => navigate('/settings/organization')}
+                              className={accountMenuItemClass}
+                            >
+                              <Building2 />
+                              <span>Organization</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => navigate('/settings/billing')}
+                              className={accountMenuItemClass}
+                            >
+                              <CreditCard />
+                              <span>Billing</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => navigate('/settings/notifications')}
+                              className={accountMenuItemClass}
+                            >
+                              <Bell />
+                              <span>Notifications</span>
+                            </DropdownMenuItem>
+                          </div>
+                        </DropdownMenuGroup>
                         {(org?.role === 'owner' || org?.role === 'admin') && (
-                          <>
-                            <DropdownMenuItem
-                              onClick={() => navigate('/settings/data')}
-                              className="justify-between focus:bg-primary/10 focus:text-primary"
-                            >
-                              <span>Data</span>
-                              <Database className="size-4" />
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => navigate('/settings/audit-logs')}
-                              className="justify-between focus:bg-primary/10 focus:text-primary"
-                            >
-                              <span>Audit Logs</span>
-                              <ScrollText className="size-4" />
-                            </DropdownMenuItem>
-                          </>
+                          <DropdownMenuGroup>
+                            <DropdownMenuLabel className={accountMenuLabelClass}>Workspace</DropdownMenuLabel>
+                            <div className="flex flex-col gap-0.5">
+                              <DropdownMenuItem
+                                onClick={() => navigate('/settings/data')}
+                                className={accountMenuItemClass}
+                              >
+                                <Database />
+                                <span>Data</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => navigate('/settings/audit-logs')}
+                                className={accountMenuItemClass}
+                              >
+                                <ScrollText />
+                                <span>Audit Logs</span>
+                              </DropdownMenuItem>
+                            </div>
+                          </DropdownMenuGroup>
                         )}
                       </div>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator className="mx-1 my-1.5 bg-border/70" />
                       <DropdownMenuItem
                         variant="destructive"
                         onClick={() => {
@@ -382,10 +417,10 @@ export function Sidebar() {
                             onSuccess: () => navigate('/login', { replace: true }),
                           })
                         }}
-                        className="justify-between focus:bg-destructive/10"
+                        className="h-8 gap-2 rounded-md px-2 text-[13px] transition-colors duration-150 focus:bg-destructive/10 focus:text-destructive motion-reduce:transition-none"
                       >
-                        <span>Sign Out</span>
-                        <LogOut className="size-4" />
+                        <LogOut />
+                        <span>Sign out</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

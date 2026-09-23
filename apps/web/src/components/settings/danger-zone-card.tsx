@@ -46,13 +46,17 @@ export function DangerZoneCard() {
     <>
       <Card className="border-destructive/30">
         <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2">
-            <Trash2 className="size-4" />
-            Danger Zone
-          </CardTitle>
-          <CardDescription>
-            Permanently delete your account and all associated data. This action cannot be undone.
-          </CardDescription>
+          <div className="flex items-start gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+              <Trash2 className="size-4" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-destructive">Danger Zone</CardTitle>
+              <CardDescription>
+                Permanently delete your account and all associated data. This action cannot be undone.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Button

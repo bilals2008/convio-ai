@@ -60,11 +60,15 @@ export function PasswordChangeCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lock className="size-4" />
-          Change Password
-        </CardTitle>
-        <CardDescription>Update your password to keep your account secure.</CardDescription>
+        <div className="flex items-start gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <Lock className="size-4" />
+          </div>
+          <div className="min-w-0 space-y-1">
+            <CardTitle>Change Password</CardTitle>
+            <CardDescription>Update your password to keep your account secure.</CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div

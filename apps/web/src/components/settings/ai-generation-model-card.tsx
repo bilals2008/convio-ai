@@ -42,15 +42,17 @@ export function AiGenerationModelCard() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500">
-          <Wand2 className="size-4.5" />
-        </div>
-        <div className="space-y-1">
-          <CardTitle>AI Generation Model</CardTitle>
-          <CardDescription>
-            The model used when you generate agents or widget designs with AI. Pick one of your
-            configured providers.
-          </CardDescription>
+        <div className="flex items-start gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Wand2 className="size-4" />
+          </div>
+          <div className="min-w-0 space-y-1">
+            <CardTitle>AI Generation Model</CardTitle>
+            <CardDescription>
+              The model used when you generate agents or widget designs with AI. Pick one of your
+              configured providers.
+            </CardDescription>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

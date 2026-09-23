@@ -75,13 +75,17 @@ export function PasskeysCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Fingerprint className="size-4" />
-          Passkeys
-        </CardTitle>
-        <CardDescription>
-          Sign in without a password using your device biometrics, PIN or a security key.
-        </CardDescription>
+        <div className="flex items-start gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <Fingerprint className="size-4" />
+          </div>
+          <div className="min-w-0 space-y-1">
+            <CardTitle>Passkeys</CardTitle>
+            <CardDescription>
+              Sign in without a password using your device biometrics, PIN or a security key.
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {!supported ? (
