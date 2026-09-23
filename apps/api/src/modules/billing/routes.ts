@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import crypto from 'crypto'
 import { prisma } from '@convio/database'
-import { APP_URL } from '@convio/config'
 import { validate } from '../../plugins/validate.js'
+import { resolveFrontendUrl } from '../../lib/app-url.js'
 import { AppError } from '../../plugins/error.js'
 import { checkoutBodySchema, billingUsageQuerySchema } from '@convio/validation'
 import { z } from 'zod'
@@ -162,9 +162,17 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
     if (!org) throw new AppError(404, 'Organization not found')
 
+    const frontendUrl = resolveFrontendUrl(fastify.config, request.headers.origin)
+
+    if (!frontendUrl) {
+      request.log.warn(
+        'No public frontend URL configured — set WEB_URL (or CORS_ORIGIN) so Creem can redirect customers back to the dashboard. Falling back to the product default success URL.',
+      )
+    }
+
     const checkout = await creemCheckouts.create({
       product_id: productId,
-      success_url: `${APP_URL}/settings/billing?checkout=success`,
+      ...(frontendUrl ? { success_url: `${frontendUrl}/settings/billing?checkout=success` } : {}),
       metadata: { orgId, billingPeriod },
     })
 

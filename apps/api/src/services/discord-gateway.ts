@@ -40,7 +40,7 @@ async function handleMessageCreate(data: any, botToken: string, botUserId: strin
   if (processedMessageIds.size >= MAX_CACHED_IDS) processedMessageIds.clear()
   processedMessageIds.add(dedupKey)
 
-  // DB-level dedup (across instances — Railway + local)
+  // DB-level dedup (across instances — VPS + local)
   const existing = await prisma.message.findFirst({
     where: { providerMessageId: data.id },
     select: { id: true },

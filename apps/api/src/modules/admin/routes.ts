@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@convio/database'
 import type { Prisma } from '@convio/database'
-import { APP_URL, PLANS } from '@convio/config'
+import { PLANS } from '@convio/config'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
+import { resolveFrontendUrl } from '../../lib/app-url.js'
 import { createClient } from '@supabase/supabase-js'
 import { deleteUserAccount } from '../users/delete-user.js'
 import {
@@ -1509,16 +1510,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return cents !== null && (cents === 0 || cents >= 100)
   }
 
-  // Creem rejects non-public success URLs (it validates the address), and APP_URL is
-  // a localhost URL in development. Only send one when it is reachable from outside.
+  // Creem validates the address, so only send a success URL that customers can actually
+  // reach from outside — a localhost default would send paying customers to their own
+  // machine. Products are shared between environments, so require https here.
   function publicAppUrl(): string | null {
-    try {
-      const url = new URL(APP_URL)
-      const isLocal = ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(url.hostname)
-      return url.protocol === 'https:' && !isLocal ? url.origin : null
-    } catch {
-      return null
-    }
+    const url = resolveFrontendUrl(fastify.config)
+    return url?.startsWith('https://') ? url : null
   }
 
   // trial_period_days is always sent explicitly: on Creem, omitting it keeps the
