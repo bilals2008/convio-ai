@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { prisma } from '@convio/database'
+import { prisma, Prisma } from '@convio/database'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { z } from 'zod'
@@ -26,6 +26,7 @@ const convParamsSchema = z.object({
 })
 
 const conversationsQuerySchema = z.object({
+  organizationId: z.string().uuid().optional(),
   status: z.enum(conversationStatuses).optional(),
   agentId: z.string().uuid().optional(),
   channel: z.enum(channels).optional(),
@@ -86,7 +87,8 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
       validate({ query: conversationsQuerySchema }),
     ],
   }, async (request) => {
-    const { status, agentId, channel, cursor, limit } = request.query as {
+    const { organizationId, status, agentId, channel, cursor, limit } = request.query as {
+      organizationId?: string
       status?: ConversationStatus
       agentId?: string
       channel?: string
@@ -94,8 +96,14 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
       limit: number
     }
 
-    const where: Record<string, unknown> = {
-      agent: { organization: { memberships: { some: { userId: request.userId! } } } },
+    if (organizationId) {
+      await fastify.getMembership(request.userId!, organizationId)
+    }
+
+    const where: Prisma.ConversationWhereInput = {
+      agent: organizationId
+        ? { organizationId }
+        : { organization: { memberships: { some: { userId: request.userId! } } } },
     }
     if (status) where.status = status
     if (agentId) where.agentId = agentId

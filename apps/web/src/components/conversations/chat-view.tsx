@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, MessageSquare, AlertCircle, MoreVertical, CheckCircle, Archive, Trash2, Clock } from 'lucide-react'
+import { MessageSquare, AlertCircle, MoreVertical, CheckCircle, Archive, Trash2, Clock, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ChannelBadge } from '@/components/shared/channel-badge'
 import { toast } from '@/lib/toast'
@@ -60,6 +60,11 @@ interface ConversationDetail {
   messages: MessageItem[]
 }
 
+interface ConversationsOutletContext {
+  toggleChatList: () => void
+  isChatListVisible: boolean
+}
+
 function getInitials(name: string | undefined): string {
   if (!name) return 'A'
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -68,6 +73,7 @@ function getInitials(name: string | undefined): string {
 export function ChatView() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { toggleChatList, isChatListVisible } = useOutletContext<ConversationsOutletContext>()
   const queryClient = useQueryClient()
   const [sending, setSending] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
@@ -293,10 +299,13 @@ export function ChatView() {
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden size-8"
-          onClick={() => navigate('/conversations')}
+          className="size-8 shrink-0"
+          onClick={toggleChatList}
+          aria-label={isChatListVisible ? 'Hide chat list' : 'Show chat list'}
+          aria-expanded={isChatListVisible}
+          title={isChatListVisible ? 'Hide chat list' : 'Show chat list'}
         >
-          <ArrowLeft className="size-4" />
+          {isChatListVisible ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
         </Button>
 
         <Avatar size="lg" className="shrink-0">

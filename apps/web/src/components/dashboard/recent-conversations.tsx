@@ -44,7 +44,7 @@ export function RecentConversations() {
   const { data, isLoading } = useQuery({
     queryKey: ['recent-conversations', orgId],
     queryFn: async () => {
-      const res = await conversationsApi.list({ limit: 5 })
+      const res = await conversationsApi.list({ organizationId: orgId, limit: 5 })
       return res.data.data
     },
     enabled: !!orgId,

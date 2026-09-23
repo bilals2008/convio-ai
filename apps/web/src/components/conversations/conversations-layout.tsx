@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Outlet, useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MessageSquare, Plus, Search, Brain, Check, ArrowUp, ArrowDown, Trash2, Loader2, CheckSquare } from 'lucide-react'
+import { MessageSquare, Plus, Search, Brain, Check, ArrowUp, ArrowDown, Trash2, Loader2, CheckSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
@@ -21,16 +21,13 @@ import { ChannelBadge } from '@/components/shared/channel-badge'
 import { SearchInput } from '@/components/shared/search-input'
 import { Skeleton } from '@/components/shared/loading'
 import { BulkActionBar } from '@/components/shared/bulk-action-bar'
-import { ConversationStatusBadge } from './conversation-status-badge'
-import type { ConvStatus } from './conversation-status-badge'
 import { ProviderLogo } from '@/components/agents/provider-logos'
-import { conversations as conversationsApi, agents as agentsApi } from '@/lib/api'
+import { agents as agentsApi } from '@/lib/api'
+import { conversationKeys, useConversations, type ConversationItem } from '@/lib/hooks/use-conversations'
 import { useOrg } from '@/lib/org-context'
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
-
-type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
 
 interface AgentItem {
   id: string
@@ -40,20 +37,6 @@ interface AgentItem {
   model?: string
   status?: string
   updatedAt?: string
-}
-
-interface ConversationItem {
-  id: string
-  userId?: string
-  userName?: string
-  agentName: string
-  agentId: string
-  channel: Channel
-  status: ConvStatus
-  messageCount: number
-  lastMessage?: string
-  messages?: Array<{ content: string }>
-  updatedAt: string
 }
 
 function formatRelativeTime(date: string): string {
@@ -133,6 +116,7 @@ export function ConversationsLayout() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedId, setSelectedId] = useState<string | null>(id || null)
   const [showAgentPicker, setShowAgentPicker] = useState(false)
+  const [isChatListCollapsed, setIsChatListCollapsed] = useState(false)
   const [agentSearch, setAgentSearch] = useState('')
   const [activeIndex, setActiveIndex] = useState(-1)
   const agentListRef = useRef<HTMLDivElement>(null)
@@ -145,21 +129,15 @@ export function ConversationsLayout() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const { data: convsData, isLoading } = useQuery({
-    queryKey: ['conversations', orgId, statusFilter],
-    queryFn: async () => {
-      const params: Record<string, string | undefined> = {}
-      if (statusFilter !== 'all') params.status = statusFilter
-      try {
-        const res = await conversationsApi.list(params)
-        return (res.data.data || []) as ConversationItem[]
-      } catch (err) {
-        console.error('Failed to load conversations', err)
-        return [] as ConversationItem[]
-      }
-    },
-    enabled: !!orgId,
-  })
+  const {
+    data: convsData,
+    isLoading,
+    isError,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch,
+  } = useConversations(orgId, statusFilter)
 
   const createConvMutation = useMutation({
     mutationFn: async (agentId: string) => {
@@ -172,7 +150,10 @@ export function ConversationsLayout() {
     },
   })
 
-  const conversations = convsData || []
+  const conversations = useMemo(
+    () => convsData?.pages.flatMap((page) => page.data) ?? [],
+    [convsData],
+  )
 
   const filteredConvs = search
     ? conversations.filter(
@@ -198,7 +179,7 @@ export function ConversationsLayout() {
     },
     onSuccess: (_, ids) => {
       toast.success(`${ids.length} conversation${ids.length !== 1 ? 's' : ''} deleted`)
-      queryClient.invalidateQueries({ queryKey: ['conversations', orgId, statusFilter] })
+      queryClient.invalidateQueries({ queryKey: conversationKeys.list(orgId ?? 'none', statusFilter) })
       setBulkDeleteOpen(false)
       setDeleteAllOpen(false)
       bulk.exitSelectionMode()
@@ -249,13 +230,32 @@ export function ConversationsLayout() {
     if (id) setSelectedId(id)
   }, [id])
 
+  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024
+  const isListCollapsed = isChatListCollapsed
+  const showChat = Boolean(id) || isListCollapsed
+  const isChatListVisible = !isListCollapsed && !(showChat && isMobileView)
+
   const handleSelect = (convId: string) => {
     setSelectedId(convId)
+    setIsChatListCollapsed(false)
     navigate(`/conversations/${convId}`)
   }
 
-  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024
-  const showChat = id
+  const openChatList = () => {
+    if (isMobileView && id) {
+      navigate('/conversations')
+      return
+    }
+    setIsChatListCollapsed(false)
+  }
+
+  const toggleChatList = () => {
+    if (isMobileView && id) {
+      navigate('/conversations')
+      return
+    }
+    setIsChatListCollapsed((current) => !current)
+  }
 
   return (
     <>
@@ -264,51 +264,68 @@ export function ConversationsLayout() {
       {/* Left Panel - Conversation List */}
       <div
         className={cn(
-          'flex flex-col border-r',
-          'w-full lg:w-[300px] lg:min-w-[300px]',
+          'flex flex-col overflow-hidden border-r transition-[width,min-width] duration-200',
+          isListCollapsed ? 'w-0 min-w-0 border-r-0' : 'w-full lg:w-[360px] lg:min-w-[360px]',
           showChat && isMobileView ? 'hidden' : 'flex'
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2.5">
-          <h2 className="text-sm font-semibold">Chats</h2>
-          {bulk.selectionMode ? (
-            <BulkActionBar
-              onExitSelectionMode={bulk.exitSelectionMode}
-              action={
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={bulk.selectedCount === 0 || deleteMany.isPending}
-                  onClick={() => setBulkDeleteOpen(true)}
+        <TooltipProvider>
+          <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger
+                  render={<Button variant="ghost" size="icon" className="size-8 text-muted-foreground" />}
+                  onClick={() => setIsChatListCollapsed(true)}
+                  aria-label="Hide chat list"
+                  aria-expanded={!isListCollapsed}
                 >
-                  {deleteMany.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                  Delete ({bulk.selectedCount})
-                </Button>
-              }
-            />
-          ) : (
-            <Button
-              size="sm"
-              onClick={() => setShowAgentPicker(true)}
-              disabled={agentsLoading || agents.length === 0}
-            >
-              {agentsLoading ? <Skeleton className="size-3.5 rounded-full" /> : <Plus className="size-3.5" />}
-              New
-            </Button>
-          )}
-        </div>
+                  <PanelLeftClose className="size-4" />
+                </TooltipTrigger>
+                <TooltipContent>Hide chat list</TooltipContent>
+              </Tooltip>
+              <h2 className="text-sm font-semibold">Chats</h2>
+            </div>
+            {bulk.selectionMode ? (
+              <BulkActionBar
+                onExitSelectionMode={bulk.exitSelectionMode}
+                action={
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={bulk.selectedCount === 0 || deleteMany.isPending}
+                    onClick={() => setBulkDeleteOpen(true)}
+                  >
+                    {deleteMany.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                    Delete ({bulk.selectedCount})
+                  </Button>
+                }
+              />
+            ) : (
+              <Tooltip>
+                <TooltipTrigger
+                  render={<Button size="icon" className="size-8 shrink-0" disabled={agentsLoading || agents.length === 0} />}
+                  onClick={() => setShowAgentPicker(true)}
+                  aria-label="Start a conversation"
+                >
+                  {agentsLoading ? <Skeleton className="size-3.5 rounded-full" /> : <Plus className="size-4" />}
+                </TooltipTrigger>
+                <TooltipContent>New conversation</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </TooltipProvider>
 
         {/* Search */}
         <TooltipProvider>
-        <div className="flex items-center gap-1.5 px-3 pb-2">
+        <div className="flex items-center gap-2 px-3 pb-2">
           <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="Search chats..."
             className="h-8 flex-1 text-sm"
           />
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-1">
           <Tooltip>
             <TooltipTrigger
               aria-label="Delete all conversations"
@@ -348,7 +365,7 @@ export function ConversationsLayout() {
             <span className="text-xs text-muted-foreground">{bulk.selectedCount} selected</span>
           </div>
         ) : (
-          <div className="flex px-3 pb-2 gap-1">
+          <div className="flex px-3 pb-2 gap-2">
           {[
             { value: 'all', label: 'All' },
             { value: 'active', label: 'Active' },
@@ -388,7 +405,16 @@ export function ConversationsLayout() {
             </div>
           )}
 
-          {!isLoading && filteredConvs.length === 0 && (
+          {!isLoading && isError && filteredConvs.length === 0 && (
+            <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+              <p className="text-xs text-muted-foreground">Failed to load conversations</p>
+              <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                Try again
+              </Button>
+            </div>
+          )}
+
+          {!isLoading && !isError && filteredConvs.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
               <p className="text-xs text-muted-foreground">
                 {search ? 'No conversations matching your search' : 'No conversations yet'}
@@ -431,14 +457,14 @@ export function ConversationsLayout() {
                   className="size-4 shrink-0"
                 />
               )}
-              <Avatar className="size-9 shrink-0">
+              <Avatar className="size-8 shrink-0">
                 <AvatarFallback className={cn(
                   'text-xs font-semibold',
                   selectedId === conv.id ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary/80'
                 )}>
                   {getInitials(conv.userName)}
                 </AvatarFallback>
-                <ChannelBadge channel={conv.channel} />
+                {conv.channel !== 'web' && <ChannelBadge channel={conv.channel} />}
               </Avatar>
 
               <div className="flex-1 min-w-0">
@@ -453,33 +479,54 @@ export function ConversationsLayout() {
                     {formatRelativeTime(conv.updatedAt)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-muted-foreground truncate">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-xs text-muted-foreground">
                     {getLastMessage(conv)}
                   </p>
-                  <ConversationStatusBadge status={conv.status} />
                 </div>
               </div>
             </div>
           ))}
+
+          {!isLoading && hasNextPage && (
+            <div className="p-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => void fetchNextPage()}
+                disabled={isFetchingNextPage}
+                aria-busy={isFetchingNextPage}
+              >
+                {isFetchingNextPage && <Loader2 className="size-3.5 animate-spin" />}
+                {isFetchingNextPage ? 'Loading...' : 'Load more'}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Right Panel - Chat View */}
       <div
         className={cn(
-          'flex-1 flex flex-col min-w-0',
+          'relative flex-1 flex flex-col min-w-0',
           !showChat && 'hidden lg:flex'
         )}
       >
         {id ? (
-          <Outlet />
+          <Outlet context={{ toggleChatList, isChatListVisible }} />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
             <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
               <MessageSquare className="size-6 text-muted-foreground/50" />
             </div>
             <p className="text-sm text-muted-foreground">Select a conversation</p>
+            {isListCollapsed && (
+              <Button variant="outline" size="sm" className="mt-4" onClick={openChatList}>
+                <PanelLeftOpen className="size-3.5" />
+                Show chats
+              </Button>
+            )}
           </div>
         )}
       </div>

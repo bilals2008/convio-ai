@@ -161,8 +161,10 @@ export const moderation = {
 }
 
 export const conversations = {
-  list: (params?: { status?: string; channel?: string; agentId?: string; cursor?: string; limit?: number }) =>
-    api.get('/conversations', { params }),
+  list: (
+    params?: { organizationId?: string; status?: string; channel?: string; agentId?: string; cursor?: string; limit?: number },
+    config?: { signal?: AbortSignal },
+  ) => api.get('/conversations', { params, signal: config?.signal }),
   get: (id: string) => api.get(`/conversations/${id}`),
   update: (id: string, data: Record<string, unknown>) => api.patch(`/conversations/${id}`, data),
   create: (agentId: string, data?: Record<string, unknown>) =>
