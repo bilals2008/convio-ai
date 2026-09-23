@@ -184,7 +184,7 @@ export default function AgentPlaygroundPage() {
   }
 
   return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-1 flex-col gap-3">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-3">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -340,7 +340,7 @@ export default function AgentPlaygroundPage() {
         <MessageScrollerProvider>
           <MessageScroller className="min-h-0 flex-1">
             <MessageScrollerViewport>
-              <MessageScrollerContent className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-6">
+              <MessageScrollerContent className="flex w-full flex-col gap-6 px-6 py-6">
                 {messages.map((message) =>
                   message.role === 'user' ? (
                     <MessageScrollerItem key={message.id} messageId={message.id} scrollAnchor>
@@ -433,7 +433,7 @@ export default function AgentPlaygroundPage() {
       )}
 
       {/* Composer */}
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-2 pb-2">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-2 pb-2">
         {error && (
           <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}

@@ -76,9 +76,11 @@ interface AgentDetailLayoutProps {
   activeTab?: string
   isSaving?: boolean
   onSave?: () => void
-  onCopyLink?: () => void
   onOpenWidget?: () => void
   onDelete?: () => void
+  onCreateShareLink?: () => void
+  onRemoveShareLink?: () => void
+  isShareLinkSaving?: boolean
   shareUrl?: string
   tabs: ReactNode
   children: ReactNode
@@ -90,9 +92,11 @@ export function AgentDetailLayout({
   agentDescription,
   isSaving = false,
   onSave,
-  onCopyLink,
   onOpenWidget,
   onDelete,
+  onCreateShareLink,
+  onRemoveShareLink,
+  isShareLinkSaving,
   shareUrl,
   tabs,
   children,
@@ -112,10 +116,14 @@ export function AgentDetailLayout({
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden">
-      <div className="px-6 pt-2 pb-0">
+      <div className="px-6 pt-0 pb-0">
         <div
-          className="overflow-hidden transition-all duration-200 ease-out"
-          style={{ maxHeight: isCompact ? 0 : 40, opacity: isCompact ? 0 : 1 }}
+          className="overflow-hidden transition-[max-height,opacity] duration-200 ease-out"
+          style={{
+            maxHeight: isCompact ? 0 : 160,
+            opacity: isCompact ? 0 : 1,
+            pointerEvents: isCompact ? 'none' : 'auto',
+          }}
         >
           <Breadcrumb className="mb-5">
             <BreadcrumbList className="text-sm text-muted-foreground">
@@ -135,97 +143,91 @@ export function AgentDetailLayout({
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-        </div>
 
-        <div className="flex items-center justify-between gap-2 transition-all duration-200 ease-out mb-4">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <Avatar className="shrink-0 transition-all duration-200" style={{ width: isCompact ? 32 : undefined, height: isCompact ? 32 : undefined }}>
-              {agentAvatar && <AvatarImage src={agentAvatar} alt={agentName} />}
-              <AvatarFallback className="text-sm sm:text-base">{agentName.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2.5">
-                <h1 className="font-bold tracking-tight text-foreground truncate transition-all duration-200" style={{ fontSize: isCompact ? '1rem' : undefined }}>
-                  {agentName}
-                </h1>
-                <Badge
-                  variant="secondary"
-                  className="gap-1.5 border-0 bg-success/10 px-2 py-0.5 text-xs font-medium text-success shrink-0"
-                >
-                  <span className="size-1.5 rounded-full bg-success" />
-                  Live
-                </Badge>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Avatar className="shrink-0">
+                {agentAvatar && <AvatarImage src={agentAvatar} alt={agentName} />}
+                <AvatarFallback className="text-sm sm:text-base">{agentName.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2.5">
+                  <h1 className="font-bold tracking-tight text-foreground truncate">
+                    {agentName}
+                  </h1>
+                  <Badge
+                    variant="secondary"
+                    className="gap-1.5 border-0 bg-success/10 px-2 py-0.5 text-xs font-medium text-success shrink-0"
+                  >
+                    <span className="size-1.5 rounded-full bg-success" />
+                    Live
+                  </Badge>
+                </div>
+                <p className="hidden sm:block text-sm text-muted-foreground mt-0.5 line-clamp-1">
+                  {agentDescription || 'No description'}
+                </p>
               </div>
-              <p className="hidden sm:block text-sm text-muted-foreground mt-0.5 line-clamp-1 transition-all duration-200" style={{ maxHeight: isCompact ? 0 : 20, opacity: isCompact ? 0 : 1, overflow: 'hidden' }}>
-                {agentDescription || 'No description'}
-              </p>
             </div>
-          </div>
 
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            {onSave && (
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {onSave && (
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  className="sm:hidden"
+                  onClick={onSave}
+                  disabled={isSaving}
+                  aria-label="Update"
+                >
+                  {isSaving ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-3.5" />
+                  )}
+                </Button>
+              )}
               <Button
-                variant="outline"
-                size="icon-sm"
-                className="sm:hidden"
+                size="sm"
+                className="hidden sm:inline-flex gap-1.5 shrink-0 whitespace-nowrap"
                 onClick={onSave}
                 disabled={isSaving}
-                aria-label="Update"
               >
                 {isSaving ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
                   <RefreshCw className="size-3.5" />
                 )}
+                Update
               </Button>
-            )}
-            <Button
-              size="sm"
-              className="hidden sm:inline-flex gap-1.5 shrink-0 whitespace-nowrap"
-              onClick={onSave}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Update
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-lg border border-input bg-background size-8 text-sm font-medium hover:bg-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <MoreVertical className="size-4 text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={() => setShareDialogOpen(true)}>
-                  <Share className="size-3.5" />
-                  Share
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {onCopyLink && (
-                  <DropdownMenuItem onClick={onCopyLink}>
-                    Copy Link
+              <DropdownMenu>
+                <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-lg border border-input bg-background size-8 text-sm font-medium hover:bg-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <MoreVertical className="size-4 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem onClick={() => setShareDialogOpen(true)}>
+                    <Share className="size-3.5" />
+                    Share
                   </DropdownMenuItem>
-                )}
-                {onOpenWidget && (
-                  <DropdownMenuItem onClick={onOpenWidget}>
-                    Open Widget
-                  </DropdownMenuItem>
-                )}
-                {(onCopyLink || onOpenWidget) && <DropdownMenuSeparator />}
-                {onDelete && (
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={onDelete}
-                  >
-                    Delete Agent
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuSeparator />
+                   {onOpenWidget && (
+                     <DropdownMenuItem onClick={onOpenWidget}>
+                       Open Widget
+                     </DropdownMenuItem>
+                   )}
+                   {onOpenWidget && <DropdownMenuSeparator />}
+                  {onDelete && (
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={onDelete}
+                    >
+                      Delete Agent
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
-
       </div>
 
       <ScrollableTabs>{tabs}</ScrollableTabs>
@@ -239,6 +241,10 @@ export function AgentDetailLayout({
         agentName={agentName}
         open={shareDialogOpen}
         onOpenChange={setShareDialogOpen}
+        onCreate={onCreateShareLink}
+        onRemove={onRemoveShareLink}
+        isCreating={isShareLinkSaving}
+        isRemoving={isShareLinkSaving}
       />
     </div>
   )

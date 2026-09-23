@@ -175,15 +175,19 @@ export default function AgentDetailPage() {
   const createShareLink = useMutation({
     mutationFn: () => widgets.create(agent!.organizationId, { name: `${agent!.name} - Share Link`, agentId: id! }),
     onSuccess: () => {
+      toast.success('Public link created')
       queryClient.invalidateQueries({ queryKey: ['agent-widgets', agent?.organizationId] })
     },
+    onError: (error: Error) => toast.error(error.message || 'Failed to create public link'),
   })
 
   const removeShareLink = useMutation({
     mutationFn: () => widgets.update(shareWidget!.id, { status: 'archived' }),
     onSuccess: () => {
+      toast.success('Public link disabled')
       queryClient.invalidateQueries({ queryKey: ['agent-widgets', agent?.organizationId] })
     },
+    onError: (error: Error) => toast.error(error.message || 'Failed to disable public link'),
   })
 
   useEffect(() => {
@@ -328,7 +332,9 @@ export default function AgentDetailPage() {
         activeTab={activeTab}
         isSaving={updateMutation.isPending}
         onSave={handleSave}
-        onCopyLink={() => navigator.clipboard.writeText(window.location.href)}
+        onCreateShareLink={() => createShareLink.mutate()}
+        onRemoveShareLink={() => removeShareLink.mutate()}
+        isShareLinkSaving={createShareLink.isPending || removeShareLink.isPending}
         shareUrl={shareUrl}
         onDelete={() => setDeleteDialogOpen(true)}
         tabs={
@@ -424,15 +430,20 @@ export default function AgentDetailPage() {
         </TabsContent>
 
         <TabsContent value="settings">
-          <AgentSettings
-            agentModel={agent.model}
+           <AgentSettings
+             agentName={agent.name}
+             agentModel={agent.model}
             hasKnowledgeBase={!!agent.knowledgeBaseId}
             hasProviderKey={!!agent.providerKeyId}
             createdAt={agent.createdAt}
             status={agent.status}
             onSave={(data) => updateMutation.mutate(data)}
-            isSaving={updateMutation.isPending}
-            disabled={updateMutation.isPending}
+             isSaving={updateMutation.isPending}
+             disabled={updateMutation.isPending}
+             shareUrl={shareUrl}
+             onCreateShareLink={() => createShareLink.mutate()}
+             onRemoveShareLink={() => removeShareLink.mutate()}
+             isShareLinkSaving={createShareLink.isPending || removeShareLink.isPending}
           />
         </TabsContent>
       </AgentDetailLayout>

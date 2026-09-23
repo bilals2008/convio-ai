@@ -1,5 +1,6 @@
-import { Bot, Database, KeyRound, CalendarDays, Radio, Loader2 } from 'lucide-react'
+import { Bot, Database, KeyRound, CalendarDays, Link2, Radio, Share2 } from 'lucide-react'
 import { ProviderLogo } from '@/components/agents/provider-logos'
+import { ShareDialog } from '@/components/agents/share-dialog'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -9,6 +10,7 @@ function formatModelName(model: string): string {
 }
 
 interface AgentSettingsProps {
+  agentName: string
   agentModel: string
   hasKnowledgeBase: boolean
   hasProviderKey: boolean
@@ -17,6 +19,10 @@ interface AgentSettingsProps {
   onSave: (data: { status?: string }) => void
   isSaving?: boolean
   disabled?: boolean
+  shareUrl?: string
+  onCreateShareLink?: () => void
+  onRemoveShareLink?: () => void
+  isShareLinkSaving?: boolean
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -110,7 +116,58 @@ function StatusSection({ value, onSave, isSaving }: { value: string; onSave: (st
   )
 }
 
+function ShareSettings({
+  agentName,
+  shareUrl,
+  onCreate,
+  onRemove,
+  isSaving,
+}: {
+  agentName: string
+  shareUrl?: string
+  onCreate?: () => void
+  onRemove?: () => void
+  isSaving?: boolean
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Share2 className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold">Share agent</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">Create a public link for this agent.</p>
+        </div>
+        <ShareDialog
+          agentName={agentName}
+          shareUrl={shareUrl}
+          onCreate={onCreate}
+          onRemove={onRemove}
+          isCreating={isSaving}
+          isRemoving={isSaving}
+        >
+          <span>{shareUrl ? 'Manage link' : 'Create link'}</span>
+        </ShareDialog>
+      </div>
+      <div className="mt-4 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+        <div className="flex size-7 items-center justify-center rounded-md bg-background text-muted-foreground">
+          <Link2 className="size-3.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium">{shareUrl ? 'Public link is active' : 'No public link yet'}</p>
+          <p className="truncate text-[10px] text-muted-foreground">
+            {shareUrl ? 'Anyone with the link can chat with this agent' : 'Create a link to share this agent'}
+          </p>
+        </div>
+        <span className={cn('size-2 rounded-full', shareUrl ? 'bg-success' : 'bg-muted-foreground/40')} />
+      </div>
+    </div>
+  )
+}
+
 export function AgentSettings({
+  agentName,
   agentModel,
   hasKnowledgeBase,
   hasProviderKey,
@@ -118,6 +175,10 @@ export function AgentSettings({
   status = 'draft',
   onSave,
   isSaving,
+  shareUrl,
+  onCreateShareLink,
+  onRemoveShareLink,
+  isShareLinkSaving,
 }: AgentSettingsProps) {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -126,6 +187,14 @@ export function AgentSettings({
         hasKnowledgeBase={hasKnowledgeBase}
         hasProviderKey={hasProviderKey}
         createdAt={createdAt}
+      />
+
+      <ShareSettings
+        agentName={agentName}
+        shareUrl={shareUrl}
+        onCreate={onCreateShareLink}
+        onRemove={onRemoveShareLink}
+        isSaving={isShareLinkSaving}
       />
 
       <StatusSection value={status} onSave={(s) => onSave({ status: s })} isSaving={isSaving} />
