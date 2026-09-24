@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
-import { useWidget, type WidgetTheme } from '@/hooks/useWidget'
+import { useEffect, useRef, useState } from 'react'
+import { useWidget, type WidgetMessage, type WidgetTheme } from '@/hooks/useWidget'
 import { WidgetStateProvider } from './WidgetState'
 import { WidgetStyles } from './WidgetStyles'
 import { WidgetButton } from './WidgetButton'
@@ -48,7 +49,29 @@ export interface ChatWidgetProps {
   portalContainer?: HTMLElement | null
   /** Render open on first paint (preview only). */
   defaultOpen?: boolean
+  /** Use local sample replies in the widget configuration preview only. */
+  demoResponses?: boolean
 }
+
+function createDemoMessages(): WidgetMessage[] {
+  const timestamp = new Date()
+  return [
+    {
+      id: 'demo-user-1',
+      role: 'user',
+      content: 'What can you help me with?',
+      timestamp,
+    },
+    {
+      id: 'demo-assistant-1',
+      role: 'assistant',
+      content: '## I can help with that\n\nI can answer questions and guide you through common tasks. For example, I can help you:\n\n- Find the right information\n- Understand your options\n- Get started with the next step\n\nWhat would you like to know?',
+      timestamp,
+    },
+  ]
+}
+
+const DEMO_REPLY = '## Happy to help\n\nTell me a little more about what you need, and I’ll point you in the right direction.\n\n- I can explain your options\n- I can walk you through the next steps'
 
 const defaultTheme: WidgetTheme = {
   primaryColor: '#1cca4a',
@@ -122,9 +145,37 @@ export function ChatWidget({
   hiddenPages = [],
   portalContainer,
   defaultOpen,
+  demoResponses = false,
 }: ChatWidgetProps) {
   const theme = { ...defaultTheme, ...themeOverride }
   const widget = useWidget({ agentId, publicKey, host, visitorId, currentPath, widgetToken, preview, position, theme, greeting, agentName, agentAvatar, quickReplies, homeMenu, widgetWidth, launcherSize, borderRadius, headerGradient, widgetHeight, mobileBehavior, launcherShape, customWidth, customHeight, launcherOffset, showTeaser, teaserMessage, teaserDelay, hiddenPages, defaultOpen })
+  const isDemoMode = Boolean(preview && demoResponses)
+  const [demoMessages, setDemoMessages] = useState<WidgetMessage[]>(() =>
+    isDemoMode ? createDemoMessages() : [],
+  )
+  const [demoTyping, setDemoTyping] = useState(false)
+  const demoReplyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (demoReplyTimer.current) clearTimeout(demoReplyTimer.current)
+  }, [])
+
+  const sendDemoMessage = (content: string) => {
+    const timestamp = new Date()
+    setDemoMessages((messages) => [
+      ...messages,
+      { id: crypto.randomUUID(), role: 'user', content, timestamp },
+    ])
+    setDemoTyping(true)
+    demoReplyTimer.current = window.setTimeout(() => {
+      setDemoMessages((messages) => [
+        ...messages,
+        { id: crypto.randomUUID(), role: 'assistant', content: DEMO_REPLY, timestamp: new Date() },
+      ])
+      setDemoTyping(false)
+      demoReplyTimer.current = null
+    }, 500)
+  }
   // Fullscreen windows are edge-to-edge — sharp corners regardless of setting.
   const effectiveBorderRadius = widget.isFullscreen ? 'none' : borderRadius
 
@@ -134,13 +185,13 @@ export function ChatWidget({
     isEmbed: widget.isEmbed,
     entering: widget.entering,
     exiting: widget.exiting,
-    messages: widget.messages,
-    pendingQuestions: widget.pendingQuestions,
+    messages: isDemoMode ? demoMessages : widget.messages,
+    pendingQuestions: isDemoMode ? null : widget.pendingQuestions,
     onAnswerQuestions: widget.answerQuestions,
-    isTyping: widget.isTyping,
-    isCreatingConversation: widget.isCreatingConversation,
+    isTyping: isDemoMode ? demoTyping : widget.isTyping,
+    isCreatingConversation: isDemoMode ? false : widget.isCreatingConversation,
     unreadCount: widget.unreadCount,
-    error: widget.error,
+    error: isDemoMode ? null : widget.error,
     theme,
     agentName,
     agentAvatar: agentAvatar,
@@ -164,11 +215,18 @@ export function ChatWidget({
     placeholderText,
     showPoweredBy,
     widgetHeight,
-    onSendMessage: widget.sendMessage,
+    onSendMessage: isDemoMode ? sendDemoMessage : widget.sendMessage,
     onToggle: widget.toggleWidget,
     onClose: widget.closeWidget,
     onMinimize: () => widget.setIsMinimized((prev) => !prev),
-    onClearChat: widget.clearChat,
+    onClearChat: isDemoMode
+      ? () => {
+          if (demoReplyTimer.current) clearTimeout(demoReplyTimer.current)
+          demoReplyTimer.current = null
+          setDemoMessages(createDemoMessages())
+          setDemoTyping(false)
+        }
+      : widget.clearChat,
     dismissError: () => widget.setError(null),
     isHidden: widget.isHidden,
     teaserMessage,

@@ -4,6 +4,7 @@ import { AlertCircle, Code2, Layout, Monitor, Palette, Smartphone, Wand2 } from 
 import { PageContainer } from '@/components/shared/page-container'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { WidgetHeader } from '@/components/widgets/components/WidgetHeader'
 import {
   AlertDialog,
@@ -85,6 +86,7 @@ export default function WidgetConfigPage() {
   const navigate = useNavigate()
   const [showPreview, setShowPreview] = useState(true)
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop')
+  const [demoResponses, setDemoResponses] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
 
   const {
@@ -230,9 +232,22 @@ export default function WidgetConfigPage() {
         {showPreview && (
           <aside className="hidden w-[380px] shrink-0 xl:block">
             <div className="sticky top-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-muted-foreground">Live preview</span>
-                <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {demoResponses ? 'Demo preview' : 'Live preview'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <label htmlFor="widget-demo-responses" className="text-[11px] text-muted-foreground">
+                    Demo responses
+                  </label>
+                  <Switch
+                    id="widget-demo-responses"
+                    size="sm"
+                    checked={demoResponses}
+                    onCheckedChange={setDemoResponses}
+                    aria-label="Use demo responses in preview"
+                  />
+                  <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                   <button
                     type="button"
                     onClick={() => setPreviewDevice('desktop')}
@@ -263,13 +278,21 @@ export default function WidgetConfigPage() {
                   >
                     <Smartphone className="size-3.5" />
                   </button>
+                  </div>
                 </div>
               </div>
 
-              <WidgetPreviewPanel widget={widget} config={config} device={previewDevice} />
+              <WidgetPreviewPanel
+                widget={widget}
+                config={config}
+                device={previewDevice}
+                demoResponses={demoResponses}
+              />
 
               <p className="px-1 text-[11px] leading-relaxed text-muted-foreground/60">
-                This is the real widget — chat with your agent, or close it to check the launcher.
+                {demoResponses
+                  ? 'Demo mode uses sample replies and does not contact your agent.'
+                  : 'This is the real widget — chat with your agent, or close it to check the launcher.'}
               </p>
             </div>
           </aside>

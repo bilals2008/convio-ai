@@ -22,6 +22,7 @@ interface WidgetPreviewPanelProps {
   widget: WidgetDetail
   config: WidgetConfig
   device: 'desktop' | 'mobile'
+  demoResponses: boolean
 }
 
 /**
@@ -35,7 +36,7 @@ interface WidgetPreviewPanelProps {
  *    descendants — which is how the widget positions itself;
  *  - scaling that box scales the widget and its fixed offsets together.
  */
-export function WidgetPreviewPanel({ widget, config, device }: WidgetPreviewPanelProps) {
+export function WidgetPreviewPanel({ widget, config, device, demoResponses }: WidgetPreviewPanelProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [availableWidth, setAvailableWidth] = useState(0)
   const [portalTarget, setPortalTarget] = useState<HTMLDivElement | null>(null)
@@ -90,6 +91,8 @@ export function WidgetPreviewPanel({ widget, config, device }: WidgetPreviewPane
         />
         {portalTarget && (
           <ChatWidget
+            key={demoResponses ? 'demo' : 'live'}
+            demoResponses={demoResponses}
             {...chatWidgetPropsFromConfig(
               { config, agent: widget.agent },
               { agentId: widget.agent.id, publicKey: widget.publicKey, preview: true },

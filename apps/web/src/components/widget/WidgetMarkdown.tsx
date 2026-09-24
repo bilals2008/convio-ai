@@ -119,19 +119,69 @@ function WidgetLink({ href, children }: { href?: string; children?: ReactNode })
   )
 }
 
-export function WidgetMarkdown({ content, className }: { content: string; className?: string }) {
-  return (
-    <div
+const markdownComponents = {
+  h1: ({ children }: { children?: ReactNode }) => (
+    <h1 className="mb-2 mt-4 text-base font-semibold leading-snug first:mt-0">{children}</h1>
+  ),
+  h2: ({ children }: { children?: ReactNode }) => (
+    <h2 className="mb-2 mt-4 text-[15px] font-semibold leading-snug first:mt-0">{children}</h2>
+  ),
+  h3: ({ children }: { children?: ReactNode }) => (
+    <h3 className="mb-1.5 mt-3 text-sm font-semibold leading-snug first:mt-0">{children}</h3>
+  ),
+  h4: ({ children }: { children?: ReactNode }) => (
+    <h4 className="mb-1 mt-3 text-[13px] font-semibold leading-snug first:mt-0">{children}</h4>
+  ),
+  p: ({ children }: { children?: ReactNode }) => (
+    <p className="my-2 break-words leading-relaxed first:mt-0 last:mb-0">{children}</p>
+  ),
+  ul: ({ children }: { children?: ReactNode }) => (
+    <ul className="my-2 list-disc space-y-1 pl-5 marker:text-[hsl(var(--widget-muted-foreground))]">{children}</ul>
+  ),
+  ol: ({ children }: { children?: ReactNode }) => (
+    <ol className="my-2 list-decimal space-y-1 pl-5 marker:text-[hsl(var(--widget-muted-foreground))]">{children}</ol>
+  ),
+  li: ({ children }: { children?: ReactNode }) => (
+    <li className="break-words pl-0.5 leading-relaxed">{children}</li>
+  ),
+  blockquote: ({ children }: { children?: ReactNode }) => (
+    <blockquote className="my-3 border-l-2 border-[hsl(var(--widget-primary))] pl-3 text-[hsl(var(--widget-muted-foreground))]">{children}</blockquote>
+  ),
+  hr: () => <hr className="my-3 border-[hsl(var(--widget-border))]" />,
+  strong: ({ children }: { children?: ReactNode }) => (
+    <strong className="font-semibold">{children}</strong>
+  ),
+  table: ({ children }: { children?: ReactNode }) => (
+    <div className="my-3 max-w-full overflow-x-auto">
+      <table className="w-full border-collapse text-left text-[12px]">{children}</table>
+    </div>
+  ),
+  th: ({ children }: { children?: ReactNode }) => (
+    <th className="border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] px-2 py-1.5 font-semibold">{children}</th>
+  ),
+  td: ({ children }: { children?: ReactNode }) => (
+    <td className="border border-[hsl(var(--widget-border))] px-2 py-1.5 align-top">{children}</td>
+  ),
+  pre: ({ children }: { children?: ReactNode }) => (
+    <pre className="my-2 max-w-full overflow-x-auto rounded-md border border-[hsl(var(--widget-border))] bg-[hsl(var(--widget-bg))] p-3 text-[12px] leading-relaxed">{children}</pre>
+  ),
+  code: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <code
       className={cn(
-        'prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-p:leading-relaxed',
-        'prose-headings:mb-1 prose-headings:mt-3 prose-headings:font-semibold prose-h1:text-[15px] prose-h2:text-[14px] prose-h3:text-[13px] prose-h4:text-[13px] prose-h1:first:mt-0 prose-h2:first:mt-0 prose-h3:first:mt-0 prose-h4:first:mt-0',
-        'prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-li:leading-relaxed prose-li:marker:text-[hsl(var(--widget-muted-foreground))]',
-        'prose-strong:font-semibold prose-a:no-underline',
-        'prose-code:bg-[hsl(var(--widget-primary)_/_0.15)] prose-code:px-1 prose-code:rounded prose-code:text-[12px] prose-pre:bg-[hsl(var(--widget-bg))] prose-pre:border prose-pre:border-[hsl(var(--widget-border))]',
+        'break-words rounded bg-[hsl(var(--widget-primary)_/_0.15)] px-1 py-0.5 text-[12px]',
         className,
       )}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: WidgetLink }}>
+      {children}
+    </code>
+  ),
+  a: WidgetLink,
+}
+
+export function WidgetMarkdown({ content, className }: { content: string; className?: string }) {
+  return (
+    <div className={cn('min-w-0 text-[13px] leading-relaxed text-[hsl(var(--widget-text))] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>
     </div>
