@@ -100,7 +100,6 @@ export function WidgetMessages() {
           </div>
           <div className="max-w-[85%] min-w-0 pt-1 text-[13px] leading-relaxed text-[hsl(var(--widget-text))]">
             <WidgetMarkdown content={streamingContent} />
-            <span className="ml-0.5 inline-block h-3.5 w-[3px] rounded-full bg-[hsl(var(--widget-primary))] align-text-bottom animate-typing-dot" />
           </div>
         </div>
       ) : isTyping && <WidgetTyping />}

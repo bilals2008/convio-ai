@@ -1,5 +1,4 @@
 import { useWidgetState } from './WidgetState'
-import { Zap } from 'lucide-react'
 
 const defaultQuickReplies = [
   'What can you help with?',
@@ -57,9 +56,6 @@ export function WidgetWelcome() {
               </span>
             </div>
           )}
-          <div className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-500 border-2 border-[hsl(var(--widget-bg))] flex items-center justify-center">
-            <Zap className="size-2.5 text-white" />
-          </div>
         </div>
 
         <h3 className="text-[15px] font-semibold text-[hsl(var(--widget-text))] mb-1 tracking-tight">
