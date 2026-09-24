@@ -22,17 +22,26 @@
   var container = document.createElement('div')
   container.id = containerId
   container.style.cssText = 'all:initial;position:fixed;bottom:0;right:0;z-index:2147483647;width:0;height:0;overflow:visible;'
+  ;['all', 'position', 'bottom', 'right', 'z-index', 'width', 'height', 'overflow'].forEach(function (property) {
+    container.style.setProperty(property, container.style.getPropertyValue(property), 'important')
+  })
 
   var iframe = document.createElement('iframe')
   iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups'
   iframe.setAttribute('allowtransparency', 'true')
   iframe.style.cssText =
     'position:fixed;bottom:20px;right:20px;width:0;height:0;border:none;z-index:2147483647;max-width:calc(100vw - 40px);max-height:calc(100vh - 40px);overflow:hidden;color-scheme:none;'
-  // Host pages often paint iframes white (`iframe { background:#fff }`). Inline
-  // !important plus color-scheme:none keeps the closed launcher canvas clear.
-  iframe.style.setProperty('background', 'transparent', 'important')
-  iframe.style.setProperty('background-color', 'transparent', 'important')
-  iframe.style.setProperty('color-scheme', 'none', 'important')
+  function setIframeStyle(property, value) {
+    iframe.style.setProperty(property, value, 'important')
+  }
+  ;['position', 'bottom', 'left', 'right', 'width', 'height', 'max-width', 'max-height', 'z-index', 'overflow', 'border', 'outline', 'margin', 'padding', 'box-sizing', 'border-radius', 'box-shadow'].forEach(function (property) {
+    var value = iframe.style.getPropertyValue(property)
+    if (!value) value = property === 'border' || property === 'outline' || property === 'box-shadow' ? 'none' : property === 'margin' || property === 'padding' ? '0' : property === 'box-sizing' ? 'border-box' : ''
+    if (value) setIframeStyle(property, value)
+  })
+  setIframeStyle('background', 'transparent')
+  setIframeStyle('background-color', 'transparent')
+  setIframeStyle('color-scheme', 'none')
   iframe.title = 'Chat Widget'
   iframe.setAttribute('aria-label', 'Chat Widget')
 
@@ -70,16 +79,16 @@
 
   function setPosition(pos) {
     if (pos === 'bottom-left') {
-      iframe.style.left = '20px'
-      iframe.style.right = 'auto'
+      setIframeStyle('left', '20px')
+      setIframeStyle('right', 'auto')
     } else {
-      iframe.style.right = '20px'
-      iframe.style.left = 'auto'
+      setIframeStyle('right', '20px')
+      setIframeStyle('left', 'auto')
     }
   }
 
   function setOffset(offsetPx) {
-    iframe.style.bottom = (20 + (offsetPx || 0)) + 'px'
+    setIframeStyle('bottom', (20 + (offsetPx || 0)) + 'px')
   }
 
   // Fetch a short-lived signed token from the API. The browser sends the Origin
@@ -113,30 +122,30 @@
     }
     if (event.data.type === 'convio-resize') {
       if (event.data.fullscreen && event.data.open) {
-        iframe.style.left = '0'
-        iframe.style.right = '0'
-        iframe.style.bottom = '0'
-        iframe.style.width = '100vw'
-        iframe.style.height = '100vh'
-        iframe.style.maxWidth = 'none'
-        iframe.style.maxHeight = 'none'
-        iframe.style.borderRadius = '0'
-        iframe.style.boxShadow = 'none'
+        setIframeStyle('left', '0')
+        setIframeStyle('right', '0')
+        setIframeStyle('bottom', '0')
+        setIframeStyle('width', '100vw')
+        setIframeStyle('height', '100vh')
+        setIframeStyle('max-width', 'none')
+        setIframeStyle('max-height', 'none')
+        setIframeStyle('border-radius', '0')
+        setIframeStyle('box-shadow', 'none')
         return
       }
-      iframe.style.bottom = (20 + (event.data.offset || 0)) + 'px'
-      iframe.style.maxWidth = 'calc(100vw - 40px)'
-      iframe.style.maxHeight = 'calc(100vh - 40px)'
-      iframe.style.width = (event.data.width || 0) + 'px'
-      iframe.style.height = (event.data.height || 0) + 'px'
-      iframe.style.borderRadius = event.data.open ? '16px' : (event.data.launcherRadius || '50%')
-      iframe.style.setProperty('background', 'transparent', 'important')
-      iframe.style.setProperty('background-color', 'transparent', 'important')
+      setIframeStyle('bottom', (20 + (event.data.offset || 0)) + 'px')
+      setIframeStyle('max-width', 'calc(100vw - 40px)')
+      setIframeStyle('max-height', 'calc(100vh - 40px)')
+      setIframeStyle('width', (event.data.width || 0) + 'px')
+      setIframeStyle('height', (event.data.height || 0) + 'px')
+      setIframeStyle('border-radius', event.data.open ? '16px' : (event.data.launcherRadius || '50%'))
+      setIframeStyle('background', 'transparent')
+      setIframeStyle('background-color', 'transparent')
       setPosition(event.data.position)
       if (event.data.open) {
-        iframe.style.boxShadow = '0 4px 24px rgba(0,0,0,0.16)'
+        setIframeStyle('box-shadow', '0 4px 24px rgba(0,0,0,0.16)')
       } else {
-        iframe.style.boxShadow = 'none'
+        setIframeStyle('box-shadow', 'none')
       }
     }
   })

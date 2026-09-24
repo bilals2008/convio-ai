@@ -9,8 +9,9 @@ export function WidgetHeader() {
     : 'AI'
 
   const displayTitle = (headerTitle?.trim()) || agentName || 'Assistant'
-  const displaySubtitle = headerSubtitle?.trim() || "We're online"
   const showOnline = showOnlineIndicator !== false
+  const subtitle = headerSubtitle?.trim()
+  const displaySubtitle = subtitle || (showOnline ? "We're online" : '')
 
   return (
     <div
@@ -45,11 +46,11 @@ export function WidgetHeader() {
               <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-[hsl(var(--widget-header-online))] border-2 border-[hsl(var(--widget-header-start))] sm:size-3.5" />
             )}
           </div>
-          <div className="min-w-0">
+          <div className="flex min-w-0 flex-col gap-0.5">
             <p className="truncate text-[13px] font-semibold text-[hsl(var(--widget-header-title))] tracking-tight leading-tight sm:text-[14px]">
               {displayTitle}
             </p>
-            {showOnline && (
+            {displaySubtitle && (
               <p className="text-[9px] text-[hsl(var(--widget-header-subtitle))] font-medium sm:text-[10px]">
                 {displaySubtitle}
               </p>

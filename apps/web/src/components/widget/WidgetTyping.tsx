@@ -8,8 +8,8 @@ export function WidgetTyping() {
     : 'A'
 
   return (
-    <div className="convio-typing flex items-start gap-2 mb-3 animate-in fade-in slide-in-from-bottom-1 duration-200">
-      <div className="mt-1 shrink-0">
+    <div className="convio-typing mb-3 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-1 duration-200" role="status" aria-label="Assistant is thinking">
+      <div className="shrink-0">
         {agentAvatar ? (
           <img
             src={agentAvatar}
@@ -18,7 +18,7 @@ export function WidgetTyping() {
           />
         ) : (
           <div
-            className="size-7 rounded-full flex items-center justify-center"
+            className="flex size-7 items-center justify-center rounded-full"
             style={{
               background: `linear-gradient(135deg, hsl(var(--widget-primary)), color-mix(in srgb, hsl(var(--widget-primary)) 80%, black))`,
             }}
@@ -27,20 +27,7 @@ export function WidgetTyping() {
           </div>
         )}
       </div>
-      <div className="mt-2.5 flex items-center gap-1.5">
-        <span
-          className="size-1.5 rounded-full bg-[hsl(var(--widget-primary))]/70 animate-typing-dot"
-          style={{ animationDelay: '0ms' }}
-        />
-        <span
-          className="size-1.5 rounded-full bg-[hsl(var(--widget-primary))]/70 animate-typing-dot"
-          style={{ animationDelay: '200ms' }}
-        />
-        <span
-          className="size-1.5 rounded-full bg-[hsl(var(--widget-primary))]/70 animate-typing-dot"
-          style={{ animationDelay: '400ms' }}
-        />
-      </div>
+      <span className="text-[11px] leading-none text-[hsl(var(--widget-muted-foreground))]">Thinking…</span>
     </div>
   )
 }
