@@ -4,6 +4,7 @@ import { validate } from '../../plugins/validate.js'
 import { createMcpServerSchema, updateMcpServerSchema } from '@convio/validation'
 import { AppError } from '../../plugins/error.js'
 import { clientFromServer } from '../../services/mcp/factory.js'
+import { encryptSecret } from '../../services/mcp/crypto.js'
 import { z } from 'zod'
 
 const orgParamsSchema = z.object({ orgId: z.string().uuid() })
@@ -12,7 +13,7 @@ const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(50).optional(),
   search: z.string().max(100).optional(),
-  type: z.enum(['sse', 'streamable-http']).optional(),
+  type: z.enum(['streamable-http']).optional(),
   status: z.enum(['enabled', 'disabled', 'connected', 'failed']).optional(),
 })
 
@@ -27,8 +28,10 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
       const server = await prisma.mcpServer.create({
         data: {
           ...body,
-          args: body.args as any,
           headers: (body.headers ?? {}) as any,
+          clientSecret: body.clientSecret
+            ? encryptSecret(body.clientSecret, fastify.config.MCP_OAUTH_ENCRYPTION_KEY)
+            : null,
           organizationId: orgId,
         },
       })
@@ -55,7 +58,6 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { url: { contains: search, mode: 'insensitive' } },
-        { command: { contains: search, mode: 'insensitive' } },
       ]
     }
     if (type) where.type = type
@@ -104,10 +106,13 @@ export default async function mcpRoutes(fastify: FastifyInstance) {
         where: { id },
         data: {
           ...body,
-          args: body.args !== undefined ? (body.args as any) : undefined,
           headers: body.headers !== undefined ? (body.headers as any) : undefined,
           oauthState: body.authType !== 'oauth' ? Prisma.DbNull : undefined,
-          clientSecret: body.clientSecret === '' ? null : undefined,
+          clientSecret: body.clientSecret !== undefined
+            ? (body.clientSecret === ''
+              ? null
+              : encryptSecret(body.clientSecret, fastify.config.MCP_OAUTH_ENCRYPTION_KEY))
+            : undefined,
         },
       })
       return { data: { ...server, clientSecret: undefined } }

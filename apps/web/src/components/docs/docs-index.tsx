@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { DocsShell } from '@/components/docs/docs-shell'
 import { buttonVariants } from '@/components/ui/button'
+import type { DocHeading } from '@/lib/docs/content'
 import { docSections, type DocPage } from '@/lib/docs/nav'
 import { cn } from '@/lib/utils'
 
@@ -9,6 +10,7 @@ const BLURBS: Record<string, string> = {
   '': 'What Convio is and how the pieces fit together.',
   'getting-started': 'Account, organization, team, dashboard, and the full vocabulary.',
   agents: 'Concepts, creating, model choice, tools, testing, and statuses.',
+  templates: 'Ready-made system prompts with model, temperature, and tool defaults, applied in one click.',
   'system-prompts': 'The highest-leverage field you own, with worked examples.',
   'knowledge-bases': 'Ground answers in your documents instead of the model’s memory.',
   channels: 'Deploy to the web widget, WhatsApp, Slack, Telegram, Discord, and SMS.',
@@ -25,6 +27,11 @@ const STEPS = [
   { n: '02', title: 'Create your first agent', body: 'Name it, pick a model, write a system prompt. Start from a template or blank.' },
   { n: '03', title: 'Test it in the playground', body: 'It runs your real prompt, model, and knowledge, without touching production.' },
   { n: '04', title: 'Set it active and deploy', body: 'Draft agents accept nothing. Once it answers in production, you are live.' },
+]
+
+const INDEX_TOC: DocHeading[] = [
+  { id: 'quick-start', text: 'Quick start', level: 2 },
+  { id: 'documentation', text: 'Documentation', level: 2 },
 ]
 
 function PageCard({ page }: { page: DocPage }) {
@@ -55,16 +62,14 @@ function PageCard({ page }: { page: DocPage }) {
 
 export function DocsIndex() {
   return (
-    <DocsShell>
+    <DocsShell toc={INDEX_TOC}>
       <div className="pb-4">
-        {/* Hero — kicker, one big promise, one action. The way Resend/Vercel open their docs. */}
-        <p className="font-mono text-xs tracking-[0.08em] text-primary uppercase">Docs</p>
+        <p className="font-mono text-xs tracking-[0.08em] text-primary uppercase">Convio documentation</p>
         <h1 className="mt-3 max-w-[34rem] font-heading text-4xl font-bold tracking-tight text-balance sm:text-[2.75rem] sm:leading-[1.1]">
           Ship AI agents that answer everywhere
         </h1>
         <p className="mt-4 max-w-[38rem] text-[15px] leading-6.5 text-muted-foreground">
-          Convio is a platform for building, deploying, and scaling AI agents across every
-          channel. One agent definition, many places to reach people.
+          Build an agent once, then bring it to your website, WhatsApp, Slack, Telegram, or SMS.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link to="/docs/getting-started" className={cn(buttonVariants({ size: 'lg' }))}>
@@ -79,10 +84,10 @@ export function DocsIndex() {
           </Link>
         </div>
 
-        {/* Quick start as four flat tiles instead of one boxed list. */}
-        <h2 className="mt-16 font-heading text-lg font-semibold tracking-tight">
-          New here? Four steps to a live agent
+        <h2 id="quick-start" className="mt-16 scroll-mt-24 font-heading text-lg font-semibold tracking-tight">
+          Quick start
         </h2>
+        <p className="mt-2 text-sm text-muted-foreground">Four steps from a new workspace to a live agent.</p>
         <ol className="mt-4 grid gap-3 sm:grid-cols-2">
           {STEPS.map((step) => (
             <li
@@ -96,8 +101,7 @@ export function DocsIndex() {
           ))}
         </ol>
 
-        {/* Every page reachable from here, grouped exactly like the sidebar. */}
-        <h2 className="mt-16 font-heading text-lg font-semibold tracking-tight">
+        <h2 id="documentation" className="mt-16 scroll-mt-24 font-heading text-lg font-semibold tracking-tight">
           Documentation
         </h2>
         {docSections.map((section) => (

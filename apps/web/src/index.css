@@ -4,21 +4,18 @@
 @import "./styles/typeset.css";
 
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/google-sans";
 @import "@fontsource-variable/outfit";
 @import "@fontsource-variable/jetbrains-mono";
 
-/* shadcn/typeset preset — docs reading surface.
-   Imported after ./styles/typeset.css (above); @import must stay at the top of the file.
-   One text family for prose and headings, the way Vercel/Mintlify docs read: Inter for
-   body, weight and tracking carry the hierarchy, not a second typeface. */
 @layer components {
   .typeset-docs {
     --typeset-font-body: var(--font-sans);
-    --typeset-font-heading: var(--font-sans);
+    --typeset-font-heading: var(--font-heading);
     --typeset-font-mono: var(--font-mono);
     --typeset-size: 15px;
-    --typeset-leading: 1.65;
-    --typeset-flow: 1.15em;
+    --typeset-leading: 1.7;
+    --typeset-flow: 1.1em;
   }
 
   /* Hierarchy: with a single family, headings must earn separation from size, weight
@@ -30,15 +27,15 @@
     color: var(--color-foreground);
   }
   .typeset.typeset-docs :where(h1) {
-    font-size: 1.9em;
+    font-size: 2em;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.035em;
   }
   .typeset.typeset-docs :where(h2) {
     font-size: 1.4em;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    margin-block-start: calc(var(--typeset-flow) * 1.9);
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    margin-block-start: calc(var(--typeset-flow) * 1.8);
   }
   .typeset.typeset-docs :where(h3) {
     font-size: 1.15em;
@@ -68,8 +65,11 @@
 
 @theme inline {
     --font-heading: 'Outfit Variable', 'Outfit', sans-serif;
-    --font-sans: 'Inter Variable', 'Inter', sans-serif;
-    --font-body: 'Inter Variable', 'Inter', sans-serif;
+    /* Google Sans is self-hosted via @fontsource-variable (SIL OFL, the family
+       Google released publicly as Google Sans Flex). Inter stays in the stack as
+       the fallback for glyphs Google Sans does not cover. */
+    --font-sans: 'Google Sans Variable', 'Google Sans', 'Inter Variable', 'Inter', sans-serif;
+    --font-body: 'Google Sans Variable', 'Google Sans', 'Inter Variable', 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);

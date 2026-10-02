@@ -22,7 +22,7 @@ const humanize = (value: string) =>
 
 /** Built on demand — this module is dynamically imported so the corpus stays out of the main bundle. */
 export function buildSearchIndex(): SearchItem[] {
-  return Object.entries(files)
+  const corpus = Object.entries(files)
     .map(([path, raw]) => {
       const slug = path
         .replace(/^\/src\/content\/docs\//, '')
@@ -47,5 +47,17 @@ export function buildSearchIndex(): SearchItem[] {
         haystack: `${title} ${description} ${headings} ${raw.slice(0, 600)}`,
       }
     })
-    .sort((a, b) => a.title.localeCompare(b.title))
+
+  // The templates gallery is a React page with no markdown file, so nothing in the glob
+  // above can ever describe it. Its section is the sidebar group it sits under.
+  const templates: SearchItem = {
+    slug: 'templates',
+    title: 'Agent templates',
+    description: 'Ready-made system prompts with model, temperature, and tool defaults, applied in one click.',
+    section: 'Build',
+    haystack:
+      'agent templates prompt gallery copy paste customer support sales faq tutor recruiter writer meeting summarizer productivity education business',
+  }
+
+  return [...corpus, templates].sort((a, b) => a.title.localeCompare(b.title))
 }

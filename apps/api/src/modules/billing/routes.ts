@@ -78,6 +78,8 @@ export default async function billingRoutes(fastify: FastifyInstance) {
         messages: usage.messages,
         limit: usage.limit,
         messagesPercent: usage.messagesPercent,
+        byAgent: usage.byAgent,
+        byChannel: usage.byChannel,
       },
     }
   })

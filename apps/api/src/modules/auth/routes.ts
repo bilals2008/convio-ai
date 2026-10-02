@@ -10,29 +10,57 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.get('/auth/me', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     return reply.send({
       user: request.user,
-      isPlatformAdmin: await isPlatformAdmin(request.user!.email),
+      isPlatformAdmin: await isPlatformAdmin(request.user!.email, request.userId),
     })
   })
+
+  // Only public addresses are worth a geo lookup: private/loopback hops are not
+  // the user's location, and `request.ip` is only as trustworthy as the
+  // configured proxy hop count.
+  function isPublicAddress(ip: string): boolean {
+    if (!ip || ip === '::1') return false
+    const secondOctet = Number(ip.split('.')[1])
+    const isPrivate172 = ip.startsWith('172.') && secondOctet >= 16 && secondOctet <= 31
+    return !(
+      ip.startsWith('10.') ||
+      ip.startsWith('127.') ||
+      ip.startsWith('192.168.') ||
+      ip.startsWith('169.254.') ||
+      isPrivate172 ||
+      ip.startsWith('fc') ||
+      ip.startsWith('fd') ||
+      ip.startsWith('::ffff:') ||
+      ip.includes('/') ||
+      ip.length > 45
+    )
+  }
 
   fastify.post('/auth/login-activity', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { userAgent } = request.body as { userAgent?: string }
     const ua = userAgent || request.headers['user-agent'] || ''
-    const ip = request.ip
+    const ip = request.ip.slice(0, 45)
 
     const parser = new UAParser(ua)
     const browser = parser.getBrowser().name || null
     const os = parser.getOS().name || null
     const device = parser.getDevice().type || 'desktop'
 
+    // The free ip-api.com tier is HTTP-only, so the requester's address leaves
+    // the box in clear text. Keep the lookup short and never send anything that
+    // is not a public IP.
     let location: string | null = null
-    try {
-      const res = await fetch(`http://ip-api.com/json/${ip}?fields=city,regionName,country`)
-      if (res.ok) {
-        const geo = await res.json() as { city?: string; regionName?: string; country?: string }
-        const parts = [geo.city, geo.regionName, geo.country].filter(Boolean)
-        if (parts.length) location = parts.join(', ')
-      }
-    } catch {}
+    if (isPublicAddress(ip)) {
+      try {
+        const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=city,regionName,country`, {
+          signal: AbortSignal.timeout(3000),
+        })
+        if (res.ok) {
+          const geo = await res.json() as { city?: string; regionName?: string; country?: string }
+          const parts = [geo.city, geo.regionName, geo.country].filter(Boolean)
+          if (parts.length) location = parts.join(', ').slice(0, 200)
+        }
+      } catch {}
+    }
 
     const activity = await prisma.loginActivity.create({
       data: {

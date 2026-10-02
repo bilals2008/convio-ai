@@ -45,6 +45,7 @@ import avatarPresetsRoutes from './modules/avatar-presets/routes.js'
 import statusRoutes from './modules/status/routes.js'
 import auditLogsRoutes from './modules/audit-logs/routes.js'
 import docsRoutes from './modules/docs/routes.js'
+import docsAssistantRoutes from './modules/docs-assistant/routes.js'
 import plansRoutes from './modules/plans/routes.js'
 import adminRoutes from './modules/admin/routes.js'
 import adminAssistantRoutes from './modules/admin-assistant/routes.js'
@@ -58,14 +59,24 @@ import { warmEmbeddings } from './services/processor.js'
 import { warmReranker } from './services/reranker.js'
 
 
+// Number of reverse-proxy hops in front of the API. Only the rightmost N
+// entries of X-Forwarded-For are trusted; anything a client prepends is ignored.
+// `true` would trust the whole chain, making request.ip (and every per-IP rate
+// limit keyed on it) attacker-controlled. 0 = the API is exposed directly.
+function trustedProxyHops(): number {
+  const raw = process.env.TRUST_PROXY_HOPS
+  if (raw === undefined || raw === '') return 1
+  const hops = Number(raw)
+  return Number.isInteger(hops) && hops >= 0 ? hops : 1
+}
+
 async function buildServer() {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL ?? 'info' },
-    // Trust X-Forwarded-For so request.ip is the real client IP behind the
-    // VPS reverse proxy (nginx) — otherwise per-IP rate limits bucket everyone together.
-    // ponytail: assumes the API is only reachable through that proxy; if it is ever
-    // exposed directly, lock this to the proxy's IPs.
-    trustProxy: true,
+    // Trust only the configured number of proxy hops so request.ip is the real
+    // client IP behind the VPS reverse proxy (nginx) — otherwise per-IP rate
+    // limits bucket everyone together. Never trust the whole chain.
+    trustProxy: trustedProxyHops(),
   })
 
   // Plugins
@@ -115,6 +126,7 @@ async function buildServer() {
   await app.register(statusRoutes, { prefix: '/api' })
   await app.register(auditLogsRoutes, { prefix: '/api' })
   await app.register(docsRoutes, { prefix: '/api' })
+  await app.register(docsAssistantRoutes, { prefix: '/api' })
   await app.register(plansRoutes, { prefix: '/api' })
   await app.register(adminRoutes, { prefix: '/api' })
   await app.register(adminAssistantRoutes, { prefix: '/api' })

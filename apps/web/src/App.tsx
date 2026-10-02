@@ -79,6 +79,8 @@ const SupportTicketsPage = lazyLoad(() => import('@/pages/support/support-ticket
 const SupportTicketDetailPage = lazyLoad(() => import('@/pages/support/ticket-detail-page'))
 const NotificationsPage = lazyLoad(() => import('@/pages/notifications-page'))
 const DocsPage = lazyLoad(() => import('@/pages/docs/docs-page'))
+// Static path ahead of the /docs/* wildcard: the templates gallery is a React page, not markdown.
+const DocsTemplatesPage = lazyLoad(() => import('@/pages/docs/docs-templates-page'))
 
 import InvitePage from '@/pages/invite-page'
 import StatusPage from '@/pages/status-page'
@@ -117,6 +119,7 @@ export function App() {
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/widget/demo" element={<WidgetDemoPage />} />
+            <Route path="/docs/templates" element={<DocsTemplatesPage />} />
             <Route path="/docs/*" element={<DocsPage />} />
             <Route element={<ErrorBoundary name="Dashboard"><DashboardLayout /></ErrorBoundary>}>
             <Route path="/dashboard" element={<DashboardOverviewPage />} />

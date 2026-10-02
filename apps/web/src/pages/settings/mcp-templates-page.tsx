@@ -11,7 +11,6 @@ import {
   Box,
   AppWindow,
   Database,
-  Terminal,
 } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { Button } from '@/components/ui/button'
@@ -26,14 +25,12 @@ const categories = [
   { id: 'apps', label: 'Apps', icon: AppWindow },
   { id: 'data', label: 'Data', icon: Database },
   { id: 'devtools', label: 'Dev Tools', icon: Box },
-  { id: 'custom', label: 'Custom', icon: Terminal },
 ]
 
 const categoryColors: Record<string, string> = {
   apps: 'bg-blue-500/10 text-blue-500',
   data: 'bg-emerald-500/10 text-emerald-500',
   devtools: 'bg-purple-500/10 text-purple-500',
-  custom: 'bg-amber-500/10 text-amber-500',
 }
 
 function ProviderIcon({ provider }: { provider: string }) {
@@ -168,11 +165,8 @@ export default function McpTemplatesPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
-                <Badge className={cn('text-[10px]', template.type === 'stdio'
-                  ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
-                  : 'bg-violet-500/10 text-violet-500 border-violet-500/20'
-                )}>
-                  {template.type === 'stdio' ? 'Stdio' : 'Streamable HTTP'}
+                <Badge className="text-[10px] bg-violet-500/10 text-violet-500 border-violet-500/20">
+                  Streamable HTTP
                 </Badge>
                 <Badge className={cn('text-[10px]', template.authType === 'oauth'
                   ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'

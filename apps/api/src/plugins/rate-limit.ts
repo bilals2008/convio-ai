@@ -12,7 +12,9 @@ export default fp(async function rateLimitPlugin(fastify: FastifyInstance) {
       global: true,
       max: 100,
       timeWindow: '1 minute',
-      allowList: ['127.0.0.1', 'localhost'],
+      // No allowList: exempting loopback made the limiter trivially bypassable,
+      // because request.ip is only as trustworthy as the trustProxy hop count.
+      // Internal callers (cron) authenticate with CRON_SECRET instead.
       keyGenerator: (request) => request.ip,
     })
 

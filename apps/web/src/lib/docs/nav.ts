@@ -8,6 +8,7 @@ import {
   Database,
   Headphones,
   Library,
+  LayoutTemplate,
   LifeBuoy,
   Megaphone,
   MessageCircle,
@@ -54,6 +55,7 @@ export const docSections: DocSection[] = [
     title: 'Build',
     pages: [
       { title: 'AI agents', slug: 'agents', icon: Bot },
+      { title: 'Agent templates', slug: 'templates', icon: LayoutTemplate },
       { title: 'Writing system prompts', slug: 'system-prompts', icon: PenLine },
       { title: 'Knowledge bases', slug: 'knowledge-bases', icon: Library },
       { title: 'Tools, MCP & Composio', slug: 'tools-and-mcp', icon: Wrench },

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MessageSquare, AlertCircle, MoreVertical, CheckCircle, Archive, Trash2, Clock, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { MessageSquare, AlertCircle, MoreVertical, CheckCircle, Archive, Trash2, Clock, PanelLeftClose, PanelLeftOpen, UserRound } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ChannelBadge } from '@/components/shared/channel-badge'
 import { toast } from '@/lib/toast'
@@ -34,9 +34,21 @@ import { conversations as conversationsApi, messages as messagesApi } from '@/li
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
-type Channel = 'web' | 'whatsapp' | 'slack' | 'discord' | 'telegram' | 'api'
+type Channel = 'web' | 'whatsapp' | 'twilio' | 'slack' | 'discord' | 'telegram' | 'api'
 type MessageRole = 'user' | 'assistant' | 'system'
 type MessageStatus = 'sending' | 'sent' | 'error'
+
+function getConversationName(conversation: Pick<ConversationDetail, 'displayName' | 'userName' | 'contactName' | 'contactPhone' | 'channel'>): string {
+  const name = conversation.displayName?.trim() || conversation.userName?.trim() || conversation.contactName?.trim()
+  if (name) return name
+  if (conversation.channel === 'web') return 'Website visitor'
+  if (conversation.channel === 'whatsapp' || conversation.channel === 'twilio') {
+    const digits = conversation.contactPhone?.replace(/\D/g, '') ?? ''
+    const suffix = digits.length >= 4 ? digits.slice(-4) : undefined
+    return suffix ? `WhatsApp · •••• ${suffix}` : 'WhatsApp contact'
+  }
+  return `${conversation.channel.charAt(0).toUpperCase()}${conversation.channel.slice(1)} contact`
+}
 
 interface MessageItem {
   id: string
@@ -50,6 +62,9 @@ interface ConversationDetail {
   id: string
   userId?: string
   userName?: string
+  displayName?: string
+  contactName?: string | null
+  contactPhone?: string | null
   agentName: string
   agentId: string
   channel: Channel
@@ -63,11 +78,6 @@ interface ConversationDetail {
 interface ConversationsOutletContext {
   toggleChatList: () => void
   isChatListVisible: boolean
-}
-
-function getInitials(name: string | undefined): string {
-  if (!name) return 'A'
-  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 }
 
 export function ChatView() {
@@ -290,6 +300,7 @@ export function ChatView() {
   }
 
   const isClosed = conversation.status === 'closed' || conversation.status === 'archived'
+  const displayName = conversation.displayName || conversation.userName || 'Website visitor'
   const displayMessages = (conversation.messages || []) as MessageItem[]
 
   return (
@@ -309,8 +320,8 @@ export function ChatView() {
         </Button>
 
         <Avatar size="lg" className="shrink-0">
-          <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-            {getInitials(conversation.userName)}
+          <AvatarFallback className="bg-primary/10 text-primary">
+            <UserRound className="size-5" aria-hidden="true" />
           </AvatarFallback>
           <ChannelBadge channel={conversation.channel} />
         </Avatar>
@@ -318,7 +329,7 @@ export function ChatView() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm truncate">
-              {conversation.userName || 'Anonymous'}
+              {displayName}
             </span>
             <ConversationStatusBadge status={conversation.status} />
           </div>

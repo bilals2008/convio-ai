@@ -13,40 +13,13 @@ import {
   Wrench,
   ArrowRight,
   Flame,
-  TrendingUp,
-  HelpCircle,
-  LogIn,
-  UserSearch,
-  BookOpen,
-  Languages,
-  Users,
-  ClipboardList,
-  Scale,
-  PenTool,
-  Heart,
-  BarChart3,
-  MessageSquare,
-  Megaphone,
-  Mail,
-  ShieldCheck,
-  Bug,
-  Copy,
-  GitCompare,
-  Newspaper,
-  Clipboard,
-  AlertTriangle,
-  DollarSign,
-  AlertOctagon,
-  Handshake,
-  Layout,
-  FileText,
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 import { PageContainer } from '@/components/shared/page-container'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { agents as agentsApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
+import { categoryColors, iconForTemplate } from '@/lib/template-style'
 import { cn } from '@/lib/utils'
 import type { AgentTemplate } from '@/components/agents/agent-template-modal'
 
@@ -58,59 +31,6 @@ const categories = [
   { id: 'productivity', label: 'Productivity', icon: Zap },
   { id: 'custom', label: 'Custom', icon: SlidersHorizontal },
 ] as const
-
-const categoryColors: Record<string, string> = {
-  support: 'bg-blue-500/10 text-blue-500',
-  business: 'bg-amber-500/10 text-amber-500',
-  education: 'bg-green-500/10 text-green-500',
-  productivity: 'bg-purple-500/10 text-purple-500',
-  custom: 'bg-muted text-muted-foreground',
-}
-
-const categoryIcons: Record<string, LucideIcon> = {
-  support: Headphones,
-  business: Briefcase,
-  education: GraduationCap,
-  productivity: Zap,
-  custom: SlidersHorizontal,
-}
-
-const templateIcons: Record<string, LucideIcon> = {
-  'customer-support': Headphones,
-  sales: TrendingUp,
-  faq: HelpCircle,
-  onboarding: LogIn,
-  interviewer: UserSearch,
-  tutor: BookOpen,
-  translator: Languages,
-  'hr-assistant': Users,
-  recruiter: ClipboardList,
-  'legal-assistant': Scale,
-  researcher: GraduationCap,
-  writer: PenTool,
-  coach: Heart,
-  'data-analyst': BarChart3,
-  'project-manager': Briefcase,
-  'meeting-summarizer': MessageSquare,
-  'social-media-manager': Megaphone,
-  'email-writer': Mail,
-  'it-support': ShieldCheck,
-  'technical-writer': FileText,
-  'code-reviewer': Bug,
-  'documentation-assistant': FileText,
-  'ux-researcher': Search,
-  'content-repurposer': Copy,
-  'competitor-analyst': GitCompare,
-  'pr-writer': Newspaper,
-  'product-manager': Clipboard,
-  'incident-commander': AlertTriangle,
-  'pricing-strategist': DollarSign,
-  'risk-assessor': AlertOctagon,
-  'customer-success': Handshake,
-  'content-strategist': Layout,
-  'seo-specialist': Search,
-  custom: SlidersHorizontal,
-}
 
 export default function AgentTemplatesPage() {
   const navigate = useNavigate()
@@ -245,11 +165,9 @@ export default function AgentTemplatesPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((template) => {
-            const specificIcon = templateIcons[template.id]
-            const CatIcon = categoryIcons[template.category] || SlidersHorizontal
             const popScore = template.popularity
             const isPopular = (popScore ?? 0) >= 70
-            const IconToUse = specificIcon || CatIcon
+            const IconToUse = iconForTemplate(template.id, template.category)
             return (
               <div
                 key={template.id}

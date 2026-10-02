@@ -84,8 +84,6 @@ interface McpServer {
   id: string
   name: string
   type: string
-  command: string | null
-  args: string[]
   url: string | null
   authType: string
   headers: Record<string, string>
@@ -112,11 +110,6 @@ interface TestResult {
   redirectUrl?: string
 }
 
-const SERVER_TYPES = [
-  { id: 'stdio', name: 'Stdio (Local Command)' },
-  { id: 'streamable-http', name: 'Streamable HTTP' },
-]
-
 const AUTH_TYPES = [
   { id: 'none', name: 'None' },
   { id: 'header', name: 'Header (Bearer / custom)' },
@@ -129,7 +122,7 @@ const ICON_CDN = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons'
 // ponytail: naive name/url match against known templates; add a provider field on McpServer if matching gets wrong
 function providerFor(server: McpServer): string | null {
   const name = server.name.toLowerCase()
-  const endpoint = (server.url ?? server.command ?? '').toLowerCase()
+  const endpoint = (server.url ?? '').toLowerCase()
   const hit = mcpServerTemplates.find(
     (t) =>
       name.includes(t.name.toLowerCase()) ||
@@ -206,9 +199,6 @@ export default function McpServersPage() {
 
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
-  const [type, setType] = useState('stdio')
-  const [command, setCommand] = useState('')
-  const [args, setArgs] = useState('')
   const [url, setUrl] = useState('')
   const [authType, setAuthType] = useState('none')
   const [headersText, setHeadersText] = useState('')
@@ -224,9 +214,6 @@ export default function McpServersPage() {
 
   function resetForm() {
     setName('')
-    setType('stdio')
-    setCommand('')
-    setArgs('')
     setUrl('')
     setAuthType('none')
     setHeadersText('')
@@ -276,10 +263,7 @@ export default function McpServersPage() {
     const template = mcpServerTemplates.find((t) => t.id === templateId)
     if (!template) return
     setName(template.name)
-    setType(template.type)
     setUrl(template.url || '')
-    setCommand(template.command || '')
-    setArgs((template.args || []).join(', '))
     setAuthType(template.authType)
     setOpen(true)
     oauthParams.delete('template')
@@ -290,26 +274,20 @@ export default function McpServersPage() {
   const createMutation = useMutation({
     mutationFn: () => {
       if (!orgId) throw new Error('No organization selected')
-      const data: Record<string, unknown> = { name, type, authType }
-      if (type === 'stdio') {
-        data.command = command
-        data.args = args ? args.split(',').map((a) => a.trim()) : []
+      const data: Record<string, unknown> = { name, type: 'streamable-http', authType, url }
+      if (authType === 'header') {
+        data.apiKey = apiKey || undefined
+        data.headers = headersFromText()
       } else {
-        data.url = url
-        if (authType === 'header') {
-          data.apiKey = apiKey || undefined
-          data.headers = headersFromText()
-        } else {
-          data.apiKey = undefined
-          data.headers = undefined
-        }
-        if (authType === 'oauth') {
-          data.clientId = clientId || undefined
-          data.clientSecret = clientSecret || undefined
-        } else {
-          data.clientId = undefined
-          data.clientSecret = undefined
-        }
+        data.apiKey = undefined
+        data.headers = undefined
+      }
+      if (authType === 'oauth') {
+        data.clientId = clientId || undefined
+        data.clientSecret = clientSecret || undefined
+      } else {
+        data.clientId = undefined
+        data.clientSecret = undefined
       }
       return mcpApi.create(orgId, data)
     },
@@ -325,26 +303,20 @@ export default function McpServersPage() {
   const updateMutation = useMutation({
     mutationFn: () => {
       if (!editServer) throw new Error('No server selected')
-      const data: Record<string, unknown> = { name, type, authType }
-      if (type === 'stdio') {
-        data.command = command
-        data.args = args ? args.split(',').map((a) => a.trim()) : []
+      const data: Record<string, unknown> = { name, type: 'streamable-http', authType, url }
+      if (authType === 'header') {
+        data.apiKey = apiKey || undefined
+        data.headers = headersFromText()
       } else {
-        data.url = url
-        if (authType === 'header') {
-          data.apiKey = apiKey || undefined
-          data.headers = headersFromText()
-        } else {
-          data.apiKey = undefined
-          data.headers = undefined
-        }
-        if (authType === 'oauth') {
-          data.clientId = clientId || undefined
-          data.clientSecret = clientSecret || undefined
-        } else {
-          data.clientId = undefined
-          data.clientSecret = undefined
-        }
+        data.apiKey = undefined
+        data.headers = undefined
+      }
+      if (authType === 'oauth') {
+        data.clientId = clientId || undefined
+        data.clientSecret = clientSecret || undefined
+      } else {
+        data.clientId = undefined
+        data.clientSecret = undefined
       }
       return mcpApi.update(editServer.id, data)
     },
@@ -446,9 +418,6 @@ export default function McpServersPage() {
   function openEdit(server: McpServer) {
     setEditServer(server)
     setName(server.name)
-    setType(server.type)
-    setCommand(server.command || '')
-    setArgs(Array.isArray(server.args) ? server.args.join(', ') : '')
     setUrl(server.url || '')
     setAuthType(server.authType || 'none')
     setHeadersText(headersToText(server.headers))
@@ -477,7 +446,7 @@ const pageLoading = orgLoading || isLoading
   }
 
   function endpointOf(server: McpServer) {
-    return server.type === 'stdio' ? server.command || 'stdio' : server.url || ''
+    return server.url || ''
   }
 
   return (
@@ -511,78 +480,50 @@ const pageLoading = orgLoading || isLoading
                     <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="My MCP Server" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Type</Label>
-                    <Select value={type} onValueChange={(v) => v && setType(v)}>
+                    <Label>URL</Label>
+                    <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://mcp.example.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Authentication</Label>
+                    <Select value={authType} onValueChange={(v) => v && setAuthType(v)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {SERVER_TYPES.map((t) => (
+                        {AUTH_TYPES.map((t) => (
                           <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  {type === 'stdio' ? (
+                  {authType === 'header' && (
                     <>
                       <div className="space-y-2">
-                        <Label>Command</Label>
-                        <Input value={command} onChange={(e) => setCommand(e.target.value)} placeholder="npx" />
+                        <Label>API Key (sends as Bearer token)</Label>
+                        <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-..." type="password" />
                       </div>
                       <div className="space-y-2">
-                        <Label>Args (comma-separated)</Label>
-                        <Input value={args} onChange={(e) => setArgs(e.target.value)} placeholder="-y, @modelcontextprotocol/server-github" />
+                        <Label>Custom headers (one per line, Name: value)</Label>
+                        <Input value={headersText} onChange={(e) => setHeadersText(e.target.value)} placeholder={"X-Api-Key: abc123\nAuthorization: Bearer xyz"} className="font-mono" />
+                        {headerHint && (
+                          <p className="text-xs text-amber-500">{headerHint}</p>
+                        )}
                       </div>
                     </>
-                  ) : (
+                  )}
+                  {authType === 'oauth' && (
                     <>
                       <div className="space-y-2">
-                        <Label>URL</Label>
-                        <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://mcp.example.com" />
+                        <Label>Client ID</Label>
+                        <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="e.g. Ivv1..." />
                       </div>
                       <div className="space-y-2">
-                        <Label>Authentication</Label>
-                        <Select value={authType} onValueChange={(v) => v && setAuthType(v)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {AUTH_TYPES.map((t) => (
-                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label>Client Secret</Label>
+                        <Input value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="e.g. abc123..." type="password" />
                       </div>
-                      {authType === 'header' && (
-                        <>
-                          <div className="space-y-2">
-                            <Label>API Key (sends as Bearer token)</Label>
-                            <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-..." type="password" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Custom headers (one per line, Name: value)</Label>
-                            <Input value={headersText} onChange={(e) => setHeadersText(e.target.value)} placeholder={"X-Api-Key: abc123\nAuthorization: Bearer xyz"} className="font-mono" />
-                            {headerHint && (
-                              <p className="text-xs text-amber-500">{headerHint}</p>
-                            )}
-                          </div>
-                        </>
-                      )}
-                      {authType === 'oauth' && (
-                        <>
-                          <div className="space-y-2">
-                            <Label>Client ID</Label>
-                            <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="e.g. Ivv1..." />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Client Secret</Label>
-                            <Input value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="e.g. abc123..." type="password" />
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Leave blank if the provider supports dynamic registration (Notion, Linear, Slack). For GitHub Copilot and similar, create an OAuth app at the provider's developer console and paste the credentials here.
-                          </p>
-                        </>
-                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Leave blank if the provider supports dynamic registration (Notion, Linear, Slack). For GitHub Copilot and similar, create an OAuth app at the provider's developer console and paste the credentials here.
+                      </p>
                     </>
                   )}
                   </div>
@@ -640,7 +581,7 @@ const pageLoading = orgLoading || isLoading
               <SearchInput
                 value={search}
                 onChange={setSearch}
-                placeholder="Search servers, URLs, or commands..."
+                placeholder="Search servers or URLs..."
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -650,7 +591,6 @@ const pageLoading = orgLoading || isLoading
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All types</SelectItem>
-                  <SelectItem value="stdio">Stdio</SelectItem>
                   <SelectItem value="streamable-http">HTTP</SelectItem>
                 </SelectContent>
               </Select>
@@ -738,7 +678,7 @@ const pageLoading = orgLoading || isLoading
 
                     <div className="mt-4 flex flex-wrap items-center gap-1.5">
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                        {server.type === 'stdio' ? 'Stdio' : 'HTTP'}
+                        HTTP
                       </Badge>
                       {server.authType !== 'none' && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
@@ -783,7 +723,7 @@ const pageLoading = orgLoading || isLoading
                               <TooltipTrigger
                                 render={
                                    <CopyButton
-                                     text={server.type === 'stdio' ? `${server.command} ${server.args.join(' ')}` : server.url ?? ''}
+                                     text={server.url ?? ''}
                                      sizeClass="size-7"
                                      className="text-muted-foreground hover:text-foreground"
                                      onCopy={() => toast.success('Copied to clipboard')}
@@ -1000,70 +940,46 @@ const pageLoading = orgLoading || isLoading
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => v && setType(v)}>
+              <Label>URL</Label>
+              <Input value={url} onChange={(e) => setUrl(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Authentication</Label>
+              <Select value={authType} onValueChange={(v) => v && setAuthType(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {SERVER_TYPES.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
+                  {AUTH_TYPES.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
-            {type === 'stdio' ? (
+            {authType === 'header' && (
               <>
                 <div className="space-y-2">
-                  <Label>Command</Label>
-                  <Input value={command} onChange={(e) => setCommand(e.target.value)} />
+                  <Label>API Key (sends as Bearer token)</Label>
+                  <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Args (comma-separated)</Label>
-                  <Input value={args} onChange={(e) => setArgs(e.target.value)} />
+                  <Label>Custom headers (one per line, Name: value)</Label>
+                  <Input value={headersText} onChange={(e) => setHeadersText(e.target.value)} className="font-mono" />
+                  {headerHint && (
+                    <p className="text-xs text-amber-500">{headerHint}</p>
+                  )}
                 </div>
               </>
-            ) : (
+            )}
+            {authType === 'oauth' && (
               <>
                 <div className="space-y-2">
-                  <Label>URL</Label>
-                  <Input value={url} onChange={(e) => setUrl(e.target.value)} />
+                  <Label>Client ID</Label>
+                  <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="e.g. Ivv1..." />
                 </div>
                 <div className="space-y-2">
-                  <Label>Authentication</Label>
-                  <Select value={authType} onValueChange={(v) => v && setAuthType(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {AUTH_TYPES.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Client Secret</Label>
+                  <Input value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="e.g. abc123..." type="password" />
                 </div>
-                {authType === 'header' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>API Key (sends as Bearer token)</Label>
-                      <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Custom headers (one per line, Name: value)</Label>
-                      <Input value={headersText} onChange={(e) => setHeadersText(e.target.value)} className="font-mono" />
-                      {headerHint && (
-                        <p className="text-xs text-amber-500">{headerHint}</p>
-                      )}
-                    </div>
-                  </>
-                )}
-                {authType === 'oauth' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Client ID</Label>
-                      <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="e.g. Ivv1..." />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Client Secret</Label>
-                      <Input value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="e.g. abc123..." type="password" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Leave blank if the provider supports dynamic registration (Notion, Linear, Slack). For GitHub Copilot and similar, create an OAuth app at the provider's developer console and paste the credentials here.
-                    </p>
-                  </>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Leave blank if the provider supports dynamic registration (Notion, Linear, Slack). For GitHub Copilot and similar, create an OAuth app at the provider's developer console and paste the credentials here.
+                </p>
               </>
             )}
           </div>

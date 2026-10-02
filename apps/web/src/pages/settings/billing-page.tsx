@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { InvoiceTable, type Invoice } from '@/components/settings/invoice-table'
+import { UsageBreakdownCard } from '@/components/settings/usage-breakdown-card'
 import { PageHeader } from '@/components/shared/page-header'
 import { Skeleton } from '@/components/shared/loading'
 import { Button } from '@/components/ui/button'
@@ -257,6 +258,8 @@ export default function BillingPage() {
           invoices={invoices.data}
         />
       </div>
+
+      <UsageBreakdownCard />
 
       <InvoicesSection
         invoices={invoices.data}

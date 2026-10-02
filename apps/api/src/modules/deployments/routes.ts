@@ -108,6 +108,15 @@ const updateDeploymentBodySchema = z.object({
   status: z.enum(deploymentStatuses).optional(),
 })
 
+/** Every organization the caller belongs to — used to scope platform-wide lookups. */
+async function callerOrganizationIds(userId: string): Promise<Set<string>> {
+  const memberships = await prisma.membership.findMany({
+    where: { userId },
+    select: { organizationId: true },
+  })
+  return new Set(memberships.map((m) => m.organizationId))
+}
+
 const sensitiveKeys = new Set([
   'accessToken',
   'botToken',
@@ -169,24 +178,34 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
   // flow again (Kapso free plan allows only one connected number).
   fastify.get('/kapso/phone-numbers', {
     preHandler: [fastify.authenticate],
-  }, async () => {
+  }, async (request) => {
     const numbers = await listPhoneNumbers()
-    const usedIds = new Set(
-      (await prisma.deployment.findMany({
-        where: { channel: 'whatsapp', status: 'active' },
-        select: { config: true },
-      }))
-        .map((d) => (d.config as Record<string, unknown>)?.phoneNumberId as string | undefined)
-        .filter(Boolean)
-    )
+    // The numbers belong to the platform's shared Kapso account, so a number
+    // already connected by another organization must not be advertised here —
+    // that leaked other tenants' phone numbers (and who was using them).
+    const orgIds = await callerOrganizationIds(request.userId!)
+    const deployments = await prisma.deployment.findMany({
+      where: { channel: 'whatsapp', status: 'active' },
+      select: { config: true, agent: { select: { organizationId: true } } },
+    })
+
+    const ownIds = new Set<string>()
+    const takenByOthers = new Set<string>()
+    for (const deployment of deployments) {
+      const id = (deployment.config as Record<string, unknown>)?.phoneNumberId as string | undefined
+      if (!id) continue
+      if (orgIds.has(deployment.agent.organizationId)) ownIds.add(id)
+      else takenByOthers.add(id)
+    }
+
     const data = numbers
-      .filter((n) => n.kind !== 'sandbox')
+      .filter((n) => n.kind !== 'sandbox' && !takenByOthers.has(n.id))
       .map((n) => ({
         phoneNumberId: n.id,
         displayName: n.display_name ?? null,
         displayPhone: n.display_phone_number ?? null,
         kind: n.kind ?? null,
-        inUse: usedIds.has(n.id),
+        inUse: ownIds.has(n.id),
       }))
     return { data }
   })
@@ -687,22 +706,32 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
 
     const guilds = (await res.json()) as Array<{ id: string; name: string; icon: string | null }>
 
-    // Get guilds that already have a deployment
-    const deployedGuildIds = new Set(
-      (await prisma.deployment.findMany({
-        where: { channel: 'discord' },
-        select: { config: true },
-      }))
-        .map((d) => (d.config as Record<string, unknown>)?.guildId as string | undefined)
-        .filter(Boolean)
-    )
+    // The bot is shared across every tenant, so only instrument guilds that are
+    // unclaimed or already belong to the caller — other organizations' server
+    // names and ids are not this caller's business.
+    const orgIds = await callerOrganizationIds(request.userId!)
+    const discordDeployments = await prisma.deployment.findMany({
+      where: { channel: 'discord' },
+      select: { config: true, agent: { select: { organizationId: true } } },
+    })
 
-    const data = guilds.map((g) => ({
-      id: g.id,
-      name: g.name,
-      icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : null,
-      deployed: deployedGuildIds.has(g.id),
-    }))
+    const ownGuildIds = new Set<string>()
+    const takenByOthers = new Set<string>()
+    for (const deployment of discordDeployments) {
+      const id = (deployment.config as Record<string, unknown>)?.guildId as string | undefined
+      if (!id) continue
+      if (orgIds.has(deployment.agent.organizationId)) ownGuildIds.add(id)
+      else takenByOthers.add(id)
+    }
+
+    const data = guilds
+      .filter((g) => !takenByOthers.has(g.id))
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : null,
+        deployed: ownGuildIds.has(g.id),
+      }))
 
     return { data }
   })
@@ -969,6 +998,39 @@ export default async function deploymentsRoutes(fastify: FastifyInstance) {
   fastify.post('/deployments/:id/whatsapp-status', async (request, reply) => {
     const { id } = request.params as { id: string }
     const body = request.body as any
+
+    const deployment = await prisma.deployment.findUnique({
+      where: { id },
+      select: { channel: true, config: true },
+    }).catch(() => null)
+
+    if (!deployment || deployment.channel !== 'whatsapp') {
+      return reply.code(200).send('OK')
+    }
+
+    // Status callbacks rewrite stored message state, so they must be provably
+    // from the provider. Unverified, anyone who learned a provider message id
+    // could flip delivery status or inject a status error. Mirrors the checks on
+    // the kapso-webhook and twilio-webhook routes.
+    const config = deployment.config as Record<string, unknown>
+    const rawBody = (request as unknown as { rawBody?: string }).rawBody ?? ''
+
+    if (config.provider === 'twilio') {
+      const authToken = config.authToken as string | undefined
+      const signature = request.headers['x-twilio-signature'] as string | undefined
+      const webhookUrl = `${fastify.config.PUBLIC_URL}/api/deployments/${id}/whatsapp-status`
+      if (!authToken || !signature || !verifyTwilioSignature(authToken, webhookUrl, body, signature)) {
+        request.log.warn({ deploymentId: id }, 'WhatsApp status: invalid Twilio signature')
+        return reply.code(401).send('Unauthorized')
+      }
+    } else {
+      const secret = config.kapsoWebhookSecret as string | undefined
+      const signature = request.headers['x-webhook-signature'] as string | undefined
+      if (!secret || !signature || !verifyWebhookSignature(rawBody, signature, secret)) {
+        request.log.warn({ deploymentId: id }, 'WhatsApp status: invalid or missing webhook signature')
+        return reply.code(401).send('Unauthorized')
+      }
+    }
 
     const statuses = body?.entry?.[0]?.changes?.[0]?.value?.statuses || body?.statuses
     if (statuses && Array.isArray(statuses)) {

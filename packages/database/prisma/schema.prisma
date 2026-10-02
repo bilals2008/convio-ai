@@ -313,6 +313,48 @@ model DocumentQuery {
   @@index([messageId])
 }
 
+// ponytail: the docs AI assistant's retrieval store. Unlike DocumentChunk
+// (org-scoped knowledge bases), this is one global index of the public docs
+// markdown, one row per heading-level section, so a citation can point at an
+// exact anchor. Vectors are 384-d to match the bundled local embedder; the HNSW
+// and full-text indexes are raw SQL in the migration (Prisma can't model an
+// Unsupported vector index), and the ingestion script re-ensures them so a
+// freshly db-pushed database self-heals.
+model DocsChunk {
+  id        String                      @id
+  slug      String
+  title     String
+  heading   String
+  anchor    String
+  url       String
+  content   String
+  hash      String
+  position  Int                         @default(0)
+  embedding Unsupported("vector(384)")?
+  updatedAt DateTime                    @updatedAt @db.Timestamptz(6)
+
+  @@unique([slug, anchor])
+  @@index([slug])
+  @@index([slug, position])
+}
+
+// ponytail: platform-level config for the public docs AI assistant — which
+// provider, model, and API key answer questions. Singleton row (id 'default'),
+// written only from the admin panel. The key is encrypted at rest and masked in
+// responses, mirroring ProviderKey. Defaults to Agnes AI so it works out of the
+// box without any env var.
+model DocsAssistantConfig {
+  id          String   @id @default("default")
+  provider    String   @default("agnes")
+  model       String   @default("agnes-2.5")
+  apiKey      String?
+  keyPreview  String?
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  updatedById String?
+
+  @@map("docs_assistant_config")
+}
+
 model Tool {
   id             String       @id @default(uuid())
   organizationId String
@@ -331,9 +373,7 @@ model McpServer {
   id             String           @id @default(uuid())
   organizationId String
   name           String
-  type           String           @default("stdio")
-  command        String?
-  args           Json             @default("[]")
+  type           String           @default("streamable-http")
   url            String?
   authType       String           @default("none") // none | header | oauth
   headers        Json             @default("{}") // custom headers for http transports
@@ -385,6 +425,20 @@ model AgentTool {
 
   @@id([agentId, toolId])
   @@index([toolId])
+}
+
+model UsageCounter {
+  id            String @id @default(uuid())
+  orgId         String
+  year          Int
+  month         Int
+  messages      Int    @default(0)
+  conversations Int    @default(0)
+  byAgent       Json?
+  byChannel     Json?
+
+  @@unique([orgId, year, month])
+  @@index([orgId])
 }
 
 model Analytics {

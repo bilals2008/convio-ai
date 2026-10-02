@@ -11,7 +11,8 @@
     "build": "tsup",
     "start": "node dist/server.cjs",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "docs:ingest": "tsx src/scripts/ingest-docs.ts"
   },
   "dependencies": {
     "@composio/core": "^0.18.1",

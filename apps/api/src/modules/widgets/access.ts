@@ -1,5 +1,5 @@
 import type { FastifyRequest } from 'fastify'
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { prisma } from '@convio/database'
 import { AppError } from '../../plugins/error.js'
 
@@ -11,11 +11,18 @@ const TOKEN_TTL_MS = 10 * 60 * 1000
 // forged. The server signs { publicKey, host, exp } and public endpoints trust
 // the signed host instead of the header. Fallback to the legacy header stays
 // for direct API callers (documented public API, previews without widget.js).
+//
+// The dev fallback is generated per process rather than a hardcoded constant:
+// a deployment that forgets WIDGET_TOKEN_SECRET can no longer mint tokens with
+// a publicly known secret.
+let devTokenSecret: string | null = null
+
 function tokenSecret(): string | null {
   const secret = process.env.WIDGET_TOKEN_SECRET
   if (secret) return secret
   if (process.env.NODE_ENV === 'production') return null
-  return 'dev-widget-token-secret'
+  if (!devTokenSecret) devTokenSecret = randomBytes(32).toString('hex')
+  return devTokenSecret
 }
 
 export function issueWidgetToken(publicKey: string, host: string): string {
@@ -98,6 +105,16 @@ export function assertPublicAccess(
   }
 
   const domain = getRequestDomain(request)
+
+  // No Origin and no signed token: the caller is not attributable to any domain
+  // (a script, curl, or a spoofed header). Treating that as "allowed" made the
+  // domain allowlist optional for every non-browser client, so production fails
+  // closed. Server-side callers can still get in by fetching a signed token from
+  // the token endpoint with an allowed Origin.
+  if (!domain && process.env.NODE_ENV === 'production') {
+    throw new AppError(403, 'This request could not be attributed to an allowed domain', 'FORBIDDEN')
+  }
+
   if (allowedDomains.length === 0 || !domain || allowedDomains.includes(domain)) return
   throw new AppError(403, 'This widget is not allowed on this domain')
 }

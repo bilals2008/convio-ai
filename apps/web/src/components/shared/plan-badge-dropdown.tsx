@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { Badge } from '@/components/ui/badge'
+import { Badge, badgeVariants } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -123,17 +123,16 @@ export function PlanBadgeDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
-          <Badge
-            variant={planVariant}
-            aria-label={`${planDisplay} plan and usage`}
-          >
-            <Icon data-icon="inline-start" />
-            <span className="font-medium">{planDisplay}</span>
-            <ChevronDown data-icon="inline-end" className="opacity-60" />
-          </Badge>
-        }
-      />
+        className={cn(
+          badgeVariants({ variant: planVariant }),
+          'cursor-pointer'
+        )}
+        aria-label={`${planDisplay} plan and usage`}
+      >
+        <Icon data-icon="inline-start" />
+        <span className="font-medium">{planDisplay}</span>
+        <ChevronDown data-icon="inline-end" className="opacity-60" />
+      </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
         sideOffset={8}

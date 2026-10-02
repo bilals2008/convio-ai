@@ -9,8 +9,22 @@ import { loadAgentToolHandlers } from '../../services/tools/index.js'
 import type { AIProvider, Message } from '@convio/ai'
 import { createRequestSignal } from '../../services/concurrency.js'
 import { checkMessageLimit } from '../../services/billing.js'
+import { validate } from '../../plugins/validate.js'
+import { z } from 'zod'
 
 const isDev = process.env.NODE_ENV !== 'production'
+
+// Unvalidated, this endpoint accepted an unbounded number of unbounded messages
+// and forwarded them straight to a paid provider — a cheap way to burn the
+// org's tokens and the process's memory. Limits are generous but finite.
+const chatStreamBodySchema = z.object({
+  agentId: z.string().uuid(),
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string().max(100_000),
+  })).min(1).max(500),
+  reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).optional(),
+})
 
 export async function chatWithAgent(
   agentId: string,
@@ -137,13 +151,9 @@ export async function chatWithAgent(
 
 export default async function aiRoutes(fastify: FastifyInstance) {
   fastify.post('/chat/stream', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, validate({ body: chatStreamBodySchema })],
   }, async (request, reply) => {
-    const { agentId, messages, reasoningEffort } = request.body as {
-      agentId: string
-      messages: { role: 'user' | 'assistant' | 'system'; content: string }[]
-      reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | 'xhigh'
-    }
+    const { agentId, messages, reasoningEffort } = request.body as z.infer<typeof chatStreamBodySchema>
 
     const agent = await prisma.agent.findUnique({
       where: { id: agentId },

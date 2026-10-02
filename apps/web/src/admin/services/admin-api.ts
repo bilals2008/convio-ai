@@ -497,6 +497,12 @@ export interface AdminAssistantLog {
   createdAt: string
 }
 
+export interface AdminDocsAssistantConfig {
+  provider: string
+  model: string
+  keyPreview: string | null
+}
+
 export const adminApi = {
   stats: () => api.get<{ data: AdminStats }>('/admin/stats'),
 
@@ -669,6 +675,16 @@ export const adminApi = {
         signal,
       })
     },
+  },
+
+  docsAssistant: {
+    config: () => api.get<{ data: AdminDocsAssistantConfig }>('/admin/docs-assistant/config'),
+    models: (data: { provider: string; apiKey?: string }) =>
+      api.post<{ data: Array<{ id: string; name: string }> }>('/admin/docs-assistant/models', data),
+    saveConfig: (data: { provider: string; model: string; apiKey?: string }) =>
+      api.put<{ data: AdminDocsAssistantConfig }>('/admin/docs-assistant/config', data),
+    testConfig: (data: { provider: string; model: string; apiKey?: string }) =>
+      api.post<{ data: { ok: boolean; message: string } }>('/admin/docs-assistant/config/test', data),
   },
 }
 

@@ -137,7 +137,12 @@ Backend (`.env`):
 SUPABASE_URL=                 # also the JWKS issuer base
 SUPABASE_ANON_KEY=            # token verification
 SUPABASE_SERVICE_ROLE_KEY=    # admin ops: delete / ban / impersonate
+TRUST_PROXY_HOPS=1            # reverse proxies in front of the API (0 = exposed directly)
 ```
+
+`TRUST_PROXY_HOPS` bounds how much of `X-Forwarded-For` is trusted: only that many entries from the right are used, so a client cannot prepend a fake address. It must match the deployment — the VPS setup has one nginx hop (**1**). Keep it at **0** if the API is reachable directly. Every per-IP rate limit keys on `request.ip`, so over-trusting the header makes those limits optional for an attacker.
+
+Platform admin (email allowlist or `AdminGrant`) additionally requires the address to be **confirmed in `auth.users`** — an unconfirmed signup claiming an allowlisted address must not inherit admin access.
 
 Frontend (`apps/web/.env`):
 

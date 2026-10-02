@@ -369,9 +369,10 @@ export const bulkInviteSchema = z.object({
 })
 
 // MCP Server schemas
-// NOTE: 'stdio' is intentionally removed — it executes arbitrary OS commands
-// (RCE) on the API host. Only remote transports are allowed.
-export const mcpServerTypeSchema = z.enum(['sse', 'streamable-http'])
+// NOTE: only `streamable-http` is supported. `sse` (deprecated by the MCP spec
+// as of 2025-03-26) and `stdio` (executes arbitrary OS commands on the API
+// host — RCE) are intentionally rejected.
+export const mcpServerTypeSchema = z.enum(['streamable-http'])
 export const mcpServerAuthTypeSchema = z.enum(['none', 'header', 'oauth'])
 
 export const mcpServerSchema = z.object({
@@ -379,8 +380,6 @@ export const mcpServerSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string().min(1).max(100),
   type: mcpServerTypeSchema.default('streamable-http'),
-  command: z.string().optional(),
-  args: z.array(z.string()).default([]),
   url: z.string().optional(),
   authType: mcpServerAuthTypeSchema.default('none'),
   headers: z.record(z.string()).default({}),

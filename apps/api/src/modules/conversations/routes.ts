@@ -49,6 +49,32 @@ const updateConversationBodySchema = z.object({
   status: z.enum(conversationStatuses).optional(),
 })
 
+function nonEmptyName(value: string | null | undefined): string | undefined {
+  const name = value?.trim()
+  return name || undefined
+}
+
+function conversationIdentity(
+  conversation: { contactName: string | null; contactPhone: string | null; channel: string },
+  profileName?: string | null,
+) {
+  const userName = nonEmptyName(profileName) ?? nonEmptyName(conversation.contactName)
+  if (userName) return { userName, displayName: userName }
+
+  if (conversation.channel === 'web') return { userName: undefined, displayName: 'Website visitor' }
+  if (conversation.channel === 'whatsapp' || conversation.channel === 'twilio') {
+    const digits = conversation.contactPhone?.replace(/\D/g, '') ?? ''
+    const suffix = digits.length >= 4 ? digits.slice(-4) : undefined
+    return {
+      userName: undefined,
+      displayName: suffix ? `WhatsApp · •••• ${suffix}` : 'WhatsApp contact',
+    }
+  }
+
+  const channel = conversation.channel.charAt(0).toUpperCase() + conversation.channel.slice(1)
+  return { userName: undefined, displayName: channel ? `${channel} contact` : 'Unknown contact' }
+}
+
 export default async function conversationsRoutes(fastify: FastifyInstance) {
   // POST /api/agents/:agentId/conversations — Create conversation (protected, member only)
   fastify.post('/agents/:agentId/conversations', {
@@ -69,15 +95,12 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
       data: { agentId, userId: userId || request.userId, channel },
     })
 
-    let userName: string | undefined
-    if (conversation.userId) {
-      const profile = await prisma.profile.findUnique({ where: { id: conversation.userId }, select: { name: true } })
-      userName = profile?.name || undefined
-    } else {
-      userName = conversation.contactName || undefined
-    }
+    const profile = conversation.userId
+      ? await prisma.profile.findUnique({ where: { id: conversation.userId }, select: { name: true } })
+      : null
+    const identity = conversationIdentity(conversation, profile?.name)
 
-    return { data: { ...conversation, userName } }
+    return { data: { ...conversation, ...identity } }
   })
 
   // GET /api/conversations — List conversations across user's orgs (protected, with filters)
@@ -132,7 +155,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     const enriched = items.map((c) => ({
       ...c,
-      userName: c.userId ? (profileMap.get(c.userId) || undefined) : c.contactName || undefined,
+      ...conversationIdentity(c, c.userId ? profileMap.get(c.userId) : undefined),
     }))
 
     return {
@@ -184,7 +207,7 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     const enriched = items.map((c) => ({
       ...c,
-      userName: c.userId ? (profileMap.get(c.userId) || undefined) : c.contactName || undefined,
+      ...conversationIdentity(c, c.userId ? profileMap.get(c.userId) : undefined),
     }))
 
     return {
@@ -214,15 +237,12 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     await fastify.getMembership(request.userId!, conversation.agent.organizationId)
 
-    let userName: string | undefined
-    if (conversation.userId) {
-      const profile = await prisma.profile.findUnique({ where: { id: conversation.userId }, select: { name: true } })
-      userName = profile?.name || undefined
-    } else {
-      userName = conversation.contactName || undefined
-    }
+    const profile = conversation.userId
+      ? await prisma.profile.findUnique({ where: { id: conversation.userId }, select: { name: true } })
+      : null
+    const identity = conversationIdentity(conversation, profile?.name)
 
-    return { data: { ...conversation, userName } }
+    return { data: { ...conversation, ...identity } }
   })
 
   // PATCH /api/conversations/:id — Update conversation (protected, member only)

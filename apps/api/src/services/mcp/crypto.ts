@@ -27,3 +27,32 @@ export function decryptJson<T = unknown>(payload: string, key: Buffer | null): T
   const decrypted = Buffer.concat([decipher.update(Buffer.from(parsed.data, 'base64')), decipher.final()])
   return JSON.parse(decrypted.toString('utf8')) as T
 }
+
+/**
+ * Encrypt a single string secret (e.g. OAuth client secret) at rest.
+ * Returns plaintext when no encryption key is configured, matching the
+ * fallback used for OAuth token state.
+ */
+export function encryptSecret(value: string, envKey?: string): string {
+  const key = getEncryptionKey(envKey)
+  if (!key) return value
+  return encryptJson(value, key)
+}
+
+/**
+ * Decrypt a string secret. Handles legacy plaintext values written before
+ * encryption was enabled (they are not JSON-wrapped and are returned as-is).
+ */
+export function decryptSecret(payload: string, envKey?: string): string {
+  const key = getEncryptionKey(envKey)
+  if (!key) return payload
+  try {
+    const parsed = JSON.parse(payload)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'v' in parsed) {
+      return decryptJson<string>(payload, key)
+    }
+  } catch {
+    // fall through — legacy plaintext
+  }
+  return payload
+}

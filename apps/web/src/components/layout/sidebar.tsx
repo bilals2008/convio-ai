@@ -38,6 +38,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { SidebarGroup, SidebarItem } from './sidebar-nav'
+import { DocsAssistant } from '@/components/docs/docs-assistant'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useAuth } from '@/lib/auth-context'
 import { useOrg } from '@/lib/org-context'
@@ -147,17 +148,27 @@ export function Sidebar() {
 
       {/* User section */}
       <div className="border-t border-border/50 p-2 mt-auto">
-        <div className={cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground/70', collapsed && 'justify-center px-0')}>
-          <Wand2 className="size-4 shrink-0 text-muted-foreground/60" />
-          {!collapsed && (
-            <>
-              <span className="flex-1 truncate text-left">Ask AI</span>
-              <Badge variant="beta" className="text-[10px] px-1.5 py-0 h-4 leading-none">
-                Soon
-              </Badge>
-            </>
+        <DocsAssistant
+          renderTrigger={(openAssistant) => (
+            <Button
+              variant="ghost"
+              className={cn(
+                'mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground',
+                collapsed && 'justify-center px-0',
+              )}
+              onClick={openAssistant}
+              aria-label="Ask AI"
+            >
+              <Wand2 className="size-4 shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 truncate text-left">Ask AI</span>
+                  <Badge variant="beta">Beta</Badge>
+                </>
+              )}
+            </Button>
           )}
-        </div>
+        />
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={collapsed ? 'Open account settings' : 'Open account menu'}
@@ -322,13 +333,22 @@ export function Sidebar() {
                 </ScrollArea>
 
                 <div className="border-t p-4 shrink-0">
-                  <div className="flex items-center gap-3 rounded-lg p-1 text-sm text-muted-foreground/70">
-                    <Wand2 className="size-4 shrink-0 text-muted-foreground/60" />
-                    <span className="flex-1 truncate">Ask AI</span>
-                    <Badge variant="beta" className="text-[10px] px-1.5 py-0 h-4 leading-none">
-                      Soon
-                    </Badge>
-                  </div>
+                  <DocsAssistant
+                    renderTrigger={(openAssistant) => (
+                      <Button
+                        variant="ghost"
+                        className="mb-1 flex w-full items-center gap-3 rounded-lg px-1 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                        onClick={() => {
+                          setMobileOpen(false)
+                          openAssistant()
+                        }}
+                      >
+                        <Wand2 className="size-4 shrink-0" />
+                        <span className="flex-1 truncate text-left">Ask AI</span>
+                        <Badge variant="beta">Beta</Badge>
+                      </Button>
+                    )}
+                  />
                   <div className="mt-2">
                     <DropdownMenu>
                     <DropdownMenuTrigger

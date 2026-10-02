@@ -10,6 +10,8 @@ interface UsageData {
   messages: number
   limit: number
   messagesPercent: number
+  byAgent: { agentId: string; name: string; messages: number }[]
+  byChannel: { channel: string; messages: number }[]
 }
 
 interface PlanData {

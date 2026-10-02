@@ -5,8 +5,11 @@ export type ConversationStatus = 'active' | 'waiting' | 'resolved' | 'closed' | 
 
 export interface ConversationItem {
   id: string
-  userId?: string
+  userId?: string | null
   userName?: string
+  displayName?: string
+  contactName?: string | null
+  contactPhone?: string | null
   agentName: string
   agentId: string
   channel: string

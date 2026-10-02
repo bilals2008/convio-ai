@@ -159,12 +159,12 @@ interface AgentWithTools {
     id: string
     name: string
     type: string
-    command: string | null
-    args: JsonValue
     url: string | null
     authType: string | null
     headers: JsonValue
     apiKey: string | null
+    clientId: string | null
+    clientSecret: string | null
     enabled: boolean
   } }>
 }

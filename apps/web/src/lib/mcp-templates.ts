@@ -5,10 +5,8 @@ export interface McpServerTemplate {
   provider: string
   url: string
   authType: 'none' | 'header' | 'oauth'
-  type: 'stdio' | 'streamable-http'
-  command?: string
-  args?: string[]
-  category: 'apps' | 'data' | 'devtools' | 'custom'
+  type: 'streamable-http'
+  category: 'apps' | 'data' | 'devtools'
   /** Shown in the add/edit form when authType is header — tells the user which header name to use. */
   headerHint?: string
   /** Template is listed but not yet enabled — shown with a "Coming soon" badge. */
@@ -56,18 +54,6 @@ export const mcpServerTemplates: McpServerTemplate[] = [
     authType: 'oauth',
     type: 'streamable-http',
     category: 'apps',
-  },
-  {
-    id: 'filesystem',
-    name: 'Filesystem',
-    description: 'Read and write files in a local directory (stdio).',
-    provider: 'filesystem',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/dir'],
-    authType: 'none',
-    type: 'stdio',
-    category: 'custom',
-    comingSoon: true,
   },
   {
     id: 'stripe',
@@ -172,30 +158,6 @@ export const mcpServerTemplates: McpServerTemplate[] = [
     comingSoon: true,
   },
   {
-    id: 'fetch',
-    name: 'Fetch',
-    description: 'Fetch and summarize content from URLs (stdio).',
-    provider: 'fetch',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-fetch'],
-    authType: 'none',
-    type: 'stdio',
-    category: 'data',
-    comingSoon: true,
-  },
-  {
-    id: 'postgres',
-    name: 'PostgreSQL',
-    description: 'Query and manage a PostgreSQL database (stdio).',
-    provider: 'postgresql',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-postgres', 'postgresql://localhost:5432/mydb'],
-    authType: 'none',
-    type: 'stdio',
-    category: 'data',
-    comingSoon: true,
-  },
-  {
     id: 'cloudflare',
     name: 'Cloudflare',
     description: 'Manage DNS, workers, KV, and Cloudflare resources.',
@@ -237,54 +199,6 @@ export const mcpServerTemplates: McpServerTemplate[] = [
     authType: 'header',
     type: 'streamable-http',
     category: 'devtools',
-    comingSoon: true,
-  },
-  {
-    id: 'playwright',
-    name: 'Playwright',
-    description: 'Browser automation for testing and web scraping (stdio).',
-    provider: 'playwright',
-    command: 'npx',
-    args: ['-y', '@playwright/mcp@latest'],
-    authType: 'none',
-    type: 'stdio',
-    category: 'devtools',
-    comingSoon: true,
-  },
-  {
-    id: 'memory',
-    name: 'Memory',
-    description: 'Persistent knowledge-graph memory for agents (stdio).',
-    provider: 'memory',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-memory'],
-    authType: 'none',
-    type: 'stdio',
-    category: 'custom',
-    comingSoon: true,
-  },
-  {
-    id: 'puppeteer',
-    name: 'Puppeteer',
-    description: 'Headless browser automation for the web (stdio).',
-    provider: 'puppeteer',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-puppeteer'],
-    authType: 'none',
-    type: 'stdio',
-    category: 'custom',
-    comingSoon: true,
-  },
-  {
-    id: 'sqlite',
-    name: 'SQLite',
-    description: 'Query and manage a local SQLite database (stdio).',
-    provider: 'sqlite',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-sqlite', '/path/to/database.db'],
-    authType: 'none',
-    type: 'stdio',
-    category: 'data',
     comingSoon: true,
   },
 ]

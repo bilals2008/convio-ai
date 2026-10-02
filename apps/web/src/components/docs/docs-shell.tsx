@@ -101,7 +101,7 @@ export function DocsShell({
         <div className="min-w-0 flex-1">
           <div
             className={cn(
-              'grid w-full max-w-[52rem] gap-x-12 px-4 sm:px-6',
+              'grid w-full max-w-[52rem] gap-x-10 px-4 sm:px-6',
               // TOC pages stay centred (content + rail read as one block); the index
               // hugs the sidebar so the landing column starts at the left edge.
               hasToc

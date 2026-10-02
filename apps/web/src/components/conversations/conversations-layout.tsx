@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Outlet, useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MessageSquare, Plus, Search, Brain, Check, ArrowUp, ArrowDown, Trash2, Loader2, CheckSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { MessageSquare, Plus, Search, Brain, Check, ArrowUp, ArrowDown, Trash2, Loader2, CheckSquare, PanelLeftClose, PanelLeftOpen, MoreHorizontal, Inbox, Filter, UserRound } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
@@ -17,6 +17,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ChannelBadge } from '@/components/shared/channel-badge'
 import { SearchInput } from '@/components/shared/search-input'
 import { Skeleton } from '@/components/shared/loading'
@@ -50,9 +56,16 @@ function formatRelativeTime(date: string): string {
   return then.toLocaleDateString()
 }
 
-function getInitials(name: string | undefined): string {
-  if (!name) return 'A'
-  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+function getConversationName(conv: ConversationItem): string {
+  const name = conv.displayName?.trim() || conv.userName?.trim() || conv.contactName?.trim()
+  if (name) return name
+  if (conv.channel === 'web') return 'Website visitor'
+  if (conv.channel === 'whatsapp' || conv.channel === 'twilio') {
+    const digits = conv.contactPhone?.replace(/\D/g, '') ?? ''
+    const suffix = digits.length >= 4 ? digits.slice(-4) : undefined
+    return suffix ? `WhatsApp · •••• ${suffix}` : 'WhatsApp contact'
+  }
+  return `${conv.channel.charAt(0).toUpperCase()}${conv.channel.slice(1)} contact`
 }
 
 function getLastMessage(conv: ConversationItem): string {
@@ -115,6 +128,7 @@ export function ConversationsLayout() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedId, setSelectedId] = useState<string | null>(id || null)
+  const [actionsOpen, setActionsOpen] = useState(false)
   const [showAgentPicker, setShowAgentPicker] = useState(false)
   const [isChatListCollapsed, setIsChatListCollapsed] = useState(false)
   const [agentSearch, setAgentSearch] = useState('')
@@ -158,7 +172,7 @@ export function ConversationsLayout() {
   const filteredConvs = search
     ? conversations.filter(
         (c) =>
-          c.userName?.toLowerCase().includes(search.toLowerCase()) ||
+          getConversationName(c).toLowerCase().includes(search.toLowerCase()) ||
           c.agentName?.toLowerCase().includes(search.toLowerCase()) ||
           c.lastMessage?.toLowerCase().includes(search.toLowerCase())
       )
@@ -316,76 +330,77 @@ export function ConversationsLayout() {
           </div>
         </TooltipProvider>
 
-        {/* Search */}
-        <TooltipProvider>
         <div className="flex items-center gap-2 px-3 pb-2">
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="Search chats..."
-            className="h-8 flex-1 text-sm"
+            placeholder="Search conversations"
+            className="h-9 flex-1 text-sm"
           />
-          <div className="flex shrink-0 items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger
-              aria-label="Delete all conversations"
-              disabled={conversations.length === 0 || isLoading || deleteMany.isPending}
-              onClick={() => setDeleteAllOpen(true)}
-              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-8 shrink-0 text-muted-foreground')}
+          <DropdownMenu open={actionsOpen} onOpenChange={setActionsOpen}>
+            <DropdownMenuTrigger
+              aria-label="Conversation actions"
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-9 shrink-0 text-muted-foreground')}
             >
-              {deleteMany.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-            </TooltipTrigger>
-            <TooltipContent>Delete all conversations</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              aria-label="Select conversations"
-              disabled={filteredConvs.length === 0}
-              onClick={bulk.enterSelectionMode}
-              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-8 shrink-0 text-muted-foreground')}
-            >
-              <CheckSquare className="size-4" />
-            </TooltipTrigger>
-            <TooltipContent>Select conversations</TooltipContent>
-          </Tooltip>
-          </div>
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                disabled={filteredConvs.length === 0}
+                onClick={() => { bulk.enterSelectionMode(); setActionsOpen(false) }}
+              >
+                <CheckSquare className="size-4" />
+                Select conversations
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={conversations.length === 0 || isLoading || deleteMany.isPending}
+                className="text-destructive"
+                onClick={() => { setDeleteAllOpen(true); setActionsOpen(false) }}
+              >
+                <Trash2 className="size-4" />
+                Delete all conversations
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        </TooltipProvider>
 
-        {/* Filter Tabs */}
         {bulk.selectionMode ? (
-          <div className="flex items-center justify-between px-4 pb-3">
-            <div
-              className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+          <div className="flex items-center justify-between border-b border-border/60 px-4 pb-2.5">
+            <button
+              type="button"
+              className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
               onClick={bulk.toggleSelectAll}
             >
               <Checkbox checked={bulk.isAllSelected} onCheckedChange={bulk.toggleSelectAll} className="size-4" />
               {bulk.isAllSelected ? 'Deselect all' : 'Select all'}
-            </div>
+            </button>
             <span className="text-xs text-muted-foreground">{bulk.selectedCount} selected</span>
           </div>
         ) : (
-          <div className="flex px-3 pb-2 gap-2">
-          {[
-            { value: 'all', label: 'All' },
-            { value: 'active', label: 'Active' },
-            { value: 'waiting', label: 'Waiting' },
-            { value: 'resolved', label: 'Resolved' },
-          ].map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setStatusFilter(tab.value)}
-              className={cn(
-                 'px-2.5 py-1 text-xs font-medium rounded transition-colors',
-                statusFilter === tab.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+          <div className="flex gap-1 overflow-x-auto px-3 pb-2.5 scrollbar-none" role="tablist" aria-label="Filter conversations">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'active', label: 'Active' },
+              { value: 'waiting', label: 'Waiting' },
+              { value: 'resolved', label: 'Resolved' },
+            ].map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={statusFilter === tab.value}
+                onClick={() => setStatusFilter(tab.value)}
+                className={cn(
+                  'shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                  statusFilter === tab.value
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         )}
 
         {/* Conversation List */}
@@ -415,78 +430,78 @@ export function ConversationsLayout() {
           )}
 
           {!isLoading && !isError && filteredConvs.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center p-6">
-              <p className="text-xs text-muted-foreground">
-                {search ? 'No conversations matching your search' : 'No conversations yet'}
+            <div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
+              <span className="mb-3 flex size-10 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground">
+                {search ? <Filter className="size-4" /> : <Inbox className="size-4" />}
+              </span>
+              <p className="text-sm font-medium text-foreground">
+                {search ? 'No matching conversations' : statusFilter === 'all' ? 'No conversations yet' : `No ${statusFilter} conversations`}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {search ? 'Try another name or message.' : 'New conversations will appear here.'}
               </p>
             </div>
           )}
 
-          {!isLoading && filteredConvs.map((conv) => (
-            <div
-              key={conv.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`Conversation with ${conv.userName || 'Anonymous'}`}
-              aria-current={selectedId === conv.id ? 'page' : undefined}
-              onClick={() => (bulk.selectionMode ? bulk.toggleSelect(conv.id) : handleSelect(conv.id))}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  if (bulk.selectionMode) {
-                    bulk.toggleSelect(conv.id)
-                  } else {
-                    handleSelect(conv.id)
-                  }
-                }
-              }}
-              className={cn(
-                'w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer',
-                bulk.selectionMode && bulk.isSelected(conv.id)
-                  ? 'bg-primary/10'
-                  : selectedId === conv.id
-                    ? 'bg-primary/10'
-                    : 'hover:bg-muted/50'
-              )}
-            >
-              {bulk.selectionMode && (
-                <Checkbox
-                  checked={bulk.isSelected(conv.id)}
-                  onCheckedChange={() => bulk.toggleSelect(conv.id)}
-                  aria-label={`Select ${conv.userName || 'Anonymous'}`}
-                  className="size-4 shrink-0"
-                />
-              )}
-              <Avatar className="size-8 shrink-0">
-                <AvatarFallback className={cn(
-                  'text-xs font-semibold',
-                  selectedId === conv.id ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary/80'
-                )}>
-                  {getInitials(conv.userName)}
-                </AvatarFallback>
-                {conv.channel !== 'web' && <ChannelBadge channel={conv.channel} />}
-              </Avatar>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className={cn(
-                    'text-[13px] font-medium truncate',
-                    selectedId === conv.id && 'text-primary'
-                  )}>
-                    {conv.userName || 'Anonymous'}
+          {!isLoading && filteredConvs.map((conv) => {
+            const displayName = getConversationName(conv)
+            const selected = selectedId === conv.id
+            const statusDot = conv.status === 'waiting' ? 'bg-warning' : conv.status === 'active' ? 'bg-success' : 'bg-muted-foreground/50'
+            return (
+              <div
+                key={conv.id}
+                className={cn(
+                  'flex items-center gap-2 border-b border-border/40 px-3 py-1',
+                  bulk.selectionMode && bulk.isSelected(conv.id) && 'bg-primary/5'
+                )}
+              >
+                {bulk.selectionMode && (
+                  <Checkbox
+                    checked={bulk.isSelected(conv.id)}
+                    onCheckedChange={() => bulk.toggleSelect(conv.id)}
+                    aria-label={`Select ${displayName}`}
+                    className="size-4 shrink-0"
+                  />
+                )}
+                <button
+                  type="button"
+                  aria-label={`Conversation with ${displayName}`}
+                  aria-current={selected ? 'page' : undefined}
+                  onClick={() => (bulk.selectionMode ? bulk.toggleSelect(conv.id) : handleSelect(conv.id))}
+                  className={cn(
+                    'group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2.5 py-2.5 text-left transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    selected ? 'bg-primary/8' : 'hover:bg-muted/50'
+                  )}
+                >
+                  <Avatar className="relative size-9 shrink-0">
+                    <AvatarFallback className={cn(
+                      selected ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                    )}>
+                      <UserRound className="size-4" aria-hidden="true" />
+                    </AvatarFallback>
+                    {conv.channel !== 'web' && <ChannelBadge channel={conv.channel} />}
+                  </Avatar>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className={cn('truncate text-[13px] font-medium', selected && 'text-primary')}>
+                        {displayName}
+                      </span>
+                      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                        {formatRelativeTime(conv.updatedAt)}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                      <span className={cn('size-1.5 shrink-0 rounded-full', statusDot)} aria-hidden="true" />
+                      <span className="shrink-0 truncate text-[10px] text-muted-foreground">{conv.agentName}</span>
+                      <span className="shrink-0 text-muted-foreground/50">·</span>
+                      <span className="truncate text-xs text-muted-foreground">{getLastMessage(conv)}</span>
+                    </span>
                   </span>
-                  <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
-                    {formatRelativeTime(conv.updatedAt)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-xs text-muted-foreground">
-                    {getLastMessage(conv)}
-                  </p>
-                </div>
+                </button>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {!isLoading && hasNextPage && (
             <div className="p-3">

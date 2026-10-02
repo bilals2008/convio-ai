@@ -7,9 +7,6 @@ import { assertSafeUrl } from '../ssrf.js'
 export interface McpServerConfig {
   id: string
   name: string
-  type: string
-  command?: string | null
-  args?: string[] | unknown
   url?: string | null
   authType?: string | null
   headers?: Record<string, string> | unknown
@@ -56,21 +53,14 @@ export class McpClient {
   }
 
   createTransport() {
-    // stdio is not supported: it executes arbitrary OS commands on the API
-    // host (RCE). Any existing stdio servers fail fast with a clear message.
-    if (this.config.type === 'stdio') {
-      throw new Error('stdio MCP servers are not supported for security reasons — use streamable-http')
+    if (!this.config.url) {
+      throw new Error('MCP server URL is required')
     }
-
-    if ((this.config.type === 'sse' || this.config.type === 'streamable-http') && this.config.url) {
-      const headers = buildHttpHeaders(this.config)
-      return new StreamableHTTPClientTransport(new URL(this.config.url), {
-        authProvider: this.config.authProvider,
-        requestInit: Object.keys(headers).length ? { headers } : undefined,
-      })
-    }
-
-    throw new Error(`Unsupported MCP server type: ${this.config.type}`)
+    const headers = buildHttpHeaders(this.config)
+    return new StreamableHTTPClientTransport(new URL(this.config.url), {
+      authProvider: this.config.authProvider,
+      requestInit: Object.keys(headers).length ? { headers } : undefined,
+    })
   }
 
   /**
@@ -83,7 +73,7 @@ export class McpClient {
 
   async connect(): Promise<void> {
     if (this.connected) return
-    if ((this.config.type === 'sse' || this.config.type === 'streamable-http') && this.config.url) {
+    if (this.config.url) {
       await assertSafeUrl(this.config.url).catch(() => {
         throw new Error('MCP server URL points to a blocked/internal address')
       })
@@ -148,9 +138,4 @@ export class McpClient {
     }
     return { result: text || '(empty response)' }
   }
-}
-
-export async function getMcpClient(config: McpServerConfig): Promise<McpClient> {
-  const client = new McpClient(config)
-  return client
 }

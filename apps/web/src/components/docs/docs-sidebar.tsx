@@ -17,12 +17,10 @@ function isActive(pathname: string, slug: string): boolean {
 }
 
 const ITEM_BASE =
-  'group relative flex items-center gap-2.5 rounded-md py-1.5 pl-2.5 pr-2 text-[13.5px] leading-5 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring/60'
+  'group relative flex items-center gap-2.5 rounded-md py-1.5 pl-2.5 pr-2 text-[13px] leading-5 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring/60'
 
-// Inactive items were 400-weight muted grey and read as disabled next to the bold
-// section labels — medium weight and a brighter foreground keep the rail legible.
-const ITEM_IDLE = 'font-medium text-foreground/70 hover:bg-accent/60 hover:text-foreground'
-const ITEM_ACTIVE = 'bg-accent font-medium text-foreground'
+const ITEM_IDLE = 'font-medium text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+const ITEM_ACTIVE = 'bg-accent/70 font-medium text-foreground'
 
 function NavItem({
   page,

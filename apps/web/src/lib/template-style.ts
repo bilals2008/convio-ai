@@ -1,0 +1,95 @@
+import {
+  AlertOctagon,
+  AlertTriangle,
+  BarChart3,
+  Briefcase,
+  Bug,
+  Clipboard,
+  ClipboardList,
+  Copy,
+  DollarSign,
+  FileText,
+  GitCompare,
+  GraduationCap,
+  Handshake,
+  Headphones,
+  Heart,
+  HelpCircle,
+  Languages,
+  Layout,
+  BookOpen,
+  LogIn,
+  Mail,
+  Megaphone,
+  MessageSquare,
+  Newspaper,
+  PenTool,
+  Scale,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  TrendingUp,
+  UserSearch,
+  Users,
+  Zap,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+
+/** Colour wash per template category: the icon tile and the category tag share it. */
+export const categoryColors: Record<string, string> = {
+  support: 'bg-blue-500/10 text-blue-500',
+  business: 'bg-amber-500/10 text-amber-500',
+  education: 'bg-green-500/10 text-green-500',
+  productivity: 'bg-purple-500/10 text-purple-500',
+  custom: 'bg-muted text-muted-foreground',
+}
+
+export const categoryIcons: Record<string, LucideIcon> = {
+  support: Headphones,
+  business: Briefcase,
+  education: GraduationCap,
+  productivity: Zap,
+  custom: SlidersHorizontal,
+}
+
+export const templateIcons: Record<string, LucideIcon> = {
+  'customer-support': Headphones,
+  sales: TrendingUp,
+  faq: HelpCircle,
+  onboarding: LogIn,
+  interviewer: UserSearch,
+  tutor: BookOpen,
+  translator: Languages,
+  'hr-assistant': Users,
+  recruiter: ClipboardList,
+  'legal-assistant': Scale,
+  researcher: GraduationCap,
+  writer: PenTool,
+  coach: Heart,
+  'data-analyst': BarChart3,
+  'project-manager': Briefcase,
+  'meeting-summarizer': MessageSquare,
+  'social-media-manager': Megaphone,
+  'email-writer': Mail,
+  'it-support': ShieldCheck,
+  'technical-writer': FileText,
+  'code-reviewer': Bug,
+  'documentation-assistant': FileText,
+  'ux-researcher': Search,
+  'content-repurposer': Copy,
+  'competitor-analyst': GitCompare,
+  'pr-writer': Newspaper,
+  'product-manager': Clipboard,
+  'incident-commander': AlertTriangle,
+  'pricing-strategist': DollarSign,
+  'risk-assessor': AlertOctagon,
+  'customer-success': Handshake,
+  'content-strategist': Layout,
+  'seo-specialist': Search,
+  custom: SlidersHorizontal,
+}
+
+/** Icon used when a template has no entry of its own — the category icon. */
+export function iconForTemplate(id: string, category: string): LucideIcon {
+  return templateIcons[id] ?? categoryIcons[category] ?? SlidersHorizontal
+}

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { dataManagement as dataManagementApi } from '@/lib/api'
 import { useOrg } from '@/lib/org-context'
@@ -22,7 +22,6 @@ import {
 } from 'lucide-react'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -144,6 +143,9 @@ export default function DataManagementPage() {
   const [wipeConfirmText, setWipeConfirmText] = useState('')
   const [wipeError, setWipeError] = useState('')
   const [exportingScope, setExportingScope] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<CategoryKey | null>(null)
+  const [cascadeItems, setCascadeItems] = useState<{ label: string; count: number }[]>([])
+  const [cascadeLoading, setCascadeLoading] = useState(false)
 
   const summaryQuery = useQuery({
     queryKey: ['data-summary', orgId],
@@ -171,6 +173,7 @@ export default function DataManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
       queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] })
       queryClient.invalidateQueries({ queryKey: ['provider-keys'] })
+      queryClient.invalidateQueries({ queryKey: ['billing', 'usage', orgId] })
       setWipeDialogOpen(false)
       setWipeConfirmText('')
       setWipeError('')
@@ -179,6 +182,39 @@ export default function DataManagementPage() {
       toast.error(err.message || 'Failed to wipe data')
     },
   })
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (category: string) => dataManagementApi.deleteCategory(orgId!, category),
+    onSuccess: () => {
+      toast.success('Data deleted')
+      queryClient.invalidateQueries({ queryKey: ['data-summary', orgId] })
+      queryClient.invalidateQueries({ queryKey: ['all-deployments'] })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] })
+      queryClient.invalidateQueries({ queryKey: ['provider-keys'] })
+      queryClient.invalidateQueries({ queryKey: ['billing', 'usage', orgId] })
+      setDeleteTarget(null)
+      setCascadeItems([])
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to delete data')
+    },
+  })
+
+  const openDeleteDialog = async (key: CategoryKey) => {
+    setDeleteTarget(key)
+    setCascadeItems([])
+    setCascadeLoading(true)
+    try {
+      const res = await dataManagementApi.cascade(orgId!, key)
+      setCascadeItems(res.data?.data ?? [])
+    } catch {
+      setCascadeItems([])
+    } finally {
+      setCascadeLoading(false)
+    }
+  }
 
   const getCategoryLabel = (key: string) =>
     categories.find((c) => c.key === key)?.label || key
@@ -375,6 +411,15 @@ export default function DataManagementPage() {
                       <span className="text-sm font-semibold tabular-nums text-foreground/80">{count.toLocaleString()}</span>
                       <p className="text-[10px] text-muted-foreground">items</p>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground hover:text-destructive"
+                      disabled={count === 0}
+                      onClick={() => openDeleteDialog(cat.key)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
                   </div>
                 </div>
               )
@@ -420,6 +465,57 @@ export default function DataManagementPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Category delete confirmation */}
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setCascadeItems([]) } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-destructive" />
+              Delete {deleteTarget ? getCategoryLabel(deleteTarget) : ''}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <span className="block">
+                This will permanently delete all <strong>{deleteTarget ? getCategoryLabel(deleteTarget).toLowerCase() : ''}</strong> data in{' '}
+                <strong>{org?.name || 'this workspace'}</strong>.
+              </span>
+              {cascadeLoading ? (
+                <div className="flex justify-center py-2"><Loader2 className="size-4 animate-spin text-muted-foreground" /></div>
+              ) : cascadeItems.length > 0 && (
+                <div className="rounded-md bg-muted/50 p-2.5 space-y-1">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">This includes</p>
+                  {cascadeItems.map((i) => (
+                    <div key={i.label} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{i.label}</span>
+                      <span className="font-medium tabular-nums">{i.count.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <span className="flex items-center gap-1 text-destructive font-medium text-xs">
+                <AlertTriangle className="size-3 shrink-0" />
+                This action cannot be undone.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={deleteCategoryMutation.isPending}
+              onClick={() => deleteTarget && deleteCategoryMutation.mutate(deleteTarget)}
+              className="gap-1.5"
+            >
+              {deleteCategoryMutation.isPending && <Loader2 className="size-3 animate-spin" />}
+              Delete
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Wipe all confirmation */}
       <AlertDialog

@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { validate } from '../../plugins/validate.js'
 import { AppError } from '../../plugins/error.js'
 import { exportOrgData } from './export.js'
+import { archiveDeletedUsage } from '../../services/billing.js'
 
 const orgParamsSchema = z.object({
   orgId: z.string().uuid(),
@@ -331,6 +332,7 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
         // Delete in correct order to respect FKs
         const convIds = await getConversationIds(agentIds)
         if (convIds.length > 0) {
+          await archiveDeletedUsage(orgId, convIds)
           await prisma.message.deleteMany({ where: { conversationId: { in: convIds } } })
           await prisma.conversation.deleteMany({ where: { id: { in: convIds } } })
         }
@@ -345,6 +347,7 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
         if (agentIds.length === 0) return { data: { deleted: 0 } }
         const convIds = await getConversationIds(agentIds)
         if (convIds.length === 0) return { data: { deleted: 0 } }
+        await archiveDeletedUsage(orgId, convIds)
         await prisma.message.deleteMany({ where: { conversationId: { in: convIds } } })
         const result = await prisma.conversation.deleteMany({ where: { id: { in: convIds } } })
         deletedCount = result.count
@@ -422,6 +425,7 @@ export default async function dataManagementRoutes(fastify: FastifyInstance) {
     // 1. Messages → Conversations
     const convIds = await getConversationIds(agentIds)
     if (convIds.length > 0) {
+      await archiveDeletedUsage(orgId, convIds)
       const msgResult = await prisma.message.deleteMany({ where: { conversationId: { in: convIds } } })
       counts.messages = msgResult.count
       const convResult = await prisma.conversation.deleteMany({ where: { id: { in: convIds } } })

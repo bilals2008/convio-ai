@@ -46,7 +46,7 @@ export function DocsToc({
 
   return (
     <nav aria-label="On this page" className="flex flex-col py-8">
-      <p className="mb-3 text-[12px] font-semibold text-foreground">On this page</p>
+      <p className="mb-3 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">On this page</p>
       {/* Every item carries its own rule, so the list reads as one continuous hairline
           and the active item just recolours its own segment. A border on <ul> would
           be hidden: `-ml-px` puts each item's rule exactly on top of it. */}

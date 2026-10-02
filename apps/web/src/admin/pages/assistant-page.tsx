@@ -55,6 +55,7 @@ import { ConversationList } from '@/admin/components/assistant/conversation-list
 import { ToolCallChip, type ToolCallChipItem } from '@/admin/components/assistant/tool-call-chip'
 import { ChartBlock } from '@/admin/components/assistant/chart-block'
 import { SuggestedQuestions } from '@/admin/components/assistant/suggested-questions'
+import { DocsAssistantConfigSheet } from '@/admin/components/assistant/docs-assistant-config-sheet'
 import type { AdminChartSpec } from '@/admin/services/admin-api'
 
 function timeAgo(date: string): string {
@@ -289,10 +290,13 @@ export default function AdminAssistantPage() {
             </Badge>
           )}
         </div>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs text-muted-foreground" onClick={() => setLogsOpen(true)}>
-          <ScrollText className="size-3.5" />
-          Logs
-        </Button>
+        <div className="flex items-center gap-1">
+          <DocsAssistantConfigSheet />
+          <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs text-muted-foreground" onClick={() => setLogsOpen(true)}>
+            <ScrollText className="size-3.5" />
+            Logs
+          </Button>
+        </div>
       </div>
 
       {/* Chat area */}
